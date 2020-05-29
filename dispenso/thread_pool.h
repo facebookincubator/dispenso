@@ -117,6 +117,7 @@ class alignas(kCacheLineSize) ThreadPool {
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
 
+ public:
   // If we are not yet C++17, we provide aligned new/delete to avoid false sharing.
 #if __cplusplus < 201703L
   static void* operator new(size_t sz) {

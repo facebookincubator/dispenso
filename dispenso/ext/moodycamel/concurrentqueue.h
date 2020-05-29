@@ -265,11 +265,6 @@ namespace moodycamel { namespace details {
 #define MOODYCAMEL_NO_TSAN
 #endif // TSAN
 
-
-
-
-
-
 // Compiler-specific likely/unlikely hints
 namespace moodycamel { namespace details {
 #if defined(__GNUC__)

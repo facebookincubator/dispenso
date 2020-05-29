@@ -221,8 +221,10 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
   // order to not have an occasional flake, we choose much lower than 8, though this test is
   // fundamentally flawed in that it cannot guarantee flake-free behavior.  Thus we turn this
   // particular check off when running in TSAN.
-#if defined(__has_feature) && !__has_feature(thread_sanitizer)
+#if defined(__has_feature) 
+#if !__has_feature(thread_sanitizer)
   EXPECT_GT(tidSet.size(), 2);
+#endif
 #endif // TSAN
 
   EXPECT_THAT(static_cast<int>(pool.numThreads()), AnyOf(Eq(4), Eq(8)));
