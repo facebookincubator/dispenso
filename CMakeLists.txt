@@ -6,7 +6,17 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# Locate GTest
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
+
+# Add front most directories to include path
 include_directories(./)
+include_directories(./dispenso/)
 
 ############# External libraries
 add_library(
@@ -14,6 +24,7 @@ add_library(
     ./dispenso/ext/moodycamel/concurrentqueue.h
 )
 
+target_include_directories(concurrentqueue PUBLIC ./dispenso/ext/moodycamel/)
 set_target_properties(concurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 
@@ -22,6 +33,7 @@ add_library(
     ./dispenso/ext/moodycamel/lightweightsemaphore.h
 )
 
+target_include_directories(lightweightsemaphore PUBLIC ./dispenso/ext/moodycamel/)
 set_target_properties(lightweightsemaphore PROPERTIES LINKER_LANGUAGE CXX)
 
 
@@ -36,6 +48,7 @@ target_link_libraries(
     PUBLIC lightweightsemaphore
 )
 
+target_include_directories(blockingconcurrentqueue PUBLIC ./dispenso/ext/moodycamel/)
 set_target_properties(blockingconcurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 
@@ -121,7 +134,6 @@ add_library(
 )
 
 target_include_directories(thread_pool PUBLIC ./)
-target_include_directories(thread_pool PUBLIC ./dispenso/ext/moodycamel/)
 
 target_link_libraries(
     thread_pool
@@ -168,7 +180,6 @@ add_library(
 
 set_target_properties(future PROPERTIES LINKER_LANGUAGE CXX)
 
-
 target_link_libraries(
     future
     PUBLIC completion_event
@@ -176,5 +187,169 @@ target_link_libraries(
     PUBLIC task_set
 )
 
+#----------- resource_pool
+add_library(
+    resource_pool
+    ./dispenso/resource_pool.h
+)
+
+set_target_properties(resource_pool PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries(
+    resource_pool
+    PUBLIC blockingconcurrentqueue
+    PUBLIC platform
+)
 
 
+############# Tests
+#----------- task_set_no_exceptions
+add_library(
+    task_set_no_exceptions
+    ./dispenso/task_set.cpp
+    ./dispenso/task_set.h
+)
+
+target_compile_options(task_set_no_exceptions PUBLIC -fno-exceptions)
+
+target_link_libraries(
+    task_set_no_exceptions
+    PUBLIC thread_pool
+    PUBLIC once_function
+    PUBLIC task_set
+)
+
+#T---------- thread_pool_test
+add_executable(
+    thread_pool_test
+    ./tests/thread_pool_test.cpp
+)
+
+target_link_libraries(
+    thread_pool_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC thread_pool)
+
+#T---------- task_set_test
+add_executable(
+    task_set_test
+    ./tests/task_set_test.cpp
+)
+
+target_link_libraries(
+    task_set_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC task_set
+)
+
+#T---------- task_set_test_sans_exceptions
+add_executable(
+    task_set_test_sans_exceptions
+    ./tests/task_set_test.cpp
+)
+
+target_compile_options(task_set_test_sans_exceptions PUBLIC -fno-exceptions)
+
+target_link_libraries(
+    task_set_test_sans_exceptions
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC task_set_no_exceptions
+)
+
+#T---------- greedy_for_test
+add_executable(
+    greedy_for_test
+    ./tests/greedy_for_test.cpp
+)
+
+target_link_libraries(
+    greedy_for_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC parallel_for
+)
+
+#T---------- chunked_for_test
+add_executable(
+    chunked_for_test
+    ./tests/chunked_for_test.cpp
+)
+
+target_link_libraries(
+    chunked_for_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC parallel_for
+)
+
+#T---------- resource_pool_test
+add_executable(
+    resource_pool_test
+    ./tests/resource_pool_test.cpp
+)
+
+target_link_libraries(
+    resource_pool_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC resource_pool
+    PUBLIC thread_pool
+)
+
+#T---------- small_buffer_allocator_test
+add_executable(
+    small_buffer_allocator_test
+    ./tests/small_buffer_allocator_test.cpp
+)
+
+target_link_libraries(
+    small_buffer_allocator_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC small_buffer_allocator
+)
+
+#T---------- once_function_test
+add_executable(
+    once_function_test
+    ./tests/once_function_test.cpp
+)
+
+target_link_libraries(
+    once_function_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC once_function
+)
+
+#T---------- future_test
+add_executable(
+    future_test
+    ./tests/future_test.cpp
+)
+
+target_link_libraries(
+    future_test
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC future
+)
+
+#T---------- future_test_sans_exceptions
+add_executable(
+    future_test_sans_exceptions
+    ./tests/future_test.cpp
+)
+
+target_compile_options(future_test_sans_exceptions PUBLIC -fno-exceptions)
+
+target_link_libraries(
+    future_test_sans_exceptions
+    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC gtest_main
+    PUBLIC future
+    PUBLIC task_set_no_exceptions
+)
