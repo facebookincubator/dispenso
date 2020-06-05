@@ -14,9 +14,32 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
+# Locate google benchmark
+#set(benchmark_ROOT_DIR "" CACHE PATH "../thirdparty/benchmark")
+set(BENCHMARK_ENABLE_TESTING OFF)
+#find_package(GoogleBenchmark REQUIRED)
+#include_directories(${GoogleBenchmark_INCLUDE_DIR})
+
+add_subdirectory(../thirdparty/benchmark benchmarkDir)
+include_directories(./dispenso/benchmarks)
+
+# Locate OpenMP
+find_package(OpenMP)
+
+# Locate TBB
+add_subdirectory(../thirdparty/tbb tbbDir)
+
+# Locate folly
+find_package(folly CONFIG REQUIRED)
+include_directories(${FOLLY_INCLUDE_DIR})
+
+# Locate gflags
+find_package(gflags REQUIRED)
+
 # Add front most directories to include path
 include_directories(./)
 include_directories(./dispenso/)
+
 
 ############# External libraries
 add_library(
@@ -109,6 +132,7 @@ target_link_libraries(
     PUBLIC small_buffer_allocator
 )
 
+
 ############# Detail
 #----------- per_pool_per_thread_info
 add_library(
@@ -124,6 +148,7 @@ target_link_libraries(
     PUBLIC concurrentqueue
     PUBLIC platform
 )
+
 
 ############# Libraries (cont.)
 #----------- thread_pool
@@ -353,3 +378,146 @@ target_link_libraries(
     PUBLIC future
     PUBLIC task_set_no_exceptions
 )
+
+############# Benchmarks
+#B---------- thread_benchmark_common
+add_library(
+    thread_benchmark_common
+    ./benchmarks/thread_benchmark_common.h
+)
+
+target_include_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/include/)
+set_target_properties(thread_benchmark_common PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries(thread_benchmark_common PUBLIC benchmark benchmark_main pthread)
+target_link_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/build/src)
+target_include_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/include/)
+
+
+#B---------- nested_for_benchmark
+add_executable(
+    nested_for_benchmark
+    ./benchmarks/nested_for_benchmark.cpp
+)
+
+target_link_libraries(
+    nested_for_benchmark
+    PUBLIC parallel_for
+    PUBLIC thread_benchmark_common
+    PUBLIC tbb
+)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(nested_for_benchmark PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+
+#B---------- future_benchmark
+add_executable(
+    future_benchmark
+    ./benchmarks/future_benchmark.cpp
+)
+
+target_link_libraries(
+    future_benchmark
+    PUBLIC thread_pool
+    PUBLIC task_set
+    PUBLIC thread_benchmark_common
+    PUBLIC folly
+    PUBLIC ${Boost_LIBRARIES} ${FOLLY_LIBRARIES}
+    PUBLIC concurrentqueue
+    PUBLIC gflags
+)
+
+#B---------- once_function_benchmark
+add_executable(
+    once_function_benchmark
+    ./benchmarks/once_function_benchmark.cpp
+)
+
+target_link_libraries(
+    once_function_benchmark
+    PUBLIC once_function
+    PUBLIC thread_benchmark_common
+    PUBLIC concurrentqueue
+)
+
+#B---------- small_buffer_benchmark
+add_executable(
+    small_buffer_benchmark
+    ./benchmarks/small_buffer_benchmark.cpp
+)
+
+target_link_libraries(
+    small_buffer_benchmark
+    PUBLIC small_buffer_allocator
+    PUBLIC thread_benchmark_common
+)
+
+
+#B---------- simple_pool_benchmark
+add_executable(
+    simple_pool_benchmark
+    ./benchmarks/simple_pool_benchmark.cpp
+)
+
+target_link_libraries(
+    simple_pool_benchmark
+    PUBLIC task_set
+    PUBLIC thread_benchmark_common
+    PUBLIC tbb
+)
+
+
+#B---------- trivial_compute_benchmark
+add_executable(
+    trivial_compute_benchmark
+    ./benchmarks/trivial_compute_benchmark.cpp
+)
+
+target_link_libraries(
+    trivial_compute_benchmark
+    PUBLIC parallel_for
+    PUBLIC thread_benchmark_common
+    PUBLIC tbb
+)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(trivial_compute_benchmark PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+#B---------- simple_for_benchmark
+add_executable(
+    simple_for_benchmark
+    ./benchmarks/simple_for_benchmark.cpp
+)
+
+target_link_libraries(
+    simple_for_benchmark
+    PUBLIC parallel_for
+    PUBLIC thread_benchmark_common
+    PUBLIC tbb
+)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(simple_for_benchmark PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+
+#B---------- summing_for_benchmark
+add_executable(
+    summing_for_benchmark
+    ./benchmarks/simple_for_benchmark.cpp
+)
+
+target_link_libraries(
+    summing_for_benchmark
+    PUBLIC parallel_for
+    PUBLIC thread_benchmark_common
+    PUBLIC tbb
+)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(summing_for_benchmark PUBLIC OpenMP::OpenMP_CXX)
+endif()
+

@@ -1,0 +1,1 @@
+The scripts contained in this folder are for helping setup the environment to build the project; in particular, to obtain third party libraries. Thirdparty libraries are expected to be in a sibling directory to the project directory named thirdparty. Each script will end with an underscore and the platform it's building for.
