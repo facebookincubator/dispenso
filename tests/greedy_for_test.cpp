@@ -102,11 +102,14 @@ TEST(GreedyFor, CoordinatedLoops) {
 
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
 
-  dispenso::parallel_for(
-      taskSet, 0, h, [w, &image, &sumA](int y) { simpleInner(w, y, image, sumA); }, false);
+  dispenso::ParForOptions options;
+  options.wait = false;
 
   dispenso::parallel_for(
-      taskSet, 0, h, [w, &image, &sumB](int y) { simpleInner(w, y, image, sumB); }, true);
+      taskSet, 0, h, [w, &image, &sumA](int y) { simpleInner(w, y, image, sumA); }, options);
+
+  dispenso::parallel_for(
+      taskSet, 0, h, [w, &image, &sumB](int y) { simpleInner(w, y, image, sumB); });
 
   EXPECT_EQ(sumA.load(std::memory_order_relaxed), w * h * 7);
   EXPECT_EQ(sumB.load(std::memory_order_relaxed), w * h * 7);
@@ -118,8 +121,10 @@ void concurrentLoop(
     int h,
     const std::vector<int>& image,
     std::atomic<int64_t>& sum) {
+  dispenso::ParForOptions options;
+  options.wait = false;
   dispenso::parallel_for(
-      taskSet, 0, h, [w, &image, &sum](int y) { simpleInner(w, y, image, sum); }, false);
+      taskSet, 0, h, [w, &image, &sum](int y) { simpleInner(w, y, image, sum); }, options);
 }
 
 TEST(GreedyFor, CoordinatedConcurrentLoops) {
@@ -132,8 +137,10 @@ TEST(GreedyFor, CoordinatedConcurrentLoops) {
 
   dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
 
+  dispenso::ParForOptions options;
+  options.wait = false;
   dispenso::parallel_for(
-      taskSet, 0, h, [w, &image, &sumA](int y) { simpleInner(w, y, image, sumA); }, false);
+      taskSet, 0, h, [w, &image, &sumA](int y) { simpleInner(w, y, image, sumA); }, options);
 
   std::thread thread(
       [&taskSet, w, h, &image, &sumB]() { concurrentLoop(taskSet, w, h, image, sumB); });
@@ -142,4 +149,61 @@ TEST(GreedyFor, CoordinatedConcurrentLoops) {
 
   EXPECT_EQ(sumA.load(std::memory_order_relaxed), w * h * 7);
   EXPECT_EQ(sumB.load(std::memory_order_relaxed), w * h * 7);
+}
+
+inline int getTestTid() {
+  static DISPENSO_THREAD_LOCAL int tid = -1;
+  static std::atomic<int> nextTid(0);
+  if (tid < 0) {
+    tid = nextTid.fetch_add(1, std::memory_order_relaxed);
+  }
+  return tid;
+}
+
+TEST(GreedyFor, OptionsMaxThreads) {
+  size_t usedTids[9] = {0};
+
+  dispenso::ThreadPool pool(8);
+  dispenso::TaskSet tasks(pool);
+
+  dispenso::ParForOptions options;
+  options.maxThreads = 4;
+  options.wait = false;
+
+  auto func = [&usedTids](size_t index) {
+    std::this_thread::yield();
+    usedTids[getTestTid()] += index;
+  };
+
+  dispenso::parallel_for(tasks, 0, 10000, func, options);
+
+  // We didn't tell the parallel_for to wait, so we need to do it here to ensure the loop is
+  // complete.
+  tasks.wait();
+  int total = 0;
+  int numNonZero = 0;
+
+  for (int i = 0; i < 9; ++i) {
+    numNonZero += usedTids[i] > 0;
+    total += usedTids[i];
+  }
+
+  EXPECT_LE(numNonZero, 4);
+  EXPECT_EQ(total, 49995000);
+
+  memset(usedTids, 0, sizeof(usedTids));
+  options.wait = true;
+
+  dispenso::parallel_for(tasks, 0, 10000, func, options);
+  total = 0;
+  numNonZero = 0;
+
+  for (int i = 0; i < 9; ++i) {
+    numNonZero += usedTids[i] > 0;
+    total += usedTids[i];
+  }
+
+  // We can now expect the calling thread to also participate.
+  EXPECT_LE(numNonZero, 5);
+  EXPECT_EQ(total, 49995000);
 }

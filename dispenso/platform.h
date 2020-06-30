@@ -67,10 +67,6 @@ inline void alignedFree(void* ptr) {
 #endif // _POSIX_C_SOURCE
 }
 
-inline size_t getNumToLaunch(bool wait, size_t N) {
-  return N - wait;
-}
-
 inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
   constexpr uintptr_t kMask = kCacheLineSize - 1;
   val += kMask;
