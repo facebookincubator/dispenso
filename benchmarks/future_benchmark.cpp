@@ -230,7 +230,7 @@ folly::SemiFuture<folly::Unit> follyTree(
   return folly::via(
              exec,
              [=]() {
-               return folly::collectSemiFuture(
+               return folly::collectAll(
                           follyTree(exec, node->left, allocator, depth, bitset << 1, modulo),
                           follyTree(exec, node->right, allocator, depth, bitset << 1 | 1, modulo))
                    .unit();
