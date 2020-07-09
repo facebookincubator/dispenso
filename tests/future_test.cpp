@@ -563,3 +563,28 @@ TEST(Future, ExceptionShouldntDestroyResultIfNotCreated) {
   EXPECT_TRUE(handledException);
 }
 #endif //__cpp_exceptions
+
+TEST(Future, WhenAll) {
+  constexpr int kWorkItems = 10000;
+  std::deque<dispenso::Future<int>> items;
+
+  dispenso::ThreadPool pool(10);
+  int64_t expectedSum = 0;
+  for (int i = 0; i < kWorkItems; ++i) {
+    items.emplace_back([i]() { return i * i; }, pool);
+    expectedSum += i * i;
+  }
+
+  auto finalSum = dispenso::when_all(items.begin(), items.end()).then([](auto&& readyFutures) {
+    EXPECT_TRUE(readyFutures.is_ready());
+    auto& vec = readyFutures.get();
+    int64_t sum = 0;
+    for (auto& f : vec) {
+      EXPECT_TRUE(f.is_ready());
+      sum += f.get();
+    }
+    return sum;
+  });
+
+  EXPECT_EQ(finalSum.get(), expectedSum);
+}

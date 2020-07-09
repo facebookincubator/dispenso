@@ -270,7 +270,7 @@ class Future : detail::FutureBase<Result> {
    *
    * @return A const reference to the result's value.
    **/
-  const Result& get() {
+  const Result& get() const {
     wait();
     return this->impl_->result();
   }
@@ -360,7 +360,7 @@ class Future<Result&> : detail::FutureBase<Result&> {
    *
    * @return Access to the underlying reference.
    **/
-  Result& get() {
+  Result& get() const {
     wait();
     return this->impl_->result();
   }
@@ -433,7 +433,7 @@ class Future<void> : detail::FutureBase<void> {
   /**
    * Block until the functor has been called.
    **/
-  void get() {
+  void get() const {
     wait();
     this->impl_->result();
   }
@@ -526,6 +526,22 @@ inline Future<X&> make_ready_future(std::reference_wrapper<X> x) {
 inline Future<void> make_ready_future() {
   return Future<void>(detail::ReadyTag());
 }
+
+/**
+ * Take a collection of futures, and return a future which will be ready when all input futures are
+ * ready.
+ *
+ * @param first An iterator to the start of the future collection.
+ * @param last An iterator to the end of the future collection.
+ *
+ * @return A Future containing a vector holding copies of the input Futures.  The returned Future
+ * will be in ready state when all input Futures are ready.
+ *
+ **/
+template <class InputIt>
+Future<std::vector<typename std::iterator_traits<InputIt>::value_type>> when_all(
+    InputIt first,
+    InputIt last);
 
 } // namespace dispenso
 
