@@ -40,7 +40,7 @@ constexpr size_t kCacheLineSize = 64;
 namespace detail {
 
 inline void* alignedMalloc(size_t bytes, size_t alignment) {
-#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__)
+#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__) || defined(__ANDROID__)
   void* ptr;
   if (::posix_memalign(&ptr, alignment, bytes)) {
     return nullptr;
@@ -58,7 +58,7 @@ inline void* alignedMalloc(size_t bytes) {
 }
 
 inline void alignedFree(void* ptr) {
-#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__)
+#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__) || defined(__ANDROID__)
   ::free(ptr);
 #elif defined(_MSC_VER)
   _aligned_free(ptr);
