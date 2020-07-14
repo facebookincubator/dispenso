@@ -2,7 +2,18 @@ cmake_minimum_required(VERSION 3.12)
 
 project(Dispenso VERSION 0.1.0)
 
+
+if (WIN32)
+add_compile_definitions(NOMINMAX)
+endif (WIN32)
+
+#normally compiles with 14 but MSVC requeired 17
+if (WIN32)
+set(CMAKE_CXX_STANDARD 17)
+else (WIN32)
 set(CMAKE_CXX_STANDARD 14)
+endif (WIN32)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -10,31 +21,55 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+if (WIN32)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+endif (WIN32)
+
+# Setup VCPKG for windows
+if (WIN32)
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE static)
+set(VCPKG_LIBRARY_LINKAGE static)
+endif (WIN32)
+
+
 # Locate GTest
+if (NOT WIN32)
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
+else (NOT WIN32)
+add_subdirectory(../thirdparty/googletest googletestDir)
+endif (NOT WIN32)
+
+
 
 # Locate google benchmark
-#set(benchmark_ROOT_DIR "" CACHE PATH "../thirdparty/benchmark")
 set(BENCHMARK_ENABLE_TESTING OFF)
-#find_package(GoogleBenchmark REQUIRED)
-#include_directories(${GoogleBenchmark_INCLUDE_DIR})
-
 add_subdirectory(../thirdparty/benchmark benchmarkDir)
+
 include_directories(./dispenso/benchmarks)
 
+
 # Locate OpenMP
+if (NOT WIN32)
 find_package(OpenMP)
+endif (NOT WIN32)
 
 # Locate TBB
 add_subdirectory(../thirdparty/tbb tbbDir)
 
 # Locate folly
-find_package(folly CONFIG REQUIRED)
-include_directories(${FOLLY_INCLUDE_DIR})
+if (NOT WIN32)
+    find_package(folly CONFIG REQUIRED)
+    include_directories(${FOLLY_INCLUDE_DIR})
+endif (NOT WIN32)
 
 # Locate gflags
+if (NOT WIN32)
 find_package(gflags REQUIRED)
+endif (NOT WIN32)
 
 # Add front most directories to include path
 include_directories(./)
@@ -43,8 +78,9 @@ include_directories(./dispenso/)
 
 ############# External libraries
 add_library(
-    concurrentqueue
+    concurrentqueue STATIC 
     ./dispenso/ext/moodycamel/concurrentqueue.h
+    ./dispenso/empty.cpp
 )
 
 target_include_directories(concurrentqueue PUBLIC ./dispenso/ext/moodycamel/)
@@ -52,8 +88,9 @@ set_target_properties(concurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 
 add_library(
-    lightweightsemaphore
+    lightweightsemaphore STATIC 
     ./dispenso/ext/moodycamel/lightweightsemaphore.h
+    ./dispenso/empty.cpp
 )
 
 target_include_directories(lightweightsemaphore PUBLIC ./dispenso/ext/moodycamel/)
@@ -61,8 +98,9 @@ set_target_properties(lightweightsemaphore PROPERTIES LINKER_LANGUAGE CXX)
 
 
 add_library(
-    blockingconcurrentqueue
+    blockingconcurrentqueue STATIC 
     ./dispenso/ext/moodycamel/blockingconcurrentqueue.h
+    ./dispenso/empty.cpp
 )
 
 target_link_libraries(
@@ -78,8 +116,9 @@ set_target_properties(blockingconcurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 ############# Libraries
 #----------- platform
 add_library(
-    platform
+    platform STATIC 
     ./dispenso/platform.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(platform PROPERTIES LINKER_LANGUAGE CXX)
@@ -87,26 +126,24 @@ set_target_properties(platform PROPERTIES LINKER_LANGUAGE CXX)
 
 #----------- completion_event
 add_library(
-    completion_event
+    completion_event STATIC 
     ./dispenso/platform.h
     ./dispenso/completion_event.h
     ./dispenso/detail/completion_event_impl.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(completion_event PROPERTIES LINKER_LANGUAGE CXX)
-
 if (WIN32)
-    add_library( synchronization SHARED IMPORTED )
-    set_target_properties( synchronization PROPERTIES IMPORTED_LOCATION ../third-party/toolchains/synchronization.lib )
-
-    target_link_libraries(completion_event synchronization)
+    target_link_libraries(completion_event PUBLIC synchronization)
 endif (WIN32)
 
 
 #----------- small_buffer_allocator
 add_library(
-    small_buffer_allocator
+    small_buffer_allocator STATIC 
     ./dispenso/small_buffer_allocator.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(small_buffer_allocator PROPERTIES LINKER_LANGUAGE CXX)
@@ -120,9 +157,10 @@ target_link_libraries(
 
 #----------- once_function
 add_library(
-    once_function
+    once_function STATIC 
     ./dispenso/once_function.h
     ./dispenso/detail/once_callable_impl.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(once_function PROPERTIES LINKER_LANGUAGE CXX)
@@ -136,7 +174,7 @@ target_link_libraries(
 ############# Detail
 #----------- per_pool_per_thread_info
 add_library(
-    per_pool_per_thread_info
+    per_pool_per_thread_info STATIC 
     ./dispenso/detail/per_thread_info.h
     ./dispenso/detail/per_thread_info.cpp
 )
@@ -153,7 +191,7 @@ target_link_libraries(
 ############# Libraries (cont.)
 #----------- thread_pool
 add_library(
-    thread_pool
+    thread_pool STATIC 
     ./dispenso/thread_pool.h
     ./dispenso/thread_pool.cpp
 )
@@ -171,7 +209,7 @@ target_link_libraries(
 
 #----------- task_set
 add_library(
-    task_set
+    task_set STATIC 
     ./dispenso/task_set.h
     ./dispenso/task_set.cpp
 )
@@ -183,8 +221,9 @@ target_link_libraries(
 
 #----------- parallel_for
 add_library(
-    parallel_for
+    parallel_for STATIC 
     ./dispenso/parallel_for.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(parallel_for PROPERTIES LINKER_LANGUAGE CXX)
@@ -197,13 +236,12 @@ target_link_libraries(
 
 #----------- future
 add_library(
-    future
+    future STATIC 
     ./dispenso/future.h
     ./dispenso/detail/future_impl.h
     ./dispenso/detail/future_impl2.h
+    ./dispenso/empty.cpp
 )
-
-set_target_properties(future PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries(
     future
@@ -214,8 +252,9 @@ target_link_libraries(
 
 #----------- resource_pool
 add_library(
-    resource_pool
+    resource_pool STATIC 
     ./dispenso/resource_pool.h
+    ./dispenso/empty.cpp
 )
 
 set_target_properties(resource_pool PROPERTIES LINKER_LANGUAGE CXX)
@@ -230,7 +269,7 @@ target_link_libraries(
 ############# Tests
 #----------- task_set_no_exceptions
 add_library(
-    task_set_no_exceptions
+    task_set_no_exceptions STATIC 
     ./dispenso/task_set.cpp
     ./dispenso/task_set.h
 )
@@ -252,9 +291,16 @@ add_executable(
 
 target_link_libraries(
     thread_pool_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC thread_pool)
+	
+if (NOT WIN32)
+target_link_libraries(
+    thread_pool_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- task_set_test
 add_executable(
@@ -264,10 +310,17 @@ add_executable(
 
 target_link_libraries(
     task_set_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC task_set
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    task_set_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- task_set_test_sans_exceptions
 add_executable(
@@ -279,10 +332,17 @@ target_compile_options(task_set_test_sans_exceptions PUBLIC -fno-exceptions)
 
 target_link_libraries(
     task_set_test_sans_exceptions
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC task_set_no_exceptions
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    task_set_test_sans_exceptions
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- greedy_for_test
 add_executable(
@@ -292,10 +352,17 @@ add_executable(
 
 target_link_libraries(
     greedy_for_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC parallel_for
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    greedy_for_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- chunked_for_test
 add_executable(
@@ -305,10 +372,17 @@ add_executable(
 
 target_link_libraries(
     chunked_for_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC parallel_for
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    chunked_for_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- resource_pool_test
 add_executable(
@@ -318,11 +392,18 @@ add_executable(
 
 target_link_libraries(
     resource_pool_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC resource_pool
     PUBLIC thread_pool
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    resource_pool_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- small_buffer_allocator_test
 add_executable(
@@ -332,10 +413,18 @@ add_executable(
 
 target_link_libraries(
     small_buffer_allocator_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC small_buffer_allocator
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    small_buffer_allocator_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
+
 
 #T---------- once_function_test
 add_executable(
@@ -345,10 +434,17 @@ add_executable(
 
 target_link_libraries(
     once_function_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC once_function
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    once_function_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- future_test
 add_executable(
@@ -358,10 +454,17 @@ add_executable(
 
 target_link_libraries(
     future_test
-    PUBLIC ${GTEST_LIBRARIES} pthread
-    PUBLIC gtest_main
     PUBLIC future
+    PUBLIC ${GTEST_LIBRARIES}
+    PUBLIC gtest_main
 )
+
+if (NOT WIN32)
+target_link_libraries(
+    future_test
+	PUBLIC pthread
+)
+endif (NOT WIN32)
 
 #T---------- future_test_sans_exceptions
 add_executable(
@@ -373,23 +476,42 @@ target_compile_options(future_test_sans_exceptions PUBLIC -fno-exceptions)
 
 target_link_libraries(
     future_test_sans_exceptions
-    PUBLIC ${GTEST_LIBRARIES} pthread
+    PUBLIC ${GTEST_LIBRARIES}
     PUBLIC gtest_main
     PUBLIC future
     PUBLIC task_set_no_exceptions
 )
 
+if (NOT WIN32)
+target_link_libraries(
+    future_test_sans_exceptions
+	PUBLIC pthread
+)
+endif (NOT WIN32)
+
 ############# Benchmarks
 #B---------- thread_benchmark_common
 add_library(
-    thread_benchmark_common
+    thread_benchmark_common STATIC 
     ./benchmarks/thread_benchmark_common.h
+    ./dispenso/empty.cpp
 )
 
 target_include_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/include/)
 set_target_properties(thread_benchmark_common PROPERTIES LINKER_LANGUAGE CXX)
 
-target_link_libraries(thread_benchmark_common PUBLIC benchmark benchmark_main pthread)
+target_link_libraries(
+	thread_benchmark_common 
+	PUBLIC benchmark benchmark_main
+)
+
+if (NOT WIN32)
+target_link_libraries(
+    thread_benchmark_common
+	PUBLIC pthread
+)
+endif (NOT WIN32)
+
 target_link_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/build/src)
 target_include_directories(thread_benchmark_common PUBLIC ../thirdparty/benchmark/include/)
 
@@ -424,10 +546,18 @@ target_link_libraries(
     PUBLIC task_set
     PUBLIC thread_benchmark_common
     PUBLIC folly
-    PUBLIC ${Boost_LIBRARIES} ${FOLLY_LIBRARIES}
+    PUBLIC follybenchmark
+    PUBLIC ${Boost_LIBRARIES} ${FOLLY_LIBRARIES} ${FOLLY_LINK_LIBRARIES}
     PUBLIC concurrentqueue
     PUBLIC gflags
 )
+if (WIN32)
+target_link_libraries(
+    future_benchmark
+    PUBLIC ws2_32
+    PUBLIC synchronization
+)
+endif (WIN32)
 
 #B---------- once_function_benchmark
 add_executable(

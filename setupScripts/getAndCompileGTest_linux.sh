@@ -1,7 +1,17 @@
 #!/bin/bash
 
-sudo apt-get install libgtest-dev
-cd /usr/src/gtest
-sudo cmake CMakeLists.txt
-sudo make
-sudo cp *.a /usr/lib
+#create 3rd party directory  outside of dispenso directory
+cd ../../
+mkdir thirdparty
+cd thirdparty
+
+wget https://github.com/google/googletest/archive/release-1.10.0.tar.gz
+
+tar xf release-1.10.0.tar.gz
+cd googletest-release-1.10.0
+cmake .
+make
+
+sudo cp -a googletest/include/gtest /usr/include
+sudo cp lib/*.a /usr/lib/
+sudo cp -r googlemock/include/gmock /usr/include/
