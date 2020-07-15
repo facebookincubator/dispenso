@@ -564,7 +564,18 @@ TEST(Future, ExceptionShouldntDestroyResultIfNotCreated) {
 }
 #endif //__cpp_exceptions
 
-TEST(Future, WhenAll) {
+TEST(Future, WhenAllEmptyVector) {
+  std::deque<dispenso::Future<int>> items;
+  auto dummy = dispenso::when_all(items.begin(), items.end()).then([](auto&& readyFutures) {
+    EXPECT_TRUE(readyFutures.is_ready());
+    auto& vec = readyFutures.get();
+    EXPECT_EQ(0, vec.size());
+  });
+
+  dummy.wait();
+}
+
+TEST(Future, WhenAllVector) {
   constexpr int kWorkItems = 10000;
   std::deque<dispenso::Future<int>> items;
 
@@ -587,4 +598,36 @@ TEST(Future, WhenAll) {
   });
 
   EXPECT_EQ(finalSum.get(), expectedSum);
+}
+
+TEST(Future, WhenAllEmptyTuple) {
+  auto dummy =
+      dispenso::when_all().then([](auto&& readyFutures) { EXPECT_TRUE(readyFutures.is_ready()); });
+  dummy.wait();
+}
+
+TEST(Future, WhenAllTuple) {
+  int value = 16;
+  int value2 = 1024;
+
+  dispenso::Future<int> intFuture([]() { return 77; }, dispenso::globalThreadPool());
+  dispenso::Future<void> voidFuture([&value]() { value = 88; }, dispenso::globalThreadPool());
+  dispenso::Future<float> floatFuture([]() { return 99.0f; }, dispenso::globalThreadPool());
+  dispenso::Future<int&> refFuture(
+      [&value2]() -> int& { return value2; }, dispenso::globalThreadPool());
+
+  auto finalSum = dispenso::when_all(intFuture, voidFuture, floatFuture, refFuture)
+                      .then([&value, &value2](auto&& readyFutures) {
+                        EXPECT_TRUE(readyFutures.is_ready());
+
+                        auto& tuple = readyFutures.get();
+                        EXPECT_EQ(std::get<0>(tuple).get(), 77);
+                        EXPECT_EQ(value, 88);
+                        EXPECT_EQ(std::get<2>(tuple).get(), 99.0f);
+                        EXPECT_EQ(&std::get<3>(tuple).get(), &value2);
+                        return std::get<0>(tuple).get() + value + std::get<2>(tuple).get() +
+                            std::get<3>(tuple).get();
+                      });
+
+  EXPECT_EQ(finalSum.get(), 1288);
 }

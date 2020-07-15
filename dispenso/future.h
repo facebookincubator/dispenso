@@ -543,6 +543,19 @@ Future<std::vector<typename std::iterator_traits<InputIt>::value_type>> when_all
     InputIt first,
     InputIt last);
 
+/**
+ * Take a specific set of futures, and return a future which will be ready when all input futures
+ *are ready.
+ *
+ * @param futures A parameter pack of futures.
+ *
+ * @return A Future containing a tuple holding copies of the input Futures.  The returned Future
+ * will be in ready state when all input Futures are ready.
+ *
+ **/
+template <class... Futures>
+auto when_all(Futures&&... futures) -> Future<std::tuple<std::decay_t<Futures>...>>;
+
 } // namespace dispenso
 
 #include <dispenso/detail/future_impl2.h>
