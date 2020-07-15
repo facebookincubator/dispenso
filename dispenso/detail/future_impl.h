@@ -436,6 +436,20 @@ template <typename F, typename... Args>
 using AsyncResultOf = typename std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 #endif // c++17
 
+template <typename TaskSetType>
+struct TaskSetInterceptionInvoker {
+  TaskSetInterceptionInvoker(TaskSetType& ts) : taskSet(ts) {}
+
+  void schedule(OnceFunction f) {
+    savedOffFn = std::move(f);
+  }
+  void schedule(OnceFunction f, ForceQueuingTag) {
+    savedOffFn = std::move(f);
+  }
+  TaskSetType& taskSet;
+  OnceFunction savedOffFn;
+};
+
 template <typename Result>
 class FutureBase {
  protected:
@@ -490,6 +504,24 @@ class FutureBase {
     }
   }
 
+  template <typename F, typename TaskSetType>
+  FutureBase(
+      F&& f,
+      TaskSetInterceptionInvoker<TaskSetType>& invoker,
+      std::launch asyncPolicy,
+      std::launch deferredPolicy)
+      : impl_(createFutureImpl<Result>(
+            std::forward<F>(f),
+            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+            &invoker.taskSet.outstandingTaskCount_)) {
+    invoker.taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      invoker.schedule(OnceFunction(impl_, true), ForceQueuingTag());
+    } else {
+      invoker.schedule(OnceFunction(impl_, true));
+    }
+  }
+
   void move(FutureBase&& f) noexcept {
     std::swap(f.impl_, impl_);
   }
@@ -537,19 +569,10 @@ class FutureBase {
 
   template <typename RetResult, typename F>
   FutureImplBase<RetResult>*
-  thenImpl(F&& f, TaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy) {
-    return thenImplTaskSet(std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
-  }
-
+  thenImpl(F&& f, TaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
   template <typename RetResult, typename F>
   FutureImplBase<RetResult>*
-  thenImpl(F&& f, ConcurrentTaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy) {
-    return thenImplTaskSet(std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
-  }
-
-  template <typename RetResult, typename F, typename Schedulable>
-  FutureImplBase<RetResult>*
-  thenImplTaskSet(F&& f, Schedulable& sched, std::launch asyncPolicy, std::launch deferredPolicy);
+  thenImpl(F&& f, ConcurrentTaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
 
 #if defined DISPENSO_DEBUG
   void assertValid() const {

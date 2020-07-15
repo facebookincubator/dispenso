@@ -711,3 +711,49 @@ TEST(Future, TaskSetWaitImpliesFinished) {
 
   waiterThread.join();
 }
+
+TEST(Future, TaskSetWaitImpliesWhenAllFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+
+  for (size_t i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto result = dispenso::when_all(taskSet, futures.begin(), futures.end())
+                    .then(
+                        [](auto&& future) {
+                          auto& vec = future.get();
+                          int total = 0;
+                          for (auto& f : vec) {
+                            total += f.get();
+                          }
+                        },
+                        taskSet);
+
+  taskSet.wait();
+  EXPECT_TRUE(result.is_ready());
+}
+
+TEST(Future, ConcurrentTaskSetWaitImpliesWhenAllFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+
+  for (size_t i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto result = dispenso::when_all(taskSet, futures.begin(), futures.end())
+                    .then(
+                        [](auto&& future) {
+                          auto& vec = future.get();
+                          int total = 0;
+                          for (auto& f : vec) {
+                            total += f.get();
+                          }
+                        },
+                        taskSet);
+
+  taskSet.wait();
+  EXPECT_TRUE(result.is_ready());
+}

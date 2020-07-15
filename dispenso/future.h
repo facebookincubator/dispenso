@@ -556,6 +556,45 @@ Future<std::vector<typename std::iterator_traits<InputIt>::value_type>> when_all
 template <class... Futures>
 auto when_all(Futures&&... futures) -> Future<std::tuple<std::decay_t<Futures>...>>;
 
+/**
+ * Take a collection of futures, and return a future which will be ready when all input futures are
+ * ready.
+ *
+ * @param tastSet A task set to register with such that after this call,
+ * <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code>
+ * @param first An iterator to the start of the future collection.
+ * @param last An iterator to the end of the future collection.
+ *
+ * @return A Future containing a vector holding copies of the input Futures.  The returned Future
+ * will be in ready state when all input Futures are ready.
+ *
+ **/
+template <class InputIt>
+Future<std::vector<typename std::iterator_traits<InputIt>::value_type>>
+when_all(TaskSet& taskSet, InputIt first, InputIt last);
+template <class InputIt>
+Future<std::vector<typename std::iterator_traits<InputIt>::value_type>>
+when_all(ConcurrentTaskSet& taskSet, InputIt first, InputIt last);
+
+/**
+ * Take a specific set of futures, and return a future which will be ready when all input futures
+ *are ready.
+ *
+ * @param tastSet A task set to register with such that after this call,
+ * <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code>
+ * @param futures A parameter pack of futures.
+ *
+ * @return A Future containing a tuple holding copies of the input Futures.  The returned Future
+ * will be in ready state when all input Futures are ready.
+ *
+ **/
+template <class... Futures>
+auto when_all(TaskSet& taskSet, Futures&&... futures)
+    -> Future<std::tuple<std::decay_t<Futures>...>>;
+
+template <class... Futures>
+auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
+    -> Future<std::tuple<std::decay_t<Futures>...>>;
 } // namespace dispenso
 
 #include <dispenso/detail/future_impl2.h>
