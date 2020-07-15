@@ -9,6 +9,11 @@
 
 namespace dispenso {
 
+namespace detail {
+template <typename Result>
+class FutureBase;
+} // namespace detail
+
 /**
  * <code>TaskSet</code> is an object that allows scheduling multiple functors to a thread pool, and
  * allows to wait on that set of tasks.  <code>TaskSet</code> supplies more efficient schedule/wait
@@ -168,6 +173,9 @@ class TaskSet {
   std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
+
+  template <typename Result>
+  friend class detail::FutureBase;
 };
 
 /**
@@ -316,6 +324,9 @@ class ConcurrentTaskSet {
   std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
+
+  template <typename Result>
+  friend class detail::FutureBase;
 };
 
 } // namespace dispenso

@@ -19,7 +19,29 @@ FutureImplBase<RetResult>* FutureBase<Result>::thenImpl(
   };
 
   auto* retImpl = createFutureImpl<RetResult>(
-      std::move(func), (deferredPolicy & std::launch::deferred) == std::launch::deferred);
+      std::move(func), (deferredPolicy & std::launch::deferred) == std::launch::deferred, nullptr);
+  impl_->addToThenChainOrExecute(retImpl, sched, asyncPolicy);
+  return retImpl;
+}
+
+template <typename Result>
+template <typename RetResult, typename F, typename Schedulable>
+FutureImplBase<RetResult>* FutureBase<Result>::thenImplTaskSet(
+    F&& f,
+    Schedulable& sched,
+    std::launch asyncPolicy,
+    std::launch deferredPolicy) {
+  Future<Result> copy(*this);
+  auto func = [f = std::move(f), copy = std::move(copy)]() mutable -> RetResult {
+    copy.wait();
+    return f(std::move(copy));
+  };
+
+  auto* retImpl = createFutureImpl<RetResult>(
+      std::move(func),
+      (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+      &sched.outstandingTaskCount_);
+  sched.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
   impl_->addToThenChainOrExecute(retImpl, sched, asyncPolicy);
   return retImpl;
 }

@@ -684,3 +684,30 @@ TEST(Future, WhenAllTreeBuild) {
     EXPECT_EQ(v, 1);
   }
 }
+
+// Pretty convoluted, but there was a bug where taskset wait does not imply the future is finished.
+TEST(Future, TaskSetWaitImpliesFinished) {
+  std::atomic<int> status(0);
+  std::atomic<int> sidelineResult(0);
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+
+  std::thread waiterThread([&tasks, &status, &sidelineResult]() {
+    while (status.load(std::memory_order_release) == 0) {
+    }
+    tasks.wait();
+    EXPECT_EQ(sidelineResult.load(std::memory_order_acquire), 1);
+  });
+
+  dispenso::Future<int> intFuture(
+      [&sidelineResult, &status]() {
+        status.store(1, std::memory_order_release);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        sidelineResult.store(1, std::memory_order_release);
+        return 77;
+      },
+      tasks);
+
+  EXPECT_EQ(77, intFuture.get());
+
+  waiterThread.join();
+}
