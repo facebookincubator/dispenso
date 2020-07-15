@@ -631,3 +631,56 @@ TEST(Future, WhenAllTuple) {
 
   EXPECT_EQ(finalSum.get(), 1288);
 }
+
+inline std::unique_ptr<Node> nodeMove(const std::unique_ptr<Node>& current) {
+  return std::move(const_cast<std::unique_ptr<Node>&>(current));
+}
+
+dispenso::Future<std::unique_ptr<Node>> makeTree(uint32_t depth, std::atomic<uint32_t>& cur) {
+  --depth;
+  auto node = std::make_unique<Node>();
+  node->value = cur.fetch_add(1, std::memory_order_relaxed);
+  if (!depth) {
+    return dispenso::make_ready_future(std::move(node));
+  }
+
+  // TODO(bbudge): Can we make this nicer via unwrapping constructor?
+  auto left = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+  auto right = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+
+  return dispenso::when_all(left, right).then([node = std::move(node)](auto&& both) mutable {
+    auto& tuple = both.get();
+    auto& futFutLeft = std::get<0>(tuple);
+    auto& futFutRight = std::get<1>(tuple);
+    node->left = nodeMove(futFutLeft.get().get());
+    node->right = nodeMove(futFutRight.get().get());
+    return std::move(node);
+  });
+}
+
+void fillVector(std::unique_ptr<Node>& node, std::vector<uint32_t>& values) {
+  if (!node) {
+    return;
+  }
+  if (values.size() <= node->value) {
+    values.resize(node->value + 1, 0);
+  }
+  ++values[node->value];
+  fillVector(node->left, values);
+  fillVector(node->right, values);
+}
+
+TEST(Future, WhenAllTreeBuild) {
+  std::atomic<uint32_t> val(0);
+  auto result = makeTree(6, val);
+
+  std::vector<uint32_t> values(16, 0);
+
+  std::unique_ptr<Node> root = nodeMove(result.get());
+
+  fillVector(root, values);
+
+  for (auto& v : values) {
+    EXPECT_EQ(v, 1);
+  }
+}

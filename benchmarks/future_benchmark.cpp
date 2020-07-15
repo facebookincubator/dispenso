@@ -359,6 +359,54 @@ void BM_tasksetopt_tree(benchmark::State& state) {
   checkTree(&root, depth, modulo);
 }
 
+dispenso::Future<Node*>
+dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
+  --depth;
+  Node* node = allocator.alloc();
+  node->setValue(bitset, modulo);
+  if (!depth) {
+    node->left = nullptr;
+    node->right = nullptr;
+    return dispenso::make_ready_future(node);
+  }
+
+  auto left = dispenso::async([depth, bitset, modulo, &allocator]() {
+    return dispensoTreeWhenAll(allocator, depth, (bitset << 1), modulo);
+  });
+  auto right = dispenso::async([depth, bitset, modulo, &allocator]() {
+    return dispensoTreeWhenAll(allocator, depth, (bitset << 1) | 1, modulo);
+  });
+  return dispenso::when_all(left, right).then([node](auto&& both) {
+    auto& tuple = both.get();
+    node->left = std::get<0>(tuple).get().get();
+    node->right = std::get<1>(tuple).get().get();
+    return node;
+  });
+}
+
+template <size_t depth>
+void BM_dispenso_tree_when_all(benchmark::State& state) {
+  Allocator alloc;
+  alloc.reset(depth);
+  getModulos();
+  dispenso::globalThreadPool();
+
+  uint32_t modulo;
+
+  Node* root;
+
+  size_t m = 0;
+
+  for (auto _ : state) {
+    alloc.reset(depth);
+    modulo = getModulos()[m];
+    root = dispensoTreeWhenAll(alloc, depth, 1, modulo).get();
+    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+  }
+
+  checkTree(root, depth, modulo);
+}
+
 BENCHMARK_TEMPLATE(BM_serial_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_serial_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_serial_tree, kLargeSize)->UseRealTime();
@@ -382,5 +430,9 @@ BENCHMARK_TEMPLATE(BM_taskset_tree, kLargeSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kLargeSize)->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kLargeSize)->UseRealTime();
 
 BENCHMARK_MAIN();
