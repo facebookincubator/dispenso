@@ -1,1 +1,3 @@
 The scripts contained in this folder are for helping setup the environment to build the project; in particular, to obtain third party libraries. Thirdparty libraries are expected to be in a sibling directory to the project directory named thirdparty. Each script will end with an underscore and the platform it's building for.
+
+NOTE: For some scripts an argument is expected; it's advised to run each script in terminal. For windows, start with obtaining vcpkg first. Each of the windows scripts will obtain the needed files, but you will need to navigate to that third party(that's not obtain by vcpkg) and build it.
