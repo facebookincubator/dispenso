@@ -7,6 +7,46 @@
 
 namespace dispenso {
 
+void ConcurrentTaskSet::trySetCurrentException() {
+#if defined(__cpp_exceptions)
+  auto status = kUnset;
+  if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
+    exception_ = std::current_exception();
+    guardException_.store(kSet, std::memory_order_release);
+  }
+#endif // __cpp_exceptions
+}
+
+void TaskSet::trySetCurrentException() {
+#if defined(__cpp_exceptions)
+  auto status = kUnset;
+  if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
+    exception_ = std::current_exception();
+    guardException_.store(kSet, std::memory_order_release);
+  }
+#endif // __cpp_exceptions
+}
+
+inline void ConcurrentTaskSet::testAndResetException() {
+#if defined(__cpp_exceptions)
+  if (guardException_.load(std::memory_order_acquire) == kSet) {
+    auto exception = std::move(exception_);
+    guardException_.store(kUnset, std::memory_order_release);
+    std::rethrow_exception(exception);
+  }
+#endif // __cpp_exceptions
+}
+
+inline void TaskSet::testAndResetException() {
+#if defined(__cpp_exceptions)
+  if (guardException_.load(std::memory_order_acquire) == kSet) {
+    auto exception = std::move(exception_);
+    guardException_.store(kUnset, std::memory_order_release);
+    std::rethrow_exception(exception);
+  }
+#endif // __cpp_exceptions
+}
+
 void ConcurrentTaskSet::wait() {
   // Steal work until our set is unblocked.  Note that this is not the
   // fastest possible way to unblock the current set, but it will alleviate
@@ -21,11 +61,26 @@ void ConcurrentTaskSet::wait() {
     }
   }
 
-#if defined(__cpp_exceptions)
-  if (guardException_.exchange(false, std::memory_order_acquire)) {
-    std::rethrow_exception(exception_);
+  testAndResetException();
+}
+
+bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
+  while (outstandingTaskCount_.load(std::memory_order_acquire), maxToExecute--) {
+    if (!pool_.tryExecuteNext()) {
+      break;
+    }
   }
-#endif // __cpp_exceptions
+
+  // Must check completion prior to checking exceptions, otherwise there could be a case where
+  // exceptions are checked, then an exception is propagated, and then we return whether all items
+  // have been completed, thus dropping the exception.
+  if (outstandingTaskCount_.load(std::memory_order_acquire)) {
+    return false;
+  }
+
+  testAndResetException();
+
+  return true;
 }
 
 void TaskSet::wait() {
@@ -39,12 +94,26 @@ void TaskSet::wait() {
     std::this_thread::yield();
   }
 
-#if defined(__cpp_exceptions)
-  if (guardException_.load(std::memory_order_acquire)) {
-    guardException_.store(false, std::memory_order_release);
-    std::rethrow_exception(exception_);
+  testAndResetException();
+}
+
+bool TaskSet::tryWait(size_t maxToExecute) {
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExecute--) {
+    if (!pool_.tryExecuteNextFromProducerToken(token_)) {
+      break;
+    }
   }
-#endif // __cpp_exceptions
+
+  // Must check completion prior to checking exceptions, otherwise there could be a case where
+  // exceptions are checked, then an exception is propagated, and then we return whether all items
+  // have been completed, thus dropping the exception.
+  if (outstandingTaskCount_.load(std::memory_order_acquire)) {
+    return false;
+  }
+
+  testAndResetException();
+  return true;
 }
 
 } // namespace dispenso
+

@@ -64,9 +64,7 @@ class TaskSet {
         try {
           f();
         } catch (...) {
-          if (!guardException_.exchange(true, std::memory_order_release)) {
-            exception_ = std::current_exception();
-          }
+          trySetCurrentException();
         }
 #else
           f();
@@ -97,9 +95,7 @@ class TaskSet {
           try {
             f();
           } catch (...) {
-            if (!guardException_.exchange(true, std::memory_order_release)) {
-              exception_ = std::current_exception();
-            }
+            trySetCurrentException();
           }
 #else
           f();
@@ -114,6 +110,21 @@ class TaskSet {
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    **/
   void wait();
+
+  /**
+   * See if the currently scheduled functors can be completed while stealing and executing at most
+   * <code>maxToExecute</code> of them from the pool. If not used in conjunction with wait, there
+   * may be cases that <code>tryWait</code> must be called multiple times with
+   * <code>maxToExecute &gt 0</code> to prevent livelock/deadlock.  If exceptions have been
+   * propagated since the last call to <code>wait</code> or <code>tryWait</code>,
+   * <code>tryWait</code> will propagate the first of them.
+   *
+   * @param maxToExecute The maximum number of tasks to proactively execute on the current thread.
+   *
+   * @return <code>true</code> if all currently scheduled functors have been completed prior to
+   * returning, and <code>false</code> otherwise.
+   **/
+  bool tryWait(size_t maxToExecute);
 
   /**
    * Get the number of threads backing the underlying thread pool.
@@ -145,12 +156,16 @@ class TaskSet {
   }
 
  private:
+  void trySetCurrentException();
+  void testAndResetException();
+
   alignas(kCacheLineSize) std::atomic<int32_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
   moodycamel::ProducerToken token_;
   const int32_t taskSetLoadFactor_;
 #if defined(__cpp_exceptions)
-  std::atomic<bool> guardException_{false};
+  enum ExceptionState { kUnset, kSetting, kSet };
+  std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
 };
@@ -229,9 +244,7 @@ class ConcurrentTaskSet {
           try {
             f();
           } catch (...) {
-            if (!guardException_.exchange(true, std::memory_order_release)) {
-              exception_ = std::current_exception();
-            }
+            trySetCurrentException();
           }
 #else
           f();
@@ -246,6 +259,21 @@ class ConcurrentTaskSet {
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    **/
   void wait();
+
+  /**
+   * See if the currently scheduled functors can be completed while stealing and executing at most
+   * <code>maxToExecute</code> of them from the pool. If not used in conjunction with wait, there
+   * may be cases that <code>tryWait</code> must be called multiple times with
+   * <code>maxToExecute &gt 0</code> to prevent livelock/deadlock.  If exceptions have been
+   * propagated since the last call to <code>wait</code> or <code>tryWait</code>,
+   * <code>tryWait</code> will propagate the first of them.
+   *
+   * @param maxToExecute The maximum number of tasks to proactively execute on the current thread.
+   *
+   * @return <code>true</code> if all currently scheduled functors have been completed prior to
+   * returning, and <code>false</code> otherwise.
+   **/
+  bool tryWait(size_t maxToExecute);
 
   /**
    * Get the number of threads backing the underlying thread pool.
@@ -277,13 +305,18 @@ class ConcurrentTaskSet {
   }
 
  private:
+  void trySetCurrentException();
+  void testAndResetException();
+
   std::atomic<int32_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
   const int32_t taskSetLoadFactor_;
 #if defined(__cpp_exceptions)
-  std::atomic<bool> guardException_{false};
+  enum ExceptionState { kUnset, kSetting, kSet };
+  std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
 };
 
 } // namespace dispenso
+

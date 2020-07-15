@@ -134,6 +134,46 @@ TEST_P(TaskSetTest, MultiSet) {
   }
 }
 
+TEST_P(TaskSetTest, MultiSetTryWait) {
+  constexpr int64_t kWorkItems = 10000;
+  std::vector<int64_t> outputsA(kWorkItems, 0);
+  std::vector<int64_t> outputsB(kWorkItems, 0);
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet taskSetA(pool);
+  for (int64_t i = 0; i < kWorkItems; ++i) {
+    auto& a = outputsA[i];
+    auto& b = outputsB[i];
+    schedule(taskSetA, [i, &a]() { a = i * i; });
+    schedule(taskSetA, [i, &b]() { b = i * i * i; });
+    (void)taskSetA.tryWait(1);
+  }
+
+  std::vector<int64_t> outputsC(kWorkItems, 0);
+  std::vector<int64_t> outputsD(kWorkItems, 0);
+  dispenso::TaskSet taskSetB(pool);
+  for (int64_t i = 0; i < kWorkItems; ++i) {
+    auto& c = outputsC[i];
+    auto& d = outputsD[i];
+    schedule(taskSetB, [i, &c]() { c = i * i - 5; });
+    schedule(taskSetB, [i, &d]() { d = i * i * i - 5; });
+    (void)taskSetB.tryWait(1);
+  }
+
+  while (!taskSetA.tryWait(1)) {
+  }
+  for (int64_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputsA[i], i * i);
+    EXPECT_EQ(outputsB[i], i * i * i);
+  }
+
+  taskSetB.wait();
+
+  for (int64_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputsC[i], i * i - 5);
+    EXPECT_EQ(outputsD[i], i * i * i - 5);
+  }
+}
+
 void recursiveFunc(dispenso::ThreadPool& pool, int num) {
   if (num <= 0)
     return;
@@ -282,4 +322,105 @@ TEST(ConcurrentTaskSet, ExceptionNoForceQueuing) {
   EXPECT_TRUE(caught);
 }
 
+TEST(TaskSet, ExceptionTryWait) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  int data = 32767;
+  int* datap = &data;
+
+  tasks.schedule(
+      [datap]() {
+        throw std::logic_error("oops");
+        *datap = 5;
+      },
+      dispenso::ForceQueuingTag());
+
+  bool caught = false;
+  try {
+    while (!tasks.tryWait(1)) {
+    }
+    EXPECT_EQ(data, 12);
+  } catch (...) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+
+TEST(ConcurrentTaskSet, ExceptionTryWait) {
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  int data;
+  int* datap = &data;
+
+  tasks.schedule(
+      [datap]() {
+        throw std::logic_error("oops");
+        *datap = 5;
+      },
+      dispenso::ForceQueuingTag());
+
+  bool caught = false;
+  try {
+    while (!tasks.tryWait(1)) {
+    }
+    EXPECT_EQ(data, 12);
+  } catch (...) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+
+TEST(TaskSet, ExceptionNoForceQueuingTryWait) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  int data;
+  int* datap = &data;
+
+  tasks.schedule([datap]() {
+    throw std::logic_error("oops");
+    *datap = 5;
+  });
+
+  bool caught = false;
+  try {
+    while (!tasks.tryWait(1)) {
+    }
+    EXPECT_EQ(data, 12);
+  } catch (...) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+
+TEST(ConcurrentTaskSet, ExceptionNoForceQueuingTryWait) {
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  int data;
+  int* datap = &data;
+
+  tasks.schedule([datap]() {
+    throw std::logic_error("oops");
+    *datap = 5;
+  });
+
+  bool caught = false;
+  try {
+    while (!tasks.tryWait(1)) {
+    }
+    EXPECT_EQ(data, 12);
+  } catch (...) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+
 #endif // __cpp_exceptions
+

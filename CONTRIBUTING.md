@@ -35,8 +35,9 @@ outlined on that page and do not file a public issue.
 * Member variables have trailing underscore_
 * BigCamelCase for classes and structs, and smallCamelCase for functions and variables
 * [1TBS braces](https://en.wikipedia.org/wiki/Indentation_style#Variant:_1TBS_(OTBS))
-* Most of all, try to be consistent with the surrounding code.
-
+* Most of all, try to be consistent with the surrounding code.  We have automated tools that will
+  enforce clang-format style for some files (e.g. the C++ core) once we import your pull request
+  into our internal code reviewing tools.
 
 ## License
 By contributing to dispenso, you agree that your contributions will be licensed

@@ -437,7 +437,7 @@ TEST(Future, MultiThenReadyDelayedOriginTightLoop) {
     }
   }
 
-  EXPECT_GE(futureVec.size(), 110);
+  EXPECT_GE(futureVec.size(), 101);
 
   for (auto& f : futureVec) {
     EXPECT_EQ(f.get(), 128 * 128);
