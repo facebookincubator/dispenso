@@ -63,7 +63,7 @@ class ThreadPoolTest : public testing::TestWithParam<ScheduleType> {
   size_t count_ = 0;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ThreadPoolTestParameters,
     ThreadPoolTest,
     testing::Values(kDefault, kForceQueue, kMixed));

@@ -37,7 +37,7 @@ class TaskSetTest : public ::testing::TestWithParam<ScheduleType> {
   size_t count_ = 0;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TaskSetTestParameters,
     TaskSetTest,
     testing::Values(kDefault, kForceQueue, kMixed));
