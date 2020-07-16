@@ -6,6 +6,9 @@
 *.exe
 *.o
 *.so
+*.a
+bin
+lib
 
 # Packages #
 ############
@@ -20,3 +23,13 @@
 *.tar
 *.zip
 /.project
+
+# generated cmake files #
+#########################
+*CMakeCache.txt
+*.log
+*.make
+*.cmake
+CMakeFiles
+Makefile
+*Dir
