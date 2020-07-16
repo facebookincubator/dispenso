@@ -189,12 +189,21 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
     allowInline_ = allow;
   }
 
+  void setTaskSetCounter(std::atomic<int32_t>* tsc) {
+    taskSetCounter_ = tsc;
+  }
+
  protected:
   bool run(int s) {
     while (s == kNotStarted) {
       if (status_.intrusiveStatus().compare_exchange_weak(s, kRunning, std::memory_order_relaxed)) {
         runFunc();
         status_.notify(kReady);
+        if (taskSetCounter_) {
+          //  If we want TaskSet::wait to imply Future::is_ready(),
+          //  we need to signal that *after* setting the Future status to ready.
+          taskSetCounter_->fetch_sub(1, std::memory_order_release);
+        }
         tryExecuteThenChain();
         return true;
       }
@@ -286,6 +295,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
   CompletionEventImpl status_{kNotStarted};
   std::atomic<uint32_t> refCount_{2};
+  std::atomic<int32_t>* taskSetCounter_{nullptr};
 
   std::atomic<OnceCallable*> thenChain_{nullptr};
 
@@ -363,7 +373,8 @@ class FutureImplAlloc<void, Result> : public FutureImplBase<Result> {
 };
 
 template <typename Result, typename F>
-inline FutureImplBase<Result>* createFutureImpl(F&& f, bool allowInline) {
+inline FutureImplBase<Result>*
+createFutureImpl(F&& f, bool allowInline, std::atomic<int32_t>* taskSetCounter) {
   using FNoRef = typename std::remove_reference<F>::type;
   constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, FNoRef, Result>));
   using SmallT = FutureImplSmall<kImplSize, FNoRef, Result>;
@@ -376,6 +387,7 @@ inline FutureImplBase<Result>* createFutureImpl(F&& f, bool allowInline) {
     ret = new (alignedMalloc(sizeof(AllocT))) AllocT(std::forward<F>(f));
   }
   ret->setAllowInline(allowInline);
+  ret->setTaskSetCounter(taskSetCounter);
   return ret;
 }
 
@@ -424,6 +436,20 @@ template <typename F, typename... Args>
 using AsyncResultOf = typename std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 #endif // c++17
 
+template <typename TaskSetType>
+struct TaskSetInterceptionInvoker {
+  TaskSetInterceptionInvoker(TaskSetType& ts) : taskSet(ts) {}
+
+  void schedule(OnceFunction f) {
+    savedOffFn = std::move(f);
+  }
+  void schedule(OnceFunction f, ForceQueuingTag) {
+    savedOffFn = std::move(f);
+  }
+  TaskSetType& taskSet;
+  OnceFunction savedOffFn;
+};
+
 template <typename Result>
 class FutureBase {
  protected:
@@ -441,13 +467,61 @@ class FutureBase {
   FutureBase(F&& f, Schedulable& schedulable, std::launch asyncPolicy, std::launch deferredPolicy)
       : impl_(createFutureImpl<Result>(
             std::forward<F>(f),
-            (deferredPolicy & std::launch::deferred) == std::launch::deferred)) {
+            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+            nullptr)) {
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
       schedulable.schedule(OnceFunction(impl_, true), ForceQueuingTag());
     } else {
       schedulable.schedule(OnceFunction(impl_, true));
     }
   }
+
+  template <typename F>
+  FutureBase(F&& f, TaskSet& taskSet, std::launch asyncPolicy, std::launch deferredPolicy)
+      : impl_(createFutureImpl<Result>(
+            std::forward<F>(f),
+            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+            &taskSet.outstandingTaskCount_)) {
+    taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
+    } else {
+      taskSet.pool().schedule(OnceFunction(impl_, true));
+    }
+  }
+
+  template <typename F>
+  FutureBase(F&& f, ConcurrentTaskSet& taskSet, std::launch asyncPolicy, std::launch deferredPolicy)
+      : impl_(createFutureImpl<Result>(
+            std::forward<F>(f),
+            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+            &taskSet.outstandingTaskCount_)) {
+    taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
+    } else {
+      taskSet.pool().schedule(OnceFunction(impl_, true));
+    }
+  }
+
+  template <typename F, typename TaskSetType>
+  FutureBase(
+      F&& f,
+      TaskSetInterceptionInvoker<TaskSetType>& invoker,
+      std::launch asyncPolicy,
+      std::launch deferredPolicy)
+      : impl_(createFutureImpl<Result>(
+            std::forward<F>(f),
+            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+            &invoker.taskSet.outstandingTaskCount_)) {
+    invoker.taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      invoker.schedule(OnceFunction(impl_, true), ForceQueuingTag());
+    } else {
+      invoker.schedule(OnceFunction(impl_, true));
+    }
+  }
+
   void move(FutureBase&& f) noexcept {
     std::swap(f.impl_, impl_);
   }
@@ -492,6 +566,13 @@ class FutureBase {
   template <typename RetResult, typename F, typename Schedulable>
   FutureImplBase<RetResult>*
   thenImpl(F&& f, Schedulable& sched, std::launch asyncPolicy, std::launch deferredPolicy);
+
+  template <typename RetResult, typename F>
+  FutureImplBase<RetResult>*
+  thenImpl(F&& f, TaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
+  template <typename RetResult, typename F>
+  FutureImplBase<RetResult>*
+  thenImpl(F&& f, ConcurrentTaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
 
 #if defined DISPENSO_DEBUG
   void assertValid() const {

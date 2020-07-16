@@ -563,3 +563,197 @@ TEST(Future, ExceptionShouldntDestroyResultIfNotCreated) {
   EXPECT_TRUE(handledException);
 }
 #endif //__cpp_exceptions
+
+TEST(Future, WhenAllEmptyVector) {
+  std::deque<dispenso::Future<int>> items;
+  auto dummy = dispenso::when_all(items.begin(), items.end()).then([](auto&& readyFutures) {
+    EXPECT_TRUE(readyFutures.is_ready());
+    auto& vec = readyFutures.get();
+    EXPECT_EQ(0, vec.size());
+  });
+
+  dummy.wait();
+}
+
+TEST(Future, WhenAllVector) {
+  constexpr int kWorkItems = 10000;
+  std::deque<dispenso::Future<int>> items;
+
+  dispenso::ThreadPool pool(10);
+  int64_t expectedSum = 0;
+  for (int i = 0; i < kWorkItems; ++i) {
+    items.emplace_back([i]() { return i * i; }, pool);
+    expectedSum += i * i;
+  }
+
+  auto finalSum = dispenso::when_all(items.begin(), items.end()).then([](auto&& readyFutures) {
+    EXPECT_TRUE(readyFutures.is_ready());
+    auto& vec = readyFutures.get();
+    int64_t sum = 0;
+    for (auto& f : vec) {
+      EXPECT_TRUE(f.is_ready());
+      sum += f.get();
+    }
+    return sum;
+  });
+
+  EXPECT_EQ(finalSum.get(), expectedSum);
+}
+
+TEST(Future, WhenAllEmptyTuple) {
+  auto dummy =
+      dispenso::when_all().then([](auto&& readyFutures) { EXPECT_TRUE(readyFutures.is_ready()); });
+  dummy.wait();
+}
+
+TEST(Future, WhenAllTuple) {
+  int value = 16;
+  int value2 = 1024;
+
+  dispenso::Future<int> intFuture([]() { return 77; }, dispenso::globalThreadPool());
+  dispenso::Future<void> voidFuture([&value]() { value = 88; }, dispenso::globalThreadPool());
+  dispenso::Future<float> floatFuture([]() { return 99.0f; }, dispenso::globalThreadPool());
+  dispenso::Future<int&> refFuture(
+      [&value2]() -> int& { return value2; }, dispenso::globalThreadPool());
+
+  auto finalSum = dispenso::when_all(intFuture, voidFuture, floatFuture, refFuture)
+                      .then([&value, &value2](auto&& readyFutures) {
+                        EXPECT_TRUE(readyFutures.is_ready());
+
+                        auto& tuple = readyFutures.get();
+                        EXPECT_EQ(std::get<0>(tuple).get(), 77);
+                        EXPECT_EQ(value, 88);
+                        EXPECT_EQ(std::get<2>(tuple).get(), 99.0f);
+                        EXPECT_EQ(&std::get<3>(tuple).get(), &value2);
+                        return std::get<0>(tuple).get() + value + std::get<2>(tuple).get() +
+                            std::get<3>(tuple).get();
+                      });
+
+  EXPECT_EQ(finalSum.get(), 1288);
+}
+
+inline std::unique_ptr<Node> nodeMove(const std::unique_ptr<Node>& current) {
+  return std::move(const_cast<std::unique_ptr<Node>&>(current));
+}
+
+dispenso::Future<std::unique_ptr<Node>> makeTree(uint32_t depth, std::atomic<uint32_t>& cur) {
+  --depth;
+  auto node = std::make_unique<Node>();
+  node->value = cur.fetch_add(1, std::memory_order_relaxed);
+  if (!depth) {
+    return dispenso::make_ready_future(std::move(node));
+  }
+
+  // TODO(bbudge): Can we make this nicer via unwrapping constructor?
+  auto left = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+  auto right = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+
+  return dispenso::when_all(left, right).then([node = std::move(node)](auto&& both) mutable {
+    auto& tuple = both.get();
+    auto& futFutLeft = std::get<0>(tuple);
+    auto& futFutRight = std::get<1>(tuple);
+    node->left = nodeMove(futFutLeft.get().get());
+    node->right = nodeMove(futFutRight.get().get());
+    return std::move(node);
+  });
+}
+
+void fillVector(std::unique_ptr<Node>& node, std::vector<uint32_t>& values) {
+  if (!node) {
+    return;
+  }
+  if (values.size() <= node->value) {
+    values.resize(node->value + 1, 0);
+  }
+  ++values[node->value];
+  fillVector(node->left, values);
+  fillVector(node->right, values);
+}
+
+TEST(Future, WhenAllTreeBuild) {
+  std::atomic<uint32_t> val(0);
+  auto result = makeTree(6, val);
+
+  std::vector<uint32_t> values(16, 0);
+
+  std::unique_ptr<Node> root = nodeMove(result.get());
+
+  fillVector(root, values);
+
+  for (auto& v : values) {
+    EXPECT_EQ(v, 1);
+  }
+}
+
+// Pretty convoluted, but there was a bug where taskset wait does not imply the future is finished.
+TEST(Future, TaskSetWaitImpliesFinished) {
+  std::atomic<int> status(0);
+  std::atomic<int> sidelineResult(0);
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+
+  std::thread waiterThread([&tasks, &status, &sidelineResult]() {
+    while (status.load(std::memory_order_release) == 0) {
+    }
+    tasks.wait();
+    EXPECT_EQ(sidelineResult.load(std::memory_order_acquire), 1);
+  });
+
+  dispenso::Future<int> intFuture(
+      [&sidelineResult, &status]() {
+        status.store(1, std::memory_order_release);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        sidelineResult.store(1, std::memory_order_release);
+        return 77;
+      },
+      tasks);
+
+  EXPECT_EQ(77, intFuture.get());
+
+  waiterThread.join();
+}
+
+TEST(Future, TaskSetWaitImpliesWhenAllFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+
+  for (size_t i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto result = dispenso::when_all(taskSet, futures.begin(), futures.end())
+                    .then(
+                        [](auto&& future) {
+                          auto& vec = future.get();
+                          int total = 0;
+                          for (auto& f : vec) {
+                            total += f.get();
+                          }
+                        },
+                        taskSet);
+
+  taskSet.wait();
+  EXPECT_TRUE(result.is_ready());
+}
+
+TEST(Future, ConcurrentTaskSetWaitImpliesWhenAllFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+
+  for (size_t i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto result = dispenso::when_all(taskSet, futures.begin(), futures.end())
+                    .then(
+                        [](auto&& future) {
+                          auto& vec = future.get();
+                          int total = 0;
+                          for (auto& f : vec) {
+                            total += f.get();
+                          }
+                        },
+                        taskSet);
+
+  taskSet.wait();
+  EXPECT_TRUE(result.is_ready());
+}

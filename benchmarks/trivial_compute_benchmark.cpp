@@ -91,8 +91,7 @@ void BM_dispenso(benchmark::State& state) {
             lsum += calculate(input, i, foo);
           }
           lsumStore += lsum;
-        },
-        true);
+        });
     sum = 0;
     for (auto s : sums) {
       sum += s;
