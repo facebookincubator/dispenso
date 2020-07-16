@@ -56,7 +56,6 @@ target_link_libraries(
     PUBLIC task_set
     PUBLIC thread_benchmark_common
     PUBLIC folly
-    PUBLIC follybenchmark
     PUBLIC ${Boost_LIBRARIES} ${FOLLY_LIBRARIES} ${FOLLY_LINK_LIBRARIES}
     PUBLIC concurrentqueue
     PUBLIC gflags
