@@ -1,5 +1,29 @@
 cmake_minimum_required(VERSION 3.12)
 
+# Locate google benchmark
+set(BENCHMARK_ENABLE_TESTING OFF)
+add_subdirectory(../../thirdparty/benchmark benchmarkDir)
+
+# Locate OpenMP
+if (NOT WIN32)
+    find_package(OpenMP)
+endif (NOT WIN32)
+
+# Locate TBB
+add_subdirectory(../../thirdparty/tbb tbbDir)
+
+# Locate folly
+if (NOT WIN32)
+    find_package(folly CONFIG REQUIRED)
+    include_directories(${FOLLY_INCLUDE_DIR})
+endif (NOT WIN32)
+
+# Locate gflags
+if (NOT WIN32)
+    find_package(gflags REQUIRED)
+endif (NOT WIN32)
+
+
 #B---------- thread_benchmark_common
 add_library(
     thread_benchmark_common STATIC 

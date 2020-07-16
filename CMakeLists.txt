@@ -33,43 +33,6 @@ set(VCPKG_CRT_LINKAGE static)
 set(VCPKG_LIBRARY_LINKAGE static)
 endif (WIN32)
 
-if(NOT LIB_ONLY)
-    # Locate GTest
-    if (NOT WIN32)
-    find_package(GTest REQUIRED)
-    include_directories(${GTEST_INCLUDE_DIRS})
-    else (NOT WIN32)
-    add_subdirectory(../thirdparty/googletest googletestDir)
-    endif (NOT WIN32)
-
-
-    # Locate google benchmark
-    set(BENCHMARK_ENABLE_TESTING OFF)
-    add_subdirectory(../thirdparty/benchmark benchmarkDir)
-
-    include_directories(./dispenso/benchmarks)
-
-
-    # Locate OpenMP
-    if (NOT WIN32)
-    find_package(OpenMP)
-    endif (NOT WIN32)
-
-    # Locate TBB
-    add_subdirectory(../thirdparty/tbb tbbDir)
-
-    # Locate folly
-    if (NOT WIN32)
-        find_package(folly CONFIG REQUIRED)
-        include_directories(${FOLLY_INCLUDE_DIR})
-    endif (NOT WIN32)
-
-    # Locate gflags
-    if (NOT WIN32)
-    find_package(gflags REQUIRED)
-    endif (NOT WIN32)
-endif (NOT LIB_ONLY)
-
 # Add front most directories to include path
 include_directories(./)
 include_directories(./dispenso/)
@@ -114,11 +77,13 @@ set_target_properties(blockingconcurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 ############# Libraries
 add_subdirectory(dispenso)
 
-if(NOT LIB_ONLY)
+if(BUILD_TESTS)
     ############# Tests
     add_subdirectory(tests)
+endif (BUILD_TESTS)
 
+if(BUILD_BENCHMARKS)
     ############# Benchmarks
     add_subdirectory(benchmarks)
-endif (NOT LIB_ONLY)
+endif (BUILD_BENCHMARKS)
 

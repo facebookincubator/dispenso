@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.12)
 
+
+# Locate GTest
+if (NOT WIN32)
+    find_package(GTest REQUIRED)
+    include_directories(${GTEST_INCLUDE_DIRS})
+else (NOT WIN32)
+    add_subdirectory(../../thirdparty/googletest googletestDir)
+endif (NOT WIN32)
+
+
 ############# Tests
 #----------- task_set_no_exceptions
 add_library(
