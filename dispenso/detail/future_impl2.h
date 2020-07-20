@@ -147,7 +147,9 @@ auto whenAllTuple(Invoker& invoker, Futures&&... futures)
   ResultFuture res(std::move(whenComplete), invoker);
 
   shared->f = std::move(invoker.savedOffFn);
-  forEach(shared->tuple, [shared = std::move(shared)](auto& future) {
+  // Avoid sequencing issue by getting the reference prior to the std::move.
+  auto& tuple = shared->tuple;
+  forEach(tuple, [shared = std::move(shared)](auto& future) {
     future.then(
         [shared](auto&&) {
           if (shared->count.fetch_sub(1, std::memory_order_relaxed) == 1) {
