@@ -46,6 +46,10 @@ class SmallBufferAllocator {
    **/
   static char* alloc() {
     if (!tlCount_) {
+      // We only need to register (at least) once when we grab from the central store; without going
+      // to the central store at least once (or calling dealloc first), we cannot have buffers to
+      // return.
+      registerCleanup();
       tlCount_ = grabFromCentralStore(tlBuffers_);
     }
     return tlBuffers_[--tlCount_];
@@ -57,6 +61,10 @@ class SmallBufferAllocator {
    * @param buffer The buffer to deallocate.
    **/
   static void dealloc(char* buffer) {
+    // We need to register at least once for any call to dealloc, because we may dealloc on this
+    // thread without having allocated on the same thread, and if we don't register, any memory in
+    // the thread-local buffers will not be returned to the central store on thread destruction.
+    registerCleanup();
     tlBuffers_[tlCount_++] = buffer;
     if (tlCount_ == kMaxNumTLBuffers) {
       recycleToCentralStore(tlBuffers_ + kIdealNumTLBuffers, kIdealNumTLBuffers);
@@ -80,6 +88,21 @@ class SmallBufferAllocator {
   }
 
  private:
+  static void registerCleanup() {
+    // Note that this would be better/cheaper as a static thread_local member; however, there are
+    // currently bugs in multiple compilers that prevent the destructor from being called properly
+    // in that context.  A workaround that appears to work more portably is to put this here, and
+    // ensure registerCleanup is called for any alloc or dealloc, even though this may have a small
+    // runtime cost.
+    static thread_local struct ThreadCleanup {
+      ~ThreadCleanup() {
+        SmallBufferAllocator<kChunkSize>::centralStore().enqueue_bulk(buffers, count);
+      }
+      char** buffers;
+      size_t& count;
+    } cleanup{tlBuffers_, tlCount_};
+  }
+
   static moodycamel::ConcurrentQueue<char*>& centralStore() {
     // Controlled leak to avoid static destruction order fiasco.
     static moodycamel::ConcurrentQueue<char*>* queue = new moodycamel::ConcurrentQueue<char*>();
@@ -101,14 +124,6 @@ class SmallBufferAllocator {
   }
 
   static size_t grabFromCentralStore(char** buffers) {
-    static thread_local struct ThreadCleanup {
-      ~ThreadCleanup() {
-        SmallBufferAllocator<kChunkSize>::centralStore().enqueue_bulk(buffers, count);
-      }
-      char** buffers;
-      size_t& count;
-    } cleanup{tlBuffers_, tlCount_};
-
     auto& cstore = centralStore();
     while (true) {
       size_t grabbed = cstore.try_dequeue_bulk(cToken(), buffers, kIdealNumTLBuffers);

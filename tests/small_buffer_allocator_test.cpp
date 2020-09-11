@@ -23,9 +23,16 @@ void testEmpty() {
 }
 
 TEST(SmallBufferAllocator, Empty) {
-  testEmpty<kSmall>();
-  testEmpty<kMedium>();
-  testEmpty<kLarge>();
+  // It can be useful to run gtest with --gtest_repeat option.  Since repeats run in the same
+  // process, the allocator will no longer be empty after the first iteration.  Guard against this
+  // here.
+  static bool firstTime = true;
+  if (firstTime) {
+    firstTime = false;
+    testEmpty<kSmall>();
+    testEmpty<kMedium>();
+    testEmpty<kLarge>();
+  }
 }
 
 template <size_t kSize>
