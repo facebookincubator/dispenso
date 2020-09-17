@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <dispenso/parallel_for.h>
-
 #include <gtest/gtest.h>
 
 TEST(ChunkedFor, SimpleLoop) {
@@ -39,6 +38,7 @@ TEST(ChunkedFor, SimpleLoopStatic) {
 
   std::atomic<int64_t> sum(0);
   std::atomic<int> numCalls(0);
+
   dispenso::parallel_for(
       dispenso::ChunkedRange(0, h, dispenso::ChunkedRange::Static()),
       [w, &image, &sum, &numCalls](int ystart, int yend) {
@@ -54,7 +54,7 @@ TEST(ChunkedFor, SimpleLoopStatic) {
       });
 
   EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
-  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), std::thread::hardware_concurrency());
+  EXPECT_LE(numCalls.load(std::memory_order_relaxed), std::thread::hardware_concurrency());
 }
 
 TEST(ChunkedFor, SimpleLoopAuto) {

@@ -692,7 +692,7 @@ TEST(Future, TaskSetWaitImpliesFinished) {
   dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
 
   std::thread waiterThread([&tasks, &status, &sidelineResult]() {
-    while (status.load(std::memory_order_release) == 0) {
+    while (status.load(std::memory_order_acquire) == 0) {
     }
     tasks.wait();
     EXPECT_EQ(sidelineResult.load(std::memory_order_acquire), 1);

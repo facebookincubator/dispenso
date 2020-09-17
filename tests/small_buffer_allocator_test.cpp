@@ -178,8 +178,14 @@ void testThreadsHandoff() {
   }
 }
 
-TEST(SmallBufferAllocator, ThreadsHandoff) {
+TEST(SmallBufferAllocator, ThreadsHandoff_Small) {
   testThreadsHandoff<kSmall>();
+}
+
+TEST(SmallBufferAllocator, ThreadsHandoff_Medium) {
   testThreadsHandoff<kMedium>();
+}
+
+TEST(SmallBufferAllocator, ThreadsHandoff_Large) {
   testThreadsHandoff<kLarge>();
 }
