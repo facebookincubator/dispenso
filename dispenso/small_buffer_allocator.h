@@ -88,19 +88,45 @@ class SmallBufferAllocator {
   }
 
  private:
+  struct PerThreadQueuingData {
+    PerThreadQueuingData(
+        moodycamel::ConcurrentQueue<char*>& cstore,
+        char** tlBuffers,
+        size_t& tlCount)
+        : cstore_(cstore), ptoken_(cstore), ctoken_(cstore), buffers_(tlBuffers), count_(tlCount) {}
+
+    ~PerThreadQueuingData() {
+      enqueue_bulk(buffers_, count_);
+    }
+
+    void enqueue_bulk(char** buffers, size_t count) {
+      cstore_.enqueue_bulk(ptoken_, buffers, count);
+    }
+
+    size_t try_dequeue_bulk(char** buffers, size_t count) {
+      return cstore_.try_dequeue_bulk(ctoken_, buffers, count);
+    }
+
+   private:
+    moodycamel::ConcurrentQueue<char*>& cstore_;
+    moodycamel::ProducerToken ptoken_;
+    moodycamel::ConsumerToken ctoken_;
+    char** buffers_;
+    size_t& count_;
+  };
+
+  static PerThreadQueuingData& getThreadQueuingData() {
+    static thread_local PerThreadQueuingData data(centralStore(), tlBuffers_, tlCount_);
+    return data;
+  }
+
   static void registerCleanup() {
     // Note that this would be better/cheaper as a static thread_local member; however, there are
     // currently bugs in multiple compilers that prevent the destructor from being called properly
     // in that context.  A workaround that appears to work more portably is to put this here, and
     // ensure registerCleanup is called for any alloc or dealloc, even though this may have a small
     // runtime cost.
-    static thread_local struct ThreadCleanup {
-      ~ThreadCleanup() {
-        SmallBufferAllocator<kChunkSize>::centralStore().enqueue_bulk(buffers, count);
-      }
-      char** buffers;
-      size_t& count;
-    } cleanup{tlBuffers_, tlCount_};
+    (void)getThreadQueuingData();
   }
 
   static moodycamel::ConcurrentQueue<char*>& centralStore() {
@@ -114,19 +140,10 @@ class SmallBufferAllocator {
     return *buffers;
   }
 
-  static moodycamel::ProducerToken& pToken() {
-    static thread_local moodycamel::ProducerToken token(centralStore());
-    return token;
-  }
-  static moodycamel::ConsumerToken& cToken() {
-    static thread_local moodycamel::ConsumerToken token(centralStore());
-    return token;
-  }
-
   static size_t grabFromCentralStore(char** buffers) {
-    auto& cstore = centralStore();
+    auto& queue = getThreadQueuingData();
     while (true) {
-      size_t grabbed = cstore.try_dequeue_bulk(cToken(), buffers, kIdealNumTLBuffers);
+      size_t grabbed = queue.try_dequeue_bulk(buffers, kIdealNumTLBuffers);
       if (grabbed) {
         return grabbed;
       }
@@ -140,7 +157,7 @@ class SmallBufferAllocator {
         for (size_t i = 0; i < kNumToPush; ++i, buffer += kChunkSize) {
           topush[i] = buffer;
         }
-        cstore.enqueue_bulk(pToken(), topush, kNumToPush);
+        queue.enqueue_bulk(topush, kNumToPush);
         backingStoreLock_.store(0, std::memory_order_release);
         for (size_t i = 0; i < kIdealNumTLBuffers; ++i, buffer += kChunkSize) {
           buffers[i] = buffer;
@@ -155,7 +172,7 @@ class SmallBufferAllocator {
   }
 
   static void recycleToCentralStore(char** buffers, size_t numToRecycle) {
-    centralStore().enqueue_bulk(pToken(), buffers, numToRecycle);
+    getThreadQueuingData().enqueue_bulk(buffers, numToRecycle);
     // TODO(bbudge): consider whether we need to do any garbage collection and return memory to
     // the system.
   }
