@@ -68,7 +68,7 @@ void testThreads() {
   std::vector<std::vector<char*>> threadBuffers(kThreads);
   std::deque<std::thread> threads;
   for (auto& tb : threadBuffers) {
-    tb.resize(1 << 20);
+    tb.resize(1 << 16);
     threads.emplace_back([& buffers = tb]() {
       for (char*& b : buffers) {
         b = SmallBufferAllocator<kSize>::alloc();
