@@ -135,7 +135,7 @@ auto whenAllTuple(Invoker& invoker, Futures&&... futures)
 
   auto whenComplete = [shared]() -> TupleType {
     forEach(shared->tuple, [&shared](auto& future) {
-      if (0 == shared->count.load(std::memory_order_relaxed)) {
+      if (0 == shared->count.load(std::memory_order_acquire)) {
         return false;
       }
       future.wait();
@@ -152,7 +152,7 @@ auto whenAllTuple(Invoker& invoker, Futures&&... futures)
   forEach(tuple, [shared = std::move(shared)](auto& future) {
     future.then(
         [shared](auto&&) {
-          if (shared->count.fetch_sub(1, std::memory_order_relaxed) == 1) {
+          if (shared->count.fetch_sub(1, std::memory_order_release) == 1) {
             shared->f();
           }
         },
@@ -178,7 +178,7 @@ whenAllIterators(Invoker& invoker, InputIt first, InputIt last) {
 
   auto whenComplete = [shared]() -> VecType {
     for (auto& f : shared->vec) {
-      if (0 == shared->count.load(std::memory_order_relaxed)) {
+      if (0 == shared->count.load(std::memory_order_acquire)) {
         break;
       }
       f.wait();
@@ -192,7 +192,7 @@ whenAllIterators(Invoker& invoker, InputIt first, InputIt last) {
   for (auto& s : shared->vec) {
     s.then(
         [shared](auto&&) {
-          if (shared->count.fetch_sub(1, std::memory_order_relaxed) == 1) {
+          if (shared->count.fetch_sub(1, std::memory_order_release) == 1) {
             shared->f();
           }
         },
