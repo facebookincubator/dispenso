@@ -685,6 +685,47 @@ TEST(Future, WhenAllTreeBuild) {
   }
 }
 
+dispenso::Future<std::unique_ptr<Node>> makeTreeIters(uint32_t depth, std::atomic<uint32_t>& cur) {
+  --depth;
+  auto node = std::make_unique<Node>();
+  node->value = cur.fetch_add(1, std::memory_order_relaxed);
+  if (!depth) {
+    return dispenso::make_ready_future(std::move(node));
+  }
+
+  // TODO(bbudge): Can we make this nicer via unwrapping constructor?
+  auto left = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+  auto right = dispenso::async([depth, &cur]() { return makeTree(depth, cur); });
+
+  std::array<decltype(left), 2> children = {left, right};
+
+  return dispenso::when_all(std::begin(children), std::end(children))
+      .then([node = std::move(node)](auto&& both) mutable {
+        auto& vec = both.get();
+        EXPECT_EQ(vec.size(), 2);
+        auto& futFutLeft = vec[0];
+        auto& futFutRight = vec[1];
+        node->left = nodeMove(futFutLeft.get().get());
+        node->right = nodeMove(futFutRight.get().get());
+        return std::move(node);
+      });
+}
+
+TEST(Future, WhenAllTreeBuildIters) {
+  std::atomic<uint32_t> val(0);
+  auto result = makeTreeIters(6, val);
+
+  std::vector<uint32_t> values(16, 0);
+
+  std::unique_ptr<Node> root = nodeMove(result.get());
+
+  fillVector(root, values);
+
+  for (auto& v : values) {
+    EXPECT_EQ(v, 1);
+  }
+}
+
 // Pretty convoluted, but there was a bug where taskset wait does not imply the future is finished.
 TEST(Future, TaskSetWaitImpliesFinished) {
   std::atomic<int> status(0);
