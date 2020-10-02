@@ -171,11 +171,13 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   }
 
   void incRefCount() {
-    refCount_.fetch_add(1, std::memory_order_relaxed);
+    refCount_.fetch_add(1, std::memory_order_acquire);
   }
 
   void decRefCountMaybeDestroy() {
+    DISPENSO_TSAN_ANNOTATE_HAPPENS_BEFORE(&refCount_);
     if (refCount_.fetch_sub(1, std::memory_order_release) == 1) {
+      DISPENSO_TSAN_ANNOTATE_HAPPENS_AFTER(&refCount_);
       dealloc();
     }
   }
