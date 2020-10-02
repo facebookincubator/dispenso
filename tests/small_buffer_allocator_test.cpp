@@ -13,6 +13,9 @@ constexpr size_t kSmall = 32;
 constexpr size_t kMedium = 128;
 constexpr size_t kLarge = 256;
 
+constexpr size_t kSimpleNumBuffers = 1 << 15;
+constexpr size_t kThreadedNumBuffers = 1 << 12;
+
 using dispenso::SmallBufferAllocator;
 
 template <size_t kSize>
@@ -37,7 +40,7 @@ TEST(SmallBufferAllocator, Empty) {
 
 template <size_t kSize>
 void testSimple() {
-  std::vector<char*> buffers(1 << 20);
+  std::vector<char*> buffers(kSimpleNumBuffers);
   auto doIt = [&buffers]() {
     for (char*& b : buffers) {
       b = SmallBufferAllocator<kSize>::alloc();
@@ -68,7 +71,7 @@ void testThreads() {
   std::vector<std::vector<char*>> threadBuffers(kThreads);
   std::deque<std::thread> threads;
   for (auto& tb : threadBuffers) {
-    tb.resize(1 << 16);
+    tb.resize(kThreadedNumBuffers);
     threads.emplace_back([& buffers = tb]() {
       for (char*& b : buffers) {
         b = SmallBufferAllocator<kSize>::alloc();
@@ -109,13 +112,23 @@ void testThreads() {
     for (auto& t : threads) {
       t.join();
     }
-    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 1.2 * allocatedSoFar);
+
+    // Note that this multiplier is larger the fewer buffers we have.  That is because there is more
+    // slop-space in the SmallBufferAllocator relative to what is allocated.  If we change the
+    // kThreadedNumBuffers, we will need to change this multiplier.
+    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 2.0 * allocatedSoFar);
   }
 }
 
-TEST(SmallBufferAllocator, ThreadsSimple) {
+TEST(SmallBufferAllocator, ThreadsSimpleSmall) {
   testThreads<kSmall>();
+}
+
+TEST(SmallBufferAllocator, ThreadsSimpleMedium) {
   testThreads<kMedium>();
+}
+
+TEST(SmallBufferAllocator, ThreadsSimpleLarge) {
   testThreads<kLarge>();
 }
 
@@ -125,9 +138,7 @@ void testThreadsHandoff() {
   std::vector<std::deque<std::pair<char*, std::atomic<bool>>>> threadBuffers(kThreads);
   std::deque<std::thread> threads;
   for (auto& tb : threadBuffers) {
-    for (int i = 0; i < 10000; ++i) {
-      tb.emplace_back();
-    }
+    tb.resize(kThreadedNumBuffers);
     threads.emplace_back([& buffers = tb]() {
       for (auto& b : buffers) {
         b.first = SmallBufferAllocator<kSize>::alloc();
@@ -174,18 +185,21 @@ void testThreadsHandoff() {
     for (auto& t : threads) {
       t.join();
     }
-    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 1.05 * allocatedSoFar);
+    // Note that this multiplier is larger the fewer buffers we have.  That is because there is more
+    // slop-space in the SmallBufferAllocator relative to what is allocated.  If we change the
+    // kThreadedNumBuffers, we will need to change this multiplier.
+    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 2.0 * allocatedSoFar);
   }
 }
 
-TEST(SmallBufferAllocator, ThreadsHandoff_Small) {
+TEST(SmallBufferAllocator, ThreadsHandoffSmall) {
   testThreadsHandoff<kSmall>();
 }
 
-TEST(SmallBufferAllocator, ThreadsHandoff_Medium) {
+TEST(SmallBufferAllocator, ThreadsHandoffMedium) {
   testThreadsHandoff<kMedium>();
 }
 
-TEST(SmallBufferAllocator, ThreadsHandoff_Large) {
+TEST(SmallBufferAllocator, ThreadsHandoffLarge) {
   testThreadsHandoff<kLarge>();
 }
