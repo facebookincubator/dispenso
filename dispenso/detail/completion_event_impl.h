@@ -261,7 +261,7 @@ class CompletionEventImpl {
       return true;
     }
 
-    return waitFor(completed, absTime - Clock::now());
+    return waitFor(completedStatus, absTime - Clock::now());
   }
 
   std::atomic<int>& intrusiveStatus() {
