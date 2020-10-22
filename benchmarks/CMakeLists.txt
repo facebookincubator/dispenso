@@ -35,18 +35,15 @@ endif (WIN32)
 set(BENCHMARK_ENABLE_TESTING OFF)
 set(BENCHMARK_ENABLE_GTESTS OFF)
 add_subdirectory(../../thirdparty/benchmark benchmarkDir)
-#set(benchmark_DIR "${CMAKE_SOURCE_DIR}/../thirdparty/benchmark/")
 
 # Locate OpenMP
 if (NOT WIN32)
     find_package(OpenMP)
+    find_package (glog REQUIRED)
 endif (NOT WIN32)
 
 # Locate TBB
 add_subdirectory(../../thirdparty/tbb tbbDir)
-#set(tbb_DIR "${CMAKE_SOURCE_DIR}/../thirdparty/tbb/")
-#set(ZLIB_LIBRARY  "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/packages/zlib_x64-windows-static/lib")
-#set(ZLIB_INCLUDE_DIR  "${CMAKE_SOURCE_DIR}/../thirdparty/tbb/include")
 
 
 
@@ -55,10 +52,11 @@ message(STATUS "+++++++++++++++++++++${glog_INCLUDE_DIR}")
 # Locate folly
 if (NOT WIN32)
     find_package(folly CONFIG REQUIRED)
-endif (NOT WIN32)
+else (NOT WIN32)
 	include_directories(${glog_INCLUDE_DIR})
-    #find_package(folly CONFIG REQUIRED)
 	include_directories(${folly_INCLUDE_DIR})
+endif (NOT WIN32)
+
 	
 include_directories(${FOLLY_INCLUDE_DIR})
 
@@ -118,8 +116,6 @@ add_executable(
     ./future_benchmark.cpp
 )
 
-find_package(libevent CONFIG REQUIRED)
-
 target_link_libraries(
     future_benchmark
     PUBLIC thread_pool
@@ -129,6 +125,8 @@ target_link_libraries(
 )
 
 if (WIN32)
+find_package(libevent CONFIG REQUIRED)
+
 target_link_libraries(
     future_benchmark
 	PUBLIC ws2_32
@@ -162,7 +160,8 @@ target_link_libraries(
 else (WIN32)
 target_link_libraries(
     future_benchmark
-    PUBLIC folly	
+    PUBLIC folly
+    PUBLIC glog::glog	
 )
 endif (WIN32)
 

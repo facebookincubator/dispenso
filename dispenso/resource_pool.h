@@ -102,7 +102,7 @@ class ResourcePool {
   Resource<T> acquire() {
     T* t;
     pool_.wait_dequeue(t);
-    return Resource(t, this);
+    return Resource<T>(t, this);
   }
 
   /**

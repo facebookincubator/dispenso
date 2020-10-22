@@ -9,19 +9,11 @@ endif (WIN32)
 #normally compiles with 14 but MSVC requeired 17
 if (WIN32)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/share/ ${CMAKE_PREFIX_PATH}")
 else (WIN32)
 set(CMAKE_CXX_STANDARD 14)
 endif (WIN32)
 
-#message(STATUS "${CMAKE_PREFIX_PATH}")
-set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/share/ ${CMAKE_PREFIX_PATH}")
-
-
-
-#set(ZLIB_DIR "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/packages/zlib_x64-windows/share/zlib")
-#set(zlib_DIR "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/packages/zlib_x64-windows-static/share/zlib")
-#find_package(zlib CONFIG REQUIRED)
-#message(STATUS "${folly_DIR}")
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -51,27 +43,27 @@ include_directories(./dispenso/)
 ############# External libraries
 add_library(
     concurrentqueue STATIC 
-    ./dispenso/ext/moodycamel/concurrentqueue.h
+    ./dispenso/third-party/moodycamel/concurrentqueue.h
     ./dispenso/empty.cpp
 )
 
-target_include_directories(concurrentqueue PUBLIC ./dispenso/ext/moodycamel/)
+target_include_directories(concurrentqueue PUBLIC ./dispenso/moodycamel/)
 set_target_properties(concurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 
 add_library(
     lightweightsemaphore STATIC 
-    ./dispenso/ext/moodycamel/lightweightsemaphore.h
+    ./dispenso/third-party/moodycamel/lightweightsemaphore.h
     ./dispenso/empty.cpp
 )
 
-target_include_directories(lightweightsemaphore PUBLIC ./dispenso/ext/moodycamel/)
+target_include_directories(lightweightsemaphore PUBLIC ./dispenso/moodycamel/)
 set_target_properties(lightweightsemaphore PROPERTIES LINKER_LANGUAGE CXX)
 
 
 add_library(
     blockingconcurrentqueue STATIC 
-    ./dispenso/ext/moodycamel/blockingconcurrentqueue.h
+    ./dispenso/third-party/moodycamel/blockingconcurrentqueue.h
     ./dispenso/empty.cpp
 )
 
@@ -81,7 +73,7 @@ target_link_libraries(
     PUBLIC lightweightsemaphore
 )
 
-target_include_directories(blockingconcurrentqueue PUBLIC ./dispenso/ext/moodycamel/)
+target_include_directories(blockingconcurrentqueue PUBLIC ./dispenso/third-party/moodycamel/)
 set_target_properties(blockingconcurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 ############# Libraries

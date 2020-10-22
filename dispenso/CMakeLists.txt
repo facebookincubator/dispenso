@@ -33,6 +33,8 @@ add_library(
     ./empty.cpp
 )
 
+target_include_directories(small_buffer_allocator PUBLIC ./third-party/moodycamel)
+
 set_target_properties(small_buffer_allocator PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries(
@@ -84,6 +86,7 @@ add_library(
 )
 
 target_include_directories(thread_pool PUBLIC ../)
+target_include_directories(thread_pool PUBLIC ./third-party/moodycamel)
 
 target_link_libraries(
     thread_pool

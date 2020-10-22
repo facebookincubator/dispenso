@@ -139,7 +139,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   using FutureImplResultMember<Result>::runToResult;
 
   bool ready() {
-    return status_.intrusiveStatus().load(std::memory_order_acquire) == kReady;
+    return status_.intrusiveStatus().load(std::memory_order_relaxed) == kReady;
   }
 
   void run() override {
@@ -171,20 +171,18 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   }
 
   void incRefCount() {
-    refCount_.fetch_add(1, std::memory_order_acquire);
+    refCount_.fetch_add(1, std::memory_order_relaxed);
   }
 
   void decRefCountMaybeDestroy() {
-    DISPENSO_TSAN_ANNOTATE_HAPPENS_BEFORE(&refCount_);
     if (refCount_.fetch_sub(1, std::memory_order_release) == 1) {
-      DISPENSO_TSAN_ANNOTATE_HAPPENS_AFTER(&refCount_);
       dealloc();
     }
   }
 
   void setReady() {
-    status_.intrusiveStatus().store(kReady, std::memory_order_release);
-    refCount_.store(1, std::memory_order_release);
+    status_.intrusiveStatus().store(kReady, std::memory_order_relaxed);
+    refCount_.store(1, std::memory_order_relaxed);
   }
 
   void setAllowInline(bool allow) {
@@ -198,7 +196,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
  protected:
   bool run(int s) {
     while (s == kNotStarted) {
-      if (status_.intrusiveStatus().compare_exchange_weak(s, kRunning, std::memory_order_acq_rel)) {
+      if (status_.intrusiveStatus().compare_exchange_weak(s, kRunning, std::memory_order_relaxed)) {
         runFunc();
         status_.notify(kReady);
         if (taskSetCounter_) {
@@ -283,7 +281,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   }
 
   inline bool waitCommon(bool allowInline) {
-    int s = status_.intrusiveStatus().load(std::memory_order_acquire);
+    int s = status_.intrusiveStatus().load(std::memory_order_relaxed);
     return s == kReady || (allowInline && run(s));
   }
 
