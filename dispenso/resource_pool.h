@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include <dispenso/platform.h>
-
 #include <blockingconcurrentqueue.h>
+#include <dispenso/platform.h>
+#include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
 
@@ -121,7 +121,9 @@ class ResourcePool {
 
  private:
   void recycle(T* t) {
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
     pool_.enqueue(t);
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   }
 
   moodycamel::BlockingConcurrentQueue<T*> pool_;
