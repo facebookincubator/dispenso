@@ -28,7 +28,7 @@ struct alignas(64) Work {
 };
 
 Work g_work[1024];
-std::atomic<int> g_tCounter = 0;
+std::atomic<int> g_tCounter {0};
 inline int tid() {
   static DISPENSO_THREAD_LOCAL int t = -1;
   if (t < 0) {
@@ -93,7 +93,7 @@ void BM_tbb2(benchmark::State& state) {
     tbb::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
-      g.run([num_elements]() {
+      g.run([&g, num_elements]() {
         int num = std::sqrt(num_elements);
         tbb::task_group g2;
         for (int j = 0; j < num; ++j) {

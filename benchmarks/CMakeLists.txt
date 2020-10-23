@@ -29,6 +29,8 @@ set(BOOST_CONTEXT_LINK_LIBRARIES_DBG "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/in
 set(EVENT_CORE_LINK_LIBRARIES_DBG "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/debug/lib/event_core.lib")
 set(EVENT_LINK_LIBRARIES_DBG "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/debug/lib/event.lib")
 set(EVENT_EXTRA_LINK_LIBRARIES_DBG "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/debug/lib/event_extra.lib")
+else (WIN32)
+find_package(double-conversion CONFIG REQUIRED)
 endif (WIN32)
 
 # Locate google benchmark
@@ -39,22 +41,21 @@ add_subdirectory(../../thirdparty/benchmark benchmarkDir)
 # Locate OpenMP
 if (NOT WIN32)
     find_package(OpenMP)
-    find_package (glog REQUIRED)
 endif (NOT WIN32)
 
 # Locate TBB
 add_subdirectory(../../thirdparty/tbb tbbDir)
 
-
-
-message(STATUS "+++++++++++++++++++++${glog_INCLUDE_DIR}")
-
 # Locate folly
 if (NOT WIN32)
-    find_package(folly CONFIG REQUIRED)
+    find_package (glog REQUIRED)
+    find_package (folly CONFIG REQUIRED)
+    set(Boost_USE_STATIC_LIBS ON)
+    find_package (Boost COMPONENTS context REQUIRED)
 else (NOT WIN32)
 	include_directories(${glog_INCLUDE_DIR})
 	include_directories(${folly_INCLUDE_DIR})
+    add_subdirectory(../../thirdparty/folly follyDir)
 endif (NOT WIN32)
 
 	
@@ -158,12 +159,21 @@ target_link_libraries(
     PUBLIC debug ${GFLAGS_LINK_LIBRARIES_DBG}
 )
 else (WIN32)
+
+set(LIBEVENT_LIB "/usr/lib64/libevent.so")
+
 target_link_libraries(
     future_benchmark
+    PUBLIC glog::glog
+    PUBLIC glog
+    PUBLIC double-conversion
+    PUBLIC ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_REGEX_LIBRARY} ${Boost_FIBER_LIBRARY} ${Boost_LIBRARIES}
+    PUBLIC ${CMAKE_DL_LIBS}
+    PUBLIC ${LIBEVENT_LIB}
     PUBLIC folly
-    PUBLIC glog::glog	
 )
 endif (WIN32)
+
 
 #B---------- once_function_benchmark
 add_executable(

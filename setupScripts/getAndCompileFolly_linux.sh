@@ -24,6 +24,7 @@ else
          boost-devel \
          libtool \
          lz4-devel \
+         libevent-devel-2.1.8-7.fc31.i686 \
          lzma-sdk-devel-4.6.5-24.fc31.x86_64 \
          snappy-devel \
          zlib-devel \
