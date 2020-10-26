@@ -171,7 +171,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   }
 
   void incRefCount() {
-    refCount_.fetch_add(1, std::memory_order_relaxed);
+    refCount_.fetch_add(1, std::memory_order_acquire);
   }
 
   void decRefCountMaybeDestroy() {
