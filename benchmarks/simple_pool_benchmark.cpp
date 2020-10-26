@@ -93,7 +93,7 @@ void BM_tbb2(benchmark::State& state) {
     tbb::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
-      g.run([&g, num_elements]() {
+      g.run([num_elements]() {
         int num = std::sqrt(num_elements);
         tbb::task_group g2;
         for (int j = 0; j < num; ++j) {
