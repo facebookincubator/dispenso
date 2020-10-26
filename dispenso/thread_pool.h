@@ -17,6 +17,7 @@
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/once_function.h>
 #include <dispenso/platform.h>
+#include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
 
@@ -184,7 +185,9 @@ inline void ThreadPool::schedule(F&& f) {
 template <typename F>
 inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
   workRemaining_.fetch_add(1, std::memory_order_release);
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   bool enqueued = work_.enqueue({std::forward<F>(f)});
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   (void)(enqueued); // unused
   assert(enqueued);
 }
@@ -205,7 +208,9 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f) {
 template <typename F>
 inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag) {
   workRemaining_.fetch_add(1, std::memory_order_release);
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   bool enqueued = work_.enqueue(token, {std::forward<F>(f)});
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   (void)(enqueued); // unused
   assert(enqueued);
 }

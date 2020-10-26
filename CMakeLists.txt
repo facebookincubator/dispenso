@@ -47,7 +47,7 @@ add_library(
     ./dispenso/empty.cpp
 )
 
-target_include_directories(concurrentqueue PUBLIC ./dispenso/moodycamel/)
+target_include_directories(concurrentqueue PUBLIC ./dispenso/third-party/moodycamel/)
 set_target_properties(concurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 
 
@@ -57,7 +57,7 @@ add_library(
     ./dispenso/empty.cpp
 )
 
-target_include_directories(lightweightsemaphore PUBLIC ./dispenso/moodycamel/)
+target_include_directories(lightweightsemaphore PUBLIC ./dispenso/third-party/moodycamel/)
 set_target_properties(lightweightsemaphore PROPERTIES LINKER_LANGUAGE CXX)
 
 
