@@ -7,6 +7,7 @@
 
 #include <deque>
 
+#include <dispenso/tsan_annotations.h>
 #include <gtest/gtest.h>
 
 constexpr size_t kSmall = 32;
@@ -15,6 +16,18 @@ constexpr size_t kLarge = 256;
 
 constexpr size_t kSimpleNumBuffers = 1 << 15;
 constexpr size_t kThreadedNumBuffers = 1 << 12;
+
+// Note that this multiplier must be larger when we have  fewer buffer.  That is because there is
+// more slop-space in the SmallBufferAllocator relative to what is allocated.  If we change the
+// kThreadedNumBuffers, we will need to change this multiplier.  Additionally, TSAN very rarely will
+// push this overhead over 2, so we have to account for that here.  Without TSAN, this should be
+// astronomically unlikely (e.g. a gamma ray might cause the test to fail also, but we don't account
+// for that).
+#if !DISPENSO_HAS_TSAN
+constexpr size_t kMaxOverheadMultiplier = 2;
+#else
+constexpr size_t kMaxOverheadMultiplier = 3;
+#endif // !DISPENSO_HAS_TSAN
 
 using dispenso::SmallBufferAllocator;
 
@@ -113,10 +126,8 @@ void testThreads() {
       t.join();
     }
 
-    // Note that this multiplier is larger the fewer buffers we have.  That is because there is more
-    // slop-space in the SmallBufferAllocator relative to what is allocated.  If we change the
-    // kThreadedNumBuffers, we will need to change this multiplier.
-    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 2.0 * allocatedSoFar);
+    ASSERT_LE(
+        SmallBufferAllocator<kSize>::bytesAllocated(), kMaxOverheadMultiplier * allocatedSoFar);
   }
 }
 
@@ -185,10 +196,9 @@ void testThreadsHandoff() {
     for (auto& t : threads) {
       t.join();
     }
-    // Note that this multiplier is larger the fewer buffers we have.  That is because there is more
-    // slop-space in the SmallBufferAllocator relative to what is allocated.  If we change the
-    // kThreadedNumBuffers, we will need to change this multiplier.
-    ASSERT_LE(SmallBufferAllocator<kSize>::bytesAllocated(), 2.0 * allocatedSoFar);
+
+    ASSERT_LE(
+        SmallBufferAllocator<kSize>::bytesAllocated(), kMaxOverheadMultiplier * allocatedSoFar);
   }
 }
 
