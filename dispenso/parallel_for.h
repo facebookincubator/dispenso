@@ -22,7 +22,8 @@ namespace dispenso {
 struct ParForOptions {
   /**
    * The maximum number of threads to use.  This can be used to limit the number of threads below
-   * the number associated with the TaskSet's thread pool.
+   * the number associated with the TaskSet's thread pool.  Setting maxThreads to zero  will result
+   * in serial operation.
    **/
   uint32_t maxThreads = std::numeric_limits<uint32_t>::max();
   /**
@@ -69,6 +70,14 @@ struct ChunkedRange {
    **/
   ChunkedRange(size_t s, size_t e, Auto) : ChunkedRange(s, e, 0) {}
 
+  bool isStatic() const {
+    return chunk == kStatic;
+  }
+
+  size_t size() const {
+    return end - start;
+  }
+
   size_t calcChunkSize(size_t numLaunched, bool oneOnCaller) const {
     size_t workingThreads = numLaunched + oneOnCaller;
     if (workingThreads == 1) {
@@ -79,10 +88,12 @@ struct ChunkedRange {
       // size_t dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
       // cyclesPerIndex_));
       constexpr size_t dynFactor = 16;
-      return std::max<size_t>(
-          1, (end - start + dynFactor * (workingThreads - 1)) / (dynFactor * workingThreads));
+      size_t chunks = dynFactor * workingThreads;
+      return (end - start + chunks) / chunks;
     } else if (chunk == kStatic) {
-      return (end - start + workingThreads - 1) / workingThreads;
+      // This should never be called.  The static distribution versions of the parallel_for
+      // functions should be invoked instead.
+      std::abort();
     }
     return chunk;
   }
@@ -91,6 +102,125 @@ struct ChunkedRange {
   size_t end;
   size_t chunk;
 };
+
+namespace detail {
+
+template <typename TaskSetT, typename F>
+void parallel_for_staticImpl(
+    TaskSetT& taskSet,
+    const ChunkedRange& range,
+    F&& f,
+    ParForOptions options) {
+  size_t numThreads = std::min<size_t>(taskSet.numPoolThreads(), options.maxThreads);
+  // Reduce threads used if they exceed work to be done.
+  numThreads = std::min<size_t>(numThreads, range.size());
+
+  auto chunking = detail::staticChunkSize(range.size(), numThreads);
+  size_t chunkSize = chunking.ceilChunkSize;
+
+  bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
+
+  // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
+  size_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+
+  size_t start = range.start;
+  size_t t;
+  for (t = 0; t < firstLoopLen; ++t) {
+    size_t next = start + chunkSize;
+    taskSet.schedule([start, next, f]() {
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      f(start, next);
+    });
+    start = next;
+  }
+
+  // Reduce the remaining chunk sizes by 1.
+  chunkSize -= !perfectlyChunked;
+  // Finish submitting all but the last item.
+  for (; t < numThreads - 1; ++t) {
+    size_t next = start + chunkSize;
+    taskSet.schedule([start, next, f]() {
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      f(start, next);
+    });
+    start = next;
+  }
+
+  if (options.wait) {
+    f(start, range.end);
+    taskSet.wait();
+  } else {
+    taskSet.schedule(
+        [start, end = range.end, f]() {
+          auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+          f(start, end);
+        },
+        ForceQueuingTag());
+  }
+}
+
+template <typename TaskSetT, typename F, typename StateContainer, typename StateGen>
+void parallel_for_staticImpl(
+    TaskSetT& taskSet,
+    StateContainer& states,
+    const StateGen& defaultState,
+    const ChunkedRange& range,
+    F&& f,
+    ParForOptions options) {
+  size_t numThreads = std::min<size_t>(taskSet.numPoolThreads(), options.maxThreads);
+  // Reduce threads used if they exceed work to be done.
+  numThreads = std::min<size_t>(numThreads, range.size());
+
+  for (size_t i = 0; i < numThreads; ++i) {
+    states.emplace_back(defaultState());
+  }
+
+  auto chunking = detail::staticChunkSize(range.size(), numThreads);
+  size_t chunkSize = chunking.ceilChunkSize;
+
+  bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
+
+  // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
+  size_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+
+  auto stateIt = states.begin();
+  size_t start = range.start;
+  size_t t;
+  for (t = 0; t < firstLoopLen; ++t) {
+    size_t next = start + chunkSize;
+    taskSet.schedule([it = stateIt++, start, next, f]() {
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      f(*it, start, next);
+    });
+    start = next;
+  }
+
+  // Reduce the remaining chunk sizes by 1.
+  chunkSize -= !perfectlyChunked;
+  // Finish submitting all but the last item.
+  for (; t < numThreads - 1; ++t) {
+    size_t next = start + chunkSize;
+    taskSet.schedule([it = stateIt++, start, next, f]() {
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      f(*it, start, next);
+    });
+    start = next;
+  }
+
+  if (options.wait) {
+    f(*stateIt, start, range.end);
+    taskSet.wait();
+  } else {
+    taskSet.schedule(
+        [stateIt, start, end = range.end, f]() {
+          auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+          f(*stateIt, start, end);
+        },
+        ForceQueuingTag());
+  }
+}
+
+} // namespace detail
 
 /**
  * Execute loop over the range in parallel.
@@ -105,8 +235,13 @@ template <typename TaskSetT, typename F>
 void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOptions options = {}) {
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
-  if (detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (!options.maxThreads, detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
+    return;
+  }
+
+  if (range.isStatic()) {
+    detail::parallel_for_staticImpl(taskSet, range, std::forward<F>(f), options);
     return;
   }
 
@@ -169,8 +304,8 @@ void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOpt
  * @param range The range defining the loop extents as well as chunking strategy.
  * @param f The functor to execute in parallel.  Must have a signature like
  * <code>void(size_t begin, size_t end)</code>.
- * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset to
- * true.
+ * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
+ *to true.
  **/
 template <typename F>
 void parallel_for(const ChunkedRange& range, F&& f, ParForOptions options = {}) {
@@ -203,9 +338,15 @@ void parallel_for(
     const ChunkedRange& range,
     F&& f,
     ParForOptions options = {}) {
-  if (detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (!options.maxThreads, detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
+    return;
+  }
+
+  if (range.isStatic()) {
+    detail::parallel_for_staticImpl(
+        taskSet, states, defaultState, range, std::forward<F>(f), options);
     return;
   }
 
@@ -278,8 +419,8 @@ void parallel_for(
  * @param range The range defining the loop extents as well as chunking strategy.
  * @param f The functor to execute in parallel.  Must have a signature like
  * <code>void(State &s, size_t begin, size_t end)</code>.
- * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset to
- * true.
+ * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
+ *to true.
  **/
 template <typename F, typename StateContainer, typename StateGen>
 void parallel_for(
@@ -323,8 +464,8 @@ void parallel_for(TaskSetT& taskSet, size_t start, size_t end, F&& f, ParForOpti
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
  * <code>void(size_t index)</code>.
- * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset to
- * true.
+ * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
+ *to true.
  **/
 template <typename F>
 void parallel_for(size_t start, size_t end, F&& f, ParForOptions options = {}) {
@@ -387,8 +528,8 @@ void parallel_for(
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
  * <code>void(State &s, size_t begin, size_t end)</code>.
- * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset to
- * true.
+ * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
+ *to true.
  **/
 template <typename F, typename StateContainer, typename StateGen>
 void parallel_for(

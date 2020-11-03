@@ -83,5 +83,24 @@ inline void cpuRelax() {
 inline void cpuRelax() {}
 #endif // x86-arch
 
+// When statically chunking a range, it is generally not possible to use a single chunk size plus
+// remainder and get a good load distribution.  By estimating too high, we can have idle threads. By
+// estimating too low, the remainder can be several times as large as the chunk for other threads.
+// Instead, we compute the chunk size that is the ceil of the fractional chunk size.  That can be
+// used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)
+// values will be ceilChunkSize - 1.
+struct StaticChunking {
+  size_t transitionTaskIndex;
+  size_t ceilChunkSize;
+};
+
+inline StaticChunking staticChunkSize(size_t items, size_t chunks) {
+  StaticChunking chunking;
+  chunking.ceilChunkSize = (items + chunks - 1) / chunks;
+  size_t numLeft = chunking.ceilChunkSize * chunks - items;
+  chunking.transitionTaskIndex = chunks - numLeft;
+  return chunking;
+}
+
 } // namespace detail
 } // namespace dispenso
