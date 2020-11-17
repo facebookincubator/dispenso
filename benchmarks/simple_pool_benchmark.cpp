@@ -28,7 +28,7 @@ struct alignas(64) Work {
 };
 
 Work g_work[1024];
-std::atomic<int> g_tCounter = 0;
+std::atomic<int> g_tCounter{0};
 inline int tid() {
   static DISPENSO_THREAD_LOCAL int t = -1;
   if (t < 0) {

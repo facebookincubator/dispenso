@@ -40,7 +40,7 @@ void ThreadPool::threadLoop(std::atomic<bool>& running) {
 void ThreadPool::resize(size_t n) {
   assert(n > 0);
 
-  std::lock_guard lk(threadsMutex_);
+  std::lock_guard<std::mutex> lk(threadsMutex_);
   if (n < threads_.size()) {
     for (int i = n; i < threads_.size(); ++i) {
       threads_[i].running.store(false, std::memory_order_release);
