@@ -79,13 +79,16 @@ set_target_properties(blockingconcurrentqueue PROPERTIES LINKER_LANGUAGE CXX)
 ############# Libraries
 add_subdirectory(dispenso)
 
-if(BUILD_TESTS)
+set(DISPENSO_BUILD_TESTS OFF CACHE BOOL "Should tests be built?")
+set(DISPENSO_BUILD_BENCHMARKS OFF CACHE BOOL "Should benchmarks be built?")
+
+if(DISPENSO_BUILD_TESTS)
     ############# Tests
     add_subdirectory(tests)
-endif (BUILD_TESTS)
+endif (DISPENSO_BUILD_TESTS)
 
-if(BUILD_BENCHMARKS)
+if(DISPENSO_BUILD_BENCHMARKS)
     ############# Benchmarks
     add_subdirectory(benchmarks)
-endif (BUILD_BENCHMARKS)
+endif (DISPENSO_BUILD_BENCHMARKS)
 

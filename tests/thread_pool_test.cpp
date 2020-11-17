@@ -8,6 +8,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+// Add a shim to account for older gtest
+#if !defined INSTANTIATE_TEST_SUITE_P
+#define INSTANTIATE_TEST_SUITE_P INSTANTIATE_TEST_CASE_P
+#endif // INSTANTIATE_TEST_CASE_P
+
 using testing::AnyOf;
 using testing::Eq;
 

@@ -36,8 +36,7 @@ add_executable(
 
 target_link_libraries(
     thread_pool_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC thread_pool)
 	
 if (NOT WIN32)
@@ -55,8 +54,7 @@ add_executable(
 
 target_link_libraries(
     task_set_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC task_set
 )
 
@@ -77,8 +75,7 @@ target_compile_options(task_set_test_sans_exceptions PUBLIC -fno-exceptions)
 
 target_link_libraries(
     task_set_test_sans_exceptions
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC task_set_no_exceptions
 )
 
@@ -97,8 +94,7 @@ add_executable(
 
 target_link_libraries(
     greedy_for_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC parallel_for
 )
 
@@ -117,8 +113,7 @@ add_executable(
 
 target_link_libraries(
     chunked_for_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC parallel_for
 )
 
@@ -137,8 +132,7 @@ add_executable(
 
 target_link_libraries(
     resource_pool_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC resource_pool
     PUBLIC thread_pool
 )
@@ -158,8 +152,7 @@ add_executable(
 
 target_link_libraries(
     small_buffer_allocator_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC small_buffer_allocator
 )
 
@@ -179,8 +172,7 @@ add_executable(
 
 target_link_libraries(
     once_function_test
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC once_function
 )
 
@@ -200,8 +192,7 @@ add_executable(
 target_link_libraries(
     future_test
     PUBLIC future
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
 )
 
 if (NOT WIN32)
@@ -221,8 +212,7 @@ target_compile_options(future_test_sans_exceptions PUBLIC -fno-exceptions)
 
 target_link_libraries(
     future_test_sans_exceptions
-    PUBLIC ${GTEST_LIBRARIES}
-    PUBLIC gtest_main
+    PUBLIC ${GTEST_BOTH_LIBRARIES}
     PUBLIC future
     PUBLIC task_set_no_exceptions
 )

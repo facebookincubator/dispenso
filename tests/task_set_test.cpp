@@ -7,6 +7,11 @@
 
 #include <gtest/gtest.h>
 
+// Add a shim to account for older gtest
+#if !defined INSTANTIATE_TEST_SUITE_P
+#define INSTANTIATE_TEST_SUITE_P INSTANTIATE_TEST_CASE_P
+#endif // INSTANTIATE_TEST_CASE_P
+
 enum ScheduleType { kDefault, kForceQueue, kMixed };
 
 class TaskSetTest : public ::testing::TestWithParam<ScheduleType> {
