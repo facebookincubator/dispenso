@@ -8,12 +8,13 @@
 #include <functional>
 
 #include <dispenso/detail/future_impl.h>
+#include <dispenso/detail/result_of.h>
 
 namespace dispenso {
 
 // See https://en.cppreference.com/w/cpp/experimental/future for details on the API.
 
-// TODO(bbudge): Implement when_all(), when_any(), ?unwrapping constructor? functionality.
+// TODO(bbudge): Implement when_any(), ?unwrapping constructor? functionality.
 
 /**
  *  A <code>std::launch</code> policy specifying we won't force asynchronicity.  Opposite of
@@ -291,18 +292,18 @@ class Future : detail::FutureBase<Result> {
    * @return A future containing the result of the functor.
    **/
   template <typename F, typename Schedulable>
-  Future<detail::AsyncResultOf<F, Future<Result>&&>> then(
+  Future<detail::ResultOf<F, Future<Result>&&>> then(
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
       std::launch deferredPolicy = std::launch::deferred) {
-    Future<detail::AsyncResultOf<F, Future<Result>&&>> retFuture;
-    retFuture.impl_ = this->template thenImpl<detail::AsyncResultOf<F, Future<Result>&&>>(
+    Future<detail::ResultOf<F, Future<Result>&&>> retFuture;
+    retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<Result>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::AsyncResultOf<F, Future<Result>&&>> then(F&& f) {
+  Future<detail::ResultOf<F, Future<Result>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
@@ -366,18 +367,18 @@ class Future<Result&> : detail::FutureBase<Result&> {
   }
 
   template <typename F, typename Schedulable>
-  Future<detail::AsyncResultOf<F, Future<Result&>&&>> then(
+  Future<detail::ResultOf<F, Future<Result&>&&>> then(
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
       std::launch deferredPolicy = std::launch::deferred) {
-    Future<detail::AsyncResultOf<F, Future<Result&>&&>> retFuture;
-    retFuture.impl_ = this->template thenImpl<detail::AsyncResultOf<F, Future<Result&>&&>>(
+    Future<detail::ResultOf<F, Future<Result&>&&>> retFuture;
+    retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<Result&>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::AsyncResultOf<F, Future<Result&>&&>> then(F&& f) {
+  Future<detail::ResultOf<F, Future<Result&>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
@@ -439,18 +440,18 @@ class Future<void> : detail::FutureBase<void> {
   }
 
   template <typename F, typename Schedulable>
-  Future<detail::AsyncResultOf<F, Future<void>&&>> then(
+  Future<detail::ResultOf<F, Future<void>&&>> then(
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
       std::launch deferredPolicy = std::launch::deferred) {
-    Future<detail::AsyncResultOf<F, Future<void>&&>> retFuture;
-    retFuture.impl_ = this->template thenImpl<detail::AsyncResultOf<F, Future<void>&&>>(
+    Future<detail::ResultOf<F, Future<void>&&>> retFuture;
+    retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<void>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::AsyncResultOf<F, Future<void>&&>> then(F&& f) {
+  Future<detail::ResultOf<F, Future<void>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
@@ -481,8 +482,8 @@ class Future<void> : detail::FutureBase<void> {
  * @param args The remaining arguments that will be passed to <code>f</code>
  **/
 template <class F, class... Args>
-inline Future<detail::AsyncResultOf<F, Args...>> async(std::launch policy, F&& f, Args&&... args) {
-  return Future<detail::AsyncResultOf<F, Args...>>(
+inline Future<detail::ResultOf<F, Args...>> async(std::launch policy, F&& f, Args&&... args) {
+  return Future<detail::ResultOf<F, Args...>>(
       std::bind(std::forward<F>(f), std::forward<Args>(args)...), globalThreadPool(), policy);
 }
 
@@ -493,7 +494,7 @@ inline Future<detail::AsyncResultOf<F, Args...>> async(std::launch policy, F&& f
  * @param args The remaining arguments that will be passed to <code>f</code>
  **/
 template <class F, class... Args>
-inline Future<detail::AsyncResultOf<F, Args...>> async(F&& f, Args&&... args) {
+inline Future<detail::ResultOf<F, Args...>> async(F&& f, Args&&... args) {
   return ::dispenso::async(std::launch::deferred, std::forward<F>(f), std::forward<Args>(args)...);
 }
 

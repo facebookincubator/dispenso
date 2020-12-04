@@ -429,15 +429,6 @@ inline FutureImplBase<void>* createVoidFutureImplReady() {
   return retval;
 }
 
-#if __cplusplus < 201703L
-template <typename F, typename... Args>
-using AsyncResultOf =
-    typename std::result_of<typename std::decay<F>::type(typename std::decay<Args>::type...)>::type;
-#else
-template <typename F, typename... Args>
-using AsyncResultOf = typename std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-#endif // c++17
-
 template <typename TaskSetType>
 struct TaskSetInterceptionInvoker {
   TaskSetInterceptionInvoker(TaskSetType& ts) : taskSet(ts) {}
