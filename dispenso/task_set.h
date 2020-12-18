@@ -12,6 +12,8 @@ namespace dispenso {
 namespace detail {
 template <typename Result>
 class FutureBase;
+
+class LimitGatedScheduler;
 } // namespace detail
 
 /**
@@ -64,7 +66,7 @@ class TaskSet {
       f();
     } else {
       outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-      pool_.schedule(token_, [this, f = std::move(f)]() {
+      pool_.schedule(token_, [this, f = std::move(f)]() mutable {
 #if defined(__cpp_exceptions)
         try {
           f();
@@ -247,7 +249,7 @@ class ConcurrentTaskSet {
   void schedule(F&& f, ForceQueuingTag fq) {
     outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     pool_.schedule(
-        [this, f = std::move(f)]() {
+        [this, f = std::move(f)]() mutable {
 #if defined(__cpp_exceptions)
           try {
             f();
@@ -316,6 +318,10 @@ class ConcurrentTaskSet {
   void trySetCurrentException();
   void testAndResetException();
 
+  bool tryExecuteNext() {
+    return pool_.tryExecuteNext();
+  }
+
   std::atomic<int32_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
   const int32_t taskSetLoadFactor_;
@@ -327,6 +333,8 @@ class ConcurrentTaskSet {
 
   template <typename Result>
   friend class detail::FutureBase;
+
+  friend class detail::LimitGatedScheduler;
 };
 
 } // namespace dispenso
