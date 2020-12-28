@@ -7,6 +7,7 @@
  * @file platform constants and common utilities.
  **/
 #pragma once
+#include <algorithm>
 #include <atomic>
 #include <thread>
 #include <type_traits>
@@ -40,17 +41,17 @@ constexpr size_t kCacheLineSize = 64;
 namespace detail {
 
 inline void* alignedMalloc(size_t bytes, size_t alignment) {
-#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__) || defined(__ANDROID__)
-  void* ptr;
-  if (::posix_memalign(&ptr, alignment, bytes)) {
-    return nullptr;
-  }
-  return ptr;
-#elif defined(_MSC_VER)
-  return (_aligned_malloc(bytes, alignment));
-#else
-#error Need to provide alignedMalloc implementation for non-posix, non-windows system
-#endif // _POSIX_C_SOURCE
+  alignment = std::max(alignment, sizeof(uintptr_t));
+  char* ptr = reinterpret_cast<char*>(::malloc(bytes + alignment));
+  uintptr_t base = reinterpret_cast<uintptr_t>(ptr);
+  uintptr_t oldBase = base;
+  uintptr_t mask = alignment - 1;
+  base += alignment;
+  base &= ~mask;
+
+  uintptr_t* recovery = reinterpret_cast<uintptr_t*>(base - sizeof(uintptr_t));
+  *recovery = oldBase;
+  return reinterpret_cast<void*>(base);
 }
 
 inline void* alignedMalloc(size_t bytes) {
@@ -58,13 +59,9 @@ inline void* alignedMalloc(size_t bytes) {
 }
 
 inline void alignedFree(void* ptr) {
-#if _POSIX_C_SOURCE >= 200112L || defined(__APPLE_CC__) || defined(__ANDROID__)
-  ::free(ptr);
-#elif defined(_MSC_VER)
-  _aligned_free(ptr);
-#else
-#error Need to provide alignedFree for non-posix system
-#endif // _POSIX_C_SOURCE
+  char* p = reinterpret_cast<char*>(ptr);
+  uintptr_t recovered = *reinterpret_cast<uintptr_t*>(p - sizeof(uintptr_t));
+  ::free(reinterpret_cast<void*>(recovered));
 }
 
 inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
