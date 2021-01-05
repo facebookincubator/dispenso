@@ -14,7 +14,7 @@ template <typename T>
 using TestOptional = std::optional<T>;
 #else
 template <typename T>
-using TestOptional = OpResult<T>;
+using TestOptional = dispenso::OpResult<T>;
 #endif // C++17
 
 TEST(Pipeline, SingleStageSerial) {
@@ -223,7 +223,7 @@ TEST(Pipeline, MultiStageCarryPointers) {
   constexpr size_t kNumInputs = 1000;
   std::vector<int> inputs(kNumInputs);
   std::iota(inputs.begin(), inputs.end(), 0);
-  std::atomic<size_t> counter = 0;
+  std::atomic<size_t> counter(0);
 
   Gen gen(counter, inputs);
   Xform0 xform0;
@@ -242,7 +242,7 @@ TEST(Pipeline, MultiStageCarryPointers2) {
   constexpr size_t kNumInputs = 1000;
   std::vector<int> inputs(kNumInputs);
   std::iota(inputs.begin(), inputs.end(), 0);
-  std::atomic<size_t> counter = 0;
+  std::atomic<size_t> counter(0);
 
   dispenso::pipeline(Gen(counter, inputs), Xform0(), Xform1(), Sink());
 
@@ -258,7 +258,7 @@ TEST(Pipeline, MultiStageCarryPointersMultiFilterParallel) {
   constexpr size_t kNumInputs = 1000;
   std::vector<int> inputs(kNumInputs);
   std::iota(inputs.begin(), inputs.end(), 0);
-  std::atomic<size_t> counter = 0;
+  std::atomic<size_t> counter(0);
 
   dispenso::pipeline(
       dispenso::stage(Gen(counter, inputs), kPar),
@@ -290,7 +290,7 @@ TEST(Pipeline, MultiStageCarryPointersMultiFilterUnlimitedParallel) {
   constexpr size_t kNumInputs = 1000;
   std::vector<int> inputs(kNumInputs);
   std::iota(inputs.begin(), inputs.end(), 0);
-  std::atomic<size_t> counter = 0;
+  std::atomic<size_t> counter(0);
 
   dispenso::pipeline(
       dispenso::stage(Gen(counter, inputs), kPar),
