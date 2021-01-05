@@ -50,9 +50,10 @@ set(DISPENSO_BUILD_TESTS OFF CACHE BOOL "Should tests be built?")
 set(DISPENSO_BUILD_BENCHMARKS OFF CACHE BOOL "Should benchmarks be built?")
 
 if(DISPENSO_BUILD_TESTS)
-    add_subdirectory(tests)
+  enable_testing()
+  add_subdirectory(tests)
 endif (DISPENSO_BUILD_TESTS)
 
 if(DISPENSO_BUILD_BENCHMARKS)
-    add_subdirectory(benchmarks)
+  add_subdirectory(benchmarks)
 endif (DISPENSO_BUILD_BENCHMARKS)
