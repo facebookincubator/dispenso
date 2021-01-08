@@ -10,8 +10,10 @@
 
 #include <dispenso/future.h>
 
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
+#endif // !BENCHMARK_WITHOUT_FOLLY
 
 #include "thread_benchmark_common.h"
 
@@ -208,6 +210,7 @@ void BM_dispenso_tree(benchmark::State& state) {
   checkTree(root, depth, modulo);
 }
 
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
 folly::SemiFuture<folly::Unit> follyTree(
     folly::Executor* exec,
     Node* node,
@@ -258,6 +261,7 @@ void BM_folly_tree(benchmark::State& state) {
   }
   checkTree(&root, depth, modulo);
 }
+#endif // !BENCHMARK_WITHOUT_FOLLY
 
 void dispensoTaskSetTree(
     dispenso::ConcurrentTaskSet& tasks,
@@ -415,9 +419,11 @@ BENCHMARK_TEMPLATE(BM_std_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_std_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_std_tree, kLargeSize)->UseRealTime();
 
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
 BENCHMARK_TEMPLATE(BM_folly_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_folly_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_folly_tree, kLargeSize)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_FOLLY
 
 BENCHMARK_TEMPLATE(BM_dispenso_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree, kMediumSize)->UseRealTime();

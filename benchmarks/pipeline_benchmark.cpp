@@ -12,10 +12,9 @@
 #include <benchmark/benchmark.h>
 #include <dispenso/pipeline.h>
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/pipeline.h"
-
-#include <time.h>
-#include <unistd.h>
+#endif // !BENCHMARK_WITHOUT_TBB
 
 // (1) Generate images
 // (2) Calculate geometric mean
@@ -171,6 +170,7 @@ void BM_dispenso_par(benchmark::State& state) {
   checkResults(results);
 }
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 void runTBB(std::vector<std::unique_ptr<uint8_t[]>>& results) {
   results.resize(kNumImages);
 
@@ -248,11 +248,16 @@ void BM_tbb_par(benchmark::State& state) {
 
   checkResults(results);
 }
+#endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK(BM_serial)->UseRealTime();
 BENCHMARK(BM_dispenso)->UseRealTime();
+#if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_dispenso_par)->UseRealTime();
+#if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb_par)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK_MAIN();

@@ -6,7 +6,8 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/dispenso/*.cpp ${PRO
 file(GLOB HDR_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/dispenso/*.h ${PROJECT_SOURCE_DIR}/dispenso/detail/*.h ${PROJECT_SOURCE_DIR}/dispenso/third-party/moodycamel/*.h)
 
 add_library(
-        dispenso
-        ${HDR_FILES}
-        ${SRC_FILES}
-)
+  dispenso
+  ${HDR_FILES}
+  ${SRC_FILES}
+  )
+

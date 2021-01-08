@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(Dispenso VERSION 0.1.0)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+
 #TODO: Fix windows build
 
 if (WIN32)
@@ -55,5 +57,7 @@ if(DISPENSO_BUILD_TESTS)
 endif (DISPENSO_BUILD_TESTS)
 
 if(DISPENSO_BUILD_BENCHMARKS)
+  # Sadly any given release of folly seems to have some problem or another.  Leave disabled by default.
+  set(BENCHMARK_WITHOUT_FOLLY ON CACHE BOOL "Should folly benchmarks be disabled?")
   add_subdirectory(benchmarks)
 endif (DISPENSO_BUILD_BENCHMARKS)

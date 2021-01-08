@@ -12,9 +12,11 @@
 #include <omp.h>
 #endif
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_reduce.h"
 #include "tbb/task_scheduler_init.h"
+#endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
 
@@ -125,6 +127,7 @@ void BM_omp(benchmark::State& state) {
 }
 #endif /* defined(_OPENMP)*/
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
@@ -149,6 +152,7 @@ void BM_tbb(benchmark::State& state) {
   }
   checkResults(input, sum, foo, num_elements);
 }
+#endif // !BENCHMARK_WITHOUT_TBB
 
 void BM_async(benchmark::State& state) {
   const int num_threads = state.range(0);
@@ -198,8 +202,10 @@ BENCHMARK_TEMPLATE(BM_serial, kLargeSize);
 
 #if defined(_OPENMP)
 BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
-#endif
+#endif // OPENMP
+#if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_async)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 

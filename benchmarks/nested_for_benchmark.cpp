@@ -12,9 +12,11 @@
 #include <omp.h>
 #endif
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_reduce.h"
 #include "tbb/task_scheduler_init.h"
+#endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
 
@@ -165,6 +167,7 @@ void BM_omp(benchmark::State& state) {
 }
 #endif /*defined(_OPENMP)*/
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 uint64_t calculateInnerTbb(uint64_t input, size_t foo, int numElements) {
   return tbb::parallel_reduce(
       tbb::blocked_range<size_t>(0, kWorkMultiplier * numElements),
@@ -201,6 +204,7 @@ void BM_tbb(benchmark::State& state) {
   }
   checkResults(input, sum, foo, numElements);
 }
+#endif // !BENCHMARK_WITHOUT_TBB
 
 uint64_t calculateInnerAsync(uint64_t input, size_t foo, int numElements) {
   size_t chunkSize = (numElements + g_numThreads - 1) / g_numThreads;
@@ -273,8 +277,13 @@ BENCHMARK_TEMPLATE(BM_serial, kLargeSize);
 #if defined(_OPENMP)
 BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 #endif
+
+#if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
-// BENCHMARK(BM_async)->Apply(CustomArguments)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
+
+BENCHMARK(BM_async)->Apply(CustomArguments)->UseRealTime();
+
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();

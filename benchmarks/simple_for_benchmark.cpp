@@ -11,9 +11,11 @@
 
 #include <unordered_map>
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
 #include "tbb/task_scheduler_init.h"
+#endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
 
@@ -98,6 +100,7 @@ void BM_omp(benchmark::State& state) {
 }
 #endif /*defined(_OPENMP)*/
 
+#if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
@@ -118,6 +121,7 @@ void BM_tbb(benchmark::State& state) {
   }
   checkResults(input, output);
 }
+#endif // !BENCHMARK_WITHOUT_TBB
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
@@ -133,8 +137,10 @@ BENCHMARK_TEMPLATE(BM_serial, kLargeSize);
 
 #if defined(_OPENMP)
 BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
-#endif
+#endif // OPENMP
+#if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 
