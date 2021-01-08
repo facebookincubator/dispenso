@@ -53,11 +53,21 @@ TODO(bbudge)
 TODO(bbudge)
 
 # Building and running dispenso benchmarks
-TODO(bbudge)
+Dispenso has several benchmarks, and some of these can benchmark against OpenMP, TBB, and/or folly variants.  If benchmarks are turned on via `-DDISPENSO_BUILD_BENCHMARKS=ON`, the build will attempt to find these libraries, and if found, will enable those variants in the benchmarks.  It is important to note that none of these dependencies are dependencies of the dispenso library, but only the benchmark binaries.
+
+The folly variant is turned off by default, because unfortunately it appears to be common to find big issues in many folly releases; note however that the folly code does run and provide benchmark data on our internal facebook platform.
+
+OpenMP should already be available on most platforms that support it (it must be partially built into the compiler after all), but TBB can be had by e.g. `sudo dnf install tbb-devel`.
+
+After you have the deps you want, you can build and run:
+### Linux and MacOS
+1. `mkdir build && cd build`
+1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON`
+1. `make -j`
+1. `bin/once_function_benchmark`
 
 # Known issues
-* On some platforms an error with folly stating "Folly::folly" includes non-existent path "//include", if this is the case navigate to installed folly-targets.cmake (typically found in /usr/local/lib/cmake/folly) and remove that entry. You may preemptively address this issue by changing the file from the cloned git files of Folly before running cmake.
-* On Windows this project builds with MT flag; if MD is desired, changed to cmakelists and setupscripts will be needed.
+
 
 # License
 
