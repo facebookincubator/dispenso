@@ -36,7 +36,7 @@ class SmallBufferAllocator {
   static constexpr size_t kMaxNumTLBuffers = 2 * kIdealNumTLBuffers;
   static constexpr size_t kBuffersPerMalloc = kMallocBytes / kChunkSize;
 
-  static_assert(kIdealNumTLBuffers > 0);
+  static_assert(kIdealNumTLBuffers > 0, "Must have a positive number of buffers to work with");
 
  public:
   /**

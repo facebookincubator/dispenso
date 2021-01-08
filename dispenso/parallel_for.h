@@ -235,7 +235,7 @@ template <typename TaskSetT, typename F>
 void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOptions options = {}) {
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
-  if (!options.maxThreads, detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (!options.maxThreads || detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
     return;
   }
@@ -338,7 +338,7 @@ void parallel_for(
     const ChunkedRange& range,
     F&& f,
     ParForOptions options = {}) {
-  if (!options.maxThreads, detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (!options.maxThreads || detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
     return;
