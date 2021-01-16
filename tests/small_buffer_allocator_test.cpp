@@ -85,7 +85,7 @@ void testThreads() {
   std::deque<std::thread> threads;
   for (auto& tb : threadBuffers) {
     tb.resize(kThreadedNumBuffers);
-    threads.emplace_back([& buffers = tb]() {
+    threads.emplace_back([&buffers = tb]() {
       for (char*& b : buffers) {
         b = SmallBufferAllocator<kSize>::alloc();
       }
@@ -97,7 +97,7 @@ void testThreads() {
   }
   int i = 0;
   for (auto& tb : threadBuffers) {
-    threads[i++] = std::thread([& buffers = tb]() {
+    threads[i++] = std::thread([&buffers = tb]() {
       for (char* b : buffers) {
         SmallBufferAllocator<kSize>::dealloc(b);
       }
@@ -112,7 +112,7 @@ void testThreads() {
   for (int j = 0; j < 50; ++j) {
     i = 0;
     for (auto& tb : threadBuffers) {
-      threads[i++] = std::thread([& buffers = tb]() {
+      threads[i++] = std::thread([&buffers = tb]() {
         for (char*& b : buffers) {
           b = SmallBufferAllocator<kSize>::alloc();
         }
@@ -150,7 +150,7 @@ void testThreadsHandoff() {
   std::deque<std::thread> threads;
   for (auto& tb : threadBuffers) {
     tb.resize(kThreadedNumBuffers);
-    threads.emplace_back([& buffers = tb]() {
+    threads.emplace_back([&buffers = tb]() {
       for (auto& b : buffers) {
         b.first = SmallBufferAllocator<kSize>::alloc();
         b.second.store(false, std::memory_order_relaxed);
@@ -163,7 +163,7 @@ void testThreadsHandoff() {
   }
   int i = 0;
   for (auto& tb : threadBuffers) {
-    threads[i++] = std::thread([& buffers = tb]() {
+    threads[i++] = std::thread([&buffers = tb]() {
       for (auto& b : buffers) {
         SmallBufferAllocator<kSize>::dealloc(b.first);
       }
@@ -178,7 +178,7 @@ void testThreadsHandoff() {
   for (int j = 0; j < 50; ++j) {
     for (i = 0; i < kThreads; ++i) {
       threads[i] = std::thread(
-          [& buffers = threadBuffers[i], &buffersOther = threadBuffers[(i + 1) % kThreads]]() {
+          [&buffers = threadBuffers[i], &buffersOther = threadBuffers[(i + 1) % kThreads]]() {
             for (auto& b : buffers) {
               b.first = SmallBufferAllocator<kSize>::alloc();
               b.second.store(true, std::memory_order_release);

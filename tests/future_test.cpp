@@ -328,35 +328,35 @@ TEST(Future, RecursivelyBuildTree) {
 
 TEST(Future, BasicThenUsage) {
   int value;
-  auto voidFuture =
-      dispenso::async([]() { return 77; }).then([&value](dispenso::Future<int>&& parent) {
-        value = parent.get();
-      });
+  auto voidFuture = dispenso::async([]() {
+                      return 77;
+                    }).then([&value](dispenso::Future<int>&& parent) { value = parent.get(); });
   voidFuture.get();
   EXPECT_EQ(77, value);
   auto intFuture = dispenso::async([]() { return 55; }).then([](dispenso::Future<int>&& parent) {
     return parent.get();
   });
   EXPECT_EQ(55, intFuture.get());
-  auto int2Future = dispenso::async([&value]() -> int& { return value; })
-                        .then([](dispenso::Future<int&>&& parent) { return parent.get(); });
+  auto int2Future = dispenso::async([&value]() -> int& {
+                      return value;
+                    }).then([](dispenso::Future<int&>&& parent) { return parent.get(); });
   EXPECT_EQ(77, int2Future.get());
 
-  auto refFuture = dispenso::async([&value]() -> int& { return value; })
-                       .then([](dispenso::Future<int&>&& parent) -> int& { return parent.get(); });
+  auto refFuture = dispenso::async([&value]() -> int& {
+                     return value;
+                   }).then([](dispenso::Future<int&>&& parent) -> int& { return parent.get(); });
   EXPECT_EQ(77, refFuture.get());
   EXPECT_EQ(&value, &refFuture.get());
 
-  intFuture =
-      dispenso::async([&value]() { value = 33; }).then([&value](dispenso::Future<void>&& parent) {
-        return value;
-      });
+  intFuture = dispenso::async([&value]() {
+                value = 33;
+              }).then([&value](dispenso::Future<void>&& parent) { return value; });
   EXPECT_EQ(33, intFuture.get());
 
   int* valuePtr;
-  voidFuture =
-      dispenso::async([&value]() -> int& { return value; })
-          .then([&valuePtr](dispenso::Future<int&>&& parent) { valuePtr = &parent.get(); });
+  voidFuture = dispenso::async([&value]() -> int& {
+                 return value;
+               }).then([&valuePtr](dispenso::Future<int&>&& parent) { valuePtr = &parent.get(); });
   voidFuture.get();
   EXPECT_EQ(valuePtr, &value);
 }
@@ -364,12 +364,14 @@ TEST(Future, BasicThenUsage) {
 TEST(Future, LongerThenChain) {
   const int inval = 123;
   int outval;
-  auto intFuture = dispenso::async([&inval]() -> const int& { return inval; })
-                       .then([](dispenso::Future<const int&>&& parent) { return parent.get(); })
-                       .then([&outval](dispenso::Future<int>&& parent) {
-                         outval = parent.get();
-                         return parent.get();
-                       });
+  auto intFuture = dispenso::async([&inval]() -> const int& {
+                     return inval;
+                   }).then([](dispenso::Future<const int&>&& parent) {
+                       return parent.get();
+                     }).then([&outval](dispenso::Future<int>&& parent) {
+    outval = parent.get();
+    return parent.get();
+  });
   EXPECT_EQ(inval, intFuture.get());
   EXPECT_EQ(inval, outval);
 }

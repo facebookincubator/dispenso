@@ -28,12 +28,14 @@ void run(benchmark::State& state, Alloc alloc, Free dealloc) {
 
 template <size_t kSize>
 void BM_newdelete(benchmark::State& state) {
-  run(state, []() { return new char[kSize]; }, [](char* buf) { delete (buf); });
+  run(
+      state, []() { return new char[kSize]; }, [](char* buf) { delete (buf); });
 }
 
 template <size_t kSize>
 void BM_small_buffer_allocator(benchmark::State& state) {
-  run(state,
+  run(
+      state,
       []() { return SmallBufferAllocator<kSize>::alloc(); },
       [](char* buf) { SmallBufferAllocator<kSize>::dealloc(buf); });
 }

@@ -375,7 +375,7 @@ void parallel_for(
 
     auto it = states.begin();
     for (size_t i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule([& s = *it++, worker]() { worker(s); });
+      taskSet.schedule([&s = *it++, worker]() { worker(s); });
     }
     worker(*it);
     taskSet.wait();
@@ -400,7 +400,7 @@ void parallel_for(
 
     auto it = states.begin();
     for (size_t i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule([& s = *it++, worker]() { worker(s); }, ForceQueuingTag());
+      taskSet.schedule([&s = *it++, worker]() { worker(s); }, ForceQueuingTag());
     }
   }
 }
