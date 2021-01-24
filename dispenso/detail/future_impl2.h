@@ -68,6 +68,72 @@ FutureImplBase<RetResult>* FutureBase<Result>::thenImpl(
   return retImpl;
 }
 
+template <typename Result>
+template <typename RetResult, typename F, typename Schedulable>
+FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
+    F&& f,
+    Schedulable& sched,
+    std::launch asyncPolicy,
+    std::launch deferredPolicy) {
+  FutureImplBase<Result>* futureImpl = impl_;
+  Future<Result> future(std::move(*this));
+  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
+    future.wait();
+    return f(std::move(future));
+  };
+
+  auto* retImpl = createFutureImpl<RetResult>(
+      std::move(func), (deferredPolicy & std::launch::deferred) == std::launch::deferred, nullptr);
+  futureImpl->addToThenChainOrExecute(retImpl, sched, asyncPolicy);
+  return retImpl;
+}
+
+template <typename Result>
+template <typename RetResult, typename F>
+FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
+    F&& f,
+    TaskSet& sched,
+    std::launch asyncPolicy,
+    std::launch deferredPolicy) {
+  FutureImplBase<Result>* futureImpl = impl_;
+  Future<Result> future(std::move(*this));
+  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
+    future.wait();
+    return f(std::move(future));
+  };
+
+  sched.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+  auto* retImpl = createFutureImpl<RetResult>(
+      std::move(func),
+      (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+      &sched.outstandingTaskCount_);
+  futureImpl->addToThenChainOrExecute(retImpl, sched.pool(), asyncPolicy);
+  return retImpl;
+}
+
+template <typename Result>
+template <typename RetResult, typename F>
+FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
+    F&& f,
+    ConcurrentTaskSet& sched,
+    std::launch asyncPolicy,
+    std::launch deferredPolicy) {
+  FutureImplBase<Result>* futureImpl = impl_;
+  Future<Result> future(std::move(*this));
+  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
+    future.wait();
+    return f(std::move(future));
+  };
+
+  sched.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
+  auto* retImpl = createFutureImpl<RetResult>(
+      std::move(func),
+      (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+      &sched.outstandingTaskCount_);
+  futureImpl->addToThenChainOrExecute(retImpl, sched.pool(), asyncPolicy);
+  return retImpl;
+}
+
 template <size_t index, typename... Ts>
 struct ForEachApply {
   template <typename F>

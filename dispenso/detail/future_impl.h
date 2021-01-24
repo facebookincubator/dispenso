@@ -567,6 +567,20 @@ class FutureBase {
   FutureImplBase<RetResult>*
   thenImpl(F&& f, ConcurrentTaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
 
+  template <typename RetResult, typename F, typename Schedulable>
+  FutureImplBase<RetResult>*
+  thenMoveImpl(F&& f, Schedulable& sched, std::launch asyncPolicy, std::launch deferredPolicy);
+
+  template <typename RetResult, typename F>
+  FutureImplBase<RetResult>*
+  thenMoveImpl(F&& f, TaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
+  template <typename RetResult, typename F>
+  FutureImplBase<RetResult>* thenMoveImpl(
+      F&& f,
+      ConcurrentTaskSet& sched,
+      std::launch asyncPolicy,
+      std::launch deferredPolicy);
+
 #if defined DISPENSO_DEBUG
   void assertValid() const {
     assert(valid());

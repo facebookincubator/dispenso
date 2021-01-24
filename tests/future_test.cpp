@@ -361,6 +361,41 @@ TEST(Future, BasicThenUsage) {
   EXPECT_EQ(valuePtr, &value);
 }
 
+TEST(Future, ThenMoveSemantic) {
+  auto voidFuture = dispenso::async([]() {});
+  EXPECT_EQ(voidFuture.valid(), true);
+  auto nextVoidFuture = std::move(voidFuture).then([](dispenso::Future<void>&& parent) {
+    EXPECT_TRUE(parent.is_ready());
+  });
+  EXPECT_EQ(voidFuture.valid(), false);
+  EXPECT_EQ(nextVoidFuture.valid(), true);
+  nextVoidFuture.wait();
+
+  auto intFuture = dispenso::async([]() { return 7; });
+  EXPECT_EQ(intFuture.valid(), true);
+  auto nextIntFuture = std::move(intFuture).then([](dispenso::Future<int>&& parent) -> int {
+    EXPECT_TRUE(parent.is_ready());
+    EXPECT_EQ(parent.get(), 7);
+    return 7;
+  });
+  EXPECT_EQ(intFuture.valid(), false);
+  EXPECT_EQ(nextIntFuture.valid(), true);
+  nextIntFuture.wait();
+
+  int value;
+  auto intRefFuture = dispenso::async([&value]() -> int& { return value; });
+  EXPECT_EQ(intRefFuture.valid(), true);
+  auto nextIntRefFuture =
+      std::move(intRefFuture).then([&value](dispenso::Future<int&>&& parent) -> int& {
+        EXPECT_TRUE(parent.is_ready());
+        EXPECT_EQ(&parent.get(), &value);
+        return value;
+      });
+  EXPECT_EQ(intRefFuture.valid(), false);
+  EXPECT_EQ(nextIntRefFuture.valid(), true);
+  nextIntRefFuture.wait();
+}
+
 TEST(Future, LongerThenChain) {
   const int inval = 123;
   int outval;
