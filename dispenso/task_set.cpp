@@ -65,7 +65,7 @@ void ConcurrentTaskSet::wait() {
 }
 
 bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
-  while (outstandingTaskCount_.load(std::memory_order_acquire), maxToExecute--) {
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExecute--) {
     if (!pool_.tryExecuteNext()) {
       break;
     }
