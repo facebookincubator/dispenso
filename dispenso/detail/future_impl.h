@@ -213,62 +213,81 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
     return false;
   }
 
+  using ThenChainInvoke = void(void*, void*);
+
+  struct ThenChain {
+    ThenChain* next;
+    void* impl;
+    void* schedulable;
+    ThenChainInvoke* invoke;
+
+    ThenChain* scheduleDestroyAndGetNext() {
+      invoke(impl, schedulable);
+      constexpr size_t kImplSize = nextPowerOfTwo(sizeof(this));
+      auto* ret = this->next;
+      SmallBufferAllocator<kImplSize>::dealloc(reinterpret_cast<char*>(this));
+      return ret;
+    }
+  };
+
   void tryExecuteThenChain() {
-    OnceCallable* head = thenChain_.load(std::memory_order_acquire);
-    // While the chain contains anything, let's see try to get it and dispatch the chain.
+    ThenChain* head = thenChain_.load(std::memory_order_acquire);
+    // While the chain contains anything, let's try to get it and dispatch the chain.
     while (head) {
       if (thenChain_.compare_exchange_weak(head, nullptr, std::memory_order_acq_rel)) {
         // Managed to exchange with head, value of thenChain_ now points to null chain.
         // Head points to the implicit list of items to be executed.
-        head->run();
+        while (head) {
+          head = head->scheduleDestroyAndGetNext();
+        }
+        // At this point, the list is exhausted, so we exit the outer loop too.  It would be valid
+        // to get head again and try all over again, but it is guaranteed that if another link was
+        // added concurrently to our dispatch, that thread will attempt to dispatch it's own chain,
+        // so we just exit the loop instead.
       }
     }
   }
 
   template <typename SomeFutureImpl, typename Schedulable>
-  struct ThenChainFunctor {
-    SomeFutureImpl* impl;
-    Schedulable* schedulable;
-    OnceCallable* next;
-    std::launch asyncPolicy;
+  static void thenChainInvokeAsync(void* implv, void* schedulablev) {
+    SomeFutureImpl* impl = reinterpret_cast<SomeFutureImpl*>(implv);
+    Schedulable* schedulable = reinterpret_cast<Schedulable*>(schedulablev);
+    schedulable->schedule(OnceFunction(impl, true), ForceQueuingTag());
+  }
 
-    void operator()() {
-      if ((asyncPolicy & std::launch::async) == std::launch::async) {
-        schedulable->schedule(OnceFunction(impl, true), ForceQueuingTag());
-      } else {
-        schedulable->schedule(OnceFunction(impl, true));
-      }
-
-      if (next) {
-        next->run();
-      }
-    }
-  };
+  template <typename SomeFutureImpl, typename Schedulable>
+  static void thenChainInvoke(void* implv, void* schedulablev) {
+    SomeFutureImpl* impl = reinterpret_cast<SomeFutureImpl*>(implv);
+    Schedulable* schedulable = reinterpret_cast<Schedulable*>(schedulablev);
+    schedulable->schedule(OnceFunction(impl, true));
+  }
 
   template <typename SomeFutureImpl, typename Schedulable>
   void addToThenChainOrExecute(SomeFutureImpl* impl, Schedulable& sched, std::launch asyncPolicy) {
-    using ThenFunctor = ThenChainFunctor<SomeFutureImpl, Schedulable>;
-    ThenFunctor func;
-    func.impl = impl;
-    func.schedulable = &sched;
-    func.asyncPolicy = asyncPolicy;
-
-    func.next = nullptr;
-
     if (status_.intrusiveStatus().load(std::memory_order_acquire) == kReady) {
-      func();
+      if ((asyncPolicy & std::launch::async) == std::launch::async) {
+        sched.schedule(OnceFunction(impl, true), ForceQueuingTag());
+      } else {
+        sched.schedule(OnceFunction(impl, true));
+      }
       return;
     }
 
-    constexpr size_t kImplSize = nextPowerOfTwo(sizeof(OnceCallableImpl<16, ThenFunctor>));
-    using SmallImpl = OnceCallableImpl<kImplSize, ThenFunctor>;
-
+    constexpr size_t kImplSize = nextPowerOfTwo(sizeof(ThenChain));
     auto* buffer = SmallBufferAllocator<kImplSize>::alloc();
-
-    func.next = thenChain_.load(std::memory_order_acquire);
+    ThenChain* link = reinterpret_cast<ThenChain*>(buffer);
+    link->impl = impl;
+    using NonConstSchedulable = std::remove_const_t<Schedulable>;
+    NonConstSchedulable* nonConstSched = const_cast<NonConstSchedulable*>(&sched);
+    link->schedulable = nonConstSched;
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      link->invoke = thenChainInvokeAsync<SomeFutureImpl, Schedulable>;
+    } else {
+      link->invoke = thenChainInvoke<SomeFutureImpl, Schedulable>;
+    }
+    link->next = thenChain_.load(std::memory_order_acquire);
     while (true) {
-      auto* head = new (buffer) SmallImpl(func);
-      if (thenChain_.compare_exchange_weak(func.next, head, std::memory_order_acq_rel)) {
+      if (thenChain_.compare_exchange_weak(link->next, link, std::memory_order_acq_rel)) {
         // Successfully swung func to head.
         break;
       }
@@ -299,7 +318,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   std::atomic<uint32_t> refCount_{2};
   std::atomic<int32_t>* taskSetCounter_{nullptr};
 
-  std::atomic<OnceCallable*> thenChain_{nullptr};
+  std::atomic<ThenChain*> thenChain_{nullptr};
 
   template <typename R, typename T>
   friend FutureImplBase<R&>* createValueFutureImplReady(std::reference_wrapper<T> t);
