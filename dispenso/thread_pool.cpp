@@ -9,9 +9,14 @@
 
 namespace dispenso {
 
+#if !defined(DISPENSO_POLL_PERIOD_US)
+#define DISPENSO_POLL_PERIOD_US 200
+#endif // DISPENSO_POLL_PERIOD_US
+
 void ThreadPool::threadLoop(std::atomic<bool>& running) {
   using namespace std::chrono_literals;
-  constexpr auto kSleepDuration = 100us;
+
+  constexpr auto kSleepDuration = std::chrono::microseconds(DISPENSO_POLL_PERIOD_US);
   constexpr int kBackoffYield = 50;
   constexpr int kBackoffSleep = kBackoffYield + 5;
   OnceFunction next;
