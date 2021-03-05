@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file completion_event.h
+ * A file providing a CompletionEvent type, which gives a way to signal to waiting threads that some
+ * event has been completed.
+ **/
+
 #pragma once
 
 #include <dispenso/detail/completion_event_impl.h>

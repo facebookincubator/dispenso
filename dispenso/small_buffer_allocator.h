@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file small_buffer_allocator.h
+ * A file providing SmallBufferAllocator.  This allocator can allocate and deallocate chunks of a
+ * set size in a way that is efficient and scales quite well across many threads.
+ **/
+
 #pragma once
 
 #include <vector>

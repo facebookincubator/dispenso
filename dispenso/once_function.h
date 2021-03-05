@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file once_function.h
+ * A file providing OnceFunction, a class providing void() signature for closure to be called only
+ * once.  It is built to be cheap to create and move.
+ **/
+
 #pragma once
 
 #include <utility>

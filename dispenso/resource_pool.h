@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file resource_pool.h
+ * A file providing ResourcePool.  This is syntactic sugar over what is essentially a set of
+ * semaphore guarded resources.
+ **/
+
 #pragma once
 
 #include <blockingconcurrentqueue.h>

@@ -6,6 +6,7 @@
 /**
  * @file platform constants and common utilities.
  **/
+
 #pragma once
 #include <algorithm>
 #include <atomic>

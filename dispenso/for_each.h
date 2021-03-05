@@ -4,7 +4,8 @@
 // LICENSE.md file in the root directory of this source tree.
 
 /**
- * @file functions for performing parallel for_each over iterables.  This intends to more-or-less
+ * @file for_each.h
+ * Functions for performing parallel for_each over iterables.  This intends to more-or-less
  * mimic std::for_each, with a possible (Concurrent)TaskSet passed in for external wait capability,
  * and ForEachOptions for controlling the wait behavior and limiting of parallelism.
  **/

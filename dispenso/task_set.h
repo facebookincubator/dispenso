@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file task_set.h
+ * A file providing TaskSet and ConcurrentTaskSet.  These interfaces allow the user to
+ * submit/schedule multiple closures and then wait on them.
+ **/
+
 #pragma once
 
 #include <dispenso/thread_pool.h>

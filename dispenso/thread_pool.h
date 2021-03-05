@@ -3,6 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file thread_pool.h
+ * A file providing ThreadPool.  This is the heart of dispenso.  All other scheduling paradigms,
+ * including TaskSets, Futures, pipelines, and parallel loops, are built on top of ThreadPool.
+ **/
+
 #pragma once
 
 #include <atomic>

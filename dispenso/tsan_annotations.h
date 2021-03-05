@@ -3,16 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file tsan_annotations.h
+ * This file exposes a set of macros for ignoring tsan errors.  These should generally not
+ * be used just to shut up TSAN, because most of the time, TSAN reports real bugs.  They should be
+ * used only when there is a high level of certainty that TSAN is spitting out a false positive, as
+ * can occasionally happen with lock-free algorithms.
+ *
+ * When these are required, it is best to keep the scope as small as possible to avoid blinding TSAN
+ * to real bugs. Note that several libraries already expose macros like these, but we want to
+ * keep dependencies to a bare minimum.
+ **/
+
 #pragma once
-
-// This file exposes a set of macros for turning ignoring tsan errors.  These should generally not
-// be used just to shut up TSAN, because most of the time, TSAN reports real bugs.  They should be
-// used only when there is a high level of certainty that TSAN is spitting out a false positive, as
-// can occasionally happen with lock-free algorithms.
-
-// When these are required, it is best to keep the scope as small as possible to avoid blinding TSAN
-// to real bugs. Note that several libraries already expose macros like these, but we want to
-// keep dependencies to a bare minimum.
 
 #if defined(__has_feature)
 #if __has_feature(thread_sanitizer)

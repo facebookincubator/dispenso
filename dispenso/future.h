@@ -3,6 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file future.h
+ * A file providing Futures, as well as functionality for creating futures, and for how to invoke
+ * Futures' closures.
+ *
+ * See https://en.cppreference.com/w/cpp/experimental/future for details on the API.
+ **/
+
 #pragma once
 
 #include <functional>
