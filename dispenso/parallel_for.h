@@ -39,7 +39,13 @@ struct ParForOptions {
 
 /**
  * A helper class for <code>parallel_for</code>.  It provides various configuration parameters to
- * describe how to break up work for parallel processing.
+ * describe how to break up work for parallel processing.  ChunkedRanges can be created with Auto
+ * chunking, Static chunking, or specific chunking.  Auto chunking makes large chunks for better
+ * cache utilization, but tries to make enough chunks to provide some dynamic load balancing. Static
+ * chunking makes N chunks given N threads to run the loop on.  User-specified chunking can be
+ * useful for ensuring e.g. that at least a multiple of SIMD width is provided per chunk.
+ * <code>parallel_for</code> calls that don't accept a ChunkedRange will create a ChunkedRange
+ * internally using Auto chunking.
  **/
 struct ChunkedRange {
   struct Static {};
