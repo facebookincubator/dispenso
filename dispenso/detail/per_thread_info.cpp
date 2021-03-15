@@ -8,7 +8,10 @@
 namespace dispenso {
 namespace detail {
 
-DISPENSO_THREAD_LOCAL PerThreadInfo PerPoolPerThreadInfo::info_;
+PerThreadInfo& PerPoolPerThreadInfo::info() {
+    static DISPENSO_THREAD_LOCAL PerThreadInfo perThreadInfo;
+    return perThreadInfo;
+}
 
 } // namespace detail
 } // namespace dispenso
