@@ -10,6 +10,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 # Main project setup
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(CMAKE_CXX_EXTENSIONS OFF)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
   option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
@@ -20,7 +21,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   endif()
 endif()
 
-############# Libraries
+###########################################################
+# Targets
 add_subdirectory(dispenso)
 
 set(DISPENSO_BUILD_TESTS OFF CACHE BOOL "Should tests be built?")
