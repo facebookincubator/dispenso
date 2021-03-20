@@ -31,6 +31,18 @@ TEST(ChunkedFor, SimpleLoop) {
   EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
 }
 
+TEST(ChunkedFor, ShouldNotInvokeIfEmptyRange) {
+  int* myNullPtr = nullptr;
+
+  dispenso::parallel_for(
+      dispenso::ChunkedRange(0, 0, dispenso::ChunkedRange::Auto()),
+      [myNullPtr](int s, int e) { *myNullPtr = s + e; });
+
+  dispenso::parallel_for(
+      dispenso::ChunkedRange(0, 0, dispenso::ChunkedRange::Static()),
+      [myNullPtr](int s, int e) { *myNullPtr = s + e; });
+}
+
 TEST(ChunkedFor, SimpleLoopStatic) {
   int w = 1024;
   int h = 1024;

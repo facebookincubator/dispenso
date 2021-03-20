@@ -31,6 +31,21 @@ TEST(GreedyFor, SimpleLoop) {
   EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
 }
 
+TEST(GreedyFor, ShouldNotInvokeIfEmptyRange) {
+  int* myNullPtr = nullptr;
+
+  dispenso::ParForOptions options;
+  options.defaultChunking = dispenso::ParForOptions::kAuto;
+
+  dispenso::parallel_for(
+      0, 0, [myNullPtr](int i) { *myNullPtr = i; }, options);
+
+  options.defaultChunking = dispenso::ParForOptions::kStatic;
+
+  dispenso::parallel_for(
+      0, 0, [myNullPtr](int i) { *myNullPtr = i; }, options);
+}
+
 template <typename StateContainer>
 void loopWithStateImpl() {
   int w = 1000;

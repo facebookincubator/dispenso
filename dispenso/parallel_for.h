@@ -20,6 +20,7 @@ namespace dispenso {
  * A set of options to control parallel_for
  **/
 struct ParForOptions {
+  enum DefaultChunking { kStatic, kAuto };
   /**
    * The maximum number of threads to use.  This can be used to limit the number of threads below
    * the number associated with the TaskSet's thread pool.  Setting maxThreads to zero  will result
@@ -35,6 +36,19 @@ struct ParForOptions {
    * TaskSet.
    **/
   bool wait = true;
+
+  /**
+   * Specify whether default chunking should be static or auto (dynamic load balancing).  This is
+   * used when invoking the version of parallel_for that takes index parameters (vs a ChunkedRange).
+   *
+   * Typically if the cost of each loop iteration is roughly constant, kStatic load balancing is
+   * preferred.  Additionally, when making a non-waiting parallel_for call in conjunction with other
+   * parallel_for calls or with other task submissions to a TaskSet, some dynamic load balancing is
+   * automatically introduced, and selecting kStatic load balancing here can be better.  If the
+   * workload per iteration deviates a lot from constant, and some ranges may be much cheaper than
+   * others, select kAuto.
+   **/
+  DefaultChunking defaultChunking = kStatic;
 };
 
 /**
@@ -239,9 +253,13 @@ void parallel_for_staticImpl(
  **/
 template <typename TaskSetT, typename F>
 void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOptions options = {}) {
+  if (range.size() == 0) {
+    return;
+  }
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
-  if (!options.maxThreads || detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (!options.maxThreads || range.size() == 1 ||
+      detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
     return;
   }
@@ -344,7 +362,11 @@ void parallel_for(
     const ChunkedRange& range,
     F&& f,
     ParForOptions options = {}) {
-  if (!options.maxThreads || detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
+  if (range.size() == 0) {
+    return;
+  }
+  if (!options.maxThreads || range.size() == 1 ||
+      detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
     return;
@@ -452,9 +474,12 @@ void parallel_for(
  **/
 template <typename TaskSetT, typename F>
 void parallel_for(TaskSetT& taskSet, size_t start, size_t end, F&& f, ParForOptions options = {}) {
+  auto range = options.defaultChunking == ParForOptions::kStatic
+      ? ChunkedRange(start, end, ChunkedRange::Static())
+      : ChunkedRange(start, end, ChunkedRange::Auto());
   parallel_for(
       taskSet,
-      ChunkedRange(start, end, ChunkedRange::Auto()),
+      range,
       [f = std::move(f)](size_t s, size_t e) {
         for (size_t i = s; i < e; ++i) {
           f(i);
@@ -506,11 +531,14 @@ void parallel_for(
     size_t end,
     F&& f,
     ParForOptions options = {}) {
+  auto range = options.defaultChunking == ParForOptions::kStatic
+      ? ChunkedRange(start, end, ChunkedRange::Static())
+      : ChunkedRange(start, end, ChunkedRange::Auto());
   parallel_for(
       taskSet,
       states,
       defaultState,
-      ChunkedRange(start, end, ChunkedRange::Auto()),
+      range,
       [f = std::move(f)](auto& state, size_t s, size_t e) {
         for (size_t i = s; i < e; ++i) {
           f(state, i);
