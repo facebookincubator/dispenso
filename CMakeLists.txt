@@ -1,51 +1,28 @@
 cmake_minimum_required(VERSION 3.12)
-project(Dispenso VERSION 0.1.0)
+project(
+  Dispenso
+  VERSION 0.1.0
+  DESCRIPTION "Dispenso is a library for working with sets of parallel tasks"
+  LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
-#TODO: Fix windows build
+# Main project setup
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if (WIN32)
-#set(CMAKE_TOOLCHAIN_FILE "../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake")
-add_compile_definitions(NOMINMAX)
-endif (WIN32)
+  option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
-#normally compiles with 14 but MSVC requeired 17
-if (WIN32)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../thirdparty/vcpkg/installed/x64-windows-static/share/ ${CMAKE_PREFIX_PATH}")
-else (WIN32)
-set(CMAKE_CXX_STANDARD 14)
-endif (WIN32)
+  # Windows-specific
+  if(WIN32)
+    add_compile_definitions(NOMINMAX)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
+  endif()
+endif()
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-if (WIN32)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-endif (WIN32)
-
-# Setup VCPKG for windows
-if (WIN32)
-set(VCPKG_TARGET_ARCHITECTURE x64)
-set(VCPKG_CRT_LINKAGE static)
-set(VCPKG_LIBRARY_LINKAGE static)
-endif (WIN32)
-
-# Add front most directories to include path
-include_directories(./)
-include_directories(./dispenso/)
-include_directories(./dispenso/third-party/moodycamel/)
-
-############# Libraries
+###########################################################
+# Targets
 add_subdirectory(dispenso)
 
 set(DISPENSO_BUILD_TESTS OFF CACHE BOOL "Should tests be built?")
@@ -54,10 +31,10 @@ set(DISPENSO_BUILD_BENCHMARKS OFF CACHE BOOL "Should benchmarks be built?")
 if(DISPENSO_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
-endif (DISPENSO_BUILD_TESTS)
+endif()
 
 if(DISPENSO_BUILD_BENCHMARKS)
   # Sadly any given release of folly seems to have some problem or another.  Leave disabled by default.
   set(BENCHMARK_WITHOUT_FOLLY ON CACHE BOOL "Should folly benchmarks be disabled?")
   add_subdirectory(benchmarks)
-endif (DISPENSO_BUILD_BENCHMARKS)
+endif()

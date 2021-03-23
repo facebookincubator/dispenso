@@ -1,13 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 
-############# Libraries
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cpp)
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS *.h)
 
-file(GLOB SRC_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/dispenso/*.cpp ${PROJECT_SOURCE_DIR}/dispenso/detail/*.cpp)
-file(GLOB HDR_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/dispenso/*.h ${PROJECT_SOURCE_DIR}/dispenso/detail/*.h ${PROJECT_SOURCE_DIR}/dispenso/third-party/moodycamel/*.h)
+add_library(dispenso ${SOURCES} ${HEADERS})
 
-add_library(
-  dispenso
-  ${HDR_FILES}
-  ${SRC_FILES}
-  )
+target_include_directories(dispenso PUBLIC .. third-party/moodycamel)
 
+target_compile_features(dispenso PUBLIC cxx_std_14)

@@ -33,23 +33,26 @@ class ParForRecursion {
 class PerPoolPerThreadInfo {
  public:
   static void registerPool(void* pool) {
-    info_.pool = pool;
+    info().pool = pool;
   }
 
   static bool isParForRecursive(void* pool) {
-    return (!info_.pool || info_.pool == pool) && info_.parForRecursionLevel > 0;
+    return (!info().pool || info().pool == pool) && info().parForRecursionLevel > 0;
   }
 
   static bool isPoolRecursive(void* pool) {
-    return info_.pool == pool;
+    return info().pool == pool;
   }
 
   static ParForRecursion parForRecurse() {
-    return ParForRecursion(info_.parForRecursionLevel);
+    return ParForRecursion(info().parForRecursionLevel);
   }
 
  private:
-  static DISPENSO_THREAD_LOCAL PerThreadInfo info_;
+  static PerThreadInfo& info() {
+    static DISPENSO_THREAD_LOCAL PerThreadInfo perThreadInfo;
+    return perThreadInfo;
+  }
 };
 
 } // namespace detail
