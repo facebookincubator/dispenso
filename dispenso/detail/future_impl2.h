@@ -5,6 +5,7 @@
 
 namespace dispenso {
 namespace detail {
+
 template <typename Result>
 template <typename RetResult, typename F, typename Schedulable>
 FutureImplBase<RetResult>* FutureBase<Result>::thenImpl(

@@ -332,11 +332,15 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 template <size_t kBufferSize, typename F, typename Result>
 class FutureImplSmall : public FutureImplBase<Result> {
  public:
-  FutureImplSmall(F&& f) : func_(std::move(f)) {}
+  FutureImplSmall(F&& f) {
+    new (func_) F(std::move(f));
+  }
 
  protected:
   void runFunc() override {
-    this->runToResult(func_);
+    F* f = reinterpret_cast<F*>(func_);
+    this->runToResult(*f);
+    f->~F();
   }
   void dealloc() override {
     this->~FutureImplSmall();
@@ -346,7 +350,7 @@ class FutureImplSmall : public FutureImplBase<Result> {
   ~FutureImplSmall() override = default;
 
  private:
-  F func_;
+  alignas(F) char func_[sizeof(F)];
 };
 
 template <size_t kBufferSize, typename Result>
@@ -364,11 +368,15 @@ class FutureImplSmall<kBufferSize, void, Result> : public FutureImplBase<Result>
 template <typename F, typename Result>
 class FutureImplAlloc : public FutureImplBase<Result> {
  public:
-  FutureImplAlloc(F&& f) : func_(std::move(f)) {}
+  FutureImplAlloc(F&& f) {
+    new (func_) F(std::move(f));
+  }
 
  protected:
   void runFunc() override {
-    this->runToResult(func_);
+    F* f = reinterpret_cast<F*>(func_);
+    this->runToResult(*f);
+    f->~F();
   }
   void dealloc() override {
     this->~FutureImplAlloc();
@@ -378,7 +386,7 @@ class FutureImplAlloc : public FutureImplBase<Result> {
   ~FutureImplAlloc() override = default;
 
  private:
-  F func_;
+  alignas(F) char func_[sizeof(F)];
 };
 
 template <typename Result>
@@ -535,7 +543,13 @@ class FutureBase {
   }
 
   void move(FutureBase&& f) noexcept {
-    std::swap(f.impl_, impl_);
+    if (impl_ == f.impl_) {
+      return;
+    } else if (impl_) {
+      impl_->decRefCountMaybeDestroy();
+    }
+    impl_ = f.impl_;
+    f.impl_ = nullptr;
   }
   void copy(const FutureBase& f) {
     if (impl_ != f.impl_) {

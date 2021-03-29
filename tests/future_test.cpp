@@ -486,6 +486,11 @@ TEST(Future, ImmediateInvoker) {
   dispenso::Future<int> future([]() { return 333; }, dispenso::kImmediateInvoker);
   EXPECT_TRUE(future.is_ready());
   EXPECT_EQ(333, future.get());
+
+  int val = 5;
+  dispenso::Future<void> vfuture([&val]() { val = 7; }, dispenso::kImmediateInvoker);
+  EXPECT_TRUE(vfuture.is_ready());
+  EXPECT_EQ(7, val);
 }
 
 TEST(Future, NewThreadInvoker) {
@@ -834,4 +839,183 @@ TEST(Future, ConcurrentTaskSetWaitImpliesWhenAllFinished) {
 
   taskSet.wait();
   EXPECT_TRUE(result.is_ready());
+}
+
+TEST(Future, Copy) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+
+    const std::shared_ptr<int>& sp2 = fut.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    auto fut2 = fut;
+
+    const std::shared_ptr<int>& sp2 = fut2.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    decltype(fut) fut2;
+    fut2 = fut;
+
+    const std::shared_ptr<int>& sp2 = fut2.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+}
+
+TEST(Future, Move) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+
+    const std::shared_ptr<int>& sp2 = fut.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    auto fut2 = std::move(fut);
+
+    EXPECT_FALSE(fut.valid());
+
+    const std::shared_ptr<int>& sp2 = fut2.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    decltype(fut) fut2;
+    fut2 = std::move(fut);
+
+    EXPECT_FALSE(fut.valid());
+
+    const std::shared_ptr<int>& sp2 = fut2.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    decltype(fut) fut2;
+    fut2 = std::move(fut);
+
+    EXPECT_FALSE(fut.valid());
+
+    const std::shared_ptr<int>& sp2 = fut2.get();
+    EXPECT_EQ(*sp2, 5);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+
+  EXPECT_EQ(sp.use_count(), 1);
+}
+
+TEST(Future, ThenRefCountImmediate) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    fut = fut.then(
+        [](auto&& prev) {
+          auto sp2 = prev.get();
+          *sp2 = 7;
+          return sp2;
+        },
+        dispenso::kImmediateInvoker);
+
+    const std::shared_ptr<int>& sp3 = fut.get();
+    EXPECT_EQ(*sp3, 7);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+}
+
+TEST(Future, MoveThenRefCountImmediate) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    auto fut = dispenso::make_ready_future(sp);
+    fut = std::move(fut).then(
+        [](auto&& prev) {
+          auto sp2 = prev.get();
+          *sp2 = 7;
+          return sp2;
+        },
+        dispenso::kImmediateInvoker);
+
+    const std::shared_ptr<int>& sp2 = fut.get();
+    EXPECT_EQ(*sp2, 7);
+    EXPECT_EQ(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+}
+
+TEST(Future, ThenRefCountThreadPool) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    dispenso::ThreadPool pool(1);
+    {
+      auto fut = dispenso::make_ready_future(sp);
+      fut = fut.then(
+          [](auto&& prev) {
+            auto sp2 = prev.get();
+            *sp2 = 7;
+            return sp2;
+          },
+          pool);
+
+      const std::shared_ptr<int>& sp3 = fut.get();
+      EXPECT_EQ(*sp3, 7);
+      EXPECT_EQ(sp.use_count(), 2);
+    }
+    // Warning, implementation detail :)
+    // At this point, it is possible that the second future still has a reference count > 0, as it
+    // is held in the OnceFunction submitted to the pool.  If the pool hasn't executed the
+    // OnceFunction yet, the sp.use_count() will be 2.  If it has, it will be 1.
+    EXPECT_LE(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
+}
+
+TEST(Future, MoveThenRefCountThreadPool) {
+  std::shared_ptr<int> sp = std::make_shared<int>(5);
+
+  {
+    dispenso::ThreadPool pool(1);
+    {
+      auto fut = dispenso::make_ready_future(sp);
+      fut = std::move(fut).then(
+          [](auto&& prev) {
+            auto sp2 = prev.get();
+            *sp2 = 7;
+            return sp2;
+          },
+          pool);
+
+      const std::shared_ptr<int>& sp2 = fut.get();
+      EXPECT_EQ(*sp2, 7);
+      EXPECT_EQ(sp.use_count(), 2);
+    }
+    // Warning, implementation detail :)
+    // At this point, it is possible that the second future still has a reference count > 0, as it
+    // is held in the OnceFunction submitted to the pool.  If the pool hasn't executed the
+    // OnceFunction yet, the sp.use_count() will be 2.  If it has, it will be 1.
+    EXPECT_LE(sp.use_count(), 2);
+  }
+  EXPECT_EQ(sp.use_count(), 1);
 }
