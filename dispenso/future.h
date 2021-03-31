@@ -559,6 +559,130 @@ inline Future<detail::ResultOf<F, Args...>> async(F&& f, Args&&... args) {
 }
 
 /**
+ * Invoke a functor through the specified dispenso thread pool.
+ *
+ * @param pool The ThreadPool to run the Future.
+ * @param policy The bitmask policy for when/how the functor can be invoked.
+ * <code>std::launch::async</code> will result in the functor being forced onto a ThreadPool work
+ * queue.  <code>std::launch::deferred</code> specifies that <code>Future::wait_for</code> and
+ * <code>Future::wait_until</code> may invoke the functor.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>>
+async(ThreadPool& pool, std::launch policy, F&& f, Args&&... args) {
+  return Future<detail::ResultOf<F, Args...>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...), pool, policy);
+}
+
+/**
+ * Invoke a functor through the specified dispenso thread pool.
+ *
+ * @param pool The ThreadPool to run the Future.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>> async(ThreadPool& pool, F&& f, Args&&... args) {
+  return ::dispenso::async(
+      pool, std::launch::deferred, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+/**
+ * Invoke a functor through the specified dispenso TaskSet.
+ *
+ * @param tasks The TaskSet to run the Future.
+ * @param policy The bitmask policy for when/how the functor can be invoked.
+ * <code>std::launch::async</code> will result in the functor being forced onto a ThreadPool work
+ * queue.  <code>std::launch::deferred</code> specifies that <code>Future::wait_for</code> and
+ * <code>Future::wait_until</code> may invoke the functor.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>>
+async(TaskSet& tasks, std::launch policy, F&& f, Args&&... args) {
+  return Future<detail::ResultOf<F, Args...>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...), tasks, policy);
+}
+
+/**
+ * Invoke a functor through the specified dispenso TaskSet.
+ *
+ * @param tasks The TaskSet to run the Future.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>> async(TaskSet& tasks, F&& f, Args&&... args) {
+  return ::dispenso::async(
+      tasks, std::launch::deferred, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+/**
+ * Invoke a functor through the specified dispenso ConcurrentTaskSet.
+ *
+ * @param tasks The ConcurrentTaskSet to run the Future.
+ * @param policy The bitmask policy for when/how the functor can be invoked.
+ * <code>std::launch::async</code> will result in the functor being forced onto a ThreadPool work
+ * queue.  <code>std::launch::deferred</code> specifies that <code>Future::wait_for</code> and
+ * <code>Future::wait_until</code> may invoke the functor.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>>
+async(ConcurrentTaskSet& tasks, std::launch policy, F&& f, Args&&... args) {
+  return Future<detail::ResultOf<F, Args...>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...), tasks, policy);
+}
+
+/**
+ * Invoke a functor through the specified dispenso ConcurrentTaskSet.
+ *
+ * @param tasks The ConcurrentTaskSet to run the Future.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>> async(ConcurrentTaskSet& tasks, F&& f, Args&&... args) {
+  return ::dispenso::async(
+      tasks, std::launch::deferred, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+/**
+ * Invoke a functor on a new thread.
+ *
+ * @param sched A NewThreadInvoker
+ * @param policy The bitmask policy for when/how the functor can be invoked.
+ * <code>std::launch::async</code> will result in the functor being forced onto a ThreadPool work
+ * queue.  <code>std::launch::deferred</code> specifies that <code>Future::wait_for</code> and
+ * <code>Future::wait_until</code> may invoke the functor.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>>
+async(NewThreadInvoker sched, std::launch policy, F&& f, Args&&... args) {
+  return Future<detail::ResultOf<F, Args...>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...), sched, policy);
+}
+
+/**
+ * Invoke a functor on a new thread.
+ *
+ * @param sched A NewThreadInvoker.
+ * @param f The functor to be passed, or a function to be executed
+ * @param args The remaining arguments that will be passed to <code>f</code>
+ **/
+template <class F, class... Args>
+inline Future<detail::ResultOf<F, Args...>> async(NewThreadInvoker sched, F&& f, Args&&... args) {
+  return ::dispenso::async(
+      sched, std::launch::deferred, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+/**
  * Make a <code>Future</code> in a ready state with the value passed into
  * <code>make_ready_future</code>
  *

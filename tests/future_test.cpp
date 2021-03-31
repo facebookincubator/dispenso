@@ -286,6 +286,201 @@ TEST(Future, AsyncNotAsync) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
+TEST(Future, AsyncSpecifyThreadPool) {
+  dispenso::ThreadPool pool(4);
+  int value = 0;
+  auto voidFuture = dispenso::async(pool, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture = dispenso::async(pool, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture = dispenso::async(pool, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotDeferredSpecifyThreadPool) {
+  dispenso::ThreadPool pool(4);
+  int value = 0;
+  auto voidFuture = dispenso::async(pool, dispenso::kNotDeferred, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture = dispenso::async(pool, dispenso::kNotDeferred, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture =
+      dispenso::async(pool, dispenso::kNotDeferred, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotAsyncSpecifyThreadPool) {
+  dispenso::ThreadPool pool(4);
+  int value = 0;
+  auto voidFuture = dispenso::async(pool, dispenso::kNotAsync, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture = dispenso::async(pool, dispenso::kNotAsync, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture = dispenso::async(pool, dispenso::kNotAsync, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncSpecifyNewThread) {
+  int value = 0;
+  auto voidFuture = dispenso::async(dispenso::kNewThreadInvoker, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture = dispenso::async(dispenso::kNewThreadInvoker, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture =
+      dispenso::async(dispenso::kNewThreadInvoker, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotDeferredSpecifyNewThread) {
+  int value = 0;
+  auto voidFuture = dispenso::async(
+      dispenso::kNewThreadInvoker, dispenso::kNotDeferred, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture =
+      dispenso::async(dispenso::kNewThreadInvoker, dispenso::kNotDeferred, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture = dispenso::async(
+      dispenso::kNewThreadInvoker, dispenso::kNotDeferred, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotAsyncSpecifyNewThread) {
+  int value = 0;
+  auto voidFuture =
+      dispenso::async(dispenso::kNewThreadInvoker, dispenso::kNotAsync, [&value]() { value = 66; });
+  voidFuture.get();
+  EXPECT_EQ(66, value);
+
+  auto intFuture =
+      dispenso::async(dispenso::kNewThreadInvoker, dispenso::kNotAsync, []() { return 77; });
+  EXPECT_EQ(77, intFuture.get());
+
+  auto refFuture = dispenso::async(
+      dispenso::kNewThreadInvoker, dispenso::kNotAsync, [&value]() -> int& { return value; });
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncSpecifyTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, []() { return 77; });
+  auto refFuture = dispenso::async(tasks, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotDeferredSpecifyTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, dispenso::kNotDeferred, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, dispenso::kNotDeferred, []() { return 77; });
+  auto refFuture =
+      dispenso::async(tasks, dispenso::kNotDeferred, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotAsyncSpecifyTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, dispenso::kNotAsync, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, dispenso::kNotAsync, []() { return 77; });
+  auto refFuture =
+      dispenso::async(tasks, dispenso::kNotAsync, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncSpecifyConcurrentTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, []() { return 77; });
+  auto refFuture = dispenso::async(tasks, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotDeferredSpecifyConcurrentTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, dispenso::kNotDeferred, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, dispenso::kNotDeferred, []() { return 77; });
+  auto refFuture =
+      dispenso::async(tasks, dispenso::kNotDeferred, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
+TEST(Future, AsyncNotAsyncSpecifyConcurrentTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+  int value = 0;
+  auto voidFuture = dispenso::async(tasks, dispenso::kNotAsync, [&value]() { value = 66; });
+  auto intFuture = dispenso::async(tasks, dispenso::kNotAsync, []() { return 77; });
+  auto refFuture =
+      dispenso::async(tasks, dispenso::kNotAsync, [&value]() -> int& { return value; });
+  tasks.wait();
+  EXPECT_TRUE(voidFuture.is_ready());
+  EXPECT_TRUE(intFuture.is_ready());
+  EXPECT_TRUE(refFuture.is_ready());
+
+  EXPECT_EQ(66, value);
+  EXPECT_EQ(77, intFuture.get());
+  EXPECT_EQ(&value, &refFuture.get());
+}
+
 struct Node {
   int value;
   std::unique_ptr<Node> left, right;
