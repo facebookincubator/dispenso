@@ -36,6 +36,10 @@ class SmallBufferAllocator {
 
   static constexpr size_t kLogFactor = log2(kChunkSize);
 
+  // TODO(T88183021): Make these factors compile-time configurable.  For example, the current values
+  // can lead to megabytes of data being allocated, even if the alloctor is only used for one or two
+  // allocations.  Likely we can reduce these sizes by a decent factor without affecting benchmarks,
+  // and then reduce them even further as an option.
   static constexpr size_t kMallocBytes = (1 << 18) * kLogFactor;
   static constexpr size_t kIdealTLCacheBytes = (1 << 16) * kLogFactor;
   static constexpr size_t kIdealNumTLBuffers = kIdealTLCacheBytes / kChunkSize;
@@ -198,4 +202,33 @@ DISPENSO_THREAD_LOCAL size_t SmallBufferAllocator<kChunkSize>::tlCount_ = 0;
 
 template <size_t kChunkSize>
 std::atomic<uint32_t> SmallBufferAllocator<kChunkSize>::backingStoreLock_(0);
+
+namespace detail {
+// Set a standard for the maximum chunk size for use within dispenso.  Diminishing returns after a
+// certain size, and each new pool has it's own memory overhead.
+constexpr size_t kMaxSmallBufferSize = 256;
+
+// Within dispenso, enable the user to disable use of SmallBufferAllocator.  Some small embedded
+// applications only submit a few closures concurrently, and SmallBufferAllocator is overkill.
+// Additionally, SmallBufferAllocator has large memory overhead in such environments (TODO to make
+// that better, but it will never be as lean as malloc/free).
+template <size_t kBlockSize>
+void* allocSmallBuffer() {
+#if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)
+  return alignedMalloc(kBlockSize, kBlockSize);
+#else
+  return SmallBufferAllocator<kBlockSize>::alloc();
+#endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
+}
+
+template <size_t kBlockSize>
+void deallocSmallBuffer(void* buf) {
+#if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)
+  alignedFree(buf);
+#else
+  SmallBufferAllocator<kBlockSize>::dealloc(reinterpret_cast<char*>(buf));
+#endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
+}
+} // namespace detail
+
 } // namespace dispenso

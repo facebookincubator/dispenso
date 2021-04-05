@@ -26,7 +26,7 @@ class OnceCallableImpl : public OnceCallable {
     // completely control our own polymorphic existence.  No need to make the virtual base class
     // destructor get called (optimization).
     this->OnceCallableImpl::~OnceCallableImpl();
-    SmallBufferAllocator<kBufferSize>::dealloc(reinterpret_cast<char*>(this));
+    deallocSmallBuffer<kBufferSize>(this);
   }
 
   ~OnceCallableImpl() override = default;
@@ -78,10 +78,10 @@ constexpr uint32_t nextPowerOfTwo(uint32_t v) {
 template <typename F>
 inline OnceCallable* createOnceCallable(F&& f) {
   using FNoRef = typename std::remove_reference<F>::type;
-  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(OnceCallableImpl<16, FNoRef>));
 
-  if (sizeof(OnceCallableImpl<kImplSize, FNoRef>) <= 256) {
-    return new (SmallBufferAllocator<kImplSize>::alloc())
+  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(OnceCallableImpl<16, FNoRef>));
+  if (sizeof(OnceCallableImpl<kImplSize, FNoRef>) <= kMaxSmallBufferSize) {
+    return new (allocSmallBuffer<kImplSize>())
         OnceCallableImpl<kImplSize, FNoRef>(std::forward<F>(f));
   }
 
