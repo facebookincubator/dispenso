@@ -1,9 +1,46 @@
 # Dispenso
-Dispenso is a library for working with sets of tasks.  It provides mechanisms for TaskSets, parallel for loops, etc...
+Dispenso is a library for working with sets of tasks.  It provides mechanisms for thread pools, task sets, parallel for loops, futures, pipelines, and more.
+
+## Comparison of dispenso vs other libraries
+### TBB
+TBB has significant overlap with dispenso, though TBB has more functionality, and is likely to continue having more utilities for some time.   We chose to build and use dispenso for a few primary reasons like
+1. TBB is built on older C++ standards, and doesn't deal well with compiler sanitizers
+2. TBB lacks an interface for futures
+3. We wanted to ensure we could control performance and availability on non-Intel hardware
+
+Dispenso is faster than TBB in some scenarios and slower in other scenarios.  For example, with parallel for loops, dispenso tends to be faster for small and medium loops, and on-par with TBB for large loops.  When many loops can run independently of one another, dispenso shines and can perform significantly better than TBB.  See the benchmarks (todo) for some concrete examples.
+
+### OpenMP
+OpenMP has very simple semantics for parallelizing simple for loops, but gets quite complex for more complicated loops and constructs.  OpenMP wasn't as portable in the past, though the number of compiler supporting it is increasing.  If not used carefully, nesting of OpenMP constructs inside of other threads (e.g. nested parallel for) can lead to large number of threads, which can exhaust machines.
+
+Performance-wise, dispenso tends to outperform simple OpenMP for loops for medium and large workloads, but OpenMP has a significant advantage for small loops.  This is because it has direct compiler support and can understand the cost of the code it is running.  This allows it to forgo running in parallel if the tradeoffs aren't worthwhile.
+
+### Folly
+Folly is a library from Facebook that has several concurrency utilities including thread pools and futures.  The library has very good support for new C++ coroutines functionality, and makes writing asynchronous code (e.g. I/O) easy and performant.  Folly as a library can be tricky to work with.  For example, the forward/backward compatibility of code isn't a specific goal of the project.
+
+Folly does not have a parallel loop concept, nor task sets and parallel pipelines.  When comparing Folly's futures against dispenso's, dispenso tries to maintain an API that is closely matched to a combination of std::experimental::future and std::experimental::shared_future (dispenso's futures are all shared).  Additionally, for compute-bound applications, dispenso's futures tend to be much faster and lighter-weight than Folly's.
+
+### Grand central dispatch, new std C++ parallelism, others
+We haven't done a strong comparison vs these other mechanisms.  GCD is an Apple technology used by many people for Mac and iOS platforms, and there are ports to other platforms (though the mechanism for submitting closures is different).  Much of the C++ parallel algorithms work is still TBD, but we would be very interested to enable dispenso to be a basis for parallelization of those algorithms.  Additionally, we have interest in enabling dispenso to back the new coroutines interface.  We'd be interested in any contributions people would like to make around benchmarking/summarizing other task parallelism libraries, and also integration with C++ parallel algorithms and coroutines.
+
+## When (currently) *not* to use dispenso
+Dispenso isn't really designed for high-latency task offload, it is for computation.  Using the thread pool for networking, disk, or in cases with frequent TLB misses (really any scenario with kernel context switches) may result in poor performance.
+
+If working with futures, `dispenso::Future` can be used with `dispeno::NewThreadInvoker`, which should be roughly equivalent with std::future performance.
+
+If you need async I/O, Folly is likely a good choice (though it still doesn't fix e.g. TLB misses).
+
+## Examples
+(todo)
 
 ## TODO
 
-Find a more streamlined approach to obtaining and including dependencies.
+* Find a more streamlined approach to obtaining and including dependencies.  
+* Add documentation of the benchmark results, and also some examples in the example section.
+* GitHub Actions or CircleCI continuous integration testing for linux, mac, windows
+* Remove legacy build scripts
+* Push to Open Source
+
 
 # Building dispenso
 
@@ -80,7 +117,7 @@ Not currently supported.
 
 # Known issues
 
-Currently running tests on Windows via `ctest` exhibits failures for Visual Studio 2019, only when building shared dlls.  It appears that the test programs segfault after all tests complete with PASS. 
+Currently running tests on Windows via `ctest` exhibits failures for Visual Studio 2019, only when building shared dlls.  It appears that the test programs segfault after all tests complete with PASS (after exiting main). 
 
 Visual Studio 2017 works fine.  Static libs also work fine.  Also running the tests standalone outside of `ctest` works fine.  Understanding this problem is a work in progress. 
 
