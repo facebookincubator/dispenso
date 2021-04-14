@@ -12,7 +12,7 @@
 #include <iostream>
 #include <thread>
 
-#include <benchmark/benchmark.h>
+#include "benchmark_common.h"
 
 inline std::vector<int> pow2HalfStepThreads() {
   const int kRunningThreads = std::thread::hardware_concurrency();

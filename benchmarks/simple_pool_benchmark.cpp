@@ -44,7 +44,7 @@ void BM_dispenso(benchmark::State& state) {
   const int num_elements = state.range(1);
   dispenso::ThreadPool pool(num_threads);
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     for (int i = 0; i < num_elements; ++i) {
       auto* work = g_work;
@@ -59,7 +59,7 @@ void BM_tbb(benchmark::State& state) {
   const int num_elements = state.range(1);
   tbb::task_scheduler_init initsched(num_threads);
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
       auto* work = g_work;
@@ -73,7 +73,7 @@ void BM_tbb2(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
@@ -112,7 +112,7 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
 
   startRusage();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     Recurse rec;
@@ -131,7 +131,7 @@ void BM_tbb_very_idle(benchmark::State& state) {
 
   startRusage();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     g.run([]() {});
@@ -148,7 +148,7 @@ void BM_dispenso2(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     dispenso::ThreadPool pool(num_threads);
     for (int i = 0; i < num_elements; ++i) {
       pool.schedule([&pool, num_elements]() {
@@ -184,7 +184,7 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
 
   startRusage();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     dispenso::ThreadPool pool(num_threads);
     Recurse rec;
     rec.i = 0;
@@ -201,7 +201,7 @@ void BM_dispenso_very_idle(benchmark::State& state) {
   const int num_threads = state.range(0);
   startRusage();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     dispenso::ThreadPool pool(num_threads);
     pool.schedule([]() {});
     std::this_thread::sleep_for(100ms);

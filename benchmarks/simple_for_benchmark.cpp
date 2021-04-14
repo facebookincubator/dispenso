@@ -47,7 +47,7 @@ void BM_serial(benchmark::State& state) {
   std::vector<int> output(num_elements, 0);
   auto& input = getInputs(num_elements);
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     for (size_t i = 0; i < num_elements; ++i) {
       output[i] = input[i] * input[i] - 3 * input[i];
     }
@@ -72,7 +72,7 @@ void BM_dispenso(benchmark::State& state) {
   dispenso::ThreadPool pool(num_threads);
 
   auto& input = getInputs(num_elements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     dispenso::parallel_for(tasks, 0, num_elements, [&input, &output](size_t i) {
       output[i] = input[i] * input[i] - 3 * input[i];
@@ -90,7 +90,7 @@ void BM_omp(benchmark::State& state) {
   omp_set_num_threads(num_threads);
 
   auto& input = getInputs(num_elements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
 #pragma omp parallel for
     for (int i = 0; i < num_elements; ++i) {
       output[i] = input[i] * input[i] - 3 * input[i];
@@ -108,7 +108,7 @@ void BM_tbb(benchmark::State& state) {
   std::vector<int> output(num_elements, 0);
 
   auto& input = getInputs(num_elements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_scheduler_init initsched(num_threads);
 
     tbb::parallel_for(

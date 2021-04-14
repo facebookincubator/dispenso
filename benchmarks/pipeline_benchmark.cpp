@@ -9,8 +9,9 @@
 #include <iostream>
 #include <random>
 
-#include <benchmark/benchmark.h>
 #include <dispenso/pipeline.h>
+
+#include "benchmark_common.h"
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/pipeline.h"
@@ -99,7 +100,7 @@ void checkResults(const std::vector<std::unique_ptr<uint8_t[]>>& results) {
 }
 
 void BM_serial(benchmark::State& state) {
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     runSerial();
   }
 }
@@ -128,7 +129,7 @@ void BM_dispenso(benchmark::State& state) {
 
   (void)dispenso::globalThreadPool();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     runDispenso(results);
   }
 
@@ -163,7 +164,7 @@ void BM_dispenso_par(benchmark::State& state) {
 
   (void)dispenso::globalThreadPool();
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     runDispensoPar(results);
   }
 
@@ -203,7 +204,7 @@ void runTBB(std::vector<std::unique_ptr<uint8_t[]>>& results) {
 void BM_tbb(benchmark::State& state) {
   std::vector<std::unique_ptr<uint8_t[]>> results;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     runTBB(results);
   }
 
@@ -242,7 +243,7 @@ void runTBBPar(std::vector<std::unique_ptr<uint8_t[]>>& results) {
 void BM_tbb_par(benchmark::State& state) {
   std::vector<std::unique_ptr<uint8_t[]>> results;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     runTBBPar(results);
   }
 

@@ -69,7 +69,7 @@ void BM_serial(benchmark::State& state) {
   auto input = getInputs(numElements);
   uint64_t sum = 0;
   int foo = 0;
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     sum = 0;
     ++foo;
     for (size_t j = 0; j < numElements; ++j) {
@@ -110,7 +110,7 @@ void BM_dispenso(benchmark::State& state) {
   int foo = 0;
 
   auto input = getInputs(numElements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     std::vector<uint64_t> sums;
     sums.reserve(g_numThreads);
     ++foo;
@@ -155,7 +155,7 @@ void BM_omp(benchmark::State& state) {
   int foo = 0;
 
   auto input = getInputs(numElements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     sum = 0;
     ++foo;
 #pragma omp parallel for reduction(+ : sum)
@@ -189,7 +189,7 @@ void BM_tbb(benchmark::State& state) {
   int foo = 0;
 
   auto input = getInputs(numElements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     tbb::task_scheduler_init initsched(g_numThreads);
     ++foo;
     sum = tbb::parallel_reduce(
@@ -235,7 +235,7 @@ void BM_async(benchmark::State& state) {
   int foo = 0;
 
   auto input = getInputs(numElements);
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     std::vector<uint64_t> sums;
     ++foo;
 

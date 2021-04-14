@@ -7,8 +7,9 @@
 #include <deque>
 #include <functional>
 
-#include <benchmark/benchmark.h>
 #include <dispenso/once_function.h>
+
+#include "benchmark_common.h"
 
 constexpr size_t kSmallSize = 24;
 constexpr size_t kMediumSize = 120;
@@ -19,7 +20,7 @@ constexpr size_t kExtraLargeSize = 1000;
 
 template <typename ExeType, typename Func>
 void runMoveLoop(benchmark::State& state, Func f) {
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     ExeType t(f);
     ExeType o;
     for (int i = 0; i < 10; ++i) {
@@ -92,7 +93,7 @@ constexpr int kMediumLoopLen = 200;
 template <size_t kSize>
 void BM_queue_inline_function(benchmark::State& state) {
   FuncConsumer<Foo<kSize>> consumer;
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     for (int i = 0; i < kMediumLoopLen; ++i) {
       consumer.add(Foo<kSize>());
     }
@@ -103,7 +104,7 @@ void BM_queue_inline_function(benchmark::State& state) {
 template <size_t kSize>
 void BM_queue_std_function(benchmark::State& state) {
   FuncConsumer<std::function<void()>> consumer;
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     for (int i = 0; i < kMediumLoopLen; ++i) {
       consumer.add(Foo<kSize>());
     }
@@ -114,7 +115,7 @@ void BM_queue_std_function(benchmark::State& state) {
 template <size_t kSize>
 void BM_queue_once_function(benchmark::State& state) {
   FuncConsumer<dispenso::OnceFunction> consumer;
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     for (int i = 0; i < kMediumLoopLen; ++i) {
       consumer.add(Foo<kSize>());
     }

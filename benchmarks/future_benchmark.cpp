@@ -118,7 +118,7 @@ void BM_serial_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     root = serialTree(alloc, depth, 1, modulo);
@@ -157,7 +157,7 @@ void BM_std_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     root = stdTree(alloc, depth, 1, modulo);
@@ -200,7 +200,7 @@ void BM_dispenso_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     root = dispensoTree(alloc, depth, 1, modulo);
@@ -253,7 +253,7 @@ void BM_folly_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     follyTree(&follyExec, &root, &alloc, depth, 1, modulo).via(&follyExec).get();
@@ -302,7 +302,7 @@ void BM_taskset_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     dispensoTaskSetTree(tasks, &root, alloc, depth, 1, modulo);
@@ -352,7 +352,7 @@ void BM_tasksetopt_tree(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     dispensoTaskSetTreeOpt(tasks, &root, alloc, depth, 1, modulo);
@@ -401,7 +401,7 @@ void BM_dispenso_tree_when_all(benchmark::State& state) {
 
   size_t m = 0;
 
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     root = dispensoTreeWhenAll(alloc, depth, 1, modulo).get();

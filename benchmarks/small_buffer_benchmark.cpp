@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
-#include <benchmark/benchmark.h>
-
 #include <dispenso/small_buffer_allocator.h>
+
+#include "benchmark_common.h"
 
 constexpr size_t kSmallSize = 32;
 constexpr size_t kMediumSize = 128;
@@ -16,7 +16,7 @@ using dispenso::SmallBufferAllocator;
 template <typename Alloc, typename Free>
 void run(benchmark::State& state, Alloc alloc, Free dealloc) {
   std::vector<char*> ptrs(state.range(0));
-  for (auto _ : state) {
+  for (auto UNUSED_VAR : state) {
     for (char*& p : ptrs) {
       p = alloc();
     }
