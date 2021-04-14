@@ -7,9 +7,9 @@
 TEST(ConcurrentObjectArena, ParallelGrowBy) {
   dispenso::ConcurrentObjectArena<size_t> arena(16);
 
-  const size_t numTasks = 20;
-  const size_t numLoops = 100;
-  const size_t delta = 7;
+  constexpr size_t numTasks = 20;
+  constexpr size_t numLoops = 100;
+  constexpr size_t delta = 7;
 
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
 
