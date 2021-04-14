@@ -14,7 +14,7 @@ TEST(ConcurrentObjectArena, ParallelGrowBy) {
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
 
   for (size_t ti = 0; ti < numTasks; ++ti) {
-    taskSet.schedule([&arena, ti]() {
+    taskSet.schedule([=, &arena]() {
       for (size_t i = 0; i < numLoops; i++) {
         const size_t p = arena.grow_by(delta);
         for (size_t j = 0; j < delta; j++)
