@@ -66,11 +66,11 @@ struct ConcurrentObjectArena {
             ((1 << ::detail::log2i(minBuffSize)) == minBuffSize ? 0 : 1)),
         kBufferSize(1 << kLog2BuffSize),
         kMask((1 << kLog2BuffSize) - 1),
-        buffersSize_(0),
-        buffersPos_(0),
-        buffers_(nullptr),
+        pos_(0),
         allocatedSize_(0),
-        pos_(0) {
+        buffers_(nullptr),
+        buffersSize_(0),
+        buffersPos_(0) {
     allocateBuffer();
     allocatedSize_.store(kBufferSize, std::memory_order_relaxed);
   }
@@ -97,7 +97,6 @@ struct ConcurrentObjectArena {
    * @return index of the first element of the allocated group.
    **/
   Index grow_by(const Index delta) {
-    assert(delta < kBufferSize);
     Index newPos;
     Index oldPos = pos_.load(std::memory_order_relaxed);
 
@@ -107,14 +106,18 @@ struct ConcurrentObjectArena {
       if (oldPos + delta >= curSize) {
         const std::lock_guard<std::mutex> guard(resizeMutex_);
         curSize = allocatedSize_.load(std::memory_order_relaxed);
-        if (oldPos + delta >= curSize) {
+        while (oldPos + delta >= curSize) {
           allocateBuffer();
           allocatedSize_.store(curSize + kBufferSize, std::memory_order_release);
+          curSize = curSize + kBufferSize;
         }
       }
+
       newPos = oldPos + delta;
     } while (!std::atomic_compare_exchange_weak_explicit(
         &pos_, &oldPos, newPos, std::memory_order_release, std::memory_order_relaxed));
+
+    constructObjects(oldPos, oldPos + delta);
 
     return oldPos;
   }
@@ -152,13 +155,13 @@ struct ConcurrentObjectArena {
   }
 
   Index getBufferSize(const Index index) const {
-    const Index numBuffers = numBuffers();
-    assert(index < numBuffers);
+    const Index numBuffs = numBuffers();
+    assert(index < numBuffs);
 
-    if (index < numBuffers - 1)
+    if (index < numBuffs - 1)
       return kBufferSize;
     else
-      return pos_.load(std::memory_order_relaxed) - (kBufferSize * (numBuffers - 1));
+      return pos_.load(std::memory_order_relaxed) - (kBufferSize * (numBuffs - 1));
   }
 
  private:
@@ -188,16 +191,20 @@ struct ConcurrentObjectArena {
     }
   }
 
-  std::mutex resizeMutex_;
+  void constructObjects(const Index beginIndex, const Index endIndex) {
+    const Index startBuffer = beginIndex >> kLog2BuffSize;
+    const Index endBuffer = endIndex >> kLog2BuffSize;
 
-  std::atomic<Index> pos_;
-  std::atomic<Index> allocatedSize_;
+    Index bufStart = beginIndex & kMask;
+    for (Index b = startBuffer; b <= endBuffer; ++b) {
+      T* buf = buffers_.load(std::memory_order_relaxed)[b];
+      const Index bufEnd = b == endBuffer ? (endIndex & kMask) : kMask + 1;
+      for (Index i = bufStart; i < bufEnd; ++i)
+        new (buf + i) T();
 
-  std::atomic<T**> buffers_;
-  Index buffersSize_;
-  Index buffersPos_;
-  std::vector<T**> deleteLater_;
-
+      bufStart = 0;
+    }
+  }
   //
   //    kBufferSize = 2^kLog2BuffSize
   //    mask = 0b00011111
@@ -207,6 +214,16 @@ struct ConcurrentObjectArena {
   const Index kLog2BuffSize;
   const Index kBufferSize;
   const Index kMask;
+
+  std::mutex resizeMutex_;
+
+  std::atomic<Index> pos_;
+  std::atomic<Index> allocatedSize_;
+
+  std::atomic<T**> buffers_;
+  Index buffersSize_;
+  Index buffersPos_;
+  std::vector<T**> deleteLater_;
 };
 
 } // namespace dispenso
