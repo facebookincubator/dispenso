@@ -177,8 +177,8 @@ void resizeGlobalThreadPool(size_t numThreads);
 
 template <typename F>
 inline void ThreadPool::schedule(F&& f) {
-  size_t curWork = workRemaining_.load(std::memory_order_relaxed);
-  size_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
+  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
+  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
   quickLoadFactor += quickLoadFactor / 2;
   if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
       (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
