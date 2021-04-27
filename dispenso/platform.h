@@ -15,7 +15,7 @@
 
 namespace dispenso {
 
-#if _MSC_VER
+#if defined(_MSC_VER)
 using ssize_t = std::make_signed<std::size_t>::type;
 #endif
 
