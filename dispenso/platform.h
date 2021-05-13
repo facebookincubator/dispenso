@@ -39,7 +39,16 @@ constexpr size_t kCacheLineSize = 64;
 #error Supply lightweight thread-locals for this compiler.  Can define to thread_local if lightweight not available
 #endif
 
+#if (defined(__GNUC__) || defined(__clang__))
+#define DISPENSO_EXPECT(a, b) __builtin_expect(a, b)
+#else
+#define DISPENSO_EXPECT(a, b) a
+#endif
+
 namespace detail {
+
+template <typename T>
+struct alignas(kCacheLineSize) AlignedAtomic : public std::atomic<T*> {};
 
 inline void* alignedMalloc(size_t bytes, size_t alignment) {
   alignment = std::max(alignment, sizeof(uintptr_t));
@@ -60,6 +69,9 @@ inline void* alignedMalloc(size_t bytes) {
 }
 
 inline void alignedFree(void* ptr) {
+  if (!ptr) {
+    return;
+  }
   char* p = reinterpret_cast<char*>(ptr);
   uintptr_t recovered = *reinterpret_cast<uintptr_t*>(p - sizeof(uintptr_t));
   ::free(reinterpret_cast<void*>(recovered));
