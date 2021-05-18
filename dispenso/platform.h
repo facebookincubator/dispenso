@@ -15,6 +15,24 @@
 
 namespace dispenso {
 
+#if defined(DISPENSO_SHARED_LIB)
+#if defined _WIN32
+
+#if defined(DISPENSO_LIB_EXPORT)
+#define DISPENSO_DLL_ACCESS __declspec(dllexport)
+#else
+#define DISPENSO_DLL_ACCESS __declspec(dllimport)
+#endif // DISPENSO_LIB_EXPORT
+
+#elif defined(__clang__) || defined(__GNUC__)
+#define DISPENSO_DLL_ACCESS __attribute__((visibility("default")))
+#endif // PLATFORM
+#endif // DISPENSO_SHARED_LIB
+
+#if !defined(DISPENSO_DLL_ACCESS)
+#define DISPENSO_DLL_ACCESS
+#endif // DISPENSO_DLL_ACCESS
+
 #if defined(_MSC_VER)
 using ssize_t = std::make_signed<std::size_t>::type;
 #endif

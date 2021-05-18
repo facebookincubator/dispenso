@@ -122,7 +122,7 @@ class TaskSet {
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    **/
-  void wait();
+  DISPENSO_DLL_ACCESS void wait();
 
   /**
    * See if the currently scheduled functors can be completed while stealing and executing at most
@@ -137,7 +137,7 @@ class TaskSet {
    * @return <code>true</code> if all currently scheduled functors have been completed prior to
    * returning, and <code>false</code> otherwise.
    **/
-  bool tryWait(size_t maxToExecute);
+  DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
 
   /**
    * Get the number of threads backing the underlying thread pool.
@@ -169,7 +169,7 @@ class TaskSet {
   }
 
  private:
-  void trySetCurrentException();
+  DISPENSO_DLL_ACCESS void trySetCurrentException();
   void testAndResetException();
 
   alignas(kCacheLineSize) std::atomic<int32_t> outstandingTaskCount_{0};
@@ -274,7 +274,7 @@ class ConcurrentTaskSet {
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    **/
-  void wait();
+  DISPENSO_DLL_ACCESS void wait();
 
   /**
    * See if the currently scheduled functors can be completed while stealing and executing at most
@@ -289,7 +289,7 @@ class ConcurrentTaskSet {
    * @return <code>true</code> if all currently scheduled functors have been completed prior to
    * returning, and <code>false</code> otherwise.
    **/
-  bool tryWait(size_t maxToExecute);
+  DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
 
   /**
    * Get the number of threads backing the underlying thread pool.
@@ -321,7 +321,7 @@ class ConcurrentTaskSet {
   }
 
  private:
-  void trySetCurrentException();
+  DISPENSO_DLL_ACCESS void trySetCurrentException();
   void testAndResetException();
 
   bool tryExecuteNext() {

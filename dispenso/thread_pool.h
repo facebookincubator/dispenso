@@ -69,7 +69,7 @@ class alignas(kCacheLineSize) ThreadPool {
    *
    * @param n The number of threads in use after call completion
    **/
-  void resize(size_t n);
+  DISPENSO_DLL_ACCESS void resize(size_t n);
 
   /**
    * Get the number of threads backing the pool.  If called concurrently to <code>resize</code>, the
@@ -108,12 +108,12 @@ class alignas(kCacheLineSize) ThreadPool {
    * illegal to call the destructor while any other thread makes calls to the pool (as is generally
    * the case with C++ classes).
    **/
-  ~ThreadPool();
+  DISPENSO_DLL_ACCESS ~ThreadPool();
 
  private:
   void executeNext(OnceFunction work);
 
-  void threadLoop(std::atomic<bool>& running);
+  DISPENSO_DLL_ACCESS void threadLoop(std::atomic<bool>& running);
 
   bool tryExecuteNext();
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
@@ -164,14 +164,14 @@ class alignas(kCacheLineSize) ThreadPool {
  *
  * @return the global thread pool
  **/
-ThreadPool& globalThreadPool();
+DISPENSO_DLL_ACCESS ThreadPool& globalThreadPool();
 
 /**
  * Change the number of threads backing the global thread pool.
  *
  * @param numThreads The number of threads to back the global thread pool.
  **/
-void resizeGlobalThreadPool(size_t numThreads);
+DISPENSO_DLL_ACCESS void resizeGlobalThreadPool(size_t numThreads);
 
 // ----------------------------- Implementation details -------------------------------------
 

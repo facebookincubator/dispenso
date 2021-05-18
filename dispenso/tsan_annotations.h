@@ -28,17 +28,19 @@
 #endif // feature
 
 #if DISPENSO_HAS_TSAN
+#include <dispenso/platform.h>
 
 namespace dispenso {
 namespace detail {
 
-void annotateIgnoreWritesBegin(const char* f, int l);
-void annotateIgnoreWritesEnd(const char* f, int l);
-void annotateIgnoreReadsBegin(const char* f, int l);
-void annotateIgnoreReadsEnd(const char* f, int l);
-void annotateNewMemory(const char* f, int l, const volatile void* address, long size);
-void annotateHappensBefore(const char* f, int l, const volatile void* address);
-void annotateHappensAfter(const char* f, int l, const volatile void* address);
+DISPENSO_DLL_ACCESS void annotateIgnoreWritesBegin(const char* f, int l);
+DISPENSO_DLL_ACCESS void annotateIgnoreWritesEnd(const char* f, int l);
+DISPENSO_DLL_ACCESS void annotateIgnoreReadsBegin(const char* f, int l);
+DISPENSO_DLL_ACCESS void annotateIgnoreReadsEnd(const char* f, int l);
+DISPENSO_DLL_ACCESS void
+annotateNewMemory(const char* f, int l, const volatile void* address, long size);
+DISPENSO_DLL_ACCESS void annotateHappensBefore(const char* f, int l, const volatile void* address);
+DISPENSO_DLL_ACCESS void annotateHappensAfter(const char* f, int l, const volatile void* address);
 
 } // namespace detail
 } // namespace dispenso

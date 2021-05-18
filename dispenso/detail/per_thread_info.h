@@ -49,10 +49,7 @@ class PerPoolPerThreadInfo {
   }
 
  private:
-  static PerThreadInfo& info() {
-    static DISPENSO_THREAD_LOCAL PerThreadInfo perThreadInfo;
-    return perThreadInfo;
-  }
+  DISPENSO_DLL_ACCESS static PerThreadInfo& info();
 };
 
 } // namespace detail
