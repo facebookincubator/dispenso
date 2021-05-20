@@ -10,6 +10,7 @@
 #endif // C++17
 
 #include <dispenso/detail/completion_event_impl.h>
+#include <dispenso/detail/op_result.h>
 #include <dispenso/detail/result_of.h>
 #include <dispenso/task_set.h>
 
@@ -103,73 +104,6 @@ class LimitGatedScheduler {
     const bool unlimited_;
   };
   std::unique_ptr<Impl> impl_;
-};
-
-template <typename T>
-class OpResult {
- public:
-  OpResult() : ptr_(nullptr) {}
-
-  template <typename U>
-  OpResult(U&& u) : ptr_(new (buf_) T(std::forward<U>(u))) {}
-
-  OpResult(const OpResult<T>& oth) : ptr_(oth ? new (buf_) T(*oth.ptr_) : nullptr) {}
-
-  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {
-    oth.ptr_ = nullptr;
-  }
-
-  OpResult& operator=(const OpResult& oth) {
-    if (&oth == this) {
-      return *this;
-    }
-    if (ptr_) {
-      ptr_->~T();
-    }
-
-    if (oth) {
-      ptr_ = new (buf_) T(*oth.ptr_);
-    } else {
-      ptr_ = nullptr;
-    }
-    return *this;
-  }
-
-  OpResult& operator=(OpResult&& oth) {
-    if (&oth == this) {
-      return *this;
-    }
-    if (ptr_) {
-      ptr_->~T();
-    }
-
-    if (oth) {
-      ptr_ = new (buf_) T(std::move(*oth.ptr_));
-      oth.ptr_ = nullptr;
-    } else {
-      ptr_ = nullptr;
-    }
-
-    return *this;
-  }
-
-  ~OpResult() {
-    if (ptr_) {
-      ptr_->~T();
-    }
-  }
-
-  operator bool() const {
-    return ptr_;
-  }
-
-  T& value() {
-    return *ptr_;
-  }
-
- private:
-  alignas(T) char buf_[sizeof(T)];
-  T* ptr_;
 };
 
 template <typename F>
