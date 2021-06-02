@@ -260,7 +260,9 @@ class ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, false> {
   static constexpr size_t kMaxBuffers = detail::log2const(kMaxVectorSize / kMinBufferSize) + 1;
 
   ConVecBufferBase() : buffers_(alloc<detail::AlignedAtomic<T>>(kMaxBuffers)) {
-    std::memset(buffers_, 0, kMaxBuffers * sizeof(detail::AlignedAtomic<T>));
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      buffers_[i].store(nullptr, std::memory_order_relaxed);
+    }
   }
 
   ~ConVecBufferBase() {
@@ -269,7 +271,9 @@ class ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, false> {
 
   ConVecBufferBase(ConVecBufferBase&& other)
       : buffers_(std::exchange(other.buffers_, alloc<detail::AlignedAtomic<T>>(kMaxBuffers))) {
-    std::memset(other.buffers_, 0, kMaxBuffers * sizeof(detail::AlignedAtomic<T>));
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      other.buffers_[i].store(nullptr, std::memory_order_relaxed);
+    }
   }
 
   ConVecBufferBase& operator=(ConVecBufferBase&& other) {
@@ -288,7 +292,9 @@ class ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, true> {
   static constexpr size_t kMaxBuffers = detail::log2const(kMaxVectorSize / kMinBufferSize) + 1;
 
   ConVecBufferBase() {
-    std::memset(buffers_, 0, kMaxBuffers * sizeof(detail::AlignedAtomic<T>));
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      buffers_[i].store(nullptr, std::memory_order_relaxed);
+    }
   }
   ConVecBufferBase(ConVecBufferBase&& other) {
     for (size_t i = 0; i < kMaxBuffers; ++i) {

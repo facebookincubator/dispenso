@@ -191,7 +191,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
     allowInline_ = allow;
   }
 
-  void setTaskSetCounter(std::atomic<int32_t>* tsc) {
+  void setTaskSetCounter(std::atomic<ssize_t>* tsc) {
     taskSetCounter_ = tsc;
   }
 
@@ -316,7 +316,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
   CompletionEventImpl status_{kNotStarted};
   std::atomic<uint32_t> refCount_{2};
-  std::atomic<int32_t>* taskSetCounter_{nullptr};
+  std::atomic<ssize_t>* taskSetCounter_{nullptr};
 
   std::atomic<ThenChain*> thenChain_{nullptr};
 
@@ -403,7 +403,7 @@ class FutureImplAlloc<void, Result> : public FutureImplBase<Result> {
 
 template <typename Result, typename F>
 inline FutureImplBase<Result>*
-createFutureImpl(F&& f, bool allowInline, std::atomic<int32_t>* taskSetCounter) {
+createFutureImpl(F&& f, bool allowInline, std::atomic<ssize_t>* taskSetCounter) {
   using FNoRef = typename std::remove_reference<F>::type;
   constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, FNoRef, Result>));
   using SmallT = FutureImplSmall<kImplSize, FNoRef, Result>;

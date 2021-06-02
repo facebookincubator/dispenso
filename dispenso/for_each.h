@@ -63,9 +63,9 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
     return;
   }
 
-  size_t numThreads = std::min<size_t>(tasks.numPoolThreads(), options.maxThreads);
+  ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads(), options.maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<size_t>(numThreads, n);
+  numThreads = std::min<ssize_t>(numThreads, n);
 
   auto chunking = detail::staticChunkSize(n, numThreads);
   size_t chunkSize = chunking.ceilChunkSize;
@@ -73,9 +73,9 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
   bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
 
   // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  size_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+  ssize_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
 
-  size_t t;
+  ssize_t t;
   for (t = 0; t < firstLoopLen; ++t) {
     Iter next = start;
     std::advance(next, chunkSize);

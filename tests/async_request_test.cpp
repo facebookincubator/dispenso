@@ -43,7 +43,7 @@ TEST(AsyncRequest, AsyncAsExpected) {
 
   int sum = 0;
   int sumExpected = 0;
-  for (size_t i = 0; i < 5000; ++i) {
+  for (int i = 0; i < 5000; ++i) {
     sumExpected += i;
 
     req.requestUpdate();

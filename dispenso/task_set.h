@@ -42,7 +42,7 @@ class TaskSet {
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
-  TaskSet(ThreadPool& p, int32_t stealingLoadMultiplier = 4)
+  TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier = 4)
       : pool_(p), token_(p.work_), taskSetLoadFactor_(stealingLoadMultiplier * p.numThreads()) {
 #if defined DISPENSO_DEBUG
     assert(stealingLoadMultiplier > 0);
@@ -82,7 +82,7 @@ class TaskSet {
 #else
           f();
 #endif // __cpp_exceptions
-        outstandingTaskCount_.fetch_add(-1, std::memory_order_release);
+        outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
       });
     }
   }
@@ -113,7 +113,7 @@ class TaskSet {
 #else
           f();
 #endif // __cpp_exceptions
-          outstandingTaskCount_.fetch_add(-1, std::memory_order_release);
+          outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
         },
         fq);
   }
@@ -144,7 +144,7 @@ class TaskSet {
    *
    * @return The number of threads in the pool.
    **/
-  size_t numPoolThreads() const {
+  ssize_t numPoolThreads() const {
     return pool_.numThreads();
   }
 
@@ -164,7 +164,7 @@ class TaskSet {
   ~TaskSet() {
     wait();
 #if defined DISPENSO_DEBUG
-    pool_.outstandingTaskSets_.fetch_add(-1, std::memory_order_release);
+    pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
 #endif
   }
 
@@ -172,10 +172,10 @@ class TaskSet {
   DISPENSO_DLL_ACCESS void trySetCurrentException();
   void testAndResetException();
 
-  alignas(kCacheLineSize) std::atomic<int32_t> outstandingTaskCount_{0};
+  alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
   moodycamel::ProducerToken token_;
-  const int32_t taskSetLoadFactor_;
+  const ssize_t taskSetLoadFactor_;
 #if defined(__cpp_exceptions)
   enum ExceptionState { kUnset, kSetting, kSet };
   std::atomic<ExceptionState> guardException_{kUnset};
@@ -207,7 +207,7 @@ class ConcurrentTaskSet {
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
-  ConcurrentTaskSet(ThreadPool& pool, int32_t stealingLoadMultiplier = 4)
+  ConcurrentTaskSet(ThreadPool& pool, ssize_t stealingLoadMultiplier = 4)
       : pool_(pool), taskSetLoadFactor_(stealingLoadMultiplier * pool.numThreads()) {
 #if defined DISPENSO_DEBUG
     assert(stealingLoadMultiplier > 0);
@@ -265,7 +265,7 @@ class ConcurrentTaskSet {
 #else
           f();
 #endif // __cpp_exceptions
-          outstandingTaskCount_.fetch_add(-1, std::memory_order_release);
+          outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
         },
         fq);
   }
@@ -296,7 +296,7 @@ class ConcurrentTaskSet {
    *
    * @return The number of threads in the pool.
    **/
-  size_t numPoolThreads() const {
+  ssize_t numPoolThreads() const {
     return pool_.numThreads();
   }
 
@@ -316,7 +316,7 @@ class ConcurrentTaskSet {
   ~ConcurrentTaskSet() {
     wait();
 #if defined DISPENSO_DEBUG
-    pool_.outstandingTaskSets_.fetch_add(-1, std::memory_order_release);
+    pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
 #endif
   }
 
@@ -328,9 +328,9 @@ class ConcurrentTaskSet {
     return pool_.tryExecuteNext();
   }
 
-  std::atomic<int32_t> outstandingTaskCount_{0};
+  std::atomic<ssize_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
-  const int32_t taskSetLoadFactor_;
+  const ssize_t taskSetLoadFactor_;
 #if defined(__cpp_exceptions)
   enum ExceptionState { kUnset, kSetting, kSet };
   std::atomic<ExceptionState> guardException_{kUnset};

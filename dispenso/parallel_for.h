@@ -16,11 +16,21 @@
 #include <dispenso/task_set.h>
 
 namespace dispenso {
+
+/**
+ * Chunking strategy.  Typically if the cost of each loop iteration is roughly constant, kStatic
+ * load balancing is preferred.  Additionally, when making a non-waiting parallel_for call in
+ * conjunction with other parallel_for calls or with other task submissions to a TaskSet, some
+ * dynamic load balancing is automatically introduced, and selecting kStatic load balancing here can
+ * be better.  If the workload per iteration deviates a lot from constant, and some ranges may be
+ * much cheaper than others, select kAuto.
+ **/
+enum class ParForChunking { kStatic, kAuto };
+
 /**
  * A set of options to control parallel_for
  **/
 struct ParForOptions {
-  enum DefaultChunking { kStatic, kAuto };
   /**
    * The maximum number of threads to use.  This can be used to limit the number of threads below
    * the number associated with the TaskSet's thread pool.  Setting maxThreads to zero  will result
@@ -40,15 +50,8 @@ struct ParForOptions {
   /**
    * Specify whether default chunking should be static or auto (dynamic load balancing).  This is
    * used when invoking the version of parallel_for that takes index parameters (vs a ChunkedRange).
-   *
-   * Typically if the cost of each loop iteration is roughly constant, kStatic load balancing is
-   * preferred.  Additionally, when making a non-waiting parallel_for call in conjunction with other
-   * parallel_for calls or with other task submissions to a TaskSet, some dynamic load balancing is
-   * automatically introduced, and selecting kStatic load balancing here can be better.  If the
-   * workload per iteration deviates a lot from constant, and some ranges may be much cheaper than
-   * others, select kAuto.
    **/
-  DefaultChunking defaultChunking = kStatic;
+  ParForChunking defaultChunking = ParForChunking::kStatic;
 };
 
 /**
@@ -61,10 +64,11 @@ struct ParForOptions {
  * <code>parallel_for</code> calls that don't accept a ChunkedRange will create a ChunkedRange
  * internally using Auto chunking.
  **/
+template <typename IntegerT = ssize_t>
 struct ChunkedRange {
   struct Static {};
   struct Auto {};
-  static constexpr size_t kStatic = std::numeric_limits<size_t>::max();
+  static constexpr IntegerT kStatic = std::numeric_limits<IntegerT>::max();
 
   /**
    * Create a ChunkedRange with specific chunk size
@@ -73,14 +77,14 @@ struct ChunkedRange {
    * @param e The end of the range.
    * @param c The chunk size.
    **/
-  ChunkedRange(size_t s, size_t e, size_t c) : start(s), end(e), chunk(c) {}
+  ChunkedRange(IntegerT s, IntegerT e, IntegerT c) : start(s), end(e), chunk(c) {}
   /**
    * Create a ChunkedRange with chunk size equal to total items divided by number of threads.
    *
    * @param s The start of the range.
    * @param e The end of the range.
    **/
-  ChunkedRange(size_t s, size_t e, Static) : ChunkedRange(s, e, kStatic) {}
+  ChunkedRange(IntegerT s, IntegerT e, Static) : ChunkedRange(s, e, kStatic) {}
   /**
    * Create a ChunkedRange with chunk size determined automatically to enable some dynamic load
    * balancing.
@@ -88,27 +92,28 @@ struct ChunkedRange {
    * @param s The start of the range.
    * @param e The end of the range.
    **/
-  ChunkedRange(size_t s, size_t e, Auto) : ChunkedRange(s, e, 0) {}
+  ChunkedRange(IntegerT s, IntegerT e, Auto) : ChunkedRange(s, e, 0) {}
 
   bool isStatic() const {
     return chunk == kStatic;
   }
 
-  size_t size() const {
+  IntegerT size() const {
     return end - start;
   }
 
-  size_t calcChunkSize(size_t numLaunched, bool oneOnCaller) const {
-    size_t workingThreads = numLaunched + oneOnCaller;
+  template <typename OtherInt>
+  IntegerT calcChunkSize(OtherInt numLaunched, bool oneOnCaller) const {
+    IntegerT workingThreads = static_cast<IntegerT>(numLaunched) + oneOnCaller;
     if (workingThreads == 1) {
       return end - start;
     }
     if (!chunk) {
       // TODO(bbudge): play with different load balancing factors for auto.
-      // size_t dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
+      // IntegerT dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
       // cyclesPerIndex_));
-      constexpr size_t dynFactor = 16;
-      size_t chunks = dynFactor * workingThreads;
+      constexpr IntegerT dynFactor = 16;
+      IntegerT chunks = dynFactor * workingThreads;
       return (end - start + chunks) / chunks;
     } else if (chunk == kStatic) {
       // This should never be called.  The static distribution versions of the parallel_for
@@ -118,35 +123,64 @@ struct ChunkedRange {
     return chunk;
   }
 
-  size_t start;
-  size_t end;
-  size_t chunk;
+  IntegerT start;
+  IntegerT end;
+  IntegerT chunk;
 };
+
+/**
+ * Create a ChunkedRange with specified chunking strategy.
+ *
+ * @param start The start of the range.
+ * @param end The end of the range.
+ * @param chunking The strategy to use for chunking.
+ **/
+template <typename IntegerA, typename IntegerB>
+inline ChunkedRange<std::common_type_t<IntegerA, IntegerB>>
+makeChunkedRange(IntegerA start, IntegerB end, ParForChunking chunking = ParForChunking::kStatic) {
+  using IntegerT = std::common_type_t<IntegerA, IntegerB>;
+  return (chunking == ParForChunking::kStatic)
+      ? ChunkedRange<IntegerT>(start, end, typename ChunkedRange<IntegerT>::Static())
+      : ChunkedRange<IntegerT>(start, end, typename ChunkedRange<IntegerT>::Auto());
+}
+
+/**
+ * Create a ChunkedRange with specific chunk size
+ *
+ * @param start The start of the range.
+ * @param end The end of the range.
+ * @param chunkSize The chunk size.
+ **/
+template <typename IntegerA, typename IntegerB, typename IntegerC>
+inline ChunkedRange<std::common_type_t<IntegerA, IntegerB>>
+makeChunkedRange(IntegerA start, IntegerB end, IntegerC chunkSize) {
+  return ChunkedRange<std::common_type_t<IntegerA, IntegerB>>(start, end, chunkSize);
+}
 
 namespace detail {
 
-template <typename TaskSetT, typename F>
+template <typename TaskSetT, typename IntegerT, typename F>
 void parallel_for_staticImpl(
     TaskSetT& taskSet,
-    const ChunkedRange& range,
+    const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options) {
-  size_t numThreads = std::min<size_t>(taskSet.numPoolThreads(), options.maxThreads);
+  ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<size_t>(numThreads, range.size());
+  numThreads = std::min<ssize_t>(numThreads, range.size());
 
   auto chunking = detail::staticChunkSize(range.size(), numThreads);
-  size_t chunkSize = chunking.ceilChunkSize;
+  IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
 
   bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
 
   // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  size_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+  ssize_t firstLoopLen = static_cast<ssize_t>(chunking.transitionTaskIndex) - perfectlyChunked;
 
-  size_t start = range.start;
-  size_t t;
+  IntegerT start = range.start;
+  ssize_t t;
   for (t = 0; t < firstLoopLen; ++t) {
-    size_t next = start + chunkSize;
+    IntegerT next = start + chunkSize;
     taskSet.schedule([start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(start, next);
@@ -158,7 +192,7 @@ void parallel_for_staticImpl(
   chunkSize -= !perfectlyChunked;
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
-    size_t next = start + chunkSize;
+    IntegerT next = start + chunkSize;
     taskSet.schedule([start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(start, next);
@@ -179,35 +213,40 @@ void parallel_for_staticImpl(
   }
 }
 
-template <typename TaskSetT, typename F, typename StateContainer, typename StateGen>
+template <
+    typename TaskSetT,
+    typename IntegerT,
+    typename F,
+    typename StateContainer,
+    typename StateGen>
 void parallel_for_staticImpl(
     TaskSetT& taskSet,
     StateContainer& states,
     const StateGen& defaultState,
-    const ChunkedRange& range,
+    const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options) {
-  size_t numThreads = std::min<size_t>(taskSet.numPoolThreads(), options.maxThreads);
+  ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<size_t>(numThreads, range.size());
+  numThreads = std::min<ssize_t>(numThreads, range.size());
 
-  for (size_t i = 0; i < numThreads; ++i) {
+  for (ssize_t i = 0; i < numThreads; ++i) {
     states.emplace_back(defaultState());
   }
 
   auto chunking = detail::staticChunkSize(range.size(), numThreads);
-  size_t chunkSize = chunking.ceilChunkSize;
+  IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
 
   bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
 
   // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  size_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+  ssize_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
 
   auto stateIt = states.begin();
-  size_t start = range.start;
-  size_t t;
+  IntegerT start = range.start;
+  ssize_t t;
   for (t = 0; t < firstLoopLen; ++t) {
-    size_t next = start + chunkSize;
+    IntegerT next = start + chunkSize;
     taskSet.schedule([it = stateIt++, start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(*it, start, next);
@@ -219,7 +258,7 @@ void parallel_for_staticImpl(
   chunkSize -= !perfectlyChunked;
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
-    size_t next = start + chunkSize;
+    IntegerT next = start + chunkSize;
     taskSet.schedule([it = stateIt++, start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(*it, start, next);
@@ -251,8 +290,12 @@ void parallel_for_staticImpl(
  * <code>void(size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
-template <typename TaskSetT, typename F>
-void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOptions options = {}) {
+template <typename TaskSetT, typename IntegerT, typename F>
+void parallel_for(
+    TaskSetT& taskSet,
+    const ChunkedRange<IntegerT>& range,
+    F&& f,
+    ParForOptions options = {}) {
   if (range.size() == 0) {
     return;
   }
@@ -269,36 +312,36 @@ void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOpt
     return;
   }
 
-  const size_t N = taskSet.numPoolThreads();
+  const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
-  const size_t numToLaunch = std::min<size_t>(options.maxThreads, N - useCallingThread);
-  const size_t chunk = range.calcChunkSize(numToLaunch, useCallingThread);
+  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
+  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
 
   if (options.wait) {
-    alignas(kCacheLineSize) std::atomic<size_t> index(range.start);
+    alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);
     auto worker = [end = range.end, &index, f = std::move(f), chunk]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       while (true) {
-        size_t cur = index.fetch_add(chunk, std::memory_order_relaxed);
+        IntegerT cur = index.fetch_add(chunk, std::memory_order_relaxed);
         if (cur >= end) {
           break;
         }
-        f(cur, std::min<size_t>(cur + chunk, end));
+        f(cur, std::min<IntegerT>(cur + chunk, end));
       }
     };
 
     using Function = decltype(worker);
 
-    for (size_t i = 0; i < numToLaunch; ++i) {
+    for (ssize_t i = 0; i < numToLaunch; ++i) {
       taskSet.schedule(Function(worker));
     }
     worker();
     taskSet.wait();
   } else {
     struct Atomic {
-      Atomic(size_t i) : index(i) {}
+      Atomic(IntegerT i) : index(i) {}
       char buffer[kCacheLineSize];
-      std::atomic<size_t> index;
+      std::atomic<IntegerT> index;
       char buffer2[kCacheLineSize];
     };
     // TODO(bbudge): dispenso::make_shared?
@@ -306,17 +349,17 @@ void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOpt
     auto worker = [end = range.end, wrapper = std::move(wrapper), f, chunk]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       while (true) {
-        size_t cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
+        IntegerT cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
         if (cur >= end) {
           break;
         }
-        f(cur, std::min<size_t>(cur + chunk, end));
+        f(cur, std::min<IntegerT>(cur + chunk, end));
       }
     };
 
     using Function = decltype(worker);
 
-    for (size_t i = 0; i < numToLaunch; ++i) {
+    for (ssize_t i = 0; i < numToLaunch; ++i) {
       taskSet.schedule(Function(worker), ForceQueuingTag());
     }
   }
@@ -331,8 +374,8 @@ void parallel_for(TaskSetT& taskSet, const ChunkedRange& range, F&& f, ParForOpt
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
-template <typename F>
-void parallel_for(const ChunkedRange& range, F&& f, ParForOptions options = {}) {
+template <typename IntegerT, typename F>
+void parallel_for(const ChunkedRange<IntegerT>& range, F&& f, ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
   parallel_for(taskSet, range, std::forward<F>(f), options);
@@ -354,12 +397,17 @@ void parallel_for(const ChunkedRange& range, F&& f, ParForOptions options = {}) 
  * <code>void(State &s, size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
-template <typename TaskSetT, typename F, typename StateContainer, typename StateGen>
+template <
+    typename TaskSetT,
+    typename IntegerT,
+    typename F,
+    typename StateContainer,
+    typename StateGen>
 void parallel_for(
     TaskSetT& taskSet,
     StateContainer& states,
     const StateGen& defaultState,
-    const ChunkedRange& range,
+    const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options = {}) {
   if (range.size() == 0) {
@@ -378,56 +426,56 @@ void parallel_for(
     return;
   }
 
-  const size_t N = taskSet.numPoolThreads();
+  const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
-  const size_t numToLaunch = std::min<size_t>(options.maxThreads, N - useCallingThread);
-  const size_t chunk = range.calcChunkSize(numToLaunch, useCallingThread);
+  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
+  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
 
-  for (size_t i = 0; i < numToLaunch + useCallingThread; ++i) {
+  for (ssize_t i = 0; i < numToLaunch + useCallingThread; ++i) {
     states.emplace_back(defaultState());
   }
 
   if (options.wait) {
-    alignas(kCacheLineSize) std::atomic<size_t> index(range.start);
+    alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);
     auto worker = [end = range.end, &index, f, chunk](auto& s) {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
 
       while (true) {
-        size_t cur = index.fetch_add(chunk, std::memory_order_relaxed);
+        IntegerT cur = index.fetch_add(chunk, std::memory_order_relaxed);
         if (cur >= end) {
           break;
         }
-        f(s, cur, std::min<size_t>(cur + chunk, end));
+        f(s, cur, std::min<IntegerT>(cur + chunk, end));
       }
     };
 
     auto it = states.begin();
-    for (size_t i = 0; i < numToLaunch; ++i) {
+    for (ssize_t i = 0; i < numToLaunch; ++i) {
       taskSet.schedule([&s = *it++, worker]() { worker(s); });
     }
     worker(*it);
     taskSet.wait();
   } else {
     struct Atomic {
-      Atomic(size_t i) : index(i) {}
+      Atomic(IntegerT i) : index(i) {}
       char buffer[kCacheLineSize];
-      std::atomic<size_t> index;
+      std::atomic<IntegerT> index;
       char buffer2[kCacheLineSize];
     };
     auto wrapper = std::make_shared<Atomic>(range.start);
     auto worker = [end = range.end, wrapper = std::move(wrapper), f, chunk](auto& s) {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       while (true) {
-        size_t cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
+        IntegerT cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
         if (cur >= end) {
           break;
         }
-        f(s, cur, std::min<size_t>(cur + chunk, end));
+        f(s, cur, std::min<IntegerT>(cur + chunk, end));
       }
     };
 
     auto it = states.begin();
-    for (size_t i = 0; i < numToLaunch; ++i) {
+    for (ssize_t i = 0; i < numToLaunch; ++i) {
       taskSet.schedule([&s = *it++, worker]() { worker(s); }, ForceQueuingTag());
     }
   }
@@ -450,11 +498,11 @@ void parallel_for(
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
-template <typename F, typename StateContainer, typename StateGen>
+template <typename F, typename IntegerT, typename StateContainer, typename StateGen>
 void parallel_for(
     StateContainer& states,
     const StateGen& defaultState,
-    const ChunkedRange& range,
+    const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
@@ -472,16 +520,27 @@ void parallel_for(
  * <code>void(size_t index)</code>.
  * @param options See ParForOptions for details.
  **/
-template <typename TaskSetT, typename F>
-void parallel_for(TaskSetT& taskSet, size_t start, size_t end, F&& f, ParForOptions options = {}) {
-  auto range = options.defaultChunking == ParForOptions::kStatic
-      ? ChunkedRange(start, end, ChunkedRange::Static())
-      : ChunkedRange(start, end, ChunkedRange::Auto());
+template <
+    typename TaskSetT,
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+void parallel_for(
+    TaskSetT& taskSet,
+    IntegerA start,
+    IntegerB end,
+    F&& f,
+    ParForOptions options = {}) {
+  using IntegerT = std::common_type_t<IntegerA, IntegerB>;
+
+  auto range = makeChunkedRange(start, end, options.defaultChunking);
   parallel_for(
       taskSet,
       range,
-      [f = std::move(f)](size_t s, size_t e) {
-        for (size_t i = s; i < e; ++i) {
+      [f = std::move(f)](IntegerT s, IntegerT e) {
+        for (IntegerT i = s; i < e; ++i) {
           f(i);
         }
       },
@@ -498,8 +557,13 @@ void parallel_for(TaskSetT& taskSet, size_t start, size_t end, F&& f, ParForOpti
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
-template <typename F>
-void parallel_for(size_t start, size_t end, F&& f, ParForOptions options = {}) {
+template <
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+void parallel_for(IntegerA start, IntegerB end, F&& f, ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
   parallel_for(taskSet, start, end, std::forward<F>(f), options);
@@ -522,25 +586,32 @@ void parallel_for(size_t start, size_t end, F&& f, ParForOptions options = {}) {
  * <code>void(State &s, size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
-template <typename TaskSetT, typename F, typename StateContainer, typename StateGen>
+template <
+    typename TaskSetT,
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
 void parallel_for(
     TaskSetT& taskSet,
     StateContainer& states,
     const StateGen& defaultState,
-    size_t start,
-    size_t end,
+    IntegerA start,
+    IntegerB end,
     F&& f,
     ParForOptions options = {}) {
-  auto range = options.defaultChunking == ParForOptions::kStatic
-      ? ChunkedRange(start, end, ChunkedRange::Static())
-      : ChunkedRange(start, end, ChunkedRange::Auto());
+  using IntegerT = std::common_type_t<IntegerA, IntegerB>;
+  auto range = makeChunkedRange(start, end, options.defaultChunking);
   parallel_for(
       taskSet,
       states,
       defaultState,
       range,
-      [f = std::move(f)](auto& state, size_t s, size_t e) {
-        for (size_t i = s; i < e; ++i) {
+      [f = std::move(f)](auto& state, IntegerT s, IntegerT e) {
+        for (IntegerT i = s; i < e; ++i) {
           f(state, i);
         }
       },
@@ -565,12 +636,19 @@ void parallel_for(
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
-template <typename F, typename StateContainer, typename StateGen>
+template <
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
 void parallel_for(
     StateContainer& states,
     const StateGen& defaultState,
-    size_t start,
-    size_t end,
+    IntegerA start,
+    IntegerB end,
     F&& f,
     ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());

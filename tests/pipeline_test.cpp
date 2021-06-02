@@ -66,7 +66,7 @@ TEST(Pipeline, MultiStageSerial) {
       [&sum](auto num) { sum.fetch_add(num, std::memory_order_relaxed); });
 
   int actualSum = 0;
-  for (size_t i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; ++i) {
     if (i <= 2 || i >= 5) {
       actualSum += i * i + 5;
     }
@@ -146,7 +146,7 @@ TEST(Pipeline, SingleStageParallelPassPrebuiltStage) {
 }
 
 TEST(Pipeline, MultiStageGenIsParallel) {
-  constexpr size_t kNumInputs = 1000;
+  constexpr int kNumInputs = 1000;
   std::vector<int> inputs(kNumInputs);
   std::iota(inputs.begin(), inputs.end(), 0);
   std::atomic<int> sum(0);
@@ -172,7 +172,7 @@ TEST(Pipeline, MultiStageGenIsParallel) {
       [&sum](auto num) { sum.fetch_add(num, std::memory_order_relaxed); });
 
   int actualSum = 0;
-  for (size_t i = 0; i < kNumInputs; ++i) {
+  for (int i = 0; i < kNumInputs; ++i) {
     if (i <= 2 || i >= 5) {
       actualSum += i * i + 5;
     }

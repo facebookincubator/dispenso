@@ -50,8 +50,8 @@ class alignas(kCacheLineSize) ThreadPool {
    **/
   ThreadPool(size_t n, size_t poolLoadMultiplier = 32)
       : poolLoadMultiplier_(poolLoadMultiplier),
-        poolLoadFactor_(n * poolLoadMultiplier),
-        numThreads_(n) {
+        poolLoadFactor_(static_cast<ssize_t>(n * poolLoadMultiplier)),
+        numThreads_(static_cast<ssize_t>(n)) {
 #if defined DISPENSO_DEBUG
     assert(poolLoadMultiplier > 0);
 #endif // DISPENSO_DEBUG
@@ -69,7 +69,7 @@ class alignas(kCacheLineSize) ThreadPool {
    *
    * @param n The number of threads in use after call completion
    **/
-  DISPENSO_DLL_ACCESS void resize(size_t n);
+  DISPENSO_DLL_ACCESS void resize(ssize_t n);
 
   /**
    * Get the number of threads backing the pool.  If called concurrently to <code>resize</code>, the
@@ -77,7 +77,7 @@ class alignas(kCacheLineSize) ThreadPool {
    *
    * @return The current number of threads backing the pool.
    **/
-  size_t numThreads() const {
+  ssize_t numThreads() const {
     return numThreads_.load(std::memory_order_relaxed);
   }
 
@@ -145,7 +145,7 @@ class alignas(kCacheLineSize) ThreadPool {
   std::deque<PerThreadData> threads_;
   size_t poolLoadMultiplier_;
   std::atomic<ssize_t> poolLoadFactor_;
-  std::atomic<size_t> numThreads_;
+  std::atomic<ssize_t> numThreads_;
 
   moodycamel::ConcurrentQueue<OnceFunction> work_;
 

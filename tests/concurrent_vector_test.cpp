@@ -85,14 +85,14 @@ void indexCorrect(int num, CVec& vec) {
     vec.push_back(std::make_unique<int>(i));
   }
 
-  for (int index = 0; index < vec.size(); ++index) {
-    EXPECT_EQ(index, *vec[index]);
+  for (size_t index = 0; index < vec.size(); ++index) {
+    EXPECT_EQ(static_cast<int>(index), *vec[index]);
   }
 
   const auto& cvec = vec;
 
-  for (int index = 0; index < cvec.size(); ++index) {
-    EXPECT_EQ(index, *cvec[index]);
+  for (size_t index = 0; index < cvec.size(); ++index) {
+    EXPECT_EQ(static_cast<int>(index), *cvec[index]);
   }
 }
 
@@ -202,11 +202,11 @@ void copyConstructor(int num, CVec& vec) {
     newVec.push_back(std::make_unique<int>(i));
   }
 
-  size_t sum = 0;
+  int sum = 0;
   for (auto& v : newVec) {
     sum += *v;
   }
-  size_t maxV = 2 * num - 1;
+  int maxV = 2 * num - 1;
 
   EXPECT_EQ(sum, (maxV * (maxV + 1)) / 2);
 }
@@ -282,11 +282,11 @@ void copyOperator(int num, CVec& vec) {
     newVec.push_back(std::make_shared<int>(i));
   }
 
-  size_t sum = 0;
+  int sum = 0;
   for (auto& v : newVec) {
     sum += *v;
   }
-  size_t maxV = 2 * num - 1;
+  int maxV = 2 * num - 1;
 
   EXPECT_EQ(sum, (maxV * (maxV + 1)) / 2);
 }
@@ -347,7 +347,7 @@ void shrinkToFit(int num, CVec& vec) {
 
   EXPECT_EQ(vec.capacity(), vec.default_capacity());
 
-  for (size_t i = 0; i < num; ++i) {
+  for (int i = 0; i < num; ++i) {
     vec.push_back(std::make_unique<int>(i));
   }
 
@@ -358,7 +358,7 @@ void shrinkToFit(int num, CVec& vec) {
       2 * std::max<size_t>(dispenso::detail::nextPow2(vec.size() + 1), vec.default_capacity()))
       << "Num: " << num << " default: " << vec.default_capacity();
 
-  for (size_t i = 0; i < num / 2; ++i) {
+  for (int i = 0; i < num / 2; ++i) {
     vec.pop_back();
   }
 
@@ -819,8 +819,8 @@ TYPED_TEST(ConcurrentVectorTest, GrowBySquaredCorrectLargeP1) {
 template <typename CVec>
 void growByConcurrent(int num, int growBy, CVec& vec) {
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, num, dispenso::ChunkedRange::Static()),
-      [&vec, growBy](size_t i, size_t end) {
+      dispenso::makeChunkedRange(0, num, dispenso::ParForChunking::kStatic),
+      [&vec, growBy](int i, int end) {
         while (i + growBy <= end) {
           vec.grow_by_generator(growBy, [i]() mutable { return std::make_unique<int>(i++); });
           i += growBy;
@@ -830,7 +830,7 @@ void growByConcurrent(int num, int growBy, CVec& vec) {
 
   EXPECT_EQ(vec.size(), num);
 
-  std::vector<uint8_t> which(num);
+  std::vector<uint8_t> which(static_cast<size_t>(num));
   size_t idx = 0;
   for (auto& i : vec) {
     ++which[*i];
@@ -871,13 +871,13 @@ void assignThenPush(int num, CVec& vec) {
     vec.push_back(std::make_shared<int>(i));
   }
 
-  size_t result = 0;
+  int result = 0;
 
   for (auto& v : vec) {
     result += *v;
   }
 
-  size_t maxV = 2 * num - 1;
+  int maxV = 2 * num - 1;
 
   EXPECT_EQ(result, (maxV * (maxV + 1)) / 2);
 }
@@ -904,12 +904,12 @@ void at(int num, CVec& vec) {
     vec.push_back(std::make_unique<int>(i));
   }
 
-  size_t result = 0;
+  int result = 0;
   for (int i = 0; i < num; ++i) {
     result += *vec.at(i);
   }
 
-  size_t maxV = num - 1;
+  int maxV = num - 1;
 
   EXPECT_EQ(result, (maxV * (maxV + 1)) / 2);
 
@@ -917,7 +917,7 @@ void at(int num, CVec& vec) {
   bool caught = false;
   try {
     EXPECT_EQ(0, *vec.at(num));
-  } catch (const std::out_of_range& e) {
+  } catch (const std::out_of_range&) {
     caught = true;
   }
 
@@ -949,14 +949,14 @@ void resize(int num, CVec& vec) {
 
   vec.resize(num / 2);
 
-  size_t result = 0;
+  int result = 0;
   for (auto& v : vec) {
     if (v) {
       result += *v;
     }
   }
 
-  size_t maxV = num / 2 - 1;
+  int maxV = num / 2 - 1;
 
   EXPECT_EQ(result, (maxV * (maxV + 1)) / 2);
 
@@ -1105,8 +1105,8 @@ std::string printVec(const std::vector<int>& vec) {
 
 #define EXPECT_VEC_SUM(vec, num)                                                        \
   do {                                                                                  \
-    size_t maxV = (num)-1;                                                              \
-    size_t result = 0;                                                                  \
+    int maxV = (num)-1;                                                                 \
+    int result = 0;                                                                     \
     for (auto& v : vec) {                                                               \
       result += *v;                                                                     \
     }                                                                                   \
@@ -1116,8 +1116,8 @@ std::string printVec(const std::vector<int>& vec) {
 
 #define EXPECT_VEC_SUM_MINUS(vec, num, minus)                   \
   do {                                                          \
-    size_t maxV = (num)-1;                                      \
-    size_t result = 0;                                          \
+    int maxV = (num)-1;                                         \
+    int result = 0;                                             \
     for (auto& v : vec) {                                       \
       result += *v;                                             \
     }                                                           \
@@ -1400,14 +1400,14 @@ TYPED_TEST(ConcurrentVectorTest, InsertRangeLargeP1) {
 
 template <typename ContainerInit, typename ContainerPush>
 void parallelImplGrowBy(
-    size_t length,
-    size_t growBy,
+    int length,
+    int growBy,
     ContainerInit containerInit,
     ContainerPush containerPush) {
   auto values = containerInit();
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, length, dispenso::ChunkedRange::Static()),
-      [&values, containerPush, growBy](size_t i, size_t end) {
+      dispenso::makeChunkedRange(0, length, dispenso::ParForChunking::kStatic),
+      [&values, containerPush, growBy](int i, int end) {
         while (i + growBy <= end) {
           containerPush(values, i, i + growBy);
           i += growBy;

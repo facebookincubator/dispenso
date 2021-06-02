@@ -507,7 +507,7 @@ void parallelImplGrowBy(
   for (auto UNUSED_VAR : state) {
     values.clear();
     dispenso::parallel_for(
-        dispenso::ChunkedRange(0, kLength, dispenso::ChunkedRange::Static()),
+        dispenso::makeChunkedRange(0, kLength, dispenso::ParForChunking::kStatic),
         [&values, containerPush, growBy](size_t i, size_t end) {
           while (i + growBy <= end) {
             containerPush(values, i, i + growBy);
@@ -642,7 +642,7 @@ void parallelImplGrowByMax(
   for (auto UNUSED_VAR : state) {
     values.clear();
     dispenso::parallel_for(
-        dispenso::ChunkedRange(0, kLength, dispenso::ChunkedRange::Static()),
+        dispenso::makeChunkedRange(0, kLength, dispenso::ParForChunking::kStatic),
         [&values, containerPush](size_t i, size_t end) { containerPush(values, i, end); });
   }
 

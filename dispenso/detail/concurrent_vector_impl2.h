@@ -22,7 +22,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator++() {
     auto len = bucketEnd_ - bucketStart_;
     ++vb_;
     auto vb = getVecAndBucket();
-    len <<= vb.bucket > 1;
+    len <<= int{vb.bucket > 1};
     bucketPtr_ = bucketStart_ = vb.vec->buffers_[vb.bucket].load(std::memory_order_relaxed);
     bucketEnd_ = bucketPtr_ + len;
   }
@@ -38,7 +38,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator--() {
     if (vb.bucket) {
       auto len = bucketEnd_ - bucketStart_;
       --vb_;
-      len >>= vb.bucket > 1;
+      len >>= int{vb.bucket > 1};
       bucketStart_ = vb.vec->buffers_[vb.bucket - 1].load(std::memory_order_relaxed);
       bucketPtr_ = bucketStart_ + len;
       bucketEnd_ = bucketPtr_;

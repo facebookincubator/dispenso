@@ -28,9 +28,14 @@
 
 namespace dispenso {
 namespace detail {
-static int
-futex(int* uaddr, int futex_op, int val, const struct timespec* timeout, int* uaddr2, int val3) {
-  return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr, val3);
+static int futex(
+    int* uaddr,
+    int futex_op,
+    int val,
+    const struct timespec* timeout,
+    int* /*uaddr2*/,
+    int val3) {
+  return static_cast<int>(syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr, val3));
 }
 
 class CompletionEventImpl {
@@ -60,9 +65,9 @@ class CompletionEventImpl {
     }
 
     struct timespec ts;
-    ts.tv_sec = relSeconds;
-    relSeconds -= ts.tv_sec;
-    ts.tv_nsec = 1e9 * relSeconds;
+    ts.tv_sec = static_cast<time_t>(relSeconds);
+    relSeconds -= static_cast<double>(ts.tv_sec);
+    ts.tv_nsec = static_cast<long>(1e9 * relSeconds);
 
     // TODO: determine if we should worry about reducing timeout time subsequent times through the
     // loop in the case of spurious wake.
@@ -240,7 +245,7 @@ class CompletionEventImpl {
       return false;
     }
 
-    int msWait = std::max<int>(1, relSeconds * 1000.0);
+    int msWait = std::max(1, static_cast<int>(relSeconds * 1000.0));
 
     // TODO: determine if we should worry about reducing timeout time subsequent times through the
     // loop in the case of spurious wake.

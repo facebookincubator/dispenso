@@ -85,7 +85,7 @@ uint64_t calculateInnerDispenso(uint64_t input, size_t foo, int numElements) {
   dispenso::parallel_for(
       sums,
       []() { return uint64_t{0}; },
-      dispenso::ChunkedRange(0, kWorkMultiplier * numElements, dispenso::ChunkedRange::Auto()),
+      dispenso::makeChunkedRange(0, kWorkMultiplier * numElements, dispenso::ParForChunking::kAuto),
       [input, foo](uint64_t& lsumStore, size_t i, size_t end) {
         uint64_t lsum = 0;
         for (; i != end; ++i) {
@@ -117,7 +117,7 @@ void BM_dispenso(benchmark::State& state) {
     dispenso::parallel_for(
         sums,
         []() { return uint64_t{0}; },
-        dispenso::ChunkedRange(0, numElements, dispenso::ChunkedRange::Auto()),
+        dispenso::makeChunkedRange(0, numElements, dispenso::ParForChunking::kAuto),
         [numElements, input, foo](uint64_t& lsumStore, size_t j, size_t end) {
           uint64_t lsum = 0;
           for (; j != end; ++j) {

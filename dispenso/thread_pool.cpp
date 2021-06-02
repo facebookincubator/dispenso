@@ -42,15 +42,16 @@ void ThreadPool::threadLoop(std::atomic<bool>& running) {
   }
 }
 
-void ThreadPool::resize(size_t n) {
-  assert(n > 0);
+void ThreadPool::resize(ssize_t sn) {
+  assert(sn > 0);
+  size_t n = static_cast<size_t>(sn);
 
   std::lock_guard<std::mutex> lk(threadsMutex_);
   if (n < threads_.size()) {
-    for (int i = n; i < threads_.size(); ++i) {
+    for (size_t i = n; i < threads_.size(); ++i) {
       threads_[i].running.store(false, std::memory_order_release);
     }
-    for (int i = n; i < threads_.size(); ++i) {
+    for (size_t i = n; i < threads_.size(); ++i) {
       threads_[i].thread.join();
     }
     while (threads_.size() > n) {
@@ -64,8 +65,8 @@ void ThreadPool::resize(size_t n) {
       back.thread = std::thread([this, &running = back.running]() { threadLoop(running); });
     }
   }
-  poolLoadFactor_.store(n * poolLoadMultiplier_, std::memory_order_relaxed);
-  numThreads_.store(n, std::memory_order_relaxed);
+  poolLoadFactor_.store(static_cast<ssize_t>(n * poolLoadMultiplier_), std::memory_order_relaxed);
+  numThreads_.store(sn, std::memory_order_relaxed);
 }
 
 ThreadPool::~ThreadPool() {
@@ -95,7 +96,7 @@ ThreadPool& globalThreadPool() {
 }
 
 void resizeGlobalThreadPool(size_t numThreads) {
-  globalThreadPool().resize(numThreads);
+  globalThreadPool().resize(static_cast<ssize_t>(numThreads));
 }
 
 } // namespace dispenso

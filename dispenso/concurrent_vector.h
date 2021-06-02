@@ -179,7 +179,7 @@ class ConcurrentVector {
   ConcurrentVector(size_t startCapacity, ReserveTagS)
       : firstBucketShift_(detail::log2(
             detail::nextPow2(std::max(startCapacity, SizeTraits::kDefaultCapacity / 2)))),
-        firstBucketLen_(1 << firstBucketShift_) {
+        firstBucketLen_(size_type{1} << firstBucketShift_) {
     T* firstTwo = cv::alloc<T>(2 * firstBucketLen_);
     buffers_[0].store(firstTwo, std::memory_order_release);
     buffers_[1].store(firstTwo + firstBucketLen_, std::memory_order_release);
@@ -224,7 +224,7 @@ class ConcurrentVector {
   ConcurrentVector(size_type startSize, InIterator start, InIterator end)
       : ConcurrentVector(startSize, ReserveTag) {
     size_.store(startSize, std::memory_order_relaxed);
-    assert(std::distance(start, end) == startSize);
+    assert(std::distance(start, end) == static_cast<difference_type>(startSize));
     internalInit(start, end, begin());
   }
 
@@ -341,7 +341,7 @@ class ConcurrentVector {
    * @param len The length of the vector after the resize.
    **/
   void resize(difference_type len) {
-    size_t curLen = size_.load(std::memory_order_relaxed);
+    difference_type curLen = static_cast<difference_type>(size_.load(std::memory_order_relaxed));
     if (curLen < len) {
       grow_to_at_least(len);
     } else if (curLen > len) {
@@ -362,7 +362,7 @@ class ConcurrentVector {
    * @param value The value to copy into any new elements.
    **/
   void resize(difference_type len, const T& value) {
-    size_t curLen = size_.load(std::memory_order_relaxed);
+    difference_type curLen = static_cast<difference_type>(size_.load(std::memory_order_relaxed));
     if (curLen < len) {
       grow_to_at_least(len, value);
     } else if (curLen > len) {
@@ -416,7 +416,7 @@ class ConcurrentVector {
         --t;
         t->~T();
       }
-      cap >>= (b > 1);
+      cap >>= int{b > 1};
       len = cap - 1;
     } while (b--);
     size_.store(0, std::memory_order_release);
@@ -987,7 +987,7 @@ class ConcurrentVector {
 
     size_t l2idx = detail::log2(index);
     size_t bucket = (l2idx + 1) - firstBucketShift_;
-    size_t bucketCapacity = 1 << l2idx;
+    size_t bucketCapacity = size_t{1} << l2idx;
     size_t bucketIndex = index - bucketCapacity;
 
     return {bucket, bucketIndex, bucketCapacity};
@@ -996,7 +996,7 @@ class ConcurrentVector {
   cv::BucketInfo bucketAndSubIndex(size_t index) const {
     size_t l2idx = detail::log2(index | 1);
     size_t bucket = (l2idx + 1) - firstBucketShift_;
-    size_t bucketCapacity = 1 << l2idx;
+    size_t bucketCapacity = size_t{1} << l2idx;
     size_t bucketIndex = index - bucketCapacity;
 
     bucket = index < firstBucketLen_ ? 0 : bucket;

@@ -242,7 +242,7 @@ TEST(Future, CheckBackwards) {
     outputs.emplace_back([i]() { return i * i; }, pool);
   }
 
-  for (int i = kWorkItems; i--;) {
+  for (size_t i = kWorkItems; i--;) {
     EXPECT_EQ(outputs[i].get(), i * i);
   }
 }
@@ -545,7 +545,7 @@ TEST(Future, BasicThenUsage) {
 
   intFuture = dispenso::async([&value]() {
                 value = 33;
-              }).then([&value](dispenso::Future<void>&& parent) { return value; });
+              }).then([&value](dispenso::Future<void>&& /*parent*/) { return value; });
   EXPECT_EQ(33, intFuture.get());
 
   int* valuePtr;
@@ -705,7 +705,7 @@ TEST(Future, SimpleExceptions) {
 
   try {
     EXPECT_EQ(777, intFuture.get());
-  } catch (std::logic_error) {
+  } catch (const std::logic_error&) {
     handledException = true;
   }
   EXPECT_TRUE(handledException);
@@ -721,7 +721,7 @@ TEST(Future, SimpleExceptionsReference) {
 
   try {
     EXPECT_EQ(777, refFuture.get());
-  } catch (std::logic_error) {
+  } catch (const std::logic_error&) {
     handledException = true;
   }
   EXPECT_TRUE(handledException);
@@ -738,7 +738,7 @@ TEST(Future, SimpleExceptionsVoid) {
   try {
     voidFuture.get();
     EXPECT_EQ(999, val);
-  } catch (std::logic_error) {
+  } catch (const std::logic_error&) {
     handledException = true;
   }
   EXPECT_TRUE(handledException);
@@ -755,7 +755,7 @@ TEST(Future, ThenExceptions) {
     auto resultingFuture = intFuture.then([](auto&& parent) { return parent.get(); });
 
     EXPECT_EQ(777, resultingFuture.get());
-  } catch (std::logic_error) {
+  } catch (const std::logic_error&) {
     handledException = true;
   }
   EXPECT_TRUE(handledException);
@@ -794,7 +794,7 @@ TEST(Future, ExceptionShouldntDestroyResultIfNotCreated) {
   try {
     res = withExcept.get();
     EXPECT_EQ(777, *res.ptr);
-  } catch (std::logic_error) {
+  } catch (const std::logic_error&) {
     handledException = true;
   }
   EXPECT_TRUE(handledException);
@@ -862,8 +862,8 @@ TEST(Future, WhenAllTuple) {
                         EXPECT_EQ(value, 88);
                         EXPECT_EQ(std::get<2>(tuple).get(), 99.0f);
                         EXPECT_EQ(&std::get<3>(tuple).get(), &value2);
-                        return std::get<0>(tuple).get() + value + std::get<2>(tuple).get() +
-                            std::get<3>(tuple).get();
+                        return std::get<0>(tuple).get() + value +
+                            static_cast<int>(std::get<2>(tuple).get()) + std::get<3>(tuple).get();
                       });
 
   EXPECT_EQ(finalSum.get(), 1288);
@@ -876,7 +876,7 @@ inline std::unique_ptr<Node> nodeMove(const std::unique_ptr<Node>& current) {
 dispenso::Future<std::unique_ptr<Node>> makeTree(uint32_t depth, std::atomic<uint32_t>& cur) {
   --depth;
   auto node = std::make_unique<Node>();
-  node->value = cur.fetch_add(1, std::memory_order_relaxed);
+  node->value = static_cast<int>(cur.fetch_add(1, std::memory_order_relaxed));
   if (!depth) {
     return dispenso::make_ready_future(std::move(node));
   }
@@ -899,10 +899,13 @@ void fillVector(std::unique_ptr<Node>& node, std::vector<uint32_t>& values) {
   if (!node) {
     return;
   }
-  if (values.size() <= node->value) {
-    values.resize(node->value + 1, 0);
+
+  size_t val = static_cast<size_t>(node->value);
+
+  if (values.size() <= val) {
+    values.resize(val + 1, 0);
   }
-  ++values[node->value];
+  ++values[val];
   fillVector(node->left, values);
   fillVector(node->right, values);
 }
@@ -925,7 +928,7 @@ TEST(Future, WhenAllTreeBuild) {
 dispenso::Future<std::unique_ptr<Node>> makeTreeIters(uint32_t depth, std::atomic<uint32_t>& cur) {
   --depth;
   auto node = std::make_unique<Node>();
-  node->value = cur.fetch_add(1, std::memory_order_relaxed);
+  node->value = static_cast<int>(cur.fetch_add(1, std::memory_order_relaxed));
   if (!depth) {
     return dispenso::make_ready_future(std::move(node));
   }
@@ -994,7 +997,7 @@ TEST(Future, TaskSetWaitImpliesWhenAllFinished) {
   std::vector<dispenso::Future<int>> futures;
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
 
-  for (size_t i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
   }
 
@@ -1017,7 +1020,7 @@ TEST(Future, ConcurrentTaskSetWaitImpliesWhenAllFinished) {
   std::vector<dispenso::Future<int>> futures;
   dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
 
-  for (size_t i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
   }
 

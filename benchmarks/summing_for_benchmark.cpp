@@ -89,7 +89,7 @@ void BM_dispenso(benchmark::State& state) {
         tasks,
         sums,
         []() { return int64_t{0}; },
-        dispenso::ChunkedRange(0, num_elements, dispenso::ChunkedRange::Auto()),
+        dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kAuto),
         [&input, foo](int64_t& lsumStore, size_t i, size_t end) {
           int64_t lsum = 0;
           for (; i != end; ++i) {

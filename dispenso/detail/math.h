@@ -41,12 +41,12 @@ constexpr inline uint32_t log2const(uint64_t v) {
 }
 
 #if (defined(__GNUC__) || defined(__clang__))
-inline int log2(uint64_t v) {
-  return 63 - __builtin_clzll(v);
+inline uint32_t log2(uint64_t v) {
+  return static_cast<uint32_t>(63 - __builtin_clzll(v));
 }
 #elif defined(_WIN32)
-inline int log2(uint64_t v) {
-  return 63 - __lzcnt64(v);
+inline uint32_t log2(uint64_t v) {
+  return static_cast<uint32_t>(63 - __lzcnt64(v));
 }
 #else
 inline uint32_t log2(uint64_t v) {

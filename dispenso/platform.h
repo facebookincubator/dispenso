@@ -118,14 +118,14 @@ inline void cpuRelax() {}
 // used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)
 // values will be ceilChunkSize - 1.
 struct StaticChunking {
-  size_t transitionTaskIndex;
-  size_t ceilChunkSize;
+  ssize_t transitionTaskIndex;
+  ssize_t ceilChunkSize;
 };
 
-inline StaticChunking staticChunkSize(size_t items, size_t chunks) {
+inline StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {
   StaticChunking chunking;
   chunking.ceilChunkSize = (items + chunks - 1) / chunks;
-  size_t numLeft = chunking.ceilChunkSize * chunks - items;
+  ssize_t numLeft = chunking.ceilChunkSize * chunks - items;
   chunking.transitionTaskIndex = chunks - numLeft;
   return chunking;
 }

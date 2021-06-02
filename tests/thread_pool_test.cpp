@@ -98,13 +98,13 @@ TEST_P(ThreadPoolTest, SimpleWork) {
 }
 
 TEST_P(ThreadPoolTest, MixedWork) {
-  constexpr int64_t kWorkItems = 10000;
-  std::vector<int64_t> outputsA(kWorkItems, 0);
-  std::vector<int64_t> outputsB(kWorkItems, 0);
+  constexpr size_t kWorkItems = 10000;
+  std::vector<size_t> outputsA(kWorkItems, 0);
+  std::vector<size_t> outputsB(kWorkItems, 0);
   std::atomic<int> completed(0);
   {
     initPool(10);
-    for (int64_t i = 0; i < kWorkItems; ++i) {
+    for (size_t i = 0; i < kWorkItems; ++i) {
       auto& a = outputsA[i];
       auto& b = outputsB[i];
       schedule([i, &a, &completed]() {
@@ -119,7 +119,7 @@ TEST_P(ThreadPoolTest, MixedWork) {
     destroyPool();
   }
 
-  for (int64_t i = 0; i < kWorkItems; ++i) {
+  for (size_t i = 0; i < kWorkItems; ++i) {
     EXPECT_EQ(outputsA[i], i * i);
     EXPECT_EQ(outputsB[i], i * i * i);
   }

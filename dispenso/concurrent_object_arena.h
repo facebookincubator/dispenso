@@ -63,9 +63,9 @@ struct ConcurrentObjectArena {
   explicit ConcurrentObjectArena(const Index minBuffSize)
       : kLog2BuffSize(
             ::detail::log2i(minBuffSize) +
-            ((1 << ::detail::log2i(minBuffSize)) == minBuffSize ? 0 : 1)),
-        kBufferSize(1 << kLog2BuffSize),
-        kMask((1 << kLog2BuffSize) - 1),
+            ((Index{1} << ::detail::log2i(minBuffSize)) == minBuffSize ? 0 : 1)),
+        kBufferSize(Index{1} << kLog2BuffSize),
+        kMask((Index{1} << kLog2BuffSize) - 1),
         pos_(0),
         allocatedSize_(0),
         buffers_(nullptr),

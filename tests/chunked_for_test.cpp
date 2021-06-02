@@ -12,21 +12,22 @@
 TEST(ChunkedFor, SimpleLoop) {
   int w = 1024;
   int h = 1024;
-  std::vector<int> image(w * h, 7);
+  std::vector<int> image(static_cast<size_t>(w * h), 7);
 
   std::atomic<int64_t> sum(0);
 
-  dispenso::parallel_for(dispenso::ChunkedRange(0, h, 8), [w, &image, &sum](int ystart, int yend) {
-    EXPECT_EQ(yend - ystart, 8);
-    int64_t s = 0;
-    for (int y = ystart; y < yend; ++y) {
-      int* row = image.data() + y * w;
-      for (int i = 0; i < w; ++i) {
-        s += row[i];
-      }
-    }
-    sum.fetch_add(s, std::memory_order_relaxed);
-  });
+  dispenso::parallel_for(
+      dispenso::makeChunkedRange(0, h, 8), [w, &image, &sum](int ystart, int yend) {
+        EXPECT_EQ(yend - ystart, 8);
+        int64_t s = 0;
+        for (int y = ystart; y < yend; ++y) {
+          int* row = image.data() + y * w;
+          for (int i = 0; i < w; ++i) {
+            s += row[i];
+          }
+        }
+        sum.fetch_add(s, std::memory_order_relaxed);
+      });
 
   EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
 }
@@ -35,24 +36,24 @@ TEST(ChunkedFor, ShouldNotInvokeIfEmptyRange) {
   int* myNullPtr = nullptr;
 
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, 0, dispenso::ChunkedRange::Auto()),
+      dispenso::makeChunkedRange(0, 0, dispenso::ParForChunking::kAuto),
       [myNullPtr](int s, int e) { *myNullPtr = s + e; });
 
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, 0, dispenso::ChunkedRange::Static()),
+      dispenso::makeChunkedRange(0, 0, dispenso::ParForChunking::kStatic),
       [myNullPtr](int s, int e) { *myNullPtr = s + e; });
 }
 
 TEST(ChunkedFor, SimpleLoopStatic) {
   int w = 1024;
   int h = 1024;
-  std::vector<int> image(w * h, 7);
+  std::vector<int> image(static_cast<size_t>(w * h), 7);
 
   std::atomic<int64_t> sum(0);
   std::atomic<int> numCalls(0);
 
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, h, dispenso::ChunkedRange::Static()),
+      dispenso::makeChunkedRange(0, h, dispenso::ParForChunking::kStatic),
       [w, &image, &sum, &numCalls](int ystart, int yend) {
         numCalls.fetch_add(1, std::memory_order_relaxed);
         int64_t s = 0;
@@ -66,18 +67,20 @@ TEST(ChunkedFor, SimpleLoopStatic) {
       });
 
   EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
-  EXPECT_LE(numCalls.load(std::memory_order_relaxed), std::thread::hardware_concurrency());
+  EXPECT_LE(
+      numCalls.load(std::memory_order_relaxed),
+      static_cast<int>(std::thread::hardware_concurrency()));
 }
 
 TEST(ChunkedFor, SimpleLoopAuto) {
   int w = 1024;
   int h = 1024;
-  std::vector<int> image(w * h, 7);
+  std::vector<int> image(static_cast<size_t>(w * h), 7);
 
   std::atomic<int64_t> sum(0);
   std::atomic<int> numCalls(0);
   dispenso::parallel_for(
-      dispenso::ChunkedRange(0, h, dispenso::ChunkedRange::Auto()),
+      dispenso::makeChunkedRange(0, h, dispenso::ParForChunking::kAuto),
       [w, &image, &sum, &numCalls](int ystart, int yend) {
         numCalls.fetch_add(1, std::memory_order_relaxed);
         int64_t s = 0;
@@ -101,13 +104,13 @@ template <typename StateContainer>
 void loopWithStateImpl() {
   int w = 1024;
   int h = 1024;
-  std::vector<int> image(w * h, 7);
+  std::vector<int> image(static_cast<size_t>(w * h), 7);
 
   StateContainer state;
   dispenso::parallel_for(
       state,
       []() { return int64_t{0}; },
-      dispenso::ChunkedRange(0, h, 16),
+      dispenso::makeChunkedRange(0, h, 16),
       [w, &image](int64_t& sum, int ystart, int yend) {
         EXPECT_EQ(yend - ystart, 16);
         int64_t s = 0;

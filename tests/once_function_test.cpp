@@ -50,7 +50,7 @@ void testSize() {
     int* sum;
   } foo;
   for (size_t i = 0; i < kNumElts; ++i) {
-    foo.buf[i] = i;
+    foo.buf[i] = static_cast<uint8_t>(i);
   }
   int answer;
   foo.sum = &answer;
@@ -143,7 +143,7 @@ struct EnsureAlign {
     EXPECT_EQ(0, bloc & (alignment - 1)) << "broken for alignment: " << alignment;
   }
 
-  alignas(alignment) char b;
+  alignas(alignment) char b = 0;
 };
 
 TEST(OnceFunction, EnsureAlignment1) {

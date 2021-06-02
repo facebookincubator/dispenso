@@ -20,7 +20,7 @@ namespace detail {
 class LimitGatedScheduler {
  public:
   LimitGatedScheduler(ConcurrentTaskSet& tasks, size_t res)
-      : impl_(std::make_unique<Impl>(tasks, res)) {}
+      : impl_(new (alignedMalloc(sizeof(Impl), alignof(Impl))) Impl(tasks, res)) {}
 
   template <typename F>
   void schedule(F&& fPipe) {
@@ -38,7 +38,7 @@ class LimitGatedScheduler {
     Impl(ConcurrentTaskSet& tasks, size_t res)
         : tasks_(tasks),
           resources_(std::min<size_t>(std::numeric_limits<ssize_t>::max(), res)),
-          unlimited_(res >= std::numeric_limits<ssize_t>::max()) {}
+          unlimited_(res >= static_cast<size_t>(std::numeric_limits<ssize_t>::max())) {}
 
     template <typename F>
     void schedule(F&& fPipe) {
@@ -103,12 +103,20 @@ class LimitGatedScheduler {
     // resource requirements because the queue_ never needs to instantiate memory.
     const bool unlimited_;
   };
-  std::unique_ptr<Impl> impl_;
+
+  struct Deleter {
+    void operator()(Impl* r) {
+      r->~Impl();
+      alignedFree(r);
+    }
+  };
+
+  std::unique_ptr<Impl, Deleter> impl_;
 };
 
 template <typename F>
 struct Stage {
-  Stage(F&& fIn, size_t limitIn) : f(std::move(fIn)), limit(limitIn) {}
+  Stage(F&& fIn, size_t limitIn) : f(std::move(fIn)), limit(static_cast<ssize_t>(limitIn)) {}
 
   template <typename T>
   auto operator()(T&& t) {
@@ -120,20 +128,20 @@ struct Stage {
   }
 
   F f;
-  size_t limit;
+  ssize_t limit;
 };
 
 template <typename T>
 struct StageLimits {
-  constexpr static size_t limit(const T& t) {
+  constexpr static ssize_t limit(const T& /*t*/) {
     return 1;
   }
 };
 
 template <typename T>
 struct StageLimits<Stage<T>> {
-  static size_t limit(const Stage<T>& t) {
-    return std::max(size_t{1}, t.limit);
+  static ssize_t limit(const Stage<T>& t) {
+    return std::max(ssize_t{1}, t.limit);
   }
 };
 
@@ -243,9 +251,9 @@ class Pipe<StageClass::kGenerator, CurStage, PipeNext> {
       : tasks_(tasks), stage_(std::forward<StageIn>(s)), pipeNext_(std::move(n)) {}
 
   void execute() {
-    size_t numThreads = std::min(tasks_.numPoolThreads(), StageLimits<CurStage>::limit(stage_));
-    completion_ = std::make_unique<CompletionEventImpl>(numThreads);
-    for (size_t i = 0; i < numThreads; ++i) {
+    ssize_t numThreads = std::min(tasks_.numPoolThreads(), StageLimits<CurStage>::limit(stage_));
+    completion_ = std::make_unique<CompletionEventImpl>(static_cast<int>(numThreads));
+    for (ssize_t i = 0; i < numThreads; ++i) {
       tasks_.schedule([this]() {
         while (auto op = stage_()) {
           pipeNext_.execute(std::move(op.value()));

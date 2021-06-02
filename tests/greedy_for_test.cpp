@@ -35,12 +35,12 @@ TEST(GreedyFor, ShouldNotInvokeIfEmptyRange) {
   int* myNullPtr = nullptr;
 
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForOptions::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAuto;
 
   dispenso::parallel_for(
       0, 0, [myNullPtr](int i) { *myNullPtr = i; }, options);
 
-  options.defaultChunking = dispenso::ParForOptions::kStatic;
+  options.defaultChunking = dispenso::ParForChunking::kStatic;
 
   dispenso::parallel_for(
       0, 0, [myNullPtr](int i) { *myNullPtr = i; }, options);
@@ -176,7 +176,7 @@ inline int getTestTid() {
 }
 
 TEST(GreedyFor, OptionsMaxThreads) {
-  size_t usedTids[9] = {0};
+  int usedTids[9] = {0};
 
   dispenso::ThreadPool pool(8);
   dispenso::TaskSet tasks(pool);
@@ -185,7 +185,7 @@ TEST(GreedyFor, OptionsMaxThreads) {
   options.maxThreads = 4;
   options.wait = false;
 
-  auto func = [&usedTids](size_t index) {
+  auto func = [&usedTids](int index) {
     std::this_thread::yield();
     usedTids[getTestTid()] += index;
   };
