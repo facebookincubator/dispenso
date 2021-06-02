@@ -31,7 +31,7 @@ TEST(AsyncRequest, SequentialAsExpected) {
 
 TEST(AsyncRequest, AsyncAsExpected) {
   dispenso::AsyncRequest<int> req;
-  std::atomic<bool> running = true;
+  std::atomic<bool> running(true);
   std::thread t([&req, &running]() {
     int next = 0;
     while (running.load(std::memory_order_relaxed)) {
