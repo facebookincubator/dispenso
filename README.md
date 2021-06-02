@@ -26,7 +26,7 @@ We haven't done a strong comparison vs these other mechanisms.  GCD is an Apple 
 ## When (currently) *not* to use dispenso
 Dispenso isn't really designed for high-latency task offload, it is for computation.  Using the thread pool for networking, disk, or in cases with frequent TLB misses (really any scenario with kernel context switches) may result in poor performance.
 
-If working with futures, `dispenso::Future` can be used with `dispeno::NewThreadInvoker`, which should be roughly equivalent with std::future performance.
+In these kernel context switch scenarios, `dispenso::Future` can be used with `dispeno::NewThreadInvoker`, which should be roughly equivalent with std::future performance.
 
 If you need async I/O, Folly is likely a good choice (though it still doesn't fix e.g. TLB misses).
 
@@ -35,10 +35,8 @@ If you need async I/O, Folly is likely a good choice (though it still doesn't fi
 
 ## TODO
 
-* Find a more streamlined approach to obtaining and including dependencies.  
 * Add documentation of the benchmark results, and also some examples in the example section.
 * GitHub Actions or CircleCI continuous integration testing for linux, mac, windows
-* Remove legacy build scripts
 * Push to Open Source
 
 
@@ -51,7 +49,7 @@ Internally to Facebook, we use the Buck build system, but as that relies on a mo
 `sudo dnf install cmake`
 
 ### MacOS
-TODO(bbudge)
+`brew install cmake`
 
 ### Windows
 Install CMake from <https://cmake.org/download/>
@@ -72,22 +70,11 @@ Install Build Tools for Visual Studio. All commands should be run from the Devel
 # Building and running dispenso tests
 To keep dependencies to an absolute minimum, we do not build tests or benchmarks by default, but only the core library. Building tests requires [GoogleTest](https://github.com/google/googletest).
 
-## Install GoogleTest development libraries
-
-### Fedora/RPM-based distros
-`sudo dnf install gtest-devel gmock-devel`
-
-### MacOS
-TODO(bbudge)
-
-### Windows
-Run `getGTest_windows.sh` in the setupScripts folder (again from the Developer Command Prompt). This will create a folder called thirdparty alongside the dispenso folder.
-
 ## Build and run dispenso tests
 
 ### Linux and MacOS
 1. `mkdir build && cd build`
-1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON`
+1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release`
 1. `make -j`
 1. `ctest`
 
@@ -108,7 +95,7 @@ OpenMP should already be available on most platforms that support it (it must be
 After you have the deps you want, you can build and run:
 ### Linux and MacOS
 1. `mkdir build && cd build`
-1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON`
+1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release`
 1. `make -j`
 1. (e.g.) `bin/once_function_benchmark`
 
