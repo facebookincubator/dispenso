@@ -21,6 +21,9 @@ constexpr size_t kSmallSize = 13;
 constexpr size_t kMediumSize = 16;
 constexpr size_t kLargeSize = 19;
 
+// Note that there are many optimizations that could be made for these tree build routines.  The
+// goal was to make these as apples-to-apples as possible.
+
 struct Node {
   Node* left;
   Node* right;
@@ -177,10 +180,10 @@ Node* dispensoTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32
     return node;
   }
 
-  auto left =
-      dispenso::async([&]() { return dispensoTree(allocator, depth, (bitset << 1), modulo); });
-  auto right =
-      dispenso::async([&]() { return dispensoTree(allocator, depth, (bitset << 1) | 1, modulo); });
+  auto left = dispenso::async(
+      [=, &allocator]() { return dispensoTree(allocator, depth, (bitset << 1), modulo); });
+  auto right = dispenso::async(
+      [=, &allocator]() { return dispensoTree(allocator, depth, (bitset << 1) | 1, modulo); });
   node->left = left.get();
   node->right = right.get();
 
@@ -313,56 +316,6 @@ void BM_taskset_tree(benchmark::State& state) {
   checkTree(&root, depth, modulo);
 }
 
-void dispensoTaskSetTreeOpt(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (depth < 5) {
-    node->left = serialTree(allocator, depth, (bitset << 1), modulo);
-    node->right = serialTree(allocator, depth, (bitset << 1) | 1, modulo);
-    return;
-  }
-
-  tasks.schedule([&tasks, &allocator, node, depth, bitset, modulo]() {
-    node->left = allocator.alloc();
-    dispensoTaskSetTreeOpt(tasks, node->left, allocator, depth, (bitset << 1), modulo);
-  });
-  tasks.schedule([&tasks, &allocator, node, depth, bitset, modulo]() {
-    node->right = allocator.alloc();
-    dispensoTaskSetTreeOpt(tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
-  });
-}
-
-template <size_t depth>
-void BM_tasksetopt_tree(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeOpt(tasks, &root, alloc, depth, 1, modulo);
-    tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(&root, depth, modulo);
-}
-
 dispenso::Future<Node*>
 dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
   --depth;
@@ -432,10 +385,6 @@ BENCHMARK_TEMPLATE(BM_dispenso_tree, kLargeSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_taskset_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_taskset_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_taskset_tree, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tasksetopt_tree, kLargeSize)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
