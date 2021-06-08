@@ -304,32 +304,15 @@ class Future : detail::FutureBase<Result> {
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) & {
+      std::launch deferredPolicy = std::launch::deferred) {
     Future<detail::ResultOf<F, Future<Result>&&>> retFuture;
     retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<Result>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::ResultOf<F, Future<Result>&&>> then(F&& f) & {
+  Future<detail::ResultOf<F, Future<Result>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
-  }
-
-  template <typename F, typename Schedulable>
-  Future<detail::ResultOf<F, Future<Result>&&>> then(
-      F&& f,
-      Schedulable& sched,
-      std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) && {
-    Future<detail::ResultOf<F, Future<Result>&&>> retFuture;
-    retFuture.impl_ = this->template thenMoveImpl<detail::ResultOf<F, Future<Result>&&>>(
-        std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
-    return retFuture;
-  }
-  template <typename F>
-  Future<detail::ResultOf<F, Future<Result>&&>> then(F&& f) && {
-    return std::move(*this).then(
-        std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
  private:
@@ -396,33 +379,15 @@ class Future<Result&> : detail::FutureBase<Result&> {
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) & {
+      std::launch deferredPolicy = std::launch::deferred) {
     Future<detail::ResultOf<F, Future<Result&>&&>> retFuture;
     retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<Result&>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::ResultOf<F, Future<Result&>&&>> then(F&& f) & {
+  Future<detail::ResultOf<F, Future<Result&>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
-  }
-
-  template <typename F, typename Schedulable>
-  Future<detail::ResultOf<F, Future<Result&>&&>> then(
-      F&& f,
-      Schedulable& sched,
-      std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) && {
-    Future<detail::ResultOf<F, Future<Result&>&&>> retFuture;
-    retFuture.impl_ = this->template thenMoveImpl<detail::ResultOf<F, Future<Result&>&&>>(
-        std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
-    return retFuture;
-  }
-
-  template <typename F>
-  Future<detail::ResultOf<F, Future<Result&>&&>> then(F&& f) && {
-    return std::move(*this).then(
-        std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
  private:
@@ -487,32 +452,15 @@ class Future<void> : detail::FutureBase<void> {
       F&& f,
       Schedulable& sched,
       std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) & {
+      std::launch deferredPolicy = std::launch::deferred) {
     Future<detail::ResultOf<F, Future<void>&&>> retFuture;
     retFuture.impl_ = this->template thenImpl<detail::ResultOf<F, Future<void>&&>>(
         std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
     return retFuture;
   }
   template <typename F>
-  Future<detail::ResultOf<F, Future<void>&&>> then(F&& f) & {
+  Future<detail::ResultOf<F, Future<void>&&>> then(F&& f) {
     return then(std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
-  }
-
-  template <typename F, typename Schedulable>
-  Future<detail::ResultOf<F, Future<void>&&>> then(
-      F&& f,
-      Schedulable& sched,
-      std::launch asyncPolicy = kNotAsync,
-      std::launch deferredPolicy = std::launch::deferred) && {
-    Future<detail::ResultOf<F, Future<void>&&>> retFuture;
-    retFuture.impl_ = this->template thenMoveImpl<detail::ResultOf<F, Future<void>&&>>(
-        std::forward<F>(f), sched, asyncPolicy, deferredPolicy);
-    return retFuture;
-  }
-  template <typename F>
-  Future<detail::ResultOf<F, Future<void>&&>> then(F&& f) && {
-    return std::move(*this).then(
-        std::forward<F>(f), globalThreadPool(), kNotAsync, std::launch::deferred);
   }
 
  private:

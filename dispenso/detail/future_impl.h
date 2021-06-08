@@ -286,11 +286,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
       link->invoke = thenChainInvoke<SomeFutureImpl, Schedulable>;
     }
     link->next = thenChain_.load(std::memory_order_acquire);
-    while (true) {
-      if (thenChain_.compare_exchange_weak(link->next, link, std::memory_order_acq_rel)) {
-        // Successfully swung func to head.
-        break;
-      }
+    while (!thenChain_.compare_exchange_weak(link->next, link, std::memory_order_acq_rel)) {
     }
 
     // Okay, one last thing.  It is possible that we added to the thenChain just after
@@ -599,20 +595,6 @@ class FutureBase {
   template <typename RetResult, typename F>
   FutureImplBase<RetResult>*
   thenImpl(F&& f, ConcurrentTaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
-
-  template <typename RetResult, typename F, typename Schedulable>
-  FutureImplBase<RetResult>*
-  thenMoveImpl(F&& f, Schedulable& sched, std::launch asyncPolicy, std::launch deferredPolicy);
-
-  template <typename RetResult, typename F>
-  FutureImplBase<RetResult>*
-  thenMoveImpl(F&& f, TaskSet& sched, std::launch asyncPolicy, std::launch deferredPolicy);
-  template <typename RetResult, typename F>
-  FutureImplBase<RetResult>* thenMoveImpl(
-      F&& f,
-      ConcurrentTaskSet& sched,
-      std::launch asyncPolicy,
-      std::launch deferredPolicy);
 
 #if defined DISPENSO_DEBUG
   void assertValid() const {

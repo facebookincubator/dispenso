@@ -6,6 +6,20 @@
 namespace dispenso {
 namespace detail {
 
+// Implementation note regarding then():
+//
+// At some point we tried to add Future::then()&&.  The impetus was that we figured we could avoid
+// making an extra copy of the *this, avoiding primarily an atomic reference increment and
+// decrement.  This lead to a 15% speedup in benchmarks.  The problem was that we were retaining a
+// copy of the bare pointer impl_ in order to call addToThenChainOrExecute.  This could lead to a
+// case where our impl_ only had one reference going into addToThenChainOrExecute, and internal to
+// that, the func is scheduled, which creates a race between the execution and potential cleanup of
+// the future internals, against completion of addToThenChainOrExecute.
+//
+// In reality this leads to *requiring* a bump of the reference count prior to
+// addToThenChainOrExecute, and a decrement afterwards.  This isn't at all cheaper (in benchmarks)
+// than just making the copy.  The moral of the story?  Don't bother with Future::then()&&.
+
 template <typename Result>
 template <typename RetResult, typename F, typename Schedulable>
 FutureImplBase<RetResult>* FutureBase<Result>::thenImpl(
@@ -66,72 +80,6 @@ FutureImplBase<RetResult>* FutureBase<Result>::thenImpl(
       (deferredPolicy & std::launch::deferred) == std::launch::deferred,
       &sched.outstandingTaskCount_);
   impl_->addToThenChainOrExecute(retImpl, sched.pool(), asyncPolicy);
-  return retImpl;
-}
-
-template <typename Result>
-template <typename RetResult, typename F, typename Schedulable>
-FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
-    F&& f,
-    Schedulable& sched,
-    std::launch asyncPolicy,
-    std::launch deferredPolicy) {
-  FutureImplBase<Result>* futureImpl = impl_;
-  Future<Result> future(std::move(*this));
-  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
-    future.wait();
-    return f(std::move(future));
-  };
-
-  auto* retImpl = createFutureImpl<RetResult>(
-      std::move(func), (deferredPolicy & std::launch::deferred) == std::launch::deferred, nullptr);
-  futureImpl->addToThenChainOrExecute(retImpl, sched, asyncPolicy);
-  return retImpl;
-}
-
-template <typename Result>
-template <typename RetResult, typename F>
-FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
-    F&& f,
-    TaskSet& sched,
-    std::launch asyncPolicy,
-    std::launch deferredPolicy) {
-  FutureImplBase<Result>* futureImpl = impl_;
-  Future<Result> future(std::move(*this));
-  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
-    future.wait();
-    return f(std::move(future));
-  };
-
-  sched.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-  auto* retImpl = createFutureImpl<RetResult>(
-      std::move(func),
-      (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-      &sched.outstandingTaskCount_);
-  futureImpl->addToThenChainOrExecute(retImpl, sched.pool(), asyncPolicy);
-  return retImpl;
-}
-
-template <typename Result>
-template <typename RetResult, typename F>
-FutureImplBase<RetResult>* FutureBase<Result>::thenMoveImpl(
-    F&& f,
-    ConcurrentTaskSet& sched,
-    std::launch asyncPolicy,
-    std::launch deferredPolicy) {
-  FutureImplBase<Result>* futureImpl = impl_;
-  Future<Result> future(std::move(*this));
-  auto func = [f = std::move(f), future = std::move(future)]() mutable -> RetResult {
-    future.wait();
-    return f(std::move(future));
-  };
-
-  sched.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-  auto* retImpl = createFutureImpl<RetResult>(
-      std::move(func),
-      (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-      &sched.outstandingTaskCount_);
-  futureImpl->addToThenChainOrExecute(retImpl, sched.pool(), asyncPolicy);
   return retImpl;
 }
 
