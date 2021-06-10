@@ -234,3 +234,57 @@ TEST(ForEach, SmallSet) {
     EXPECT_TRUE(v);
   }
 }
+
+TEST(ForEach, EmptySet) {
+  std::set<int> emptySet;
+  dispenso::for_each(std::begin(emptySet), std::end(emptySet), [](int i) {
+    EXPECT_FALSE(true) << "Should not get into this lambda";
+  });
+}
+
+TEST(ForEach, References) {
+  std::vector<int> values;
+  for (int i = 0; i < 100; ++i) {
+    values.push_back(i);
+  }
+
+  dispenso::for_each(std::begin(values), std::end(values), [](int& i) { i = -i; });
+
+  for (int i = 0; i < 100; ++i) {
+    EXPECT_EQ(values[i], -i);
+  }
+}
+
+TEST(ForEach, Cascade) {
+  std::vector<int> values;
+  for (int i = 0; i < 100; ++i) {
+    values.push_back(i);
+  }
+
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::ForEachOptions options;
+  options.wait = false;
+
+  dispenso::for_each(
+      taskSet,
+      std::begin(values),
+      std::end(values),
+      [](int& i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        i = -i;
+      },
+      options);
+
+  dispenso::ForEachOptions waitOptions;
+  std::set<int> emptySet;
+  dispenso::for_each(
+      taskSet,
+      std::begin(emptySet),
+      std::end(emptySet),
+      [](int i) { EXPECT_FALSE(true) << "Should not get into this lambda"; },
+      waitOptions);
+
+  for (int i = 0; i < 100; ++i) {
+    EXPECT_EQ(values[i], -i);
+  }
+}

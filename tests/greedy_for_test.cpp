@@ -258,21 +258,21 @@ TEST(GreedyFor, AvoidOverflow1) {
 
 TEST(GreedyFor, AvoidOverflow2) {
   dispenso::ThreadPool pool(1);
-  dispenso::TaskSet taskSet2(pool);
+  dispenso::TaskSet taskSet(pool);
   dispenso::ParForOptions options;
   options.wait = false;
   options.defaultChunking = dispenso::ParForChunking::kAuto;
 
   std::vector<dispenso::CacheAligned<uint32_t>> vals;
   dispenso::parallel_for(
-      taskSet2,
+      taskSet,
       vals,
       []() { return uint32_t{0}; },
       std::numeric_limits<int32_t>::min() / 2 - 1,
       std::numeric_limits<int32_t>::max() / 2 + 1,
       [](auto& count, auto index) { ++count; },
       options);
-  taskSet2.wait();
+  taskSet.wait();
 
   uint32_t count = 0;
   for (auto& v : vals) {
@@ -280,4 +280,56 @@ TEST(GreedyFor, AvoidOverflow2) {
   }
 
   EXPECT_EQ(count, std::numeric_limits<uint32_t>::max() / 2 + 2);
+}
+
+TEST(GreedyFor, EmptyLoopsWaitIfToldTo) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::ParForOptions options;
+  options.wait = false;
+
+  std::atomic<int> count(0);
+
+  dispenso::parallel_for(
+      taskSet,
+      0,
+      1000,
+      [&count](int i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        count.fetch_add(1, std::memory_order_acq_rel);
+      },
+      options);
+
+  dispenso::ParForOptions waitOptions;
+  dispenso::parallel_for(
+      taskSet,
+      0,
+      0,
+      [](int i) { EXPECT_FALSE(true) << "Should not reach this lambda"; },
+      waitOptions);
+
+  EXPECT_EQ(count.load(), 1000);
+}
+
+TEST(GreedyFor, SingleLoopWaitIfToldTo) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::ParForOptions options;
+  options.wait = false;
+
+  std::atomic<int> count(0);
+
+  dispenso::parallel_for(
+      taskSet,
+      0,
+      1000,
+      [&count](int i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        count.fetch_add(1, std::memory_order_acq_rel);
+      },
+      options);
+
+  dispenso::ParForOptions waitOptions;
+  dispenso::parallel_for(
+      taskSet, 0, 1, [](int i) { EXPECT_EQ(i, 0); }, waitOptions);
+
+  EXPECT_EQ(count.load(), 1000);
 }

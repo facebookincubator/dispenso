@@ -302,6 +302,9 @@ void parallel_for(
     F&& f,
     ParForOptions options = {}) {
   if (range.empty()) {
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
@@ -309,6 +312,9 @@ void parallel_for(
   if (!options.maxThreads || range.size() == 1 ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
 
@@ -329,6 +335,9 @@ void parallel_for(
     return;
   } else if (numToLaunch == 0) {
     f(range.start, range.end);
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
 
@@ -428,12 +437,18 @@ void parallel_for(
     F&& f,
     ParForOptions options = {}) {
   if (range.empty()) {
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
   if (!options.maxThreads || range.size() == 1 ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
 
@@ -460,6 +475,9 @@ void parallel_for(
     return;
   } else if (numToLaunch == 0) {
     f(*states.begin(), range.start, range.end);
+    if (options.wait) {
+      taskSet.wait();
+    }
     return;
   }
 
@@ -683,7 +701,7 @@ void parallel_for(
     ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
-  return parallel_for(taskSet, states, defaultState, start, end, std::forward<F>(f), options);
+  parallel_for(taskSet, states, defaultState, start, end, std::forward<F>(f), options);
 }
 
 } // namespace dispenso
