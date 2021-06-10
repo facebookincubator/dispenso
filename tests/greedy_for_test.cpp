@@ -222,3 +222,62 @@ TEST(GreedyFor, OptionsMaxThreads) {
   EXPECT_LE(numNonZero, 5);
   EXPECT_EQ(total, 49995000);
 }
+
+TEST(GreedyFor, NegativeRangeLength) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::parallel_for(taskSet, 2, -2, [](auto index) {
+    EXPECT_FALSE(true) << "Shouldn't enter this function at all";
+  });
+}
+
+TEST(GreedyFor, NegativeRangeLengthBig) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::parallel_for(taskSet, 2147483647, -2147483647, [](auto index) {
+    EXPECT_FALSE(true) << "Shouldn't enter this function at all";
+  });
+}
+
+TEST(GreedyFor, ZeroLength2) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::parallel_for(taskSet, -77, -77, [](auto index) {
+    EXPECT_FALSE(true) << "Shouldn't enter this function at all";
+  });
+}
+
+TEST(GreedyFor, AvoidOverflow1) {
+  std::atomic<uint32_t> count(0);
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::parallel_for(
+      taskSet,
+      std::numeric_limits<int16_t>::min(),
+      std::numeric_limits<int16_t>::max(),
+      [&count](auto index) { count.fetch_add(1, std::memory_order_relaxed); });
+
+  EXPECT_EQ(count.load(), std::numeric_limits<uint16_t>::max());
+}
+
+TEST(GreedyFor, AvoidOverflow2) {
+  dispenso::ThreadPool pool(1);
+  dispenso::TaskSet taskSet2(pool);
+  dispenso::ParForOptions options;
+  options.wait = false;
+  options.defaultChunking = dispenso::ParForChunking::kAuto;
+
+  std::vector<dispenso::CacheAligned<uint32_t>> vals;
+  dispenso::parallel_for(
+      taskSet2,
+      vals,
+      []() { return uint32_t{0}; },
+      std::numeric_limits<int32_t>::min() / 2 - 1,
+      std::numeric_limits<int32_t>::max() / 2 + 1,
+      [](auto& count, auto index) { ++count; },
+      options);
+  taskSet2.wait();
+
+  uint32_t count = 0;
+  for (auto& v : vals) {
+    count += v;
+  }
+
+  EXPECT_EQ(count, std::numeric_limits<uint32_t>::max() / 2 + 2);
+}

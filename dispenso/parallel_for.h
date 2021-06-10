@@ -98,23 +98,28 @@ struct ChunkedRange {
     return chunk == kStatic;
   }
 
-  IntegerT size() const {
-    return end - start;
+  bool empty() const {
+    return end <= start;
+  }
+
+  // This code returns int64 in order to avoid overflow, e.g. passing -2**30, 2**30 as int32 will
+  // result in overflow unless we cast to 64-bit.
+  int64_t size() const {
+    return static_cast<int64_t>(end) - start;
   }
 
   template <typename OtherInt>
   IntegerT calcChunkSize(OtherInt numLaunched, bool oneOnCaller) const {
-    IntegerT workingThreads = static_cast<IntegerT>(numLaunched) + oneOnCaller;
-    if (workingThreads == 1) {
-      return end - start;
-    }
+    ssize_t workingThreads = static_cast<ssize_t>(numLaunched) + ssize_t{oneOnCaller};
+    assert(workingThreads > 1);
+
     if (!chunk) {
       // TODO(bbudge): play with different load balancing factors for auto.
       // IntegerT dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
       // cyclesPerIndex_));
       constexpr IntegerT dynFactor = 16;
       IntegerT chunks = dynFactor * workingThreads;
-      return (end - start + chunks) / chunks;
+      return (size() + chunks) / chunks;
     } else if (chunk == kStatic) {
       // This should never be called.  The static distribution versions of the parallel_for
       // functions should be invoked instead.
@@ -296,7 +301,7 @@ void parallel_for(
     const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options = {}) {
-  if (range.size() == 0) {
+  if (range.empty()) {
     return;
   }
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
@@ -315,6 +320,18 @@ void parallel_for(
   const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
   const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
+
+  if (numToLaunch == 1 && !useCallingThread) {
+    taskSet.schedule([range, f = std::move(f)]() { f(range.start, range.end); });
+    if (options.wait) {
+      taskSet.wait();
+    }
+    return;
+  } else if (numToLaunch == 0) {
+    f(range.start, range.end);
+    return;
+  }
+
   const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
 
   if (options.wait) {
@@ -410,7 +427,7 @@ void parallel_for(
     const ChunkedRange<IntegerT>& range,
     F&& f,
     ParForOptions options = {}) {
-  if (range.size() == 0) {
+  if (range.empty()) {
     return;
   }
   if (!options.maxThreads || range.size() == 1 ||
@@ -429,11 +446,24 @@ void parallel_for(
   const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
   const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
-  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
 
   for (ssize_t i = 0; i < numToLaunch + useCallingThread; ++i) {
     states.emplace_back(defaultState());
   }
+
+  if (numToLaunch == 1 && !useCallingThread) {
+    taskSet.schedule(
+        [&s = states.front(), range, f = std::move(f)]() { f(s, range.start, range.end); });
+    if (options.wait) {
+      taskSet.wait();
+    }
+    return;
+  } else if (numToLaunch == 0) {
+    f(*states.begin(), range.start, range.end);
+    return;
+  }
+
+  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
 
   if (options.wait) {
     alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);

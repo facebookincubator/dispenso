@@ -63,6 +63,19 @@ constexpr size_t kCacheLineSize = 64;
 #define DISPENSO_EXPECT(a, b) a
 #endif
 
+template <typename T>
+class CacheAligned {
+ public:
+  CacheAligned() = default;
+  CacheAligned(T t) : t_(t) {}
+  operator T&() {
+    return t_;
+  }
+
+ private:
+  alignas(kCacheLineSize) T t_;
+};
+
 namespace detail {
 
 template <typename T>
