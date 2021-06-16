@@ -37,6 +37,14 @@ namespace dispenso {
 using ssize_t = std::make_signed<std::size_t>::type;
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+#define DISPENSO_INLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#define DISPENSO_INLINE __forceinline
+#else
+#define DISPENSO_INLINE inline
+#endif // PLATFORM
+
 /**
  * @var constexpr size_t kCacheLineSize
  * @brief A constant that defines a safe number of bytes+alignment to avoid false sharing.

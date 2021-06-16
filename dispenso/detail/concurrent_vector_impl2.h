@@ -8,14 +8,14 @@
 namespace cv {
 
 template <typename VecT, typename T>
-ConVecIterBase<VecT, T>::ConVecIterBase(const VecT* vec, cv::BucketInfo info)
+DISPENSO_INLINE ConVecIterBase<VecT, T>::ConVecIterBase(const VecT* vec, cv::BucketInfo info)
     : vb_(reinterpret_cast<uintptr_t>(vec) | info.bucket),
       bucketStart_(vec->buffers_[info.bucket].load(std::memory_order_relaxed)),
       bucketPtr_(bucketStart_ + info.bucketIndex),
       bucketEnd_(bucketStart_ + info.bucketCapacity) {}
 
 template <typename VecT, typename T, bool kIsConst>
-ConcurrentVectorIterator<VecT, T, kIsConst>&
+DISPENSO_INLINE ConcurrentVectorIterator<VecT, T, kIsConst>&
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator++() {
   ++bucketPtr_;
   if (bucketPtr_ == bucketEnd_) {
@@ -30,7 +30,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator++() {
 }
 
 template <typename VecT, typename T, bool kIsConst>
-ConcurrentVectorIterator<VecT, T, kIsConst>&
+DISPENSO_INLINE ConcurrentVectorIterator<VecT, T, kIsConst>&
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator--() {
   --bucketPtr_;
   if (bucketPtr_ < bucketStart_) {
@@ -49,18 +49,18 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator--() {
 }
 
 template <typename VecT, typename T, bool kIsConst>
-typename ConcurrentVectorIterator<VecT, T, kIsConst>::reference
+DISPENSO_INLINE typename ConcurrentVectorIterator<VecT, T, kIsConst>::reference
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator*() const {
   return *bucketPtr_;
 }
 template <typename VecT, typename T, bool kIsConst>
-typename ConcurrentVectorIterator<VecT, T, kIsConst>::pointer
+DISPENSO_INLINE typename ConcurrentVectorIterator<VecT, T, kIsConst>::pointer
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator->() const {
   return &operator*();
 }
 
 template <typename VecT, typename T, bool kIsConst>
-typename ConcurrentVectorIterator<VecT, T, kIsConst>::reference
+DISPENSO_INLINE typename ConcurrentVectorIterator<VecT, T, kIsConst>::reference
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator[](difference_type n) const {
   T* nPtr = bucketPtr_ + n;
   if (nPtr >= bucketStart_ && nPtr < bucketEnd_) {
@@ -77,7 +77,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator[](difference_type n) const
 }
 
 template <typename VecT, typename T, bool kIsConst>
-ConcurrentVectorIterator<VecT, T, kIsConst>&
+DISPENSO_INLINE ConcurrentVectorIterator<VecT, T, kIsConst>&
 ConcurrentVectorIterator<VecT, T, kIsConst>::operator+=(difference_type n) {
   T* nPtr = bucketPtr_ + n;
   if (nPtr >= bucketStart_ && nPtr < bucketEnd_) {
@@ -99,8 +99,8 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator+=(difference_type n) {
 }
 
 template <typename VecT, typename T, bool kIsConst>
-ConcurrentVectorIterator<VecT, T, kIsConst> ConcurrentVectorIterator<VecT, T, kIsConst>::operator+(
-    difference_type n) const {
+DISPENSO_INLINE ConcurrentVectorIterator<VecT, T, kIsConst>
+ConcurrentVectorIterator<VecT, T, kIsConst>::operator+(difference_type n) const {
   T* nPtr = bucketPtr_ + n;
   if (nPtr >= bucketStart_ && nPtr < bucketEnd_) {
     return {vb_, bucketStart_, nPtr, bucketEnd_};
@@ -115,19 +115,19 @@ ConcurrentVectorIterator<VecT, T, kIsConst> ConcurrentVectorIterator<VecT, T, kI
 }
 
 template <typename VecT, typename T, bool kIsConst>
-typename CompactCVecIterator<VecT, T, kIsConst>::reference
+DISPENSO_INLINE typename CompactCVecIterator<VecT, T, kIsConst>::reference
 CompactCVecIterator<VecT, T, kIsConst>::operator*() const {
   return const_cast<VecT&>(*vec_)[index_];
 }
 
 template <typename VecT, typename T, bool kIsConst>
-typename CompactCVecIterator<VecT, T, kIsConst>::pointer
+DISPENSO_INLINE typename CompactCVecIterator<VecT, T, kIsConst>::pointer
 CompactCVecIterator<VecT, T, kIsConst>::operator->() const {
   return &operator*();
 }
 
 template <typename VecT, typename T, bool kIsConst>
-typename CompactCVecIterator<VecT, T, kIsConst>::reference
+DISPENSO_INLINE typename CompactCVecIterator<VecT, T, kIsConst>::reference
 CompactCVecIterator<VecT, T, kIsConst>::operator[](ssize_t n) const {
   return const_cast<VecT&>(*vec_)[index_ + n];
 }

@@ -980,7 +980,8 @@ class ConcurrentVector {
   }
 
  private:
-  cv::BucketInfo bucketAndSubIndexForIndex(size_t index) const {
+  DISPENSO_INLINE cv::BucketInfo bucketAndSubIndexForIndex(size_t index) const {
+#if defined(__clang__)
     if (index < firstBucketLen_) {
       return {0, index, firstBucketLen_};
     }
@@ -991,9 +992,12 @@ class ConcurrentVector {
     size_t bucketIndex = index - bucketCapacity;
 
     return {bucket, bucketIndex, bucketCapacity};
+#else
+    return bucketAndSubIndex(index);
+#endif // __clang__
   }
 
-  cv::BucketInfo bucketAndSubIndex(size_t index) const {
+  DISPENSO_INLINE cv::BucketInfo bucketAndSubIndex(size_t index) const {
     size_t l2idx = detail::log2(index | 1);
     size_t bucket = (l2idx + 1) - firstBucketShift_;
     size_t bucketCapacity = size_t{1} << l2idx;

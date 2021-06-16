@@ -31,7 +31,14 @@ class ConVecIterBase {
     const size_t bucket;
   };
   VecAndBucket getVecAndBucket() const {
-    return {reinterpret_cast<const VecT*>(vb_ & 0xffffffffffffffc0UL), vb_ & 0x3f};
+    static_assert(
+        alignof(VecT) >= 64,
+        "This code relies on the ConcurrentVector pointer to be 64-byte aligned");
+    if (sizeof(uintptr_t) == 8) {
+      return {reinterpret_cast<const VecT*>(vb_ & 0xffffffffffffffc0UL), vb_ & 0x3f};
+    } else {
+      return {reinterpret_cast<const VecT*>(vb_ & 0xffffffc0), vb_ & 0x3f};
+    }
   }
 
   // Note: Could have a size-optimized iterator via traits.  It is easy to reduce this to 24 bytes
