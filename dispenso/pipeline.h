@@ -76,7 +76,7 @@ void pipeline(ThreadPool& pool, Stages&&... sIn) {
   ConcurrentTaskSet tasks(pool);
   auto pipes = detail::makePipes(tasks, std::forward<Stages>(sIn)...);
   pipes.execute();
-  tasks.wait();
+  pipes.wait();
 }
 
 /**

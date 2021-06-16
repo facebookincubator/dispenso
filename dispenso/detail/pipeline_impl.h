@@ -13,6 +13,7 @@
 #include <dispenso/detail/op_result.h>
 #include <dispenso/detail/result_of.h>
 #include <dispenso/task_set.h>
+#include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
 namespace detail {
@@ -52,6 +53,7 @@ class LimitGatedScheduler {
         return;
       }
 
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       queue_.enqueue([this, fPipe = std::move(fPipe)]() mutable {
         fPipe([this]() {
           OnceFunction func;
@@ -63,6 +65,7 @@ class LimitGatedScheduler {
         });
         outstanding_.fetch_sub(1, std::memory_order_acq_rel);
       });
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
 
       while (resources_.fetch_sub(1, std::memory_order_acq_rel) > 0) {
         OnceFunction func;
@@ -272,6 +275,7 @@ class Pipe<StageClass::kGenerator, CurStage, PipeNext> {
   void wait() {
     completion_->wait(0);
     pipeNext_.wait();
+    tasks_.wait();
   }
 
  private:
