@@ -51,12 +51,48 @@ TEST(ConcurrentObjectArena, ObjectsConstuction) {
     size_t value;
   };
 
-  dispenso::ConcurrentObjectArena<TestData> arena(bufSize);
+  dispenso::ConcurrentObjectArena<TestData>* arena =
+      new dispenso::ConcurrentObjectArena<TestData>(bufSize);
 
-  arena.grow_by(smallGrow);
-  arena.grow_by(bigGrow);
+  arena->grow_by(smallGrow);
+  arena->grow_by(bigGrow);
 
-  const size_t num = arena.size();
+  const size_t num = arena->size();
   for (size_t i = 0; i < num; ++i)
-    EXPECT_EQ(arena[i].value, defaultValue);
+    EXPECT_EQ((*arena)[i].value, defaultValue);
+
+  dispenso::ConcurrentObjectArena<TestData> copyArena(*arena);
+
+  dispenso::ConcurrentObjectArena<TestData> copyAssignmentArena(bufSize / 2);
+  copyAssignmentArena = *arena;
+
+  EXPECT_EQ(copyArena.size(), arena->size());
+  EXPECT_EQ(copyAssignmentArena.size(), arena->size());
+
+  const size_t numBuffers = arena->numBuffers();
+  std::vector<const TestData*> bufferPtrs(numBuffers);
+  for (size_t i = 0; i < numBuffers; ++i)
+    bufferPtrs[i] = arena->getBuffer(i);
+
+  dispenso::ConcurrentObjectArena<TestData> moveArena(std::move(*arena));
+
+  EXPECT_EQ(arena->size(), 0);
+  EXPECT_EQ(arena->numBuffers(), 0);
+  EXPECT_EQ(arena->capacity(), 0);
+
+  delete arena;
+
+  EXPECT_EQ(copyArena.numBuffers(), numBuffers);
+  EXPECT_EQ(copyAssignmentArena.numBuffers(), numBuffers);
+
+  for (size_t i = 0; i < num; ++i) {
+    EXPECT_EQ(copyArena[i].value, defaultValue);
+    EXPECT_EQ(copyAssignmentArena[i].value, defaultValue);
+  }
+
+  for (size_t i = 0; i < numBuffers; ++i) {
+    EXPECT_NE(copyArena.getBuffer(i), bufferPtrs[i]);
+    EXPECT_NE(copyAssignmentArena.getBuffer(i), bufferPtrs[i]);
+    EXPECT_EQ(moveArena.getBuffer(i), bufferPtrs[i]);
+  }
 }

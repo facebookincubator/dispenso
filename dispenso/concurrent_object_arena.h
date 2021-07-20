@@ -75,6 +75,46 @@ struct ConcurrentObjectArena {
     allocatedSize_.store(kBufferSize, std::memory_order_relaxed);
   }
 
+  /**
+   * Copy constructor
+   **/
+  ConcurrentObjectArena(const ConcurrentObjectArena<T, Index, alignment>& other)
+      : kLog2BuffSize(other.kLog2BuffSize),
+        kBufferSize(other.kBufferSize),
+        kMask(other.kMask),
+        pos_(other.pos_.load(std::memory_order_relaxed)),
+        allocatedSize_(other.allocatedSize_.load(std::memory_order_relaxed)),
+        buffersSize_(other.buffersSize_),
+        buffersPos_(other.buffersPos_) {
+    T** otherBuffers = other.buffers_.load(std::memory_order_relaxed);
+    T** newBuffers = new T*[buffersSize_];
+    for (Index i = 0; i < buffersSize_; ++i) {
+      void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
+#if defined(__cpp_exceptions)
+      if (ptr == nullptr)
+        throw std::bad_alloc();
+#endif // __cpp_exceptions
+      std::memcpy(ptr, otherBuffers[i], kBufferSize * sizeof(T));
+      newBuffers[i] = static_cast<T*>(ptr);
+    }
+    buffers_.store(newBuffers, std::memory_order_relaxed);
+  }
+
+  /**
+   * Move constructor
+   **/
+  ConcurrentObjectArena(ConcurrentObjectArena<T, Index, alignment>&& other) noexcept
+      : kLog2BuffSize(0),
+        kBufferSize(0),
+        kMask(0),
+        pos_(0),
+        allocatedSize_(0),
+        buffers_(nullptr),
+        buffersSize_(0),
+        buffersPos_(0) {
+    swap(*this, other);
+  }
+
   ~ConcurrentObjectArena() {
     T** buffers = buffers_.load(std::memory_order_relaxed);
 
@@ -87,6 +127,24 @@ struct ConcurrentObjectArena {
       delete[] p;
   }
 
+  /**
+   * Copy assignment operator.  This is not concurrency safe.
+   **/
+  ConcurrentObjectArena<T, Index, alignment>& operator=(
+      ConcurrentObjectArena<T, Index, alignment> const& other) {
+    ConcurrentObjectArena<T, Index, alignment> copy(other);
+    swap(*this, copy);
+    return *this;
+  }
+
+  /**
+   * Move assignment operator.  This is not concurrency safe.
+   **/
+  ConcurrentObjectArena<T, Index, alignment>& operator=(
+      ConcurrentObjectArena<T, Index, alignment>&& other) noexcept {
+    swap(*this, other);
+    return *this;
+  }
   /**
    * Grow a container
    *
@@ -122,6 +180,14 @@ struct ConcurrentObjectArena {
     return oldPos;
   }
 
+  /**
+   * Access an element of the object arena.  Concurrency safe.
+   * @param index The index of the element to access.
+   * @return A reference to the element at index.
+   *
+   * @note references are stable even if other threads are inserting, but it is
+   * still the users responsibility to avoid racing on the element itself.
+   **/
   inline const T& operator[](const Index index) const {
     const Index bufIndex = index >> kLog2BuffSize;
     const Index i = index & kMask;
@@ -130,30 +196,67 @@ struct ConcurrentObjectArena {
     return buffers_.load(std::memory_order_relaxed)[bufIndex][i];
   }
 
+  /**
+   * Access an element of the object arena.  Concurrency safe.
+   * @param index The index of the element to access.
+   * @return A reference to the element at index.
+   *
+   * @note references are stable even if other threads are inserting, but it is
+   * still the users responsibility to avoid racing on the element itself.
+   **/
   inline T& operator[](const Index index) {
-    return const_cast<T&>(const_cast<const ConcurrentObjectArena<T, Index>&>(*this)[index]);
+    return const_cast<T&>(
+        const_cast<const ConcurrentObjectArena<T, Index, alignment>&>(*this)[index]);
   }
 
+  /**
+   * Get the size of the object arena.  Concurrency safe.
+   * @return The number of elements in the object arena.  Note that elements can be appended
+   *concurrently with this call.
+   **/
   Index size() const {
     return pos_.load(std::memory_order_relaxed);
   }
 
+  /**
+   * The current capacity of the object arena. Concurrency safe.
+   * @return The current capacity. Note that elements can be appended concurrently
+   **/
   Index capacity() const {
     return allocatedSize_.load(std::memory_order_relaxed);
   }
 
+  /**
+   * Number of the internal buffers. Concurrency  safe.
+   * @return The current number of buffers. Note that buffers can be appended concurrently
+   **/
   Index numBuffers() const {
     return buffersPos_;
   }
 
+  /**
+   * Get the pointer to the buffer. Concurrency safe.
+   * @param index index of the buffer
+   * @return The pointer to the buffer.
+   **/
   const T* getBuffer(const Index index) const {
     return buffers_.load(std::memory_order_relaxed)[index];
   }
 
+  /**
+   * Get the pointer to the buffer. Concurrency safe.
+   * @param index index of the buffer
+   * @return The pointer to the buffer.
+   **/
   T* getBuffer(const Index index) {
     return buffers_.load(std::memory_order_relaxed)[index];
   }
 
+  /**
+   * Get the used buffer size. not concurrency safe.
+   * @param index index of the buffer.
+   * @return The used buffer size.
+   **/
   Index getBufferSize(const Index index) const {
     const Index numBuffs = numBuffers();
     assert(index < numBuffs);
@@ -162,6 +265,38 @@ struct ConcurrentObjectArena {
       return kBufferSize;
     else
       return pos_.load(std::memory_order_relaxed) - (kBufferSize * (numBuffs - 1));
+  }
+
+  /**
+   * Swap the contents of containers lhs, and rhs.  This is not concurrency safe.
+   * @param lhs object arena to swap
+   * @param rhs object arena to swap
+   **/
+  friend void swap(
+      ConcurrentObjectArena<T, Index, alignment>& lhs,
+      ConcurrentObjectArena<T, Index, alignment>& rhs) noexcept {
+    using std::swap;
+
+    swap(lhs.kLog2BuffSize, rhs.kLog2BuffSize);
+    swap(lhs.kBufferSize, rhs.kBufferSize);
+    swap(lhs.kMask, rhs.kMask);
+
+    const Index rhs_pos = rhs.pos_.load(std::memory_order_relaxed);
+    rhs.pos_.store(lhs.pos_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    lhs.pos_.store(rhs_pos, std::memory_order_relaxed);
+
+    const Index rhs_allocatedSize = rhs.allocatedSize_.load(std::memory_order_relaxed);
+    rhs.allocatedSize_.store(
+        lhs.allocatedSize_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    lhs.allocatedSize_.store(rhs_allocatedSize, std::memory_order_relaxed);
+
+    T** const rhs_buffers = rhs.buffers_.load(std::memory_order_relaxed);
+    rhs.buffers_.store(lhs.buffers_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    lhs.buffers_.store(rhs_buffers, std::memory_order_relaxed);
+
+    swap(lhs.buffersSize_, rhs.buffersSize_);
+    swap(lhs.buffersPos_, rhs.buffersPos_);
+    swap(lhs.deleteLater_, rhs.deleteLater_);
   }
 
  private:
@@ -198,7 +333,7 @@ struct ConcurrentObjectArena {
     Index bufStart = beginIndex & kMask;
     for (Index b = startBuffer; b <= endBuffer; ++b) {
       T* buf = buffers_.load(std::memory_order_relaxed)[b];
-      const Index bufEnd = b == endBuffer ? (endIndex & kMask) : kMask + 1;
+      const Index bufEnd = b == endBuffer ? (endIndex & kMask) : kBufferSize;
       for (Index i = bufStart; i < bufEnd; ++i)
         new (buf + i) T();
 
@@ -211,11 +346,11 @@ struct ConcurrentObjectArena {
   //                ──┬──
   //                  └─number of 1s is log2BuffSize
   //
-  const Index kLog2BuffSize;
-  const Index kBufferSize;
-  const Index kMask;
-
   std::mutex resizeMutex_;
+
+  Index kLog2BuffSize;
+  Index kBufferSize;
+  Index kMask;
 
   std::atomic<Index> pos_;
   std::atomic<Index> allocatedSize_;
