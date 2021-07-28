@@ -117,9 +117,9 @@ struct ChunkedRange {
       // TODO(bbudge): play with different load balancing factors for auto.
       // IntegerT dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
       // cyclesPerIndex_));
-      constexpr IntegerT dynFactor = 16;
-      IntegerT chunks = dynFactor * workingThreads;
-      return (size() + chunks) / chunks;
+      constexpr ssize_t dynFactor = 16;
+      const ssize_t chunks = dynFactor * workingThreads;
+      return static_cast<IntegerT>((size() + chunks) / chunks);
     } else if (chunk == kStatic) {
       // This should never be called.  The static distribution versions of the parallel_for
       // functions should be invoked instead.
