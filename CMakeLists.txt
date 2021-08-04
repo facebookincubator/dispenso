@@ -12,7 +12,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(CMAKE_CXX_EXTENSIONS OFF)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-  option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+  option(DISPENSO_SHARED_LIB "Build Dispenso shared library" ON)
 
   # Windows-specific
   if(WIN32)
