@@ -14,12 +14,25 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   option(DISPENSO_SHARED_LIB "Build Dispenso shared library" ON)
 
+
   # Windows-specific
   if(WIN32)
     add_compile_definitions(NOMINMAX)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
   endif()
 endif()
+
+option(ADDRESS_SANITIZER "Use Address Sanitizer, incompatible with THREAD_SANITIZER" OFF)
+option(THREAD_SANITIZER "Use Thread Sanitizer, incompatible with ADDRESS_SANITIZER" OFF)
+
+if (ADDRESS_SANITIZER)
+  add_compile_options("-fsanitize=address -fsanitize=undefined")
+  add_link_options("-fsanitize=address -fsanitize=undefined")
+elseif (THREAD_SANITIZER)
+  add_compile_options("-fsanitize=thread")
+  add_link_options("-fsanitize=thread")
+endif()
+
 
 ###########################################################
 # Targets

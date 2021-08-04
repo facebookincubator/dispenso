@@ -17,7 +17,9 @@
 
 #pragma once
 
-#if defined(__has_feature)
+#if defined(__SANITIZE_THREAD__)
+#define DISPENSO_HAS_TSAN 1
+#elif defined(__has_feature)
 #if __has_feature(thread_sanitizer)
 #define DISPENSO_HAS_TSAN 1
 #else
