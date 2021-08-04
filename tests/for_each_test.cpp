@@ -237,7 +237,7 @@ TEST(ForEach, SmallSet) {
 
 TEST(ForEach, EmptySet) {
   std::set<int> emptySet;
-  dispenso::for_each(std::begin(emptySet), std::end(emptySet), [](int i) {
+  dispenso::for_each(std::begin(emptySet), std::end(emptySet), [](int /*index*/) {
     EXPECT_FALSE(true) << "Should not get into this lambda";
   });
 }
@@ -281,7 +281,7 @@ TEST(ForEach, Cascade) {
       taskSet,
       std::begin(emptySet),
       std::end(emptySet),
-      [](int i) { EXPECT_FALSE(true) << "Should not get into this lambda"; },
+      [](int /*index*/) { EXPECT_FALSE(true) << "Should not get into this lambda"; },
       waitOptions);
 
   for (int i = 0; i < 100; ++i) {

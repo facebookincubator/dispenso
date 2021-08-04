@@ -18,7 +18,11 @@ include(GoogleTest)
 
 macro(package_add_test TESTNAME)
     add_executable(${TESTNAME} ${ARGN})
-    target_compile_features(${TESTNAME} PRIVATE cxx_std_14)
+    target_compile_features(${TESTNAME} PRIVATE cxx_std_14)    
+    target_compile_options(${TESTNAME} PRIVATE
+      $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+      )
     target_link_libraries(${TESTNAME} gmock_main dispenso)
     if(WIN32)
       target_link_libraries(${TESTNAME} Synchronization)

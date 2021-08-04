@@ -225,21 +225,21 @@ TEST(GreedyFor, OptionsMaxThreads) {
 
 TEST(GreedyFor, NegativeRangeLength) {
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
-  dispenso::parallel_for(taskSet, 2, -2, [](auto index) {
+  dispenso::parallel_for(taskSet, 2, -2, [](auto /*index*/) {
     EXPECT_FALSE(true) << "Shouldn't enter this function at all";
   });
 }
 
 TEST(GreedyFor, NegativeRangeLengthBig) {
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
-  dispenso::parallel_for(taskSet, 2147483647, -2147483647, [](auto index) {
+  dispenso::parallel_for(taskSet, 2147483647, -2147483647, [](auto /*index*/) {
     EXPECT_FALSE(true) << "Shouldn't enter this function at all";
   });
 }
 
 TEST(GreedyFor, ZeroLength2) {
   dispenso::TaskSet taskSet(dispenso::globalThreadPool());
-  dispenso::parallel_for(taskSet, -77, -77, [](auto index) {
+  dispenso::parallel_for(taskSet, -77, -77, [](auto /*index*/) {
     EXPECT_FALSE(true) << "Shouldn't enter this function at all";
   });
 }
@@ -251,7 +251,7 @@ TEST(GreedyFor, AvoidOverflow1) {
       taskSet,
       std::numeric_limits<int16_t>::min(),
       std::numeric_limits<int16_t>::max(),
-      [&count](auto index) { count.fetch_add(1, std::memory_order_relaxed); });
+      [&count](auto /*index*/) { count.fetch_add(1, std::memory_order_relaxed); });
 
   EXPECT_EQ(count.load(), std::numeric_limits<uint16_t>::max());
 }
@@ -270,7 +270,7 @@ TEST(GreedyFor, AvoidOverflow2) {
       []() { return uint32_t{0}; },
       std::numeric_limits<int32_t>::min() / 2 - 1,
       std::numeric_limits<int32_t>::max() / 2 + 1,
-      [](auto& count, auto index) { ++count; },
+      [](auto& count, auto /*index*/) { ++count; },
       options);
   taskSet.wait();
 
@@ -293,7 +293,7 @@ TEST(GreedyFor, EmptyLoopsWaitIfToldTo) {
       taskSet,
       0,
       1000,
-      [&count](int i) {
+      [&count](int /*index*/) {
         std::this_thread::sleep_for(std::chrono::microseconds(1));
         count.fetch_add(1, std::memory_order_acq_rel);
       },
@@ -304,7 +304,7 @@ TEST(GreedyFor, EmptyLoopsWaitIfToldTo) {
       taskSet,
       0,
       0,
-      [](int i) { EXPECT_FALSE(true) << "Should not reach this lambda"; },
+      [](int /*index*/) { EXPECT_FALSE(true) << "Should not reach this lambda"; },
       waitOptions);
 
   EXPECT_EQ(count.load(), 1000);
@@ -321,7 +321,7 @@ TEST(GreedyFor, SingleLoopWaitIfToldTo) {
       taskSet,
       0,
       1000,
-      [&count](int i) {
+      [&count](int /*index*/) {
         std::this_thread::sleep_for(std::chrono::microseconds(1));
         count.fetch_add(1, std::memory_order_acq_rel);
       },

@@ -14,6 +14,10 @@ else()
   add_library(dispenso STATIC ${SOURCES} ${HEADERS})
 endif()
 
+target_compile_options(dispenso PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+)
 
 target_include_directories(dispenso PUBLIC .. third-party/moodycamel "${PROJECT_BINARY_DIR}")
 
