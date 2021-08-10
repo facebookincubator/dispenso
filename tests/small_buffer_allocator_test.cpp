@@ -29,13 +29,15 @@ constexpr size_t kMaxOverheadMultiplier = 2;
 constexpr size_t kMaxOverheadMultiplier = 3;
 #endif // !DISPENSO_HAS_TSAN
 
-using dispenso::SmallBufferAllocator;
+using dispenso::allocSmallBuffer;
+using dispenso::approxBytesAllocatedSmallBuffer;
+using dispenso::deallocSmallBuffer;
 
 template <size_t kSize>
 void testEmpty() {
-  ASSERT_EQ(SmallBufferAllocator<kSize>::bytesAllocated(), 0);
-  SmallBufferAllocator<kSize>::dealloc(SmallBufferAllocator<kSize>::alloc());
-  ASSERT_GT(SmallBufferAllocator<kSize>::bytesAllocated(), 0);
+  ASSERT_EQ(approxBytesAllocatedSmallBuffer<kSize>(), 0);
+  deallocSmallBuffer<kSize>(allocSmallBuffer<kSize>());
+  ASSERT_GT(approxBytesAllocatedSmallBuffer<kSize>(), 0);
 }
 
 TEST(SmallBufferAllocator, Empty) {
@@ -56,20 +58,20 @@ void testSimple() {
   std::vector<char*> buffers(kSimpleNumBuffers);
   auto doIt = [&buffers]() {
     for (char*& b : buffers) {
-      b = SmallBufferAllocator<kSize>::alloc();
+      b = allocSmallBuffer<kSize>();
     }
     for (char* b : buffers) {
-      SmallBufferAllocator<kSize>::dealloc(b);
+      deallocSmallBuffer<kSize>(b);
     }
   };
   // Warm up to allocate.
   doIt();
 
-  size_t allocatedSoFar = SmallBufferAllocator<kSize>::bytesAllocated();
+  size_t allocatedSoFar = approxBytesAllocatedSmallBuffer<kSize>();
 
   for (int i = 0; i < 10; ++i) {
     doIt();
-    ASSERT_EQ(SmallBufferAllocator<kSize>::bytesAllocated(), allocatedSoFar);
+    ASSERT_EQ(approxBytesAllocatedSmallBuffer<kSize>(), allocatedSoFar);
   }
 }
 TEST(SmallBufferAllocator, Simple) {
@@ -87,7 +89,7 @@ void testThreads() {
     tb.resize(kThreadedNumBuffers);
     threads.emplace_back([&buffers = tb]() {
       for (char*& b : buffers) {
-        b = SmallBufferAllocator<kSize>::alloc();
+        b = allocSmallBuffer<kSize>();
       }
     });
   }
@@ -99,7 +101,7 @@ void testThreads() {
   for (auto& tb : threadBuffers) {
     threads[i++] = std::thread([&buffers = tb]() {
       for (char* b : buffers) {
-        SmallBufferAllocator<kSize>::dealloc(b);
+        deallocSmallBuffer<kSize>(b);
       }
     });
   }
@@ -107,17 +109,17 @@ void testThreads() {
   for (auto& t : threads) {
     t.join();
   }
-  size_t allocatedSoFar = SmallBufferAllocator<kSize>::bytesAllocated();
+  size_t allocatedSoFar = approxBytesAllocatedSmallBuffer<kSize>();
 
   for (int j = 0; j < 50; ++j) {
     i = 0;
     for (auto& tb : threadBuffers) {
       threads[i++] = std::thread([&buffers = tb]() {
         for (char*& b : buffers) {
-          b = SmallBufferAllocator<kSize>::alloc();
+          b = allocSmallBuffer<kSize>();
         }
         for (char* b : buffers) {
-          SmallBufferAllocator<kSize>::dealloc(b);
+          deallocSmallBuffer<kSize>(b);
         }
       });
     }
@@ -126,8 +128,7 @@ void testThreads() {
       t.join();
     }
 
-    ASSERT_LE(
-        SmallBufferAllocator<kSize>::bytesAllocated(), kMaxOverheadMultiplier * allocatedSoFar);
+    ASSERT_LE(approxBytesAllocatedSmallBuffer<kSize>(), kMaxOverheadMultiplier * allocatedSoFar);
   }
 }
 
@@ -152,7 +153,7 @@ void testThreadsHandoff() {
     tb.resize(kThreadedNumBuffers);
     threads.emplace_back([&buffers = tb]() {
       for (auto& b : buffers) {
-        b.first = SmallBufferAllocator<kSize>::alloc();
+        b.first = allocSmallBuffer<kSize>();
         b.second.store(false, std::memory_order_relaxed);
       }
     });
@@ -165,7 +166,7 @@ void testThreadsHandoff() {
   for (auto& tb : threadBuffers) {
     threads[i++] = std::thread([&buffers = tb]() {
       for (auto& b : buffers) {
-        SmallBufferAllocator<kSize>::dealloc(b.first);
+        deallocSmallBuffer<kSize>(b.first);
       }
     });
   }
@@ -173,21 +174,21 @@ void testThreadsHandoff() {
   for (auto& t : threads) {
     t.join();
   }
-  size_t allocatedSoFar = SmallBufferAllocator<kSize>::bytesAllocated();
+  size_t allocatedSoFar = approxBytesAllocatedSmallBuffer<kSize>();
 
   for (int j = 0; j < 50; ++j) {
     for (i = 0; i < kThreads; ++i) {
       threads[i] = std::thread(
           [&buffers = threadBuffers[i], &buffersOther = threadBuffers[(i + 1) % kThreads]]() {
             for (auto& b : buffers) {
-              b.first = SmallBufferAllocator<kSize>::alloc();
+              b.first = allocSmallBuffer<kSize>();
               b.second.store(true, std::memory_order_release);
             }
             for (auto& b : buffersOther) {
               while (!b.second.load(std::memory_order_acquire)) {
                 std::this_thread::yield();
               }
-              SmallBufferAllocator<kSize>::dealloc(b.first);
+              deallocSmallBuffer<kSize>(b.first);
               b.second.store(false, std::memory_order_relaxed);
             }
           });
@@ -197,8 +198,7 @@ void testThreadsHandoff() {
       t.join();
     }
 
-    ASSERT_LE(
-        SmallBufferAllocator<kSize>::bytesAllocated(), kMaxOverheadMultiplier * allocatedSoFar);
+    ASSERT_LE(approxBytesAllocatedSmallBuffer<kSize>(), kMaxOverheadMultiplier * allocatedSoFar);
   }
 }
 

@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+#pragma once
+
 #include <stdint.h>
 
 #if defined(_WIN32)
@@ -14,6 +16,7 @@ namespace dispenso {
 namespace detail {
 
 constexpr uint64_t nextPow2(uint64_t v) {
+  // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
   v--;
   v |= v >> 1;
   v |= v >> 2;
@@ -30,7 +33,7 @@ constexpr inline uint32_t log2const(uint64_t v) {
   constexpr uint32_t S[] = {1, 2, 4, 8, 16, 32};
 
   uint32_t r = 0;
-  for (size_t i = 6; i--;) {
+  for (uint32_t i = 6; i--;) {
     if (v & b[i]) {
       v >>= S[i];
       r |= S[i];

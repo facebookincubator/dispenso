@@ -223,7 +223,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
     ThenChain* scheduleDestroyAndGetNext() {
       invoke(impl, schedulable);
-      constexpr size_t kImplSize = nextPowerOfTwo(sizeof(this));
+      constexpr size_t kImplSize = nextPow2(sizeof(this));
       auto* ret = this->next;
       deallocSmallBuffer<kImplSize>(this);
       return ret;
@@ -273,7 +273,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
       return;
     }
 
-    constexpr size_t kImplSize = nextPowerOfTwo(sizeof(ThenChain));
+    constexpr size_t kImplSize = nextPow2(sizeof(ThenChain));
     auto* buffer = allocSmallBuffer<kImplSize>();
     ThenChain* link = reinterpret_cast<ThenChain*>(buffer);
     link->impl = impl;
@@ -385,32 +385,15 @@ class FutureImplAlloc : public FutureImplBase<Result> {
   alignas(F) char func_[sizeof(F)];
 };
 
-template <typename Result>
-class FutureImplAlloc<void, Result> : public FutureImplBase<Result> {
- protected:
-  void runFunc() override {}
-  void dealloc() override {
-    this->~FutureImplAlloc();
-    alignedFree(this);
-  }
-
-  ~FutureImplAlloc() override = default;
-};
-
 template <typename Result, typename F>
 inline FutureImplBase<Result>*
 createFutureImpl(F&& f, bool allowInline, std::atomic<ssize_t>* taskSetCounter) {
   using FNoRef = typename std::remove_reference<F>::type;
-  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, FNoRef, Result>));
+  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, FNoRef, Result>));
   using SmallT = FutureImplSmall<kImplSize, FNoRef, Result>;
-  using AllocT = FutureImplAlloc<FNoRef, Result>;
 
-  FutureImplBase<Result>* ret;
-  if (sizeof(SmallT) <= kMaxSmallBufferSize) {
-    ret = new (allocSmallBuffer<kImplSize>()) SmallT(std::forward<F>(f));
-  } else {
-    ret = new (alignedMalloc(sizeof(AllocT))) AllocT(std::forward<F>(f));
-  }
+  FutureImplBase<Result>* ret = new (allocSmallBuffer<kImplSize>()) SmallT(std::forward<F>(f));
+
   ret->setAllowInline(allowInline);
   ret->setTaskSetCounter(taskSetCounter);
   return ret;
@@ -418,38 +401,32 @@ createFutureImpl(F&& f, bool allowInline, std::atomic<ssize_t>* taskSetCounter) 
 
 template <typename Result, typename T>
 inline FutureImplBase<Result>* createValueFutureImplReady(T&& t) {
-  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, void, Result>));
+  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, Result>));
   using SmallT = FutureImplSmall<kImplSize, void, Result>;
-  using AllocT = FutureImplAlloc<void, Result>;
 
-  FutureImplBase<Result>* retval;
+  FutureImplBase<Result>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
 
-  if (sizeof(SmallT) <= kMaxSmallBufferSize) {
-    retval = new (allocSmallBuffer<kImplSize>()) SmallT();
-  } else {
-    retval = new (alignedMalloc(sizeof(AllocT))) AllocT();
-  }
-  retval->setAsResult(std::forward<T>(t));
-  retval->setReady();
-  return retval;
+  ret->setAsResult(std::forward<T>(t));
+  ret->setReady();
+  return ret;
 }
 
 template <typename X>
 inline FutureImplBase<X&>* createRefFutureImplReady(std::reference_wrapper<X> x) {
-  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, void, X&>));
+  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, X&>));
   using SmallT = FutureImplSmall<kImplSize, void, X&>;
-  FutureImplBase<X&>* retval = new (allocSmallBuffer<kImplSize>()) SmallT();
-  retval->setAsResult(&x.get());
-  retval->setReady();
-  return retval;
+  FutureImplBase<X&>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
+  ret->setAsResult(&x.get());
+  ret->setReady();
+  return ret;
 }
 
 inline FutureImplBase<void>* createVoidFutureImplReady() {
-  constexpr size_t kImplSize = nextPowerOfTwo(sizeof(FutureImplSmall<16, void, void>));
+  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, void>));
   using SmallT = FutureImplSmall<kImplSize, void, void>;
-  FutureImplBase<void>* retval = new (allocSmallBuffer<kImplSize>()) SmallT();
-  retval->setReady();
-  return retval;
+  FutureImplBase<void>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
+  ret->setReady();
+  return ret;
 }
 
 template <typename TaskSetType>

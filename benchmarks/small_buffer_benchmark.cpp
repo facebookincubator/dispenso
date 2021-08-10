@@ -11,8 +11,6 @@ constexpr size_t kSmallSize = 32;
 constexpr size_t kMediumSize = 128;
 constexpr size_t kLargeSize = 256;
 
-using dispenso::SmallBufferAllocator;
-
 template <typename Alloc, typename Free>
 void run(benchmark::State& state, Alloc alloc, Free dealloc) {
   std::vector<char*> ptrs(state.range(0));
@@ -36,8 +34,8 @@ template <size_t kSize>
 void BM_small_buffer_allocator(benchmark::State& state) {
   run(
       state,
-      []() { return SmallBufferAllocator<kSize>::alloc(); },
-      [](char* buf) { SmallBufferAllocator<kSize>::dealloc(buf); });
+      []() { return dispenso::allocSmallBuffer<kSize>(); },
+      [](char* buf) { dispenso::deallocSmallBuffer<kSize>(buf); });
 }
 
 BENCHMARK_TEMPLATE(BM_newdelete, kSmallSize)->Range(1 << 8, 1 << 14);

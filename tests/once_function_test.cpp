@@ -9,10 +9,10 @@
 
 #include <gtest/gtest.h>
 
-constexpr size_t kExtraSmall = 16;
-constexpr size_t kSmall = 32;
-constexpr size_t kMedium = 128;
-constexpr size_t kLarge = 256;
+constexpr size_t kExtraSmall = 8;
+constexpr size_t kSmall = 24;
+constexpr size_t kMedium = 120;
+constexpr size_t kLarge = 248;
 constexpr size_t kExtraLarge = 10000;
 
 using dispenso::OnceFunction;
@@ -62,6 +62,25 @@ void testSize() {
   for (size_t i = 0; i < kNumElts; ++i) {
     expected += i & 255;
   }
+  EXPECT_EQ(answer, expected);
+}
+
+template <>
+void testSize<8>() {
+  struct Foo {
+    void operator()() {
+      int s = 0;
+      *sum = s;
+    }
+    int* sum;
+  } foo;
+  int answer;
+  foo.sum = &answer;
+  OnceFunction f(foo);
+  OnceFunction g(foo);
+  g();
+  f();
+  int expected = 0;
   EXPECT_EQ(answer, expected);
 }
 
