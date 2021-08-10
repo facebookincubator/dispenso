@@ -71,6 +71,26 @@ constexpr size_t kCacheLineSize = 64;
 #define DISPENSO_EXPECT(a, b) a
 #endif
 
+// clang-format off
+#if (defined(__GNUC__) || defined(__clang__))
+#define DO_PRAGMA(X) _Pragma(#X)
+#define DISPENSO_DISABLE_WARNING_PUSH DO_PRAGMA(GCC diagnostic push)
+#define DISPENSO_DISABLE_WARNING_POP DO_PRAGMA(GCC diagnostic pop)
+#define DISPENSO_DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)
+#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS \
+  DISPENSO_DISABLE_WARNING(-Wgnu-zero-variadic-macro-arguments)
+#elif defined(_MSC_VER)
+#define DISPENSO_DISABLE_WARNING_PUSH __pragma(warning(push))
+#define DISPENSO_DISABLE_WARNING_POP __pragma(warning(pop))
+#define DISPENSO_DISABLE_WARNING(warningNumber) __pragma(warning(disable : warningNumber))
+#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS
+#else
+#define DISPENSO_DISABLE_WARNING_PUSH
+#define DISPENSO_DISABLE_WARNING_POP
+#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS
+#endif
+// clang-format on
+
 template <typename T>
 class CacheAligned {
  public:

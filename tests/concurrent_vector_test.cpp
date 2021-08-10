@@ -35,7 +35,10 @@ struct TestTraitsB {
 
 using TestTraitsTypes =
     ::testing::Types<dispenso::DefaultConcurrentVectorTraits, TestTraitsA, TestTraitsB>;
+DISPENSO_DISABLE_WARNING_PUSH
+DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS
 TYPED_TEST_SUITE(ConcurrentVectorTest, TestTraitsTypes);
+DISPENSO_DISABLE_WARNING_POP
 
 template <typename CVec, typename Func>
 void runVariedTest(int num, Func func) {
