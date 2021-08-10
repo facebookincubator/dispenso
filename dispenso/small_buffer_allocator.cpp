@@ -1,10 +1,57 @@
+#include <dispenso/detail/small_buffer_allocator_impl.h>
 #include <dispenso/small_buffer_allocator.h>
 
-#include <dispenso/detail/small_buffer_allocator_impl.h>
+#include <new>
 
 namespace dispenso {
-
 namespace detail {
+static int smallBufferSchwarzCounter = 0;
+
+#define SMALL_BUFFER_GLOBALS_DECL(N)                           \
+  static AlignedBuffer<SmallBufferGlobals> g_globalsBuffer##N; \
+  static SmallBufferGlobals& g_globals##N =                    \
+      reinterpret_cast<SmallBufferGlobals&>(g_globalsBuffer##N)
+
+SMALL_BUFFER_GLOBALS_DECL(8);
+SMALL_BUFFER_GLOBALS_DECL(16);
+SMALL_BUFFER_GLOBALS_DECL(32);
+SMALL_BUFFER_GLOBALS_DECL(64);
+SMALL_BUFFER_GLOBALS_DECL(128);
+SMALL_BUFFER_GLOBALS_DECL(256);
+
+#define SMALL_BUFFER_GLOBAL_FUNC_DEFS(N)           \
+  template <>                                      \
+  SmallBufferGlobals& getSmallBufferGlobals<N>() { \
+    return g_globals##N;                           \
+  }
+
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(8)
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(16)
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(32)
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(64)
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(128)
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(256)
+
+SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
+  if (smallBufferSchwarzCounter++ == 0) {
+    ::new (&g_globals8) SmallBufferGlobals();
+    ::new (&g_globals16) SmallBufferGlobals();
+    ::new (&g_globals32) SmallBufferGlobals();
+    ::new (&g_globals64) SmallBufferGlobals();
+    ::new (&g_globals128) SmallBufferGlobals();
+    ::new (&g_globals256) SmallBufferGlobals();
+  }
+}
+SchwarzSmallBufferInit::~SchwarzSmallBufferInit() {
+  if (--smallBufferSchwarzCounter == 0) {
+    g_globals8.~SmallBufferGlobals();
+    g_globals16.~SmallBufferGlobals();
+    g_globals32.~SmallBufferGlobals();
+    g_globals64.~SmallBufferGlobals();
+    g_globals128.~SmallBufferGlobals();
+    g_globals256.~SmallBufferGlobals();
+  }
+}
 
 char* allocSmallBufferImpl(size_t ordinal) {
   switch (ordinal) {
@@ -79,5 +126,4 @@ template class SmallBufferAllocator<128>;
 template class SmallBufferAllocator<256>;
 
 } // namespace detail
-
 } // namespace dispenso

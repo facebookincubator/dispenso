@@ -16,6 +16,21 @@
 namespace dispenso {
 namespace detail {
 
+struct SmallBufferGlobals {
+  moodycamel::ConcurrentQueue<char*> centralStore;
+  std::vector<char*> backingStore;
+  std::atomic<uint32_t> backingStoreLock{0};
+
+  ~SmallBufferGlobals() {
+    for (char* b : backingStore) {
+      alignedFree(b);
+    }
+  }
+};
+
+template <size_t kChunkSize>
+DISPENSO_DLL_ACCESS SmallBufferGlobals& getSmallBufferGlobals();
+
 /**
  * A class for allocating small chunks of memory quickly.  The class is built on concepts of
  * thread-local pools of buffers of specific sizes.  It is best to limit the distinct number of
@@ -89,10 +104,12 @@ class SmallBufferAllocator {
    **/
   static size_t bytesAllocated() {
     uint32_t allocId = 0;
-    while (!backingStoreLock().compare_exchange_weak(allocId, 1, std::memory_order_acquire)) {
+    auto& globals = getSmallBufferGlobals<kChunkSize>();
+    auto& lock = globals.backingStoreLock;
+    while (!lock.compare_exchange_weak(allocId, 1, std::memory_order_acquire)) {
     }
-    size_t bytes = kMallocBytes * backingStore().size();
-    backingStoreLock().store(0, std::memory_order_release);
+    size_t bytes = kMallocBytes * globals.backingStore.size();
+    lock.store(0, std::memory_order_release);
     return bytes;
   }
 
@@ -138,12 +155,11 @@ class SmallBufferAllocator {
     (void)getThreadQueuingData();
   }
 
-  DISPENSO_DLL_ACCESS static moodycamel::ConcurrentQueue<char*>& centralStore();
-  DISPENSO_DLL_ACCESS static std::vector<char*>& backingStore();
-
   static size_t grabFromCentralStore(char** buffers) {
     auto& queue = getThreadQueuingData();
-    auto& lock = backingStoreLock();
+    auto& globals = getSmallBufferGlobals<kChunkSize>();
+    auto& lock = globals.backingStoreLock;
+    auto& backingStore = globals.backingStore;
     while (true) {
       size_t grabbed = queue.try_dequeue_bulk(buffers, kIdealNumTLBuffers);
       if (grabbed) {
@@ -152,7 +168,7 @@ class SmallBufferAllocator {
       uint32_t allocId = lock.fetch_add(1, std::memory_order_acquire);
       if (allocId == 0) {
         char* buffer = reinterpret_cast<char*>(detail::alignedMalloc(kMallocBytes, kChunkSize));
-        backingStore().push_back(buffer);
+        backingStore.push_back(buffer);
 
         constexpr size_t kNumToPush = kBuffersPerMalloc - kIdealNumTLBuffers;
         char* topush[kNumToPush];
@@ -186,46 +202,11 @@ class SmallBufferAllocator {
     return {tlBuffers, tlCount};
   };
   DISPENSO_DLL_ACCESS static PerThreadQueuingData& getThreadQueuingData() {
-    static thread_local PerThreadQueuingData data(centralStore(), buffersAndCount());
+    static thread_local PerThreadQueuingData data(
+        getSmallBufferGlobals<kChunkSize>().centralStore, buffersAndCount());
     return data;
   }
-
-  DISPENSO_DLL_ACCESS static std::atomic<uint32_t>& backingStoreLock();
-
-  // Prefer "dumb" thread local to thread_local when possible to avoid overheads.
-  // static DISPENSO_THREAD_LOCAL char* tlBuffers_[kMaxNumTLBuffers];
-  // static DISPENSO_THREAD_LOCAL size_t tlCount_;
-  // static std::atomic<uint32_t> backingStoreLock_;
 };
-
-// template <size_t kChunkSize>
-// DISPENSO_THREAD_LOCAL char* SmallBufferAllocator<
-//     kChunkSize>::tlBuffers_[SmallBufferAllocator<kChunkSize>::kMaxNumTLBuffers];
-// template <size_t kChunkSize>
-// DISPENSO_THREAD_LOCAL size_t SmallBufferAllocator<kChunkSize>::tlCount_ = 0;
-
-// template <size_t kChunkSize>
-// std::atomic<uint32_t> SmallBufferAllocator<kChunkSize>::backingStoreLock_(0);
-
-template <size_t kChunkSize>
-std::atomic<uint32_t>& SmallBufferAllocator<kChunkSize>::backingStoreLock() {
-  static std::atomic<uint32_t> backingStoreLk;
-  return backingStoreLk;
-}
-
-template <size_t kChunkSize>
-moodycamel::ConcurrentQueue<char*>& SmallBufferAllocator<kChunkSize>::centralStore() {
-  // Controlled leak to avoid static destruction order fiasco.
-  static moodycamel::ConcurrentQueue<char*>* queue = new moodycamel::ConcurrentQueue<char*>();
-  return *queue;
-}
-
-template <size_t kChunkSize>
-std::vector<char*>& SmallBufferAllocator<kChunkSize>::backingStore() {
-  // Controlled leak to avoid static destruction order fiasco.
-  static std::vector<char*>* backingBuffers = new std::vector<char*>();
-  return *backingBuffers;
-}
 
 } // namespace detail
 } // namespace dispenso

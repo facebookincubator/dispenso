@@ -107,6 +107,11 @@ class CacheAligned {
 namespace detail {
 
 template <typename T>
+struct AlignedBuffer {
+  alignas(alignof(T)) char b[sizeof(T)];
+};
+
+template <typename T>
 struct alignas(kCacheLineSize) AlignedAtomic : public std::atomic<T*> {};
 
 inline void* alignedMalloc(size_t bytes, size_t alignment) {

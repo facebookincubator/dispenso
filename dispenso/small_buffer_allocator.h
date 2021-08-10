@@ -58,6 +58,11 @@ inline std::enable_if_t<(kBlockSize > kMaxSmallBufferSize), void> deallocSmallOr
   alignedFree(buf);
 }
 
+static struct SchwarzSmallBufferInit {
+  DISPENSO_DLL_ACCESS SchwarzSmallBufferInit();
+  DISPENSO_DLL_ACCESS ~SchwarzSmallBufferInit();
+} smallBufferInit;
+
 } // namespace detail
 
 /**
