@@ -38,22 +38,22 @@ void BM_small_buffer_allocator(benchmark::State& state) {
       [](char* buf) { dispenso::deallocSmallBuffer<kSize>(buf); });
 }
 
-BENCHMARK_TEMPLATE(BM_newdelete, kSmallSize)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kSmallSize)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kSmallSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kSmallSize)->Range(1 << 13, 1 << 15);
 
-BENCHMARK_TEMPLATE(BM_newdelete, kMediumSize)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kMediumSize)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kMediumSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kMediumSize)->Range(1 << 13, 1 << 15);
 
-BENCHMARK_TEMPLATE(BM_newdelete, kLargeSize)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kLargeSize)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kLargeSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kLargeSize)->Range(1 << 13, 1 << 15);
 
-BENCHMARK_TEMPLATE(BM_newdelete, kSmallSize)->Threads(16)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kSmallSize)->Threads(16)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kSmallSize)->Threads(16)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kSmallSize)->Threads(16)->Range(1 << 13, 1 << 15);
 
-BENCHMARK_TEMPLATE(BM_newdelete, kMediumSize)->Threads(16)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kMediumSize)->Threads(16)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kMediumSize)->Threads(16)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kMediumSize)->Threads(16)->Range(1 << 13, 1 << 15);
 
-BENCHMARK_TEMPLATE(BM_newdelete, kLargeSize)->Threads(16)->Range(1 << 8, 1 << 14);
-BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kLargeSize)->Threads(16)->Range(1 << 8, 1 << 14);
+BENCHMARK_TEMPLATE(BM_newdelete, kLargeSize)->Threads(16)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_small_buffer_allocator, kLargeSize)->Threads(16)->Range(1 << 13, 1 << 15);
 
 BENCHMARK_MAIN();
