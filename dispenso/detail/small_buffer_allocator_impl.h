@@ -48,8 +48,8 @@ class SmallBufferAllocator {
   // can lead to megabytes of data being allocated, even if the alloctor is only used for one or two
   // allocations.  Likely we can reduce these sizes by a decent factor without affecting benchmarks,
   // and then reduce them even further as an option.
-  static constexpr size_t kMallocBytes = (1 << 18) * kLogFactor;
-  static constexpr size_t kIdealTLCacheBytes = (1 << 16) * kLogFactor;
+  static constexpr size_t kMallocBytes = (1 << 12) * kLogFactor;
+  static constexpr size_t kIdealTLCacheBytes = kMallocBytes / 4;
   static constexpr size_t kIdealNumTLBuffers = kIdealTLCacheBytes / kChunkSize;
   static constexpr size_t kMaxNumTLBuffers = 2 * kIdealNumTLBuffers;
   static constexpr size_t kBuffersPerMalloc = kMallocBytes / kChunkSize;
