@@ -5,6 +5,7 @@
 
 namespace dispenso {
 namespace detail {
+// It may be possible that some tsan impls try to do global ctors and dtors in parallel.
 static int smallBufferSchwarzCounter = 0;
 
 #define SMALL_BUFFER_GLOBALS_DECL(N)                           \
@@ -43,14 +44,8 @@ SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
   }
 }
 SchwarzSmallBufferInit::~SchwarzSmallBufferInit() {
-  if (--smallBufferSchwarzCounter == 0) {
-    g_globals8.~SmallBufferGlobals();
-    g_globals16.~SmallBufferGlobals();
-    g_globals32.~SmallBufferGlobals();
-    g_globals64.~SmallBufferGlobals();
-    g_globals128.~SmallBufferGlobals();
-    g_globals256.~SmallBufferGlobals();
-  }
+  // Intentionally do not destruct the g_globals variables. This is not really a leak since the OS
+  // will just clean it up shortly.
 }
 
 char* allocSmallBufferImpl(size_t ordinal) {
