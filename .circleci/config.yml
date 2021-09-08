@@ -8,10 +8,10 @@ jobs:
       - checkout
       - run:
           name: Installing GCC
-          command: 'apt-get update && apt-get install -y gcc g++'
+          command: 'sudo apt-get update && sudo apt-get install -y gcc g++'
       - run:
           name: Installing CMAKE
-          command: 'apt-get update && sudo apt-get install -y cmake'
+          command: 'sudo apt-get update && sudo apt-get install -y cmake'
       - run:
           name: Configuring
           command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON'
