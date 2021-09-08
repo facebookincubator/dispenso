@@ -14,6 +14,7 @@
 #pragma once
 
 #include <functional>
+#include <vector>
 
 #include <dispenso/detail/future_impl.h>
 #include <dispenso/detail/result_of.h>
