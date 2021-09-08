@@ -17,7 +17,7 @@ jobs:
           command: 'apt-get update && sudo apt-get install -y cmake'
       - run:
           name: Configuring
-          command: 'cmake -B build -DDISPENSO_BUILD_TESTS=ON'
+          command: 'cmake -S . -B build -DDISPENSO_BUILD_TESTS=ON'
       - run:
           name: Building
           command: 'cmake --build build'
