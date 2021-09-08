@@ -1,6 +1,8 @@
 # Dispenso
 Dispenso is a library for working with sets of tasks.  It provides mechanisms for thread pools, task sets, parallel for loops, futures, pipelines, and more.
 
+[![CircleCI](https://circleci.com/gh/facebookincubator/dispenso.svg?style=shield&circle-token=6257757aba00378bfd8fa892e3c03128757f77d1)](https://app.circleci.com/pipelines/github/facebookincubator/dispenso)
+
 ## Comparison of dispenso vs other libraries
 ### TBB
 TBB has significant overlap with dispenso, though TBB has more functionality, and is likely to continue having more utilities for some time.   We chose to build and use dispenso for a few primary reasons like
