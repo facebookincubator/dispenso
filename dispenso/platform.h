@@ -77,8 +77,12 @@ constexpr size_t kCacheLineSize = 64;
 #define DISPENSO_DISABLE_WARNING_PUSH DO_PRAGMA(GCC diagnostic push)
 #define DISPENSO_DISABLE_WARNING_POP DO_PRAGMA(GCC diagnostic pop)
 #define DISPENSO_DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)
+#if defined(__GNUC__)
+#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS
+#else
 #define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS \
   DISPENSO_DISABLE_WARNING(-Wgnu-zero-variadic-macro-arguments)
+#endif
 #elif defined(_MSC_VER)
 #define DISPENSO_DISABLE_WARNING_PUSH __pragma(warning(push))
 #define DISPENSO_DISABLE_WARNING_POP __pragma(warning(pop))
