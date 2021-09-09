@@ -14,7 +14,7 @@ jobs:
           command: 'sudo apt-get update && sudo apt-get install -y cmake'
       - run:
           name: Configuring
-          command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON'
+          command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="-Wno-error=conversion"'
       - run:
           name: Building
           command: 'cd build && cmake --build .'
