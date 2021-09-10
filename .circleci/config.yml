@@ -1,0 +1,23 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:2021.04
+    steps:
+      - checkout
+      - run:
+          name: Installing GCC
+          command: 'sudo apt-get update && sudo apt-get install -y gcc g++'
+      - run:
+          name: Installing CMAKE
+          command: 'sudo apt-get update && sudo apt-get install -y cmake'
+      - run:
+          name: Configuring
+          command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="-Wno-error=conversion"'
+      - run:
+          name: Building
+          command: 'cd build && cmake --build .'
+      - run:
+          name: Running Unit Tests
+          command: 'cd build && ctest'
