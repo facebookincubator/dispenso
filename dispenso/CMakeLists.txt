@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.12)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cpp)
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS *.h)
 
-if (DISPENSO_SHARED_LIB) 
+if(DISPENSO_SHARED_LIB)
   add_compile_definitions(DISPENSO_SHARED_LIB DISPENSO_LIB_EXPORT)
   add_library(dispenso SHARED ${SOURCES} ${HEADERS})
 
@@ -20,5 +20,11 @@ target_compile_options(dispenso PRIVATE
   )
 
 target_include_directories(dispenso PUBLIC .. third-party/moodycamel "${PROJECT_BINARY_DIR}")
+
+if(WIN32)
+  target_link_libraries(dispenso Synchronization)
+else()
+  target_link_libraries(dispenso pthread)
+endif()
 
 target_compile_features(dispenso PUBLIC cxx_std_14)
