@@ -194,7 +194,7 @@ void parallel_for_staticImpl(
   }
 
   // Reduce the remaining chunk sizes by 1.
-  chunkSize -= static_cast<IntegerT>(!perfectlyChunked);
+  chunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
     IntegerT next = static_cast<IntegerT>(start + chunkSize);
@@ -260,7 +260,7 @@ void parallel_for_staticImpl(
   }
 
   // Reduce the remaining chunk sizes by 1.
-  chunkSize -= static_cast<IntegerT>(!perfectlyChunked);
+  chunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
     IntegerT next = static_cast<IntegerT>(start + chunkSize);
