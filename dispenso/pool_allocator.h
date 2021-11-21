@@ -26,7 +26,7 @@ class PoolAllocator {
    * @param allocFunc The underlying allocation function for allocating slabs
    * @param deallocFunc The underlying deallocation function.  Currently only called on destruction.
    **/
-  PoolAllocator(
+  DISPENSO_DLL_ACCESS PoolAllocator(
       size_t chunkSize,
       size_t allocSize,
       std::function<void*(size_t)> allocFunc,
@@ -37,19 +37,19 @@ class PoolAllocator {
    *
    * @return The pointer to a buffer of chunkSize bytes
    **/
-  char* alloc();
+  DISPENSO_DLL_ACCESS char* alloc();
 
   /**
    * Deallocate a previously allocated chunk
    *
    * @param ptr The chunk to return to the available pool
    **/
-  void dealloc(char* ptr);
+  DISPENSO_DLL_ACCESS void dealloc(char* ptr);
 
   /**
    * Destruct a PoolAllocator
    **/
-  ~PoolAllocator();
+  DISPENSO_DLL_ACCESS ~PoolAllocator();
 
  private:
   const size_t chunkSize_;
