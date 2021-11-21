@@ -60,7 +60,7 @@ void testSize() {
   f();
   int expected = 0;
   for (size_t i = 0; i < kNumElts; ++i) {
-    expected += i & 255;
+    expected += static_cast<int>(i & 255);
   }
   EXPECT_EQ(answer, expected);
 }
