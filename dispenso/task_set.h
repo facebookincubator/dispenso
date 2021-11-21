@@ -103,7 +103,7 @@ class TaskSet {
     outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     pool_.schedule(
         token_,
-        [this, f = std::move(f)]() {
+        [this, f = std::move(f)]() mutable {
 #if defined(__cpp_exceptions)
           try {
             f();
