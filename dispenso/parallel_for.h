@@ -185,7 +185,7 @@ void parallel_for_staticImpl(
   IntegerT start = range.start;
   ssize_t t;
   for (t = 0; t < firstLoopLen; ++t) {
-    IntegerT next = start + chunkSize;
+    IntegerT next = static_cast<IntegerT>(start + chunkSize);
     taskSet.schedule([start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(start, next);
@@ -194,10 +194,10 @@ void parallel_for_staticImpl(
   }
 
   // Reduce the remaining chunk sizes by 1.
-  chunkSize -= !perfectlyChunked;
+  chunkSize -= static_cast<IntegerT>(!perfectlyChunked);
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
-    IntegerT next = start + chunkSize;
+    IntegerT next = static_cast<IntegerT>(start + chunkSize);
     taskSet.schedule([start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(start, next);
@@ -251,7 +251,7 @@ void parallel_for_staticImpl(
   IntegerT start = range.start;
   ssize_t t;
   for (t = 0; t < firstLoopLen; ++t) {
-    IntegerT next = start + chunkSize;
+    IntegerT next = static_cast<IntegerT>(start + chunkSize);
     taskSet.schedule([it = stateIt++, start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(*it, start, next);
@@ -260,10 +260,10 @@ void parallel_for_staticImpl(
   }
 
   // Reduce the remaining chunk sizes by 1.
-  chunkSize -= !perfectlyChunked;
+  chunkSize -= static_cast<IntegerT>(!perfectlyChunked);
   // Finish submitting all but the last item.
   for (; t < numThreads - 1; ++t) {
-    IntegerT next = start + chunkSize;
+    IntegerT next = static_cast<IntegerT>(start + chunkSize);
     taskSet.schedule([it = stateIt++, start, next, f]() {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       f(*it, start, next);
@@ -352,7 +352,7 @@ void parallel_for(
         if (cur >= end) {
           break;
         }
-        f(cur, std::min<IntegerT>(cur + chunk, end));
+        f(cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
       }
     };
 
@@ -379,7 +379,7 @@ void parallel_for(
         if (cur >= end) {
           break;
         }
-        f(cur, std::min<IntegerT>(cur + chunk, end));
+        f(cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
       }
     };
 
@@ -493,7 +493,7 @@ void parallel_for(
         if (cur >= end) {
           break;
         }
-        f(s, cur, std::min<IntegerT>(cur + chunk, end));
+        f(s, cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
       }
     };
 
@@ -518,7 +518,7 @@ void parallel_for(
         if (cur >= end) {
           break;
         }
-        f(s, cur, std::min<IntegerT>(cur + chunk, end));
+        f(s, cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
       }
     };
 

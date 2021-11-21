@@ -99,7 +99,7 @@ TEST(PoolAllocator, SimpleThreaded) {
       for (size_t i = 0; i < 1000; ++i) {
         for (size_t j = 0; j < kNumBufs; ++j) {
           bufs[j] = allocator.alloc();
-          *bufs[j] = (char)tid;
+          *bufs[j] = static_cast<char>(tid);
         }
         for (size_t j = 0; j < kNumBufs; ++j) {
           EXPECT_EQ(*bufs[j], tid);
