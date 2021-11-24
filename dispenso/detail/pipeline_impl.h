@@ -20,7 +20,7 @@ namespace detail {
 
 class LimitGatedScheduler {
  public:
-  LimitGatedScheduler(ConcurrentTaskSet& tasks, size_t res)
+  LimitGatedScheduler(ConcurrentTaskSet& tasks, ssize_t res)
       : impl_(new (alignedMalloc(sizeof(Impl), alignof(Impl))) Impl(tasks, res)) {}
 
   template <typename F>
@@ -36,10 +36,8 @@ class LimitGatedScheduler {
   // Put the guts within a unique_ptr to enable this type to be movable.
   class Impl {
    public:
-    Impl(ConcurrentTaskSet& tasks, size_t res)
-        : tasks_(tasks),
-          resources_(std::min<size_t>(std::numeric_limits<ssize_t>::max(), res)),
-          unlimited_(res >= static_cast<size_t>(std::numeric_limits<ssize_t>::max())) {}
+    Impl(ConcurrentTaskSet& tasks, ssize_t res)
+        : tasks_(tasks), resources_(res), unlimited_(res == std::numeric_limits<ssize_t>::max()) {}
 
     template <typename F>
     void schedule(F&& fPipe) {
@@ -119,7 +117,7 @@ class LimitGatedScheduler {
 
 template <typename F>
 struct Stage {
-  Stage(F&& fIn, size_t limitIn) : f(std::move(fIn)), limit(static_cast<ssize_t>(limitIn)) {}
+  Stage(F&& fIn, ssize_t limitIn) : f(std::move(fIn)), limit(limitIn) {}
 
   template <typename T>
   auto operator()(T&& t) {

@@ -235,7 +235,6 @@ TODO
 None at present
 
 ## TODO
-* Examine why pipeline\_benchmark is so dismal for BM\_dispenso\_par
 * Publish some graphs for benchmarks
 * Expand CircleCI continuous integration testing from Linux to include Mac and Windows, and also to run on ARM.  Use TSAN and ASAN testing on available platforms.
 * Push to Open Source

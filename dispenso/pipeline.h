@@ -30,7 +30,7 @@ using OpResult = detail::OpResult<T>;
  * A simple constant representing maximum parallelism for a stage.  This number has no particular
  * significance, and is simply here for convenience.
  **/
-constexpr size_t kStageNoLimit = std::numeric_limits<size_t>::max();
+constexpr ssize_t kStageNoLimit = std::numeric_limits<ssize_t>::max();
 
 /**
  * Create a stage for use in the pipeline function.
@@ -43,7 +43,7 @@ constexpr size_t kStageNoLimit = std::numeric_limits<size_t>::max();
  * @return A stage object suitable for pipelining.
  **/
 template <typename F>
-auto stage(F&& f, size_t limit) {
+auto stage(F&& f, ssize_t limit) {
   return detail::Stage<F>(std::forward<F>(f), limit);
 }
 
