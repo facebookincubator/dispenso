@@ -226,7 +226,30 @@ Not currently supported.
 <div id='benchresults'/>
 
 ## Benchmark Results
-TODO
+Here are some limited benchmark results.  Unless otherwise noted, these were run on a dual Epyc Rome machine with 128 cores and 256 threads.  One benchmark here was repeated on a Threadripper 2990WX with 32 cores and 64 threads.
+
+Some additional notes about the benchmarks: Your mileage may vary based on compiler, OS/platform, and processor.  These benchmarks were run with default glibc malloc, but use of tcmalloc or jemalloc can significantly boost performance, especially for ConcurrentVector growth operations (`grow_by` and `push_back`).  
+
+| Parallel Tree Creation             |  Parallel Tree Creation Zoomed |
+:-------------------------:|:-------------------------:
+![plot](./docs/benchmarks/par_tree_small.png) | ![plot](./docs/benchmarks/par_tree_small_zoomed.png)
+![plot](./docs/benchmarks/par_tree_medium.png) | ![plot](./docs/benchmarks/par_tree_medium_zoomed.png)
+![plot](./docs/benchmarks/par_tree_large.png) | ![plot](./docs/benchmarks/par_tree_large_zoomed.png)
+
+---
+
+![plot](./docs/benchmarks/nested_for_small.png)
+![plot](./docs/benchmarks/nested_for_medium.png)
+![plot](./docs/benchmarks/nested_for_large.png)
+
+---
+
+![plot](./docs/benchmarks/pipelines_256thread.png)
+![plot](./docs/benchmarks/pipelines_64thread.png)
+
+---
+
+![plot](./docs/benchmarks/concurrent_vector.png)
 
 <div id='knownissues'/>
 
@@ -235,7 +258,6 @@ TODO
 None at present
 
 ## TODO
-* Publish some graphs for benchmarks
 * Expand CircleCI continuous integration testing from Linux to include Mac and Windows, and also to run on ARM.  Use TSAN and ASAN testing on available platforms.
 * Push to Open Source
 
