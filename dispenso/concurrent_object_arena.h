@@ -5,7 +5,7 @@
 // LICENSE.md file in the root directory of this source tree.
 
 /**
- * @file future.h
+ * @file concurrent_object_arena.h
  * A file providing concurrent object arena container.
  **/
 

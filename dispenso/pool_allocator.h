@@ -3,6 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE.md file in the root directory of this source tree.
 
+/**
+ * @file pool_allocator.h
+ * A pool allocator to help reduce calls to the underlying allocation and deallocation functions
+ * that can be provided custom backing allocation and deallocation functions, e.g. cudaMalloc,
+ * cudaFree.
+ **/
+
 #pragma once
 
 #include <atomic>

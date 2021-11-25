@@ -4,7 +4,8 @@
 // LICENSE.md file in the root directory of this source tree.
 
 /**
- * @file functions for performing parallel for loops.
+ * @file parallel_for.h
+ * Functions for performing parallel for loops.
  **/
 
 #pragma once
