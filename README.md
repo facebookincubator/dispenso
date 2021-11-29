@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
   - [Comparison of dispenso vs other libraries](#comparison)
   - [When not to use dispenso](#nottouse)
-  - [Examples](#examples)
+  - [Documentation and Examples](#examples)
 - [Building dispenso](#building)
 - [Testing dispenso](#testing)
 - [Benchmarking dispenso](#benchmarking)
@@ -74,7 +74,9 @@ If you need async I/O, Folly is likely a good choice (though it still doesn't fi
 
 <div id='examples'/>
 
-## Examples
+## Documentation and Examples
+[Documentation can be found here](./docs/doxygen/html/index.html)
+
 Here are some simple examples of what you can do in dispenso.  See tests and benchmarks for more examples.
 
 ### parallel\_for
