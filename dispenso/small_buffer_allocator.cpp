@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE.md file in the root directory of this source tree.
+
 #include <dispenso/detail/small_buffer_allocator_impl.h>
 #include <dispenso/small_buffer_allocator.h>
 
