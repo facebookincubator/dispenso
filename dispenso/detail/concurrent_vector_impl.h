@@ -385,13 +385,13 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
                ? binfo.bucketCapacity / 2
                : binfo.bucketCapacity - 1);
 
-    bool allocNextBucket =
+    bool allocCurrentBucket =
         binfo.bucketIndex <= indexToCheck && binfo.bucketIndex + rangeLen > indexToCheck;
-    if (DISPENSO_EXPECT(allocNextBucket || binfo.bucket < bend.bucket, 0)) {
+    if (DISPENSO_EXPECT(allocCurrentBucket || binfo.bucket < bend.bucket, 0)) {
       size_t sizeToAlloc = 0;
 
-      size_t cap = binfo.bucketCapacity << ((bool)binfo.bucket + !allocNextBucket);
-      size_t bucket = binfo.bucket + 1 + !allocNextBucket;
+      size_t cap = binfo.bucketCapacity << ((bool)binfo.bucket + !allocCurrentBucket);
+      size_t bucket = binfo.bucket + 1 + !allocCurrentBucket;
       for (; bucket <= bend.bucket; ++bucket, cap <<= 1) {
         if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
           sizeToAlloc += cap;
@@ -407,7 +407,7 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
                  ? bend.bucketCapacity / 2
                  : bend.bucketCapacity - 1);
 
-      if (DISPENSO_EXPECT(bend.bucketIndex >= endToCheck, 0)) {
+      if (DISPENSO_EXPECT(bend.bucketIndex > endToCheck, 0)) {
         if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
           sizeToAlloc += cap;
         }
@@ -419,8 +419,8 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
       }
       bool firstAccounted = false;
 
-      cap = binfo.bucketCapacity << ((bool)binfo.bucket + !allocNextBucket);
-      bucket = binfo.bucket + 1 + !allocNextBucket;
+      cap = binfo.bucketCapacity << ((bool)binfo.bucket + !allocCurrentBucket);
+      bucket = binfo.bucket + 1 + !allocCurrentBucket;
       for (; bucket <= bend.bucket; ++bucket, cap <<= 1) {
         if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
           this->buffers_[bucket].store(allocBufs, std::memory_order_release);
@@ -433,7 +433,7 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
       assert(bucket == bend.bucket + 1);
       assert((bucket == 1 && cap == bend.bucketCapacity) || cap == bend.bucketCapacity * 2);
 
-      if (DISPENSO_EXPECT(bend.bucketIndex >= endToCheck, 0)) {
+      if (DISPENSO_EXPECT(bend.bucketIndex > endToCheck, 0)) {
         if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
           this->buffers_[bucket].store(allocBufs, std::memory_order_release);
           shouldDealloc_[bucket] = !firstAccounted;

@@ -417,7 +417,7 @@ class ConcurrentVector {
         t->~T();
       }
       cap >>= int{b > 1};
-      len = cap - 1;
+      len = cap;
     } while (b--);
     size_.store(0, std::memory_order_release);
   }
