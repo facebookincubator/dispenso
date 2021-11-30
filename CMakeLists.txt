@@ -26,11 +26,11 @@ option(ADDRESS_SANITIZER "Use Address Sanitizer, incompatible with THREAD_SANITI
 option(THREAD_SANITIZER "Use Thread Sanitizer, incompatible with ADDRESS_SANITIZER" OFF)
 
 if (ADDRESS_SANITIZER)
-  add_compile_options("-fsanitize=address -fsanitize=undefined")
-  add_link_options("-fsanitize=address -fsanitize=undefined")
+  add_compile_options(-fsanitize=address -fsanitize=undefined)
+  add_link_options(-fsanitize=address -fsanitize=undefined)
 elseif (THREAD_SANITIZER)
-  add_compile_options("-fsanitize=thread")
-  add_link_options("-fsanitize=thread")
+  add_compile_options(-fsanitize=thread)
+  add_link_options(-fsanitize=thread)
 endif()
 
 
