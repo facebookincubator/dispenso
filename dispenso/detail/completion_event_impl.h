@@ -156,9 +156,9 @@ class CompletionEventImpl {
     }
 
     mach_timespec_t ts;
-    ts.tv_sec = relSeconds;
+    ts.tv_sec = static_cast<uint32_t>(relSeconds);
     relSeconds -= ts.tv_sec;
-    ts.tv_nsec = 1e9 * relSeconds;
+    ts.tv_nsec = static_cast<clock_res_t>(1e9 * relSeconds);
 
     // TODO: determine if we should worry about reducing timeout time subsequent times through the
     // loop in the case of spurious wake.
