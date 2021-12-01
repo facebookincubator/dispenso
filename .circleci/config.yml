@@ -1,9 +1,10 @@
 version: 2
 
 jobs:
-  build:
+  build-linux:
     docker:
       - image: cimg/base:2021.04
+    resource_class: xlarge
     steps:
       - checkout
       - run:
@@ -13,11 +14,43 @@ jobs:
           name: Installing CMAKE
           command: 'sudo apt-get update && sudo apt-get install -y cmake'
       - run:
-          name: Configuring
-          command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON'
+          name: Configuring Debug
+          command: 'mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug'
       - run:
           name: Building
-          command: 'cd build && cmake --build .'
+          command: 'cd build && cmake --build . -j'
       - run:
           name: Running Unit Tests
           command: 'cd build && ctest'
+      - run:
+          name: Configuring Release
+          command: 'cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release'
+      - run:
+          name: Building
+          command: 'cd build && cmake --build . -j'
+      - run:
+          name: Running Unit Tests
+          command: 'cd build && ctest'
+      - run:
+          name: Configuring ASAN
+          command: 'cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DADDRESS_SANITIZER=ON'
+      - run:
+          name: Building
+          command: 'cd build && cmake --build . -j'
+      - run:
+          name: Running Unit Tests
+          command: 'cd build && ctest'
+      - run:
+          name: Configuring TSAN
+          command: 'cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DADDRESS_SANITIZER=OFF -DTHREAD_SANITIZER=ON'
+      - run:
+          name: Building
+          command: 'cd build && cmake --build . -j'
+      - run:
+          name: Running Unit Tests
+          command: 'cd build && ctest'
+workflows:
+    version: 2
+    build_and_test:
+      jobs:
+        - build-linux
