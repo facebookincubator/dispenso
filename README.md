@@ -75,7 +75,7 @@ If you need async I/O, Folly is likely a good choice (though it still doesn't fi
 <div id='examples'/>
 
 ## Documentation and Examples
-[Documentation can be found here](./docs/doxygen/html/index.html)
+[Documentation can be found here](./docs/index.html)
 
 Here are some simple examples of what you can do in dispenso.  See tests and benchmarks for more examples.
 
