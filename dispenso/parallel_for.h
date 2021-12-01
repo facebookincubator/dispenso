@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <limits>
+#include <memory>
 
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/task_set.h>
