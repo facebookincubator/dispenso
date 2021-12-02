@@ -35,3 +35,4 @@ Makefile
 *Dir
 
 /build/*
+docs/doxygen/
