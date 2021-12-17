@@ -29,6 +29,10 @@ var hierarchy =
     [ "dispenso::ReserveTagS", "structdispenso_1_1_reserve_tag_s.html", null ],
     [ "dispenso::Resource< T >", "classdispenso_1_1_resource.html", null ],
     [ "dispenso::ResourcePool< T >", "classdispenso_1_1_resource_pool.html", null ],
+    [ "detail::RWLockImpl", null, [
+      [ "dispenso::RWLock", "classdispenso_1_1_r_w_lock.html", null ],
+      [ "dispenso::UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
+    ] ],
     [ "dispenso::ChunkedRange< IntegerT >::Static", "structdispenso_1_1_chunked_range_1_1_static.html", null ],
     [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ],
     [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ]

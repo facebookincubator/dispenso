@@ -21,6 +21,8 @@ var annotated_dup =
       [ "PoolAllocator", "classdispenso_1_1_pool_allocator.html", "classdispenso_1_1_pool_allocator" ],
       [ "ResourcePool", "classdispenso_1_1_resource_pool.html", "classdispenso_1_1_resource_pool" ],
       [ "Resource", "classdispenso_1_1_resource.html", "classdispenso_1_1_resource" ],
+      [ "RWLock", "classdispenso_1_1_r_w_lock.html", null ],
+      [ "UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ],
       [ "TaskSet", "classdispenso_1_1_task_set.html", "classdispenso_1_1_task_set" ],
       [ "ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", "classdispenso_1_1_concurrent_task_set" ],
       [ "ForceQueuingTag", "structdispenso_1_1_force_queuing_tag.html", null ],

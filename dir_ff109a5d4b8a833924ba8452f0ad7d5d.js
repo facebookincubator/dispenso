@@ -26,6 +26,7 @@ var dir_ff109a5d4b8a833924ba8452f0ad7d5d =
       [ "Resource", "classdispenso_1_1_resource.html", "classdispenso_1_1_resource" ],
       [ "ResourcePool", "classdispenso_1_1_resource_pool.html", "classdispenso_1_1_resource_pool" ]
     ] ],
+    [ "rw_lock.h", "rw__lock_8h_source.html", null ],
     [ "small_buffer_allocator.cpp", "small__buffer__allocator_8cpp_source.html", null ],
     [ "small_buffer_allocator.h", "small__buffer__allocator_8h.html", "small__buffer__allocator_8h" ],
     [ "task_set.cpp", "task__set_8cpp_source.html", null ],
