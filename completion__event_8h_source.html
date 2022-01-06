@@ -103,45 +103,47 @@ $(document).ready(function(){initNavTree('completion__event_8h_source.html','');
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160; </div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#pragma once</span></div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160; </div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &lt;dispenso/detail/completion_event_impl.h&gt;</span></div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &lt;dispenso/platform.h&gt;</span></div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160; </div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="keyword">namespace </span>dispenso {</div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#include &lt;dispenso/detail/completion_event_impl.h&gt;</span></div>
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160; </div>
-<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html">   25</a></span>&#160;<span class="keyword">class </span><a class="code" href="classdispenso_1_1_completion_event.html">CompletionEvent</a> {</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160; <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00031"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">   31</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">notify</a>() {</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    impl_.notify(1);</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;  }</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160; </div>
-<div class="line"><a name="l00038"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">   38</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">wait</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    impl_.wait(1);</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;  }</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160; </div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">class</span> Rep, <span class="keyword">class</span> Period&gt;</div>
-<div class="line"><a name="l00049"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">   49</a></span>&#160;  <span class="keywordtype">bool</span> <a class="code" href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">waitFor</a>(<span class="keyword">const</span> std::chrono::duration&lt;Rep, Period&gt;&amp; relTime)<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    <span class="keywordflow">return</span> impl_.waitFor(1, relTime);</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;  }</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160; </div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">class</span> Clock, <span class="keyword">class</span> Duration&gt;</div>
-<div class="line"><a name="l00060"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">   60</a></span>&#160;  <span class="keywordtype">bool</span> <a class="code" href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">waitUntil</a>(<span class="keyword">const</span> std::chrono::time_point&lt;Clock, Duration&gt;&amp; absTime)<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;    <span class="keywordflow">return</span> impl_.waitUntil(1, absTime);</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;  }</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160; </div>
-<div class="line"><a name="l00068"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">   68</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">reset</a>() {</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;    impl_.intrusiveStatus().store(0, std::memory_order_seq_cst);</div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;  }</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160; </div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160; <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;  detail::CompletionEventImpl impl_{0};</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;};</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160; </div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html"><div class="ttname"><a href="classdispenso_1_1_completion_event.html">dispenso::CompletionEvent</a></div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00025">completion_event.h:25</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html_a1f9b7f701ae43bb379478855abc670b1"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">dispenso::CompletionEvent::notify</a></div><div class="ttdeci">void notify()</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00031">completion_event.h:31</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html_aafa2bdf7f80421bf7a258ef986b60522"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">dispenso::CompletionEvent::wait</a></div><div class="ttdeci">void wait() const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00038">completion_event.h:38</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html_ab61ff064823ed3e997d324e24679dd48"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">dispenso::CompletionEvent::waitFor</a></div><div class="ttdeci">bool waitFor(const std::chrono::duration&lt; Rep, Period &gt; &amp;relTime) const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00049">completion_event.h:49</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html_abad79988850beff09baa2126ba0f06e8"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">dispenso::CompletionEvent::reset</a></div><div class="ttdeci">void reset()</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00068">completion_event.h:68</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_completion_event_html_ac22e74d695eeb3fefcde1116ed2414c1"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">dispenso::CompletionEvent::waitUntil</a></div><div class="ttdeci">bool waitUntil(const std::chrono::time_point&lt; Clock, Duration &gt; &amp;absTime) const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00060">completion_event.h:60</a></div></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="keyword">namespace </span>dispenso {</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160; </div>
+<div class="line"><a name="l00027"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html">   27</a></span>&#160;<span class="keyword">class </span><a class="code" href="classdispenso_1_1_completion_event.html">CompletionEvent</a> {</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160; <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00033"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">   33</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">notify</a>() {</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    impl_.notify(1);</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;  }</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160; </div>
+<div class="line"><a name="l00040"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">   40</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">wait</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;    impl_.wait(1);</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;  }</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160; </div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">class</span> Rep, <span class="keyword">class</span> Period&gt;</div>
+<div class="line"><a name="l00051"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">   51</a></span>&#160;  <span class="keywordtype">bool</span> <a class="code" href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">waitFor</a>(<span class="keyword">const</span> std::chrono::duration&lt;Rep, Period&gt;&amp; relTime)<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    <span class="keywordflow">return</span> impl_.waitFor(1, relTime);</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;  }</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160; </div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">class</span> Clock, <span class="keyword">class</span> Duration&gt;</div>
+<div class="line"><a name="l00062"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">   62</a></span>&#160;  <span class="keywordtype">bool</span> <a class="code" href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">waitUntil</a>(<span class="keyword">const</span> std::chrono::time_point&lt;Clock, Duration&gt;&amp; absTime)<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    <span class="keywordflow">return</span> impl_.waitUntil(1, absTime);</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;  }</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160; </div>
+<div class="line"><a name="l00070"></a><span class="lineno"><a class="line" href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">   70</a></span>&#160;  <span class="keywordtype">void</span> <a class="code" href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">reset</a>() {</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;    impl_.intrusiveStatus().store(0, std::memory_order_seq_cst);</div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;  }</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160; </div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160; <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;  detail::CompletionEventImpl impl_{0};</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;};</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160; </div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;} <span class="comment">// namespace dispenso</span></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html"><div class="ttname"><a href="classdispenso_1_1_completion_event.html">dispenso::CompletionEvent</a></div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00027">completion_event.h:27</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html_a1f9b7f701ae43bb379478855abc670b1"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#a1f9b7f701ae43bb379478855abc670b1">dispenso::CompletionEvent::notify</a></div><div class="ttdeci">void notify()</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00033">completion_event.h:33</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html_aafa2bdf7f80421bf7a258ef986b60522"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">dispenso::CompletionEvent::wait</a></div><div class="ttdeci">void wait() const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00040">completion_event.h:40</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html_ab61ff064823ed3e997d324e24679dd48"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">dispenso::CompletionEvent::waitFor</a></div><div class="ttdeci">bool waitFor(const std::chrono::duration&lt; Rep, Period &gt; &amp;relTime) const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00051">completion_event.h:51</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html_abad79988850beff09baa2126ba0f06e8"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8">dispenso::CompletionEvent::reset</a></div><div class="ttdeci">void reset()</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00070">completion_event.h:70</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_completion_event_html_ac22e74d695eeb3fefcde1116ed2414c1"><div class="ttname"><a href="classdispenso_1_1_completion_event.html#ac22e74d695eeb3fefcde1116ed2414c1">dispenso::CompletionEvent::waitUntil</a></div><div class="ttdeci">bool waitUntil(const std::chrono::time_point&lt; Clock, Duration &gt; &amp;absTime) const</div><div class="ttdef"><b>Definition:</b> <a href="completion__event_8h_source.html#l00062">completion_event.h:62</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

@@ -120,7 +120,7 @@ Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A class which can be used for one-time notify/wait scenarios. It is basically a way to signal to any waiting threads that some event has completed. There must be a single publisher thread and zero or more waiters on arbitrary threads. <code>reset</code> may be called to restart a sequence (e.g. after <code>notify</code> occurs and all waiters have successfully exited <code>wait*</code>). </p>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00025">25</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00027">27</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a1f9b7f701ae43bb379478855abc670b1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1f9b7f701ae43bb379478855abc670b1">&#9670;&nbsp;</a></span>notify()</h2>
@@ -146,7 +146,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Notify any waiting threads that the event has completed. It is safe for this to be called before threads call <code>wait</code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00031">31</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00033">33</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -174,7 +174,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Resets the event to "not-completed". This should not be called while an active <code>wait*\/notify</code> sequence is still currently in play. </p>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00068">68</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00070">70</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -202,7 +202,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Wait for another thread to <code>notify</code> </p>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00038">38</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00040">40</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -234,7 +234,7 @@ template&lt;class Rep , class Period &gt; </div>
 <p>Wait for another thread to <code>notify</code> or for the relative timeout to expire, whichever is first.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if status is "completed", false if timed out. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00049">49</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00051">51</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -266,7 +266,7 @@ template&lt;class Clock , class Duration &gt; </div>
 <p>Wait for another thread to <code>notify</code> or for the absolute timeout to expire, whichever is first.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if status is "completed", false if timed out. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00060">60</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00062">62</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
