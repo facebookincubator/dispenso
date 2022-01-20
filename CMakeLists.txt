@@ -1,9 +1,19 @@
 cmake_minimum_required(VERSION 3.12)
 project(
   Dispenso
-  VERSION 0.1.0
+  VERSION 1.0.0
   DESCRIPTION "Dispenso is a library for working with sets of parallel tasks"
   LANGUAGES CXX)
+
+if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(DISPENSO_STANDALONE TRUE)
+else()
+  set(DISPENSO_STANDALONE FALSE)
+endif()
+
+if (DISPENSO_STANDALONE)
+  include(GNUInstallDirs)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
