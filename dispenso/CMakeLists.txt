@@ -28,10 +28,13 @@ PUBLIC
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dispenso/third-party/moodycamel>
 )
 
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+target_link_libraries(dispenso PUBLIC Threads::Threads)
+
 if(WIN32)
-  target_link_libraries(dispenso Synchronization)
-else()
-  target_link_libraries(dispenso pthread)
+  target_link_libraries(dispenso PUBLIC Synchronization)
 endif()
 
 target_compile_features(dispenso PUBLIC cxx_std_14)
