@@ -186,6 +186,32 @@ Install Build Tools for Visual Studio. All commands should be run from the Devel
 1. `cmake PATH_TO_DISPENSO_ROOT`
 1. `cmake --build . --config Release`
 
+## Install dispenso
+
+Once built, the library can be installed by building the "install" target.
+Typically on Linux and MacOS, this is done with
+
+`make install`
+
+On Windows (and works on any platfrom), instead do
+
+`cmake --build . --target install`
+
+## Use an installed dispenso
+
+Once installed, a downstream CMake project can be pointed to it by using
+`CMAKE_PREFIX_PATH` or `Dispenso_DIR`, either as an environment variable or
+CMake variable. All that is required to use the library is link the imported
+CMake target `Dispenso::dispenso`, which might look like
+
+```cmake
+find_pacakge(Dispenso REQUIRED)
+target_link_libraries(myDispensoApp Dispenso::dispenso)
+```
+
+This brings in all required include paths, library files to link, and any other
+properties to the `myDispensoApp` target (your library or application).
+
 <div id='testing'/>
 
 # Building and running dispenso tests
