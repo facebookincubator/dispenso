@@ -205,7 +205,7 @@ CMake variable. All that is required to use the library is link the imported
 CMake target `Dispenso::dispenso`, which might look like
 
 ```cmake
-find_pacakge(Dispenso REQUIRED)
+find_package(Dispenso REQUIRED)
 target_link_libraries(myDispensoApp Dispenso::dispenso)
 ```
 
