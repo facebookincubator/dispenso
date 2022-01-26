@@ -106,6 +106,15 @@ $(document).ready(function(){initNavTree('classdispenso_1_1_concurrent_vector.ht
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
 Public Types</h2></td></tr>
+<tr class="memitem:acf3f5ff42ac0eb8e5fcf64112ef9fff0"><td class="memItemLeft" align="right" valign="top"><a id="acf3f5ff42ac0eb8e5fcf64112ef9fff0"></a>
+using&#160;</td><td class="memItemRight" valign="bottom"><b>value_type</b> = T</td></tr>
+<tr class="separator:acf3f5ff42ac0eb8e5fcf64112ef9fff0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad432865c4e32e74a3806daa06f011b56"><td class="memItemLeft" align="right" valign="top"><a id="ad432865c4e32e74a3806daa06f011b56"></a>
+using&#160;</td><td class="memItemRight" valign="bottom"><b>reference</b> = T &amp;</td></tr>
+<tr class="separator:ad432865c4e32e74a3806daa06f011b56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4260d46ed68a8b1130b266f549625631"><td class="memItemLeft" align="right" valign="top"><a id="a4260d46ed68a8b1130b266f549625631"></a>
+using&#160;</td><td class="memItemRight" valign="bottom"><b>const_reference</b> = const T &amp;</td></tr>
+<tr class="separator:a4260d46ed68a8b1130b266f549625631"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a874efe4afca99f9e1b0a3b81c9b4b1c5"><td class="memItemLeft" align="right" valign="top"><a id="a874efe4afca99f9e1b0a3b81c9b4b1c5"></a>
 using&#160;</td><td class="memItemRight" valign="bottom"><b>size_type</b> = size_t</td></tr>
 <tr class="separator:a874efe4afca99f9e1b0a3b81c9b4b1c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -315,7 +324,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Default construct the <a class="el" href="classdispenso_1_1_concurrent_vector.html">ConcurrentVector</a>. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00172">172</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00175">175</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -356,7 +365,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>The reserving constructor. By supplying a reasonable starting capacity, e.g. close to max expected vector size, this can often improve performance substantially by reducing allocations and increasing data coherency. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00179">179</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00182">182</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -387,7 +396,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Sizing constructor with default initialization. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00191">191</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00194">194</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -428,7 +437,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Sizing constructor with specified default value. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00202">202</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00205">205</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -471,7 +480,7 @@ template&lt;typename InIterator &gt; </div>
 </div><div class="memdoc">
 <p>Constructor taking an iterator range. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00215">215</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00218">218</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -520,7 +529,7 @@ template&lt;typename InIterator &gt; </div>
 </div><div class="memdoc">
 <p>Sizing constructor taking an iterator range. If size is known in advance, this may be faster than just providing the iterator range, especially for input iterators that are not random access. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00224">224</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00227">227</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -551,7 +560,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Construct via initializer list </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00234">234</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00237">237</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -582,7 +591,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Copy constructor </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00240">240</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00243">243</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -613,7 +622,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Move constructor </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00246">246</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00249">249</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -643,7 +652,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Destruct the vector. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00451">451</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00454">454</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -694,7 +703,7 @@ template&lt;typename It , typename  = typename std::iterator_traits&lt;It&gt;::d
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00321">321</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00324">324</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -742,7 +751,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00301">301</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00304">304</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -780,7 +789,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <dl class="section return"><dt>Returns</dt><dd>A reference to the element at index.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00777">777</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00780">780</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -818,7 +827,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <dl class="section return"><dt>Returns</dt><dd>A reference to the element at index.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00761">761</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00764">764</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -848,7 +857,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the last element of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A reference to the last element in the vector. Note that elements could be appended concurrently with this call (in which case it won't be the back anymore). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00953">953</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00956">956</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -878,7 +887,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the last element of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A reference to the last element in the vector. Note that elements could be appended concurrently with this call (in which case it won't be the back anymore). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00962">962</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00965">965</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -909,7 +918,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the start of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the start of the vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00791">791</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00794">794</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -940,7 +949,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the start of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the start of the vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00816">816</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00819">819</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -970,7 +979,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>The current capacity of the vector. Not concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>The current capacity. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00391">391</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00394">394</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1001,7 +1010,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the start of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the start of the vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00841">841</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00844">844</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1032,7 +1041,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the end of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the end of the vector. Note that it is possible for the end to change concurrently with this call.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00853">853</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00856">856</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1062,7 +1071,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Clear the vector. This does not deallocate buffers, but just ensures that all elements are destructed. Size will be zero after the call. Not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00406">406</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00409">409</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1092,7 +1101,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>The default capacity of this vector. </p><dl class="section return"><dt>Returns</dt><dd>The capacity if the vector were cleared and then called shrink_to_fit. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00383">383</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00386">386</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1131,7 +1140,7 @@ template&lt;typename... Args&gt; </div>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the point of insertion. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00602">602</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00605">605</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1161,7 +1170,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Checks if the vector contains any elements. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>true if the vector contains no elements, false otherwise. Note that an element could be appended concurrently with this call. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00910">910</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00913">913</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1192,7 +1201,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the end of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the end of the vector. Note that it is possible for the end to change concurrently with this call.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00803">803</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00806">806</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1223,7 +1232,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an iterator to the end of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An iterator to the end of the vector. Note that it is possible for the end to change concurrently with this call.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00828">828</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00831">831</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1271,7 +1280,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Iterator following the last removed element. If pos refers to the last element, then the <a class="el" href="classdispenso_1_1_concurrent_vector.html#ae743818d9d3ce15f8e9211a0b890c9e9">end()</a> iterator is returned. If last==<a class="el" href="classdispenso_1_1_concurrent_vector.html#ae743818d9d3ce15f8e9211a0b890c9e9">end()</a> prior to removal, then the updated <a class="el" href="classdispenso_1_1_concurrent_vector.html#ae743818d9d3ce15f8e9211a0b890c9e9">end()</a> iterator is returned. If [first, last) is an empty range, then last is returned. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00556">556</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00559">559</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1308,7 +1317,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Iterator following the removed element. If pos refers to the last element, then the <a class="el" href="classdispenso_1_1_concurrent_vector.html#ae743818d9d3ce15f8e9211a0b890c9e9">end()</a> iterator is returned. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00531">531</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00534">534</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1338,7 +1347,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the front element of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A reference to the first element in the vector. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00936">936</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00939">939</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1368,7 +1377,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the front element of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A reference to the first element in the vector. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00944">944</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00947">947</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1418,7 +1427,7 @@ template&lt;typename It , typename  = typename std::iterator_traits&lt;It&gt;::d
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the start of the grown range. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00671">671</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00674">674</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1455,7 +1464,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the start of the grown range. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00652">652</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00655">655</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1503,7 +1512,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the start of the grown range. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00641">641</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00644">644</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1540,7 +1549,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the start of the grown range. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00682">682</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00685">685</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1590,7 +1599,7 @@ template&lt;typename Gen &gt; </div>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the start of the grown range. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00627">627</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00630">630</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1627,7 +1636,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the nth element. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00692">692</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00695">695</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1675,7 +1684,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator to the nth element. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00707">707</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00710">710</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1723,7 +1732,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the inserted position. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00463">463</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00466">466</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1780,7 +1789,7 @@ template&lt;typename InputIt , typename  = typename std::iterator_traits&lt;Inpu
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the inserted position. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00508">508</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00511">511</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1835,7 +1844,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the inserted position. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00488">488</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00491">491</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1883,7 +1892,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the inserted position. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00521">521</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00524">524</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1931,7 +1940,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the inserted position. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00475">475</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00478">478</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1961,7 +1970,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the maximum size a vector of this type can theoretically have. Concurrency safe (constexpr). </p><dl class="section return"><dt>Returns</dt><dd>The max size a vector of this type could theoretically have. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00919">919</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00922">922</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -1992,7 +2001,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Move assignment operator. This is not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00278">278</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00281">281</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2023,7 +2032,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Copy assignment operator. This is not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00262">262</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00265">265</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2061,7 +2070,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <dl class="section return"><dt>Returns</dt><dd>A reference to the element at index.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00746">746</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00749">749</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2099,7 +2108,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <dl class="section return"><dt>Returns</dt><dd>A reference to the element at index.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00732">732</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00735">735</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2129,7 +2138,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Pop the last element off the vector. Not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00718">718</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00721">721</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2166,7 +2175,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the point of insertion. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00583">583</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00586">586</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2203,7 +2212,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The iterator at the point of insertion. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00592">592</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00595">595</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2234,7 +2243,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get a starting reverse iterator to the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A starting reverse iterator to the vector. Note that it is possible for the the rbegin to change concurrently with this call.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00867">867</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00870">870</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2265,7 +2274,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get a starting reverse iterator to the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>A starting reverse iterator to the vector. Note that it is possible for the the rbegin to change concurrently with this call.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00890">890</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00893">893</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2296,7 +2305,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an ending reverse iterator to the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An ending reverse iterator to the vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00878">878</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00881">881</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2327,7 +2336,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 <p>Get an ending reverse iterator to the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>An ending reverse iterator to the vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Iterators and references are stable even if other threads are inserting, but it is still the users responsibility to avoid racing on the element itself. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00901">901</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00904">904</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2364,7 +2373,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00334">334</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00337">337</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2401,7 +2410,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00343">343</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00346">346</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2449,7 +2458,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00364">364</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00367">367</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2479,7 +2488,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Gets rid of extra capacity that is not needed to maintain preconditions. At least the default capacity will remain, even if the size of the vector is zero. Not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00429">429</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00432">432</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2509,7 +2518,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
 </div><div class="memdoc">
 <p>Get the size of the vector. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>The number of elements in the vector. Note that elements can be appended concurrently with this call. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00928">928</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00931">931</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -2545,7 +2554,7 @@ template&lt;typename T , typename Traits  = DefaultConcurrentVectorTraits, typen
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00970">970</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00973">973</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
