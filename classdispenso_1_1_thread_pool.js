@@ -5,7 +5,5 @@ var classdispenso_1_1_thread_pool =
     [ "numThreads", "classdispenso_1_1_thread_pool.html#a790fecdf2ce448db2f02af9117c7f538", null ],
     [ "resize", "classdispenso_1_1_thread_pool.html#a7ccfecb32a41e3d655b80c12dab439a9", null ],
     [ "schedule", "classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289", null ],
-    [ "schedule", "classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9", null ],
-    [ "ConcurrentTaskSet", "classdispenso_1_1_thread_pool.html#ae12e56c1c8c5a87ab7e47c98816dd8b0", null ],
-    [ "TaskSet", "classdispenso_1_1_thread_pool.html#a92fc40642e875f71f86ca4fc15c2a62f", null ]
+    [ "schedule", "classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9", null ]
 ];
