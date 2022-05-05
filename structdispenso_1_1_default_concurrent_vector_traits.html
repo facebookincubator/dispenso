@@ -116,7 +116,7 @@ Static Public Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >The default <a class="el" href="classdispenso_1_1_concurrent_vector.html">ConcurrentVector</a> traits type. All members are required should one wish to supply a custom set of traits. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00106">106</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00108">108</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a923e185bf54973862e909a1da2934d45" name="a923e185bf54973862e909a1da2934d45"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a923e185bf54973862e909a1da2934d45">&#9670;&nbsp;</a></span>kIteratorPreferSpeed</h2>
@@ -141,7 +141,7 @@ Static Public Attributes</h2></td></tr>
 <p>Should we prefer faster, but larger iterators, or slower, but smaller iterators. </p>
 <p >If an algorithm needs to store iterators for later use, size overhead could become a concern. By using kIteratorPreferSpeed == true, the size of an iterator will be roughly double the iterator when kIteratorPreferSpeed == false. Conversely, iterate + dereference is also about twice as fast. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00138">138</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00140">140</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -168,7 +168,7 @@ Static Public Attributes</h2></td></tr>
 <p>Prefer to place the pointers to the buffers inline in the class. </p>
 <p >This can consume a lot of space, e.g. on the stack. This can be a couple of kilobytes. But performance is improved by 5% to 15%. When set to false, this results in those pointers residing in a separate heap allocation. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00114">114</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00116">116</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -197,7 +197,7 @@ Static Public Attributes</h2></td></tr>
 <p>How far/whether to allocate before memory is required. </p>
 <p >We can allocate ahead, which may reduce the chances of another thread blocking while waiting for memory to be allocated. This implies a pretty stiff memory overhead, which people may not want to pay (up to 3x overhead after the first bucket for kFullBufferAhead). This can be set to kAsNeeded instead of kFullBufferAhead, which makes overheads similar to typical std::vector implementation (up to 2x overhead). Performance differences are modest, so unless you need to squeeze the most out of your use, kAsNeeded is okay. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00126">126</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00128">128</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>

@@ -121,7 +121,7 @@ Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A class fullfilling the void() signature, and operator() must be called exactly once for valid <code><a class="el" href="classdispenso_1_1_once_function.html">OnceFunction</a></code>s. This class can be much more efficient than std::function for type erasing functors without too much state (currently &lt; ~250 bytes). </p><dl class="section note"><dt>Note</dt><dd>The wrapped type-erased functor in <a class="el" href="classdispenso_1_1_once_function.html">OnceFunction</a> is <em>not</em> deleted upon destruction, but rather when operator() is called. It is the user's responsibility to ensure that operator() is called. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00035">35</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00037">37</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a7bec1f15cb5ca710f21145b37783e052" name="a7bec1f15cb5ca710f21145b37783e052"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7bec1f15cb5ca710f21145b37783e052">&#9670;&nbsp;</a></span>OnceFunction() <span class="overload">[1/3]</span></h2>
@@ -147,7 +147,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Construct a <code><a class="el" href="classdispenso_1_1_once_function.html">OnceFunction</a></code> with invalid state. </p>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00040">40</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00042">42</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -184,7 +184,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00055">55</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00057">57</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -212,7 +212,7 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00059">59</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00061">61</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -241,7 +241,7 @@ template&lt;typename F &gt; </div>
 </div><div class="memdoc">
 <p >Invoke the type-erased functor. This function must be called exactly once. Fewer will result in a leak, while more will invoke on an invalid object. </p>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00079">79</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00081">81</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -269,7 +269,7 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00065">65</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00067">67</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>

@@ -159,7 +159,7 @@ template&lt;size_t kBlockSize&gt; </div>
 <dl class="section return"><dt>Returns</dt><dd>The pointer to the allocated block of memory. </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>: The returned buffer must be returned to the pool via deallocSmallBuffer templatized on the same block size. If kBlockSize &gt; kMaxSmallBufferSize, this function falls back on alignedMalloc. If DISPENSO_NO_SMALL_BUFFER_ALLOCATOR is defined, we will always fall back on alignedMalloc/alignedFree. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00080">80</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00082">82</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
 
 </div>
 </div>
@@ -187,7 +187,7 @@ template&lt;size_t kBlockSize&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00105">105</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00107">107</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
 
 </div>
 </div>
@@ -231,7 +231,7 @@ template&lt;size_t kBlockSize&gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>: If kBlockSize &gt; kMaxSmallBufferSize, this function falls back on alignedFree. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00093">93</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00095">95</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
 
 </div>
 </div>
@@ -257,7 +257,7 @@ template&lt;size_t kBlockSize&gt; </div>
 </div><div class="memdoc">
 <p >Set a standard for the maximum chunk size for use within dispenso. The reason for this limit is that there are diminishing returns after a certain size, and each new pool has it's own memory overhead. </p>
 
-<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00024">24</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="small__buffer__allocator_8h_source.html#l00026">26</a> of file <a class="el" href="small__buffer__allocator_8h_source.html">small_buffer_allocator.h</a>.</p>
 
 </div>
 </div>

@@ -103,7 +103,7 @@ $(document).ready(function(){initNavTree('classdispenso_1_1_r_w_lock.html',''); 
 <div class="textblock"><p >A reader/writer lock interface compatible with std::shared_mutex (for use with std::unique_lock and std::shared_lock). The interface is designed to be very fast in the face of high levels of contention for high read traffic and low write traffic.</p>
 <dl class="section note"><dt>Note</dt><dd><a class="el" href="classdispenso_1_1_r_w_lock.html">RWLock</a> is not as fully-featured as std::shared_mutex: It does not go to the OS to wait. This behavior is good for guarding very fast operations, but less good for guarding very slow operations. Additionally, <a class="el" href="classdispenso_1_1_r_w_lock.html">RWLock</a> is not compatible with std::condition_variable, though std::condition_variable_any may work (untested). It could be possible to extend <a class="el" href="classdispenso_1_1_r_w_lock.html">RWLock</a> with it's own ConditionVariable, make waiting operations sleep in the OS, and also to add timed functions; however those may slow things down in the fast case. If some/all of that functionality is needed, use std::shared_mutex, or develop a new type. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="rw__lock_8h_source.html#l00023">23</a> of file <a class="el" href="rw__lock_8h_source.html">rw_lock.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rw__lock_8h_source.html#l00025">25</a> of file <a class="el" href="rw__lock_8h_source.html">rw_lock.h</a>.</p>
 </div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>/github/workspace/dispenso/<a class="el" href="rw__lock_8h_source.html">rw_lock.h</a></li>
 </ul>

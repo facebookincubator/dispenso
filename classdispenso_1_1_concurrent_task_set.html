@@ -132,7 +132,7 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><p ><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> fulfills the same API as <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> with one minor difference: It may be used to schedule tasks concurrently from multiple threads (see more below). It is an object that allows scheduling multiple function-like objects to a thread pool, and allows to wait on that set of tasks.</p>
 <p ><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> is "thread-compatible". This means that you can safely use different <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> objects on different threads concurrently. <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> also allows multiple threads to concurrently schedule against it. It is an error to call <a class="el" href="classdispenso_1_1_concurrent_task_set.html#aee2b6988bb64a162ea3163439721280e">wait()</a> concurrently with <a class="el" href="classdispenso_1_1_concurrent_task_set.html#a982d0f0e03d4c0e440308ccb3127f53b">schedule()</a> on the same <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00201">201</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00203">203</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="acdfe40b6829f70ff975aaca05cef58a7" name="acdfe40b6829f70ff975aaca05cef58a7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acdfe40b6829f70ff975aaca05cef58a7">&#9670;&nbsp;</a></span>ConcurrentTaskSet()</h2>
@@ -176,7 +176,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00210">210</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00212">212</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -204,7 +204,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Destroy the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00316">316</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00318">318</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -234,7 +234,7 @@ Public Member Functions</h2></td></tr>
 <p >Get the number of threads backing the underlying thread pool.</p>
 <dl class="section return"><dt>Returns</dt><dd>The number of threads in the pool. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00299">299</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00301">301</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -263,7 +263,7 @@ Public Member Functions</h2></td></tr>
 <p >Access the underlying pool.</p>
 <dl class="section return"><dt>Returns</dt><dd>The thread pool. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00308">308</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00310">310</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -301,7 +301,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task is run inline. Otherwise, exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00235">235</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00237">237</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -349,7 +349,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00255">255</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00257">257</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -377,7 +377,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if all currently scheduled functors have been completed prior to returning, and <code>false</code> otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00067">67</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00069">69</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>
@@ -397,7 +397,7 @@ template&lt;typename F &gt; </div>
 </div><div class="memdoc">
 <p >Wait for all currently scheduled functors to finish execution. If exceptions are thrown during execution of the set of tasks, <code>wait</code> will propagate the first exception. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00050">50</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00052">52</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>
