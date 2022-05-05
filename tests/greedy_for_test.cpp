@@ -47,13 +47,15 @@ TEST(GreedyFor, ShouldNotInvokeIfEmptyRange) {
 }
 
 template <typename StateContainer>
-void loopWithStateImpl() {
+void loopWithStateImpl(dispenso::ThreadPool& pool = dispenso::globalThreadPool()) {
   int w = 1000;
   int h = 1000;
   std::vector<int> image(w * h, 7);
 
+  dispenso::TaskSet taskSet(pool);
   StateContainer state;
   dispenso::parallel_for(
+      taskSet,
       state,
       []() { return int64_t{0}; },
       0,
@@ -332,4 +334,26 @@ TEST(GreedyFor, SingleLoopWaitIfToldTo) {
       taskSet, 0, 1, [](int i) { EXPECT_EQ(i, 0); }, waitOptions);
 
   EXPECT_EQ(count.load(), 1000);
+}
+
+TEST(GreedyFor, ZeroThreads) {
+  // Using a threadpool with 0 threads should run via the calling thread.
+  dispenso::ThreadPool pool(0);
+  dispenso::TaskSet tasks(pool);
+
+  int w = 1000;
+  int h = 1000;
+  std::vector<int> image(w * h, 7);
+
+  std::atomic<int64_t> sum(0);
+
+  dispenso::parallel_for(tasks, 0, h, [w, &image, &sum](int y) { simpleInner(w, y, image, sum); });
+
+  EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
+}
+
+TEST(GreedyFor, ZeroThreadsWithState) {
+  // Using a threadpool with 0 threads should run via the calling thread.
+  dispenso::ThreadPool pool(0);
+  loopWithStateImpl<std::vector<int64_t>>(pool);
 }

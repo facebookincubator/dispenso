@@ -311,7 +311,8 @@ void parallel_for(
   }
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
-  if (!options.maxThreads || range.size() == 1 ||
+  const ssize_t N = taskSet.numPoolThreads();
+  if (N == 0 || !options.maxThreads || range.size() == 1 ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
     if (options.wait) {
@@ -325,7 +326,6 @@ void parallel_for(
     return;
   }
 
-  const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
   const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
 
@@ -444,7 +444,8 @@ void parallel_for(
     }
     return;
   }
-  if (!options.maxThreads || range.size() == 1 ||
+  const ssize_t N = taskSet.numPoolThreads();
+  if (N == 0 || !options.maxThreads || range.size() == 1 ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
@@ -460,7 +461,6 @@ void parallel_for(
     return;
   }
 
-  const ssize_t N = taskSet.numPoolThreads();
   const bool useCallingThread = options.wait;
   const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
 
