@@ -38,9 +38,7 @@ namespace dispenso {
 #define DISPENSO_DLL_ACCESS
 #endif // DISPENSO_DLL_ACCESS
 
-#if defined(_MSC_VER)
 using ssize_t = std::make_signed<std::size_t>::type;
-#endif
 
 #if defined(__clang__) || defined(__GNUC__)
 #define DISPENSO_INLINE __attribute__((always_inline)) inline
