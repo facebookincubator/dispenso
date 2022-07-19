@@ -109,7 +109,7 @@ class CompletionEventImpl {
 } // namespace detail
 } // namespace dispenso
 
-#elif defined(__MACH__)
+#elif 0 && defined(__MACH__)
 #include <mach/mach.h>
 
 namespace dispenso {
