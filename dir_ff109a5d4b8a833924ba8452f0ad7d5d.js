@@ -20,6 +20,8 @@ var dir_ff109a5d4b8a833924ba8452f0ad7d5d =
     [ "task_set.h", "task__set_8h.html", "task__set_8h" ],
     [ "thread_pool.cpp", "thread__pool_8cpp_source.html", null ],
     [ "thread_pool.h", "thread__pool_8h.html", "thread__pool_8h" ],
+    [ "timing.cpp", "timing_8cpp_source.html", null ],
+    [ "timing.h", "timing_8h_source.html", null ],
     [ "tsan_annotations.cpp", "tsan__annotations_8cpp_source.html", null ],
     [ "tsan_annotations.h", "tsan__annotations_8h.html", null ]
 ];

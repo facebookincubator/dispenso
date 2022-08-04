@@ -223,61 +223,69 @@ $(document).ready(function(){initNavTree('thread__pool_8h_source.html',''); init
 <div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span> </div>
 <div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
 <div class="line"><a id="l00194" name="l00194"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9">  194</a></span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(F&amp;&amp; f, <a class="code hl_struct" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>) {</div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
-<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>  <span class="keywordtype">bool</span> enqueued = work_.enqueue({std::forward&lt;F&gt;(f)});</div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>  (void)(enqueued); <span class="comment">// unused</span></div>
-<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>  assert(enqueued);</div>
-<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>}</div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span> </div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>  quickLoadFactor += quickLoadFactor / 2;</div>
-<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>  <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(<span class="keyword">this</span>) &amp;&amp; curWork &gt; quickLoadFactor) ||</div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>      (curWork &gt; poolLoadFactor_.load(std::memory_order_relaxed))) {</div>
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>    f();</div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>    schedule(token, std::move(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>  }</div>
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>}</div>
-<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span> </div>
-<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
-<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span>  <span class="keywordtype">bool</span> enqueued = work_.enqueue(token, {std::forward&lt;F&gt;(f)});</div>
-<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>  (void)(enqueued); <span class="comment">// unused</span></div>
-<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>  assert(enqueued);</div>
-<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>}</div>
-<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span> </div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNext() {</div>
-<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  OnceFunction next;</div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  <span class="keywordflow">if</span> (work_.try_dequeue(next)) {</div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>    executeNext(std::move(next));</div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  }</div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>}</div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span> </div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken&amp; token) {</div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  OnceFunction next;</div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>  <span class="keywordflow">if</span> (work_.try_dequeue_from_producer(token, next)) {</div>
-<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    executeNext(std::move(next));</div>
-<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>  }</div>
-<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span>}</div>
-<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span> </div>
-<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::executeNext(OnceFunction next) {</div>
-<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span>  next();</div>
-<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>  workRemaining_.fetch_add(-1, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>}</div>
-<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span> </div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>  <span class="keywordflow">if</span> (!numThreads_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>    f();</div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>  }</div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>  <span class="keywordtype">bool</span> enqueued = work_.enqueue({std::forward&lt;F&gt;(f)});</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>  (void)(enqueued); <span class="comment">// unused</span></div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>  assert(enqueued);</div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>}</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span> </div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>  quickLoadFactor += quickLoadFactor / 2;</div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>  <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(<span class="keyword">this</span>) &amp;&amp; curWork &gt; quickLoadFactor) ||</div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>      (curWork &gt; poolLoadFactor_.load(std::memory_order_relaxed))) {</div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>    f();</div>
+<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span>    schedule(token, std::move(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span>  }</div>
+<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span>}</div>
+<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span> </div>
+<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>  <span class="keywordflow">if</span> (!numThreads_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>    f();</div>
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>  }</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  <span class="keywordtype">bool</span> enqueued = work_.enqueue(token, {std::forward&lt;F&gt;(f)});</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>  (void)(enqueued); <span class="comment">// unused</span></div>
+<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  assert(enqueued);</div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>}</div>
+<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span> </div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNext() {</div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  OnceFunction next;</div>
+<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  <span class="keywordflow">if</span> (work_.try_dequeue(next)) {</div>
+<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    executeNext(std::move(next));</div>
+<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>  }</div>
+<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>}</div>
+<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span> </div>
+<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken&amp; token) {</div>
+<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span>  OnceFunction next;</div>
+<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span>  <span class="keywordflow">if</span> (work_.try_dequeue_from_producer(token, next)) {</div>
+<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>    executeNext(std::move(next));</div>
+<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>  }</div>
+<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>}</div>
+<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span> </div>
+<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::executeNext(OnceFunction next) {</div>
+<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>  next();</div>
+<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>  workRemaining_.fetch_add(-1, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>}</div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span> </div>
+<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_once_function_html"><div class="ttname"><a href="classdispenso_1_1_once_function.html">dispenso::OnceFunction</a></div><div class="ttdef"><b>Definition:</b> <a href="once__function_8h_source.html#l00037">once_function.h:37</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition:</b> <a href="thread__pool_8h_source.html#l00044">thread_pool.h:44</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a2442016e8a4924ca665d3993c1879b4d"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a2442016e8a4924ca665d3993c1879b4d">dispenso::ThreadPool::ThreadPool</a></div><div class="ttdeci">ThreadPool(size_t n, size_t poolLoadMultiplier=32)</div><div class="ttdef"><b>Definition:</b> <a href="thread__pool_8h_source.html#l00053">thread_pool.h:53</a></div></div>

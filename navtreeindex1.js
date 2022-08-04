@@ -13,7 +13,9 @@ var NAVTREEINDEX1 =
 "thread__pool_8cpp_source.html":[1,0,0,18],
 "thread__pool_8h.html":[1,0,0,19],
 "thread__pool_8h_source.html":[1,0,0,19],
-"tsan__annotations_8cpp_source.html":[1,0,0,20],
-"tsan__annotations_8h.html":[1,0,0,21],
-"tsan__annotations_8h_source.html":[1,0,0,21]
+"timing_8cpp_source.html":[1,0,0,20],
+"timing_8h_source.html":[1,0,0,21],
+"tsan__annotations_8cpp_source.html":[1,0,0,22],
+"tsan__annotations_8h.html":[1,0,0,23],
+"tsan__annotations_8h_source.html":[1,0,0,23]
 };
