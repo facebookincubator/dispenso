@@ -295,7 +295,7 @@ void dispensoTaskSetTree(
 }
 
 template <size_t depth>
-void BM_taskset_tree(benchmark::State& state) {
+void BM_dispenso_taskset_tree(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
@@ -384,9 +384,9 @@ BENCHMARK_TEMPLATE(BM_dispenso_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree, kLargeSize)->UseRealTime();
 
-BENCHMARK_TEMPLATE(BM_taskset_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_taskset_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_taskset_tree, kLargeSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kMediumSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kLargeSize)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
