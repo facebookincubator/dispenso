@@ -54,9 +54,9 @@ std::pair<double, double> initTime() {
   auto baseEnd = std::chrono::high_resolution_clock::now();
 
   auto base = std::chrono::duration<double>(baseEnd - baseStart).count();
-  double secondsPerCycle = base / (end - start);
+  double secondsPerCycle = base / static_cast<double>(end - start);
 
-  double startTime = start * secondsPerCycle;
+  double startTime = static_cast<double>(start) * secondsPerCycle;
   return {secondsPerCycle, startTime};
 }
 
@@ -65,7 +65,7 @@ double getTime() {
   double& secondsPerCycle = tmInfo.first;
   double& startTime = tmInfo.second;
 
-  double t = rdtscp() * secondsPerCycle;
+  double t = static_cast<double>(rdtscp()) * secondsPerCycle;
   return t - startTime;
 }
 #else
