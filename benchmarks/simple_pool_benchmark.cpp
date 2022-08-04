@@ -24,21 +24,34 @@ static constexpr int kMediumSize = 10000;
 static constexpr int kLargeSize = 1000000;
 
 struct alignas(64) Work {
-  size_t count;
+  size_t count = 0;
 
   void operator+=(size_t o) {
     count += o;
   }
 };
 
-Work g_work[1024];
+Work g_work[1025];
 std::atomic<int> g_tCounter{0};
 inline int tid() {
   static DISPENSO_THREAD_LOCAL int t = -1;
   if (t < 0) {
-    t = g_tCounter++;
+    t = g_tCounter.fetch_add(1, std::memory_order_acq_rel);
   }
   return t;
+}
+
+inline Work& work() {
+  static DISPENSO_THREAD_LOCAL Work* w = nullptr;
+
+  if (!w) {
+    if (tid() == 0) {
+      w = g_work + 1024;
+    } else {
+      w = g_work + (tid() & 1023);
+    }
+  }
+  return *w;
 }
 
 void BM_dispenso(benchmark::State& state) {
@@ -49,8 +62,7 @@ void BM_dispenso(benchmark::State& state) {
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     for (int i = 0; i < num_elements; ++i) {
-      auto* work = g_work;
-      tasks.schedule([i, work]() { work[tid() & 1023] += i; });
+      tasks.schedule([i]() { work() += i; });
     }
   }
 }
@@ -64,8 +76,7 @@ void BM_tbb(benchmark::State& state) {
   for (auto UNUSED_VAR : state) {
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
-      auto* work = g_work;
-      g.run([i, work]() { work[tid() & 1023] += i; });
+      g.run([i]() { work() += i; });
     }
     g.wait();
   }
@@ -83,8 +94,7 @@ void BM_tbb2(benchmark::State& state) {
         int num = std::sqrt(num_elements);
         tbb::task_group g2;
         for (int j = 0; j < num; ++j) {
-          auto* work = g_work;
-          g2.run([j, work]() { work[tid() & 1023] += j; });
+          g2.run([j]() { work() += j; });
         }
         g2.wait();
       });
@@ -99,7 +109,7 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
 
   struct Recurse {
     void operator()() const {
-      work[tid() & 1023] += i;
+      work() += i;
       if (i < num_elements) {
         ++i;
         g->run(*this);
@@ -107,7 +117,6 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
     }
 
     mutable int i;
-    mutable Work* work;
     mutable tbb::task_group* g;
     int num_elements;
   };
@@ -119,7 +128,6 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
     tbb::task_group g;
     Recurse rec;
     rec.i = 0;
-    rec.work = g_work;
     rec.g = &g;
     rec.num_elements = num_elements;
     rec();
@@ -157,8 +165,7 @@ void BM_dispenso2(benchmark::State& state) {
         int num = std::sqrt(num_elements);
         dispenso::TaskSet tasks(pool);
         for (int j = 0; j < num; ++j) {
-          auto* work = g_work;
-          tasks.schedule([j, work]() { work[tid() & 1023] += j; });
+          tasks.schedule([j]() { work() += j; });
         }
       });
     }
@@ -171,7 +178,7 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
 
   struct Recurse {
     void operator()() {
-      work[tid() & 1023] += i;
+      work() += i;
       if (i < num_elements) {
         ++i;
         pool->schedule(*this);
@@ -179,7 +186,6 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
     }
 
     int i;
-    Work* work;
     dispenso::ThreadPool* pool;
     int num_elements;
   };
@@ -190,7 +196,6 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
     dispenso::ThreadPool pool(num_threads);
     Recurse rec;
     rec.i = 0;
-    rec.work = g_work;
     rec.pool = &pool;
     rec.num_elements = num_elements;
     rec();
