@@ -7,6 +7,7 @@
 
 #include <dispenso/parallel_for.h>
 #include <dispenso/thread_pool.h>
+#include <dispenso/timing.h>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -80,16 +81,46 @@ const std::vector<int>& getInputs(int numElements) {
   return res.first->second;
 }
 
+double getMean(const std::vector<double>& data) {
+  double sum = 0.0;
+  for (auto d : data) {
+    sum += d;
+  }
+  return sum / data.size();
+}
+
+double getStddev(double mean, const std::vector<double>& data) {
+  double sumsq = 0.0;
+  for (auto d : data) {
+    auto dev = mean - d;
+    sumsq += dev * dev;
+  }
+  return std::sqrt(sumsq / data.size());
+}
+
+void doStats(const std::vector<double>& times, benchmark::State& state) {
+  double mean = getMean(times);
+  state.counters["mean"] = mean;
+  state.counters["stddev"] = getStddev(mean, times);
+}
+
 void BM_serial(benchmark::State& state) {
   std::vector<int> output(kSize, 0);
   auto& input = getInputs(kSize);
 
+  std::vector<double> times;
+  times.reserve(1000);
+
   for (auto UNUSED_VAR : state) {
     std::this_thread::sleep_for(kSleep);
+    times.push_back(dispenso::getTime());
     for (size_t i = 0; i < kSize; ++i) {
       output[i] = isPrime(input[i]);
     }
+    times.back() = dispenso::getTime() - times.back();
   }
+
+  doStats(times, state);
 }
 
 void BM_dispenso(benchmark::State& state) {
@@ -98,12 +129,19 @@ void BM_dispenso(benchmark::State& state) {
   std::vector<int> output(kSize, 0);
   dispenso::resizeGlobalThreadPool(numThreads);
 
+  std::vector<double> times;
+  times.reserve(1000);
+
   auto& input = getInputs(kSize);
   for (auto UNUSED_VAR : state) {
     std::this_thread::sleep_for(kSleep);
+    times.push_back(dispenso::getTime());
     dispenso::parallel_for(
         0, kSize, [&input, &output](size_t i) { output[i] = isPrime(input[i]); });
+    times.back() = dispenso::getTime() - times.back();
   }
+
+  doStats(times, state);
 }
 
 #if defined(_OPENMP)
@@ -113,14 +151,20 @@ void BM_omp(benchmark::State& state) {
   std::vector<int> output(kSize, 0);
   omp_set_numThreads(numThreads);
 
+  std::vector<double> times;
+  times.reserve(1000);
+
   auto& input = getInputs(kSize);
   for (auto UNUSED_VAR : state) {
     std::this_thread::sleep_for(kSleep);
+    times.push_back(dispenso::getTime());
 #pragma omp parallel for
     for (int i = 0; i < kSize; ++i) {
       output[i] = isPrime(input[i]);
     }
+    times.back() = dispenso::getTime() - times.back();
   }
+  doStats(times, state);
 }
 #endif /*defined(_OPENMP)*/
 
@@ -132,9 +176,13 @@ void BM_tbb(benchmark::State& state) {
 
   tbb::task_scheduler_init initsched(numThreads);
 
+  std::vector<double> times;
+  times.reserve(1000);
+
   auto& input = getInputs(kSize);
   for (auto UNUSED_VAR : state) {
     std::this_thread::sleep_for(kSleep);
+    times.push_back(dispenso::getTime());
     tbb::parallel_for(
         tbb::blocked_range<size_t>(0, kSize),
         [&input, &output](const tbb::blocked_range<size_t>& r) {
@@ -142,7 +190,9 @@ void BM_tbb(benchmark::State& state) {
             output[i] = isPrime(input[i]);
           }
         });
+    times.back() = dispenso::getTime() - times.back();
   }
+  doStats(times, state);
 }
 #endif // !BENCHMARK_WITHOUT_TBB
 
