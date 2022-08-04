@@ -382,3 +382,14 @@ TEST(Pipeline, PipelineMoveOnlyWithFiltering) {
 
   EXPECT_EQ(49, sum.load(std::memory_order_acquire));
 }
+
+TEST(Pipeline, ZeroSizeThreadPool) {
+  g_count = 0;
+  g_sum.store(0);
+
+  dispenso::ThreadPool pool(0);
+
+  dispenso::pipeline(pool, funkGen, funkSink);
+
+  EXPECT_EQ(45, g_sum.load(std::memory_order_acquire));
+}

@@ -93,7 +93,7 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int numThreads = state.range(0);
+  const int numThreads = state.range(0) - 1;
 
   std::vector<int> output(kSize, 0);
   dispenso::resizeGlobalThreadPool(numThreads);

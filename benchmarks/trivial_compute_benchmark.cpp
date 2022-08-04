@@ -69,7 +69,7 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
 
   dispenso::ThreadPool pool(num_threads);
@@ -82,7 +82,7 @@ void BM_dispenso(benchmark::State& state) {
     dispenso::TaskSet tasks(pool);
 
     std::vector<uint64_t> sums;
-    sums.reserve(num_threads);
+    sums.reserve(num_threads + 1);
     ++foo;
     dispenso::parallel_for(
         tasks,

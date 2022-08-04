@@ -57,8 +57,7 @@ template <typename TaskSetT, typename Iter, typename F>
 void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions options = {}) {
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
-  if (!n || (n == 1 && options.wait) || !options.maxThreads ||
-      detail::PerPoolPerThreadInfo::isParForRecursive(&tasks.pool())) {
+  if (!n || !options.maxThreads || detail::PerPoolPerThreadInfo::isParForRecursive(&tasks.pool())) {
     for (size_t i = 0; i < n; ++i) {
       f(*start);
       ++start;
@@ -69,7 +68,7 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
     return;
   }
 
-  ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads(), options.maxThreads);
+  ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads(), options.maxThreads) + options.wait;
   // Reduce threads used if they exceed work to be done.
   numThreads = std::min<ssize_t>(numThreads, n);
 

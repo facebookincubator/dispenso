@@ -254,7 +254,8 @@ class Pipe<StageClass::kGenerator, CurStage, PipeNext> {
       : tasks_(tasks), stage_(std::forward<StageIn>(s)), pipeNext_(std::move(n)) {}
 
   void execute() {
-    ssize_t numThreads = std::min(tasks_.numPoolThreads(), StageLimits<CurStage>::limit(stage_));
+    ssize_t numThreads = std::max<ssize_t>(
+        1, std::min(tasks_.numPoolThreads(), StageLimits<CurStage>::limit(stage_)));
     completion_ = std::make_unique<CompletionEventImpl>(static_cast<int>(numThreads));
     for (ssize_t i = 0; i < numThreads; ++i) {
       tasks_.schedule([this]() {

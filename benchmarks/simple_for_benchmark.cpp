@@ -67,7 +67,7 @@ void checkResults(const std::vector<int>& input, const std::vector<int>& output)
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
 
   std::vector<int> output(num_elements, 0);

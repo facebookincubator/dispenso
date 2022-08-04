@@ -176,7 +176,7 @@ void parallel_for_staticImpl(
     ParForOptions options) {
   ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<ssize_t>(numThreads, range.size());
+  numThreads = std::min<ssize_t>(numThreads, range.size()) + options.wait;
 
   auto chunking = detail::staticChunkSize(range.size(), numThreads);
   IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
@@ -237,7 +237,7 @@ void parallel_for_staticImpl(
     ParForOptions options) {
   ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<ssize_t>(numThreads, range.size());
+  numThreads = std::min<ssize_t>(numThreads, range.size()) + options.wait;
 
   for (ssize_t i = 0; i < numThreads; ++i) {
     states.emplace_back(defaultState());
@@ -318,6 +318,8 @@ void parallel_for(
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     f(range.start, range.end);
     if (options.wait) {
+      // Note that we may have to wait here despite currently running single threaded because we may
+      // need to block prior work on the taskSet
       taskSet.wait();
     }
     return;
@@ -328,24 +330,14 @@ void parallel_for(
     return;
   }
 
-  const bool useCallingThread = options.wait;
-  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
+  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N);
 
-  if (numToLaunch == 1 && !useCallingThread) {
+  if (numToLaunch == 1 && !options.wait) {
     taskSet.schedule([range, f = std::move(f)]() { f(range.start, range.end); });
-    if (options.wait) {
-      taskSet.wait();
-    }
-    return;
-  } else if (numToLaunch == 0) {
-    f(range.start, range.end);
-    if (options.wait) {
-      taskSet.wait();
-    }
     return;
   }
 
-  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
+  const IntegerT chunk = range.calcChunkSize(numToLaunch, options.wait);
 
   if (options.wait) {
     alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);
@@ -463,29 +455,20 @@ void parallel_for(
     return;
   }
 
-  const bool useCallingThread = options.wait;
-  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N - useCallingThread);
+  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N);
 
-  for (ssize_t i = 0; i < numToLaunch + useCallingThread; ++i) {
+  for (ssize_t i = 0; i < numToLaunch + options.wait; ++i) {
     states.emplace_back(defaultState());
   }
 
-  if (numToLaunch == 1 && !useCallingThread) {
+  if (numToLaunch == 1 && !options.wait) {
     taskSet.schedule(
         [&s = states.front(), range, f = std::move(f)]() { f(s, range.start, range.end); });
-    if (options.wait) {
-      taskSet.wait();
-    }
-    return;
-  } else if (numToLaunch == 0) {
-    f(*states.begin(), range.start, range.end);
-    if (options.wait) {
-      taskSet.wait();
-    }
+
     return;
   }
 
-  const IntegerT chunk = range.calcChunkSize(numToLaunch, useCallingThread);
+  const IntegerT chunk = range.calcChunkSize(numToLaunch, options.wait);
 
   if (options.wait) {
     alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);

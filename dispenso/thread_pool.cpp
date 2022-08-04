@@ -45,7 +45,7 @@ void ThreadPool::threadLoop(std::atomic<bool>& running) {
 }
 
 void ThreadPool::resize(ssize_t sn) {
-  assert(sn > 0);
+  assert(sn >= 0);
   size_t n = static_cast<size_t>(sn);
 
   std::lock_guard<std::mutex> lk(threadsMutex_);
@@ -69,6 +69,13 @@ void ThreadPool::resize(ssize_t sn) {
   }
   poolLoadFactor_.store(static_cast<ssize_t>(n * poolLoadMultiplier_), std::memory_order_relaxed);
   numThreads_.store(sn, std::memory_order_relaxed);
+
+  if (!sn) {
+    // Pool will run future tasks inline since we have no threads, but we still need to empty
+    // current set of tasks
+    while (tryExecuteNext()) {
+    }
+  }
 }
 
 ThreadPool::~ThreadPool() {
@@ -93,7 +100,9 @@ ThreadPool::~ThreadPool() {
 
 ThreadPool& globalThreadPool() {
   // It should be illegal to access globalThreadPool after exiting main.
-  static ThreadPool pool(std::thread::hardware_concurrency());
+  // We default to hardware threads minus one because the calling thread usually is involved in
+  // computation.
+  static ThreadPool pool(std::thread::hardware_concurrency() - 1);
   return pool;
 }
 

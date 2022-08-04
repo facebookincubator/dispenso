@@ -83,7 +83,7 @@ void BM_serial(benchmark::State& state) {
 
 uint64_t calculateInnerDispenso(uint64_t input, size_t foo, int numElements) {
   std::vector<uint64_t> sums;
-  sums.reserve(g_numThreads);
+  sums.reserve(g_numThreads + 1);
   dispenso::parallel_for(
       sums,
       []() { return uint64_t{0}; },
@@ -103,7 +103,7 @@ uint64_t calculateInnerDispenso(uint64_t input, size_t foo, int numElements) {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  g_numThreads = state.range(0);
+  g_numThreads = state.range(0) - 1;
   const int numElements = state.range(1);
 
   dispenso::resizeGlobalThreadPool(g_numThreads);
@@ -114,7 +114,7 @@ void BM_dispenso(benchmark::State& state) {
   auto input = getInputs(numElements);
   for (auto UNUSED_VAR : state) {
     std::vector<uint64_t> sums;
-    sums.reserve(g_numThreads);
+    sums.reserve(g_numThreads + 1);
     ++foo;
     dispenso::parallel_for(
         sums,

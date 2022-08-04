@@ -192,6 +192,10 @@ inline void ThreadPool::schedule(F&& f) {
 
 template <typename F>
 inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
+  if (!numThreads_.load(std::memory_order_relaxed)) {
+    f();
+    return;
+  }
   workRemaining_.fetch_add(1, std::memory_order_release);
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   bool enqueued = work_.enqueue({std::forward<F>(f)});
@@ -215,6 +219,10 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f) {
 
 template <typename F>
 inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag) {
+  if (!numThreads_.load(std::memory_order_relaxed)) {
+    f();
+    return;
+  }
   workRemaining_.fetch_add(1, std::memory_order_release);
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   bool enqueued = work_.enqueue(token, {std::forward<F>(f)});
