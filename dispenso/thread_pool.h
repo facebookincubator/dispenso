@@ -50,20 +50,7 @@ class alignas(kCacheLineSize) ThreadPool {
    * @param poolLoadMultiplier A parameter that specifies how overloaded the pool should be before
    * allowing the current thread to self-steal work.
    **/
-  ThreadPool(size_t n, size_t poolLoadMultiplier = 32)
-      : poolLoadMultiplier_(poolLoadMultiplier),
-        poolLoadFactor_(static_cast<ssize_t>(n * poolLoadMultiplier)),
-        numThreads_(static_cast<ssize_t>(n)) {
-#if defined DISPENSO_DEBUG
-    assert(poolLoadMultiplier > 0);
-#endif // DISPENSO_DEBUG
-    for (size_t i = 0; i < n; ++i) {
-      threads_.emplace_back();
-      auto& back = threads_.back();
-      back.running = true;
-      back.thread = std::thread([this, &running = back.running]() { threadLoop(running); });
-    }
-  }
+  DISPENSO_DLL_ACCESS ThreadPool(size_t n, size_t poolLoadMultiplier = 32);
 
   /**
    * Change the number of threads backing the thread pool.  This is a blocking and potentially slow
