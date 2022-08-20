@@ -7,7 +7,7 @@ var searchData=
   ['reservetag_4',['ReserveTag',['../concurrent__vector_8h.html#ad1fd37ed3358d0c441b10e30f073d317',1,'dispenso']]],
   ['reservetags_5',['ReserveTagS',['../structdispenso_1_1_reserve_tag_s.html',1,'dispenso']]],
   ['reset_6',['reset',['../classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8',1,'dispenso::CompletionEvent']]],
-  ['resize_7',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a7ccfecb32a41e3d655b80c12dab439a9',1,'dispenso::ThreadPool::resize()']]],
+  ['resize_7',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc',1,'dispenso::ThreadPool::resize()']]],
   ['resource_8',['Resource',['../classdispenso_1_1_resource.html',1,'dispenso']]],
   ['resource_5fpool_2eh_9',['resource_pool.h',['../resource__pool_8h.html',1,'']]],
   ['resourcepool_10',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso::ResourcePool&lt; T &gt;'],['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool::ResourcePool()']]],

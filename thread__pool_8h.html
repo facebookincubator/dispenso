@@ -94,17 +94,21 @@ $(document).ready(function(){initNavTree('thread__pool_8h.html',''); initResizab
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#define-members">Macros</a> &#124;
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">thread_pool.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;atomic&gt;</code><br />
 <code>#include &lt;cassert&gt;</code><br />
+<code>#include &lt;condition_variable&gt;</code><br />
 <code>#include &lt;cstdlib&gt;</code><br />
 <code>#include &lt;deque&gt;</code><br />
 <code>#include &lt;mutex&gt;</code><br />
 <code>#include &lt;thread&gt;</code><br />
 <code>#include &lt;concurrentqueue.h&gt;</code><br />
+<code>#include &lt;dispenso/detail/epoch_waiter.h&gt;</code><br />
 <code>#include &lt;dispenso/detail/per_thread_info.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="once__function_8h_source.html">dispenso/once_function.h</a>&gt;</code><br />
 <code>#include &lt;dispenso/platform.h&gt;</code><br />
@@ -119,18 +123,47 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:a0f5475854e706b2e7ca122a52f7a52e0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#a0f5475854e706b2e7ca122a52f7a52e0">DISPENSO_POLL_PERIOD_US</a>&#160;&#160;&#160;200</td></tr>
+<tr class="separator:a0f5475854e706b2e7ca122a52f7a52e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a482a36a8ab5d9a9c8667474bf0ec92d8"><td class="memItemLeft" align="right" valign="top">ThreadPool &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8cpp.html#a482a36a8ab5d9a9c8667474bf0ec92d8">dispenso::globalThreadPool</a> ()</td></tr>
 <tr class="separator:a482a36a8ab5d9a9c8667474bf0ec92d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afd8ebfe35a57387b3be0648b55efcd2b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8cpp.html#afd8ebfe35a57387b3be0648b55efcd2b">dispenso::resizeGlobalThreadPool</a> (size_t numThreads)</td></tr>
 <tr class="separator:afd8ebfe35a57387b3be0648b55efcd2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:ae93906ad32c1e4bd6056e7e4053b425a"><td class="memItemLeft" align="right" valign="top">constexpr uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#ae93906ad32c1e4bd6056e7e4053b425a">dispenso::kDefaultSleepLenUs</a> = DISPENSO_POLL_PERIOD_US</td></tr>
+<tr class="separator:ae93906ad32c1e4bd6056e7e4053b425a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9c358e8e42a517fb1c8deea0fb69b9fc"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#a9c358e8e42a517fb1c8deea0fb69b9fc">dispenso::kDefaultWakeupEnable</a> = false</td></tr>
+<tr class="separator:a9c358e8e42a517fb1c8deea0fb69b9fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A file providing ThreadPool. This is the heart of dispenso. All other scheduling paradigms, including TaskSets, Futures, pipelines, and parallel loops, are built on top of ThreadPool. </p>
 
 <p class="definition">Definition in file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
-</div><h2 class="groupheader">Function Documentation</h2>
+</div><h2 class="groupheader">Macro Definition Documentation</h2>
+<a id="a0f5475854e706b2e7ca122a52f7a52e0" name="a0f5475854e706b2e7ca122a52f7a52e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0f5475854e706b2e7ca122a52f7a52e0">&#9670;&nbsp;</a></span>DISPENSO_POLL_PERIOD_US</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define DISPENSO_POLL_PERIOD_US&#160;&#160;&#160;200</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00038">38</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
 <a id="a482a36a8ab5d9a9c8667474bf0ec92d8" name="a482a36a8ab5d9a9c8667474bf0ec92d8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a482a36a8ab5d9a9c8667474bf0ec92d8">&#9670;&nbsp;</a></span>globalThreadPool()</h2>
 
@@ -148,7 +181,7 @@ Functions</h2></td></tr>
 <p >Get access to the global thread pool.</p>
 <dl class="section return"><dt>Returns</dt><dd>the global thread pool </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00101">101</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00186">186</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -175,7 +208,56 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00109">109</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00194">194</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="ae93906ad32c1e4bd6056e7e4053b425a" name="ae93906ad32c1e4bd6056e7e4053b425a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae93906ad32c1e4bd6056e7e4053b425a">&#9670;&nbsp;</a></span>kDefaultSleepLenUs</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr uint32_t dispenso::kDefaultSleepLenUs = DISPENSO_POLL_PERIOD_US</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00042">42</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+
+</div>
+</div>
+<a id="a9c358e8e42a517fb1c8deea0fb69b9fc" name="a9c358e8e42a517fb1c8deea0fb69b9fc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c358e8e42a517fb1c8deea0fb69b9fc">&#9670;&nbsp;</a></span>kDefaultWakeupEnable</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool dispenso::kDefaultWakeupEnable = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00047">47</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>

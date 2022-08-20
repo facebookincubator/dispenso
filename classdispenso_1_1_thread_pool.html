@@ -106,10 +106,13 @@ $(document).ready(function(){initNavTree('classdispenso_1_1_thread_pool.html',''
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2442016e8a4924ca665d3993c1879b4d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a2442016e8a4924ca665d3993c1879b4d">ThreadPool</a> (size_t n, size_t poolLoadMultiplier=32)</td></tr>
+<tr class="memitem:a2442016e8a4924ca665d3993c1879b4d"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a2442016e8a4924ca665d3993c1879b4d">ThreadPool</a> (size_t n, size_t poolLoadMultiplier=32)</td></tr>
 <tr class="separator:a2442016e8a4924ca665d3993c1879b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7ccfecb32a41e3d655b80c12dab439a9"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a7ccfecb32a41e3d655b80c12dab439a9">resize</a> (ssize_t n)</td></tr>
-<tr class="separator:a7ccfecb32a41e3d655b80c12dab439a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1496e66b4081c1f35ab2ff70536148ac"><td class="memTemplParams" colspan="2">template&lt;class Rep , class Period &gt; </td></tr>
+<tr class="memitem:a1496e66b4081c1f35ab2ff70536148ac"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a1496e66b4081c1f35ab2ff70536148ac">setSignalingWake</a> (bool enable, const std::chrono::duration&lt; Rep, Period &gt; &amp;sleepDuration=std::chrono::microseconds(kDefaultSleepLenUs))</td></tr>
+<tr class="separator:a1496e66b4081c1f35ab2ff70536148ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b6d82ff0d0a23686cee515b3c2a22dc"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc">resize</a> (ssize_t n)</td></tr>
+<tr class="separator:a6b6d82ff0d0a23686cee515b3c2a22dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a790fecdf2ce448db2f02af9117c7f538"><td class="memItemLeft" align="right" valign="top">ssize_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a790fecdf2ce448db2f02af9117c7f538">numThreads</a> () const</td></tr>
 <tr class="separator:a790fecdf2ce448db2f02af9117c7f538"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a656639db1edaa1293a7dfec9629c0289"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
@@ -138,16 +141,13 @@ Friends</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >The basic executor for dispenso. It provides typical thread pool functionality, plus allows work stealing by related types (e.g. <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a>, etc...), which prevents deadlock when waiting for pool-recursive tasks. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00044">44</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00062">62</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a2442016e8a4924ca665d3993c1879b4d" name="a2442016e8a4924ca665d3993c1879b4d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2442016e8a4924ca665d3993c1879b4d">&#9670;&nbsp;</a></span>ThreadPool()</h2>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">dispenso::ThreadPool::ThreadPool </td>
@@ -167,11 +167,6 @@ Friends</h2></td></tr>
           <td></td><td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 <p >Construct a thread pool.</p>
 <dl class="params"><dt>Parameters</dt><dd>
@@ -182,7 +177,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00053">53</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00051">51</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -202,7 +197,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p >Destruct the pool. This destructor is blocking until all queued work is completed. It is illegal to call the destructor while any other thread makes calls to the pool (as is generally the case with C++ classes). </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00081">81</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00163">163</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -232,7 +227,7 @@ Friends</h2></td></tr>
 <p >Get the number of threads backing the pool. If called concurrently to <code>resize</code>, the number returned may be stale.</p>
 <dl class="section return"><dt>Returns</dt><dd>The current number of threads backing the pool. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00082">82</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00117">117</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -260,7 +255,7 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00135">135</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00210">210</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -288,24 +283,32 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00132">132</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00207">207</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
-<a id="a7ccfecb32a41e3d655b80c12dab439a9" name="a7ccfecb32a41e3d655b80c12dab439a9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7ccfecb32a41e3d655b80c12dab439a9">&#9670;&nbsp;</a></span>resize()</h2>
+<a id="a6b6d82ff0d0a23686cee515b3c2a22dc" name="a6b6d82ff0d0a23686cee515b3c2a22dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6b6d82ff0d0a23686cee515b3c2a22dc">&#9670;&nbsp;</a></span>resize()</h2>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void dispenso::ThreadPool::resize </td>
+          <td class="memname">DISPENSO_DLL_ACCESS void dispenso::ThreadPool::resize </td>
           <td>(</td>
           <td class="paramtype">ssize_t&#160;</td>
           <td class="paramname"><em>n</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 <p >Change the number of threads backing the thread pool. This is a blocking and potentially slow operation, and repeatedly resizing is discouraged.</p>
 <dl class="params"><dt>Parameters</dt><dd>
@@ -315,7 +318,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00047">47</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00106">106</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -352,7 +355,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00181">181</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00258">258</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -399,7 +402,56 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00194">194</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00271">271</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+
+</div>
+</div>
+<a id="a1496e66b4081c1f35ab2ff70536148ac" name="a1496e66b4081c1f35ab2ff70536148ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1496e66b4081c1f35ab2ff70536148ac">&#9670;&nbsp;</a></span>setSignalingWake()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class Rep , class Period &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void dispenso::ThreadPool::setSignalingWake </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>enable</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::chrono::duration&lt; Rep, Period &gt; &amp;&#160;</td>
+          <td class="paramname"><em>sleepDuration</em> = <code>std::chrono::microseconds(kDefaultSleepLenUs)</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p >Enable or disable signaling wake functionality. If enabled, this will try to ensure that threads are woken up proactively when work has not been available and it becomes available. This function is blocking and potentially very slow. Repeated use is discouraged.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">enable</td><td>If set true, turns on signaling wake. If false, turns it off. </td></tr>
+    <tr><td class="paramname">sleepDuration</td><td>If enable is true, this is the length of time a thread will wait for a signal before waking up. If enable is false, this is the length of time a thread will sleep between polling.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section note"><dt>Note</dt><dd>It is highly recommended to leave signaling wake enabled on Windows platforms, as sleeping/polling tends to perform poorly for intermittent workloads. For Mac/Linux platforms, it is okay to enable signaling wake, particularly if you wish to set a longer expected duration between work. If signaling wake is disabled, ensure sleepDuration is small (e.g. 200us) for best performance. Most users will not need to call this function, as defaults are reasonable. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00092">92</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -424,7 +476,7 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00160">160</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00237">237</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -448,7 +500,7 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00161">161</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00238">238</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>

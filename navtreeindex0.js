@@ -141,11 +141,12 @@ var NAVTREEINDEX0 =
 "classdispenso_1_1_task_set.html#af686482876a0f074084cf7216bf11a71":[0,0,0,23,7],
 "classdispenso_1_1_task_set.html#afaef02654e2110ffeb0356c0e1dcbf39":[0,0,0,23,0],
 "classdispenso_1_1_thread_pool.html":[0,0,0,24],
+"classdispenso_1_1_thread_pool.html#a1496e66b4081c1f35ab2ff70536148ac":[0,0,0,24,6],
 "classdispenso_1_1_thread_pool.html#a2442016e8a4924ca665d3993c1879b4d":[0,0,0,24,0],
 "classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9":[0,0,0,24,5],
 "classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289":[0,0,0,24,4],
+"classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc":[0,0,0,24,3],
 "classdispenso_1_1_thread_pool.html#a790fecdf2ce448db2f02af9117c7f538":[0,0,0,24,2],
-"classdispenso_1_1_thread_pool.html#a7ccfecb32a41e3d655b80c12dab439a9":[0,0,0,24,3],
 "classdispenso_1_1_thread_pool.html#acd886dd712424330935b64959e8188af":[0,0,0,24,1],
 "classdispenso_1_1_unaligned_r_w_lock.html":[0,0,0,25],
 "classes.html":[0,1],
@@ -248,6 +249,5 @@ var NAVTREEINDEX0 =
 "structdispenso_1_1_concurrent_object_arena.html#ac2e855dc6e3e325e4b9dff88de2ad597":[0,0,0,4,0],
 "structdispenso_1_1_default_concurrent_vector_size_traits.html":[0,0,0,7],
 "structdispenso_1_1_default_concurrent_vector_traits.html":[0,0,0,8],
-"structdispenso_1_1_for_each_options.html":[0,0,0,10],
-"structdispenso_1_1_for_each_options.html#a3f07fbd0ae91b2738612be10d0ac61a8":[0,0,0,10,0]
+"structdispenso_1_1_for_each_options.html":[0,0,0,10]
 };

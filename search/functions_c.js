@@ -5,6 +5,6 @@ var searchData=
   ['requestupdate_2',['requestUpdate',['../classdispenso_1_1_async_request.html#a1f346ca044a0b7668785b2105627cf3a',1,'dispenso::AsyncRequest']]],
   ['reserve_3',['reserve',['../classdispenso_1_1_concurrent_vector.html#a29fe4428dde508f95b2f57efc5184978',1,'dispenso::ConcurrentVector']]],
   ['reset_4',['reset',['../classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8',1,'dispenso::CompletionEvent']]],
-  ['resize_5',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a7ccfecb32a41e3d655b80c12dab439a9',1,'dispenso::ThreadPool::resize()']]],
+  ['resize_5',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc',1,'dispenso::ThreadPool::resize()']]],
   ['resourcepool_6',['ResourcePool',['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool']]]
 ];
