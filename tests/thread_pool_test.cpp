@@ -198,6 +198,47 @@ TEST(ThreadPool, ResizeMoreConcurrent) {
   }
 }
 
+TEST(ThreadPool, SetSignalingWakeConcurrent) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 1000000;
+  std::vector<int64_t> outputs(kWorkItems, 0);
+  std::atomic<int> completed(0);
+  {
+    dispenso::ThreadPool pool(10);
+
+    std::thread resetter0([&pool]() {
+      for (int i = 0; i < 100; ++i) {
+        pool.setSignalingWake(true, 1000us);
+      }
+    });
+
+    std::thread resetter1([&pool]() {
+      for (int i = 0; i < 100; ++i) {
+        pool.setSignalingWake(false, 400us);
+      }
+    });
+
+    int64_t i = 0;
+    for (int64_t& o : outputs) {
+      pool.schedule([i, &o, &completed]() {
+        o = i * i;
+        completed.fetch_add(1, std::memory_order_relaxed);
+      });
+      ++i;
+    }
+    resetter0.join();
+    resetter1.join();
+
+    EXPECT_EQ(static_cast<int>(pool.numThreads()), 10);
+  }
+
+  int64_t i = 0;
+  for (int64_t o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
 TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
   constexpr int kWorkItems = 1000000;
   std::vector<int64_t> outputs(kWorkItems, 0);

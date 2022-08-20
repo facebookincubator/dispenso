@@ -33,7 +33,7 @@ struct alignas(64) Work {
 
 Work g_work[1025];
 std::atomic<int> g_tCounter{0};
-inline int tid() {
+inline int testTid() {
   static DISPENSO_THREAD_LOCAL int t = -1;
   if (t < 0) {
     t = g_tCounter.fetch_add(1, std::memory_order_acq_rel);
@@ -45,10 +45,10 @@ inline Work& work() {
   static DISPENSO_THREAD_LOCAL Work* w = nullptr;
 
   if (!w) {
-    if (tid() == 0) {
+    if (testTid() == 0) {
       w = g_work + 1024;
     } else {
-      w = g_work + (tid() & 1023);
+      w = g_work + (testTid() & 1023);
     }
   }
   return *w;

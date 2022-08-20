@@ -5,15 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#pragma once
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-
-#if defined(__linux__)
-#include <errno.h>
-#include <linux/futex.h>
-#include <sys/syscall.h>
-#include <unistd.h>
 
 // Implementation notes:
 // 1. You should know what you're doing if you are directly using CompletionEventImpl.  Most people
@@ -28,17 +24,12 @@
 //    racing to get some statuses, and they should use compare_exchange functions to resolve those,
 //    setting completed status should not typically be racy.
 
+#include "notifier_common.h"
+
 namespace dispenso {
 namespace detail {
-static int futex(
-    int* uaddr,
-    int futex_op,
-    int val,
-    const struct timespec* timeout,
-    int* /*uaddr2*/,
-    int val3) {
-  return static_cast<int>(syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr, val3));
-}
+
+#if defined(__linux__)
 
 class CompletionEventImpl {
  public:
@@ -106,14 +97,9 @@ class CompletionEventImpl {
     std::atomic<int> status_;
   };
 };
-} // namespace detail
-} // namespace dispenso
 
 #elif 0 && defined(__MACH__)
-#include <mach/mach.h>
 
-namespace dispenso {
-namespace detail {
 class CompletionEventImpl {
  public:
   CompletionEventImpl(int initStatus) : status_(initStatus) {
@@ -194,32 +180,7 @@ class CompletionEventImpl {
   semaphore_t sem_;
   std::atomic<int> status_;
 };
-} // namespace detail
-} // namespace dispenso
 #elif defined(_WIN32)
-
-#if (defined(_M_ARM64) || defined(_M_ARM)) && !defined(_ARM_)
-#define _ARM_
-#elif _WIN64
-#define _AMD64_
-#elif _WIN32
-#define _X86_
-#else
-#error "No valid windows platform"
-#endif // platform
-
-#include <errhandlingapi.h>
-#include <synchapi.h>
-
-namespace dispenso {
-namespace detail {
-
-#ifndef ERROR_TIMEOUT
-constexpr int ERROR_TIMEOUT = 0x000005B4;
-#endif // ERROR_TIMEOUT
-#ifndef INFINITE
-constexpr unsigned long INFINITE = -1;
-#endif // INFINITE
 
 class CompletionEventImpl {
  public:
@@ -233,7 +194,7 @@ class CompletionEventImpl {
   void wait(int completedStatus) const {
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
-      WaitOnAddress(&status_, &current, sizeof(int), INFINITE);
+      WaitOnAddress(&status_, &current, sizeof(int), kInfiniteWin);
     }
   }
 
@@ -254,7 +215,7 @@ class CompletionEventImpl {
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
       if (!WaitOnAddress(&status_, &current, sizeof(int), msWait) &&
-          GetLastError() == ERROR_TIMEOUT) {
+          GetLastError() == kErrorTimeoutWin) {
         return false;
       }
     }
@@ -282,16 +243,10 @@ class CompletionEventImpl {
  private:
   mutable std::atomic<int> status_;
 };
-} // namespace detail
-} // namespace dispenso
+
 #else
 
-#include <condition_variable>
-#include <mutex>
-
 // Fallback C++11 implementation.
-namespace dispenso {
-namespace detail {
 class CompletionEventImpl {
  public:
   CompletionEventImpl(int initStatus) : status_(initStatus) {}
@@ -348,6 +303,7 @@ class CompletionEventImpl {
   mutable std::condition_variable cv_;
   std::atomic<int> status_;
 };
+#endif // platform
+
 } // namespace detail
 } // namespace dispenso
-#endif // platform

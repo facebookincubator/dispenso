@@ -137,7 +137,11 @@ void BM_dispenso(benchmark::State& state) {
     std::this_thread::sleep_for(kSleep);
     times.push_back(dispenso::getTime());
     dispenso::parallel_for(
-        0, kSize, [&input, &output](size_t i) { output[i] = isPrime(input[i]); });
+        dispenso::makeChunkedRange(0, kSize), [&input, &output](size_t i, size_t e) {
+          for (; i != e; ++i) {
+            output[i] = isPrime(input[i]);
+          }
+        });
     times.back() = dispenso::getTime() - times.back();
   }
 

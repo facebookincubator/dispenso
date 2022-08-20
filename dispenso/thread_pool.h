@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <condition_variable>
 #include <cstdlib>
 #include <deque>
 #include <mutex>
@@ -22,12 +23,29 @@
 
 #include <concurrentqueue.h>
 
+#include <dispenso/detail/epoch_waiter.h>
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/once_function.h>
 #include <dispenso/platform.h>
 #include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
+
+#if !defined(DISPENSO_POLL_PERIOD_US)
+#if defined(_WIN32)
+#define DISPENSO_POLL_PERIOD_US 1000
+#else
+#define DISPENSO_POLL_PERIOD_US 200
+#endif // PLATFORM
+#endif // DISPENSO_POLL_PERIOD_US
+
+constexpr uint32_t kDefaultSleepLenUs = DISPENSO_POLL_PERIOD_US;
+
+#if defined(__WIN32)
+constexpr bool kDefaultWakeupEnable = true;
+#else
+constexpr bool kDefaultWakeupEnable = false;
+#endif // PLATFORM
 
 /**
  * A simple tag specifier that can be fed to TaskSets and
@@ -53,12 +71,42 @@ class alignas(kCacheLineSize) ThreadPool {
   DISPENSO_DLL_ACCESS ThreadPool(size_t n, size_t poolLoadMultiplier = 32);
 
   /**
-   * Change the number of threads backing the thread pool.  This is a blocking and potentially slow
-   * operation, and repeatedly resizing is discouraged.
+   * Enable or disable signaling wake functionality.  If enabled, this will try to ensure that
+   * threads are woken up proactively when work has not been available and it becomes available.
+   * This function is blocking and potentially very slow.  Repeated use is discouraged.
+   *
+   * @param enable If set true, turns on signaling wake.  If false, turns it off.
+   * @param sleepDuration If enable is true, this is the length of time a thread will wait for a
+   * signal before waking up.  If enable is false, this is the length of time a thread will sleep
+   * between polling.
+   *
+   * @note It is highly recommended to leave signaling wake enabled on Windows platforms, as
+   * sleeping/polling tends to perform poorly for intermittent workloads.  For Mac/Linux platforms,
+   * it is okay to enable signaling wake, particularly if you wish to set a longer expected duration
+   * between work.  If signaling wake is disabled, ensure sleepDuration is small (e.g. 200us) for
+   * best performance.  Most users will not need to call this function, as defaults are reasonable.
+   *
+   *
+   **/
+  template <class Rep, class Period>
+  void setSignalingWake(
+      bool enable,
+      const std::chrono::duration<Rep, Period>& sleepDuration =
+          std::chrono::microseconds(kDefaultSleepLenUs)) {
+    setSignalingWake(
+        enable, std::chrono::duration_cast<std::chrono::microseconds>(sleepDuration).count());
+  }
+
+  /**
+   * Change the number of threads backing the thread pool.  This is a blocking and potentially
+   * slow operation, and repeatedly resizing is discouraged.
    *
    * @param n The number of threads in use after call completion
    **/
-  DISPENSO_DLL_ACCESS void resize(ssize_t n);
+  DISPENSO_DLL_ACCESS void resize(ssize_t n) {
+    std::lock_guard<std::mutex> lk(threadsMutex_);
+    resizeLocked(n);
+  }
 
   /**
    * Get the number of threads backing the pool.  If called concurrently to <code>resize</code>, the
@@ -100,9 +148,38 @@ class alignas(kCacheLineSize) ThreadPool {
   DISPENSO_DLL_ACCESS ~ThreadPool();
 
  private:
+  class PerThreadData {
+   public:
+    void setThread(std::thread&& t);
+
+    bool running();
+
+    void stop();
+
+    ~PerThreadData();
+
+   public:
+    alignas(kCacheLineSize) std::thread thread_;
+    std::atomic<bool> running_{true};
+  };
+
+  DISPENSO_DLL_ACCESS uint32_t wait(uint32_t priorEpoch);
+  DISPENSO_DLL_ACCESS void wake();
+
+  void setSignalingWake(bool enable, uint32_t sleepDurationUs) {
+    std::lock_guard<std::mutex> lk(threadsMutex_);
+    ssize_t currentPoolSize = numThreads();
+    resizeLocked(0);
+    enableEpochWaiter_.store(enable, std::memory_order_release);
+    sleepLengthUs_.store(sleepDurationUs, std::memory_order_release);
+    resizeLocked(currentPoolSize);
+  }
+
+  DISPENSO_DLL_ACCESS void resizeLocked(ssize_t n);
+
   void executeNext(OnceFunction work);
 
-  DISPENSO_DLL_ACCESS void threadLoop(std::atomic<bool>& running);
+  DISPENSO_DLL_ACCESS void threadLoop(PerThreadData& threadData);
 
   bool tryExecuteNext();
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
@@ -112,6 +189,17 @@ class alignas(kCacheLineSize) ThreadPool {
 
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
+
+  void conditionallyWake() {
+    if (enableEpochWaiter_.load(std::memory_order_acquire)) {
+      // A rare race to overwake is preferable to a race that underwakes.
+      auto queuedWork = queuedWork_.fetch_add(1, std::memory_order_acq_rel) + 1;
+      auto idle = idleButAwake_.load(std::memory_order_acquire);
+      if (idle < queuedWork) {
+        wake();
+      }
+    }
+  }
 
  public:
   // If we are not yet C++17, we provide aligned new/delete to avoid false sharing.
@@ -125,11 +213,6 @@ class alignas(kCacheLineSize) ThreadPool {
 #endif // __cplusplus
 
  private:
-  struct PerThreadData {
-    alignas(kCacheLineSize) std::thread thread;
-    std::atomic<bool> running;
-  };
-
   mutable std::mutex threadsMutex_;
   std::deque<PerThreadData> threads_;
   size_t poolLoadMultiplier_;
@@ -138,7 +221,14 @@ class alignas(kCacheLineSize) ThreadPool {
 
   moodycamel::ConcurrentQueue<OnceFunction> work_;
 
+  alignas(kCacheLineSize) std::atomic<ssize_t> queuedWork_{0};
+  alignas(kCacheLineSize) std::atomic<ssize_t> idleButAwake_{0};
+
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
+
+  alignas(kCacheLineSize) detail::EpochWaiter epochWaiter_;
+  alignas(kCacheLineSize) std::atomic<bool> enableEpochWaiter_{kDefaultWakeupEnable};
+  std::atomic<uint32_t> sleepLengthUs_{kDefaultSleepLenUs};
 
 #if defined DISPENSO_DEBUG
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskSets_{0};
@@ -189,6 +279,8 @@ inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   (void)(enqueued); // unused
   assert(enqueued);
+
+  conditionallyWake();
 }
 
 template <typename F>
@@ -216,6 +308,8 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQ
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   (void)(enqueued); // unused
   assert(enqueued);
+
+  conditionallyWake();
 }
 
 inline bool ThreadPool::tryExecuteNext() {
