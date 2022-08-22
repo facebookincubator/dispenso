@@ -94,7 +94,9 @@ class alignas(kCacheLineSize) ThreadPool {
       const std::chrono::duration<Rep, Period>& sleepDuration =
           std::chrono::microseconds(kDefaultSleepLenUs)) {
     setSignalingWake(
-        enable, std::chrono::duration_cast<std::chrono::microseconds>(sleepDuration).count());
+        enable,
+        static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(sleepDuration).count()));
   }
 
   /**

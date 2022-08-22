@@ -237,15 +237,9 @@ TEST(TaskSet, Exception) {
   dispenso::ThreadPool pool(10);
   dispenso::TaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule(
-      [datap]() {
-        throw std::logic_error("oops");
-        *datap = 5;
-      },
-      dispenso::ForceQueuingTag());
+  tasks.schedule([]() { throw std::logic_error("oops"); }, dispenso::ForceQueuingTag());
 
   bool caught = false;
   try {
@@ -262,15 +256,9 @@ TEST(ConcurrentTaskSet, Exception) {
   dispenso::ThreadPool pool(10);
   dispenso::ConcurrentTaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule(
-      [datap]() {
-        throw std::logic_error("oops");
-        *datap = 5;
-      },
-      dispenso::ForceQueuingTag());
+  tasks.schedule([]() { throw std::logic_error("oops"); }, dispenso::ForceQueuingTag());
 
   bool caught = false;
   try {
@@ -287,13 +275,9 @@ TEST(TaskSet, ExceptionNoForceQueuing) {
   dispenso::ThreadPool pool(10);
   dispenso::TaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule([datap]() {
-    throw std::logic_error("oops");
-    *datap = 5;
-  });
+  tasks.schedule([]() { throw std::logic_error("oops"); });
 
   bool caught = false;
   try {
@@ -310,13 +294,9 @@ TEST(ConcurrentTaskSet, ExceptionNoForceQueuing) {
   dispenso::ThreadPool pool(10);
   dispenso::ConcurrentTaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule([datap]() {
-    throw std::logic_error("oops");
-    *datap = 5;
-  });
+  tasks.schedule([]() { throw std::logic_error("oops"); });
 
   bool caught = false;
   try {
@@ -334,14 +314,8 @@ TEST(TaskSet, ExceptionTryWait) {
   dispenso::TaskSet tasks(pool);
 
   int data = 32767;
-  int* datap = &data;
 
-  tasks.schedule(
-      [datap]() {
-        throw std::logic_error("oops");
-        *datap = 5;
-      },
-      dispenso::ForceQueuingTag());
+  tasks.schedule([]() { throw std::logic_error("oops"); }, dispenso::ForceQueuingTag());
 
   bool caught = false;
   try {
@@ -359,15 +333,9 @@ TEST(ConcurrentTaskSet, ExceptionTryWait) {
   dispenso::ThreadPool pool(10);
   dispenso::ConcurrentTaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule(
-      [datap]() {
-        throw std::logic_error("oops");
-        *datap = 5;
-      },
-      dispenso::ForceQueuingTag());
+  tasks.schedule([]() { throw std::logic_error("oops"); }, dispenso::ForceQueuingTag());
 
   bool caught = false;
   try {
@@ -385,13 +353,9 @@ TEST(TaskSet, ExceptionNoForceQueuingTryWait) {
   dispenso::ThreadPool pool(10);
   dispenso::TaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule([datap]() {
-    throw std::logic_error("oops");
-    *datap = 5;
-  });
+  tasks.schedule([]() { throw std::logic_error("oops"); });
 
   bool caught = false;
   try {
@@ -409,13 +373,9 @@ TEST(ConcurrentTaskSet, ExceptionNoForceQueuingTryWait) {
   dispenso::ThreadPool pool(10);
   dispenso::ConcurrentTaskSet tasks(pool);
 
-  int data;
-  int* datap = &data;
+  int data = 3;
 
-  tasks.schedule([datap]() {
-    throw std::logic_error("oops");
-    *datap = 5;
-  });
+  tasks.schedule([]() { throw std::logic_error("oops"); });
 
   bool caught = false;
   try {
