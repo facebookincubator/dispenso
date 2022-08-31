@@ -15,6 +15,15 @@
 #include "tbb/task_scheduler_init.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+#include <folly/VirtualExecutor.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
+#include <folly/experimental/coro/Coroutine.h>
+#include <folly/experimental/coro/Task.h>
+#endif // !BENCHMARK_WITHOUT_FOLLY
+
 #include "thread_benchmark_common.h"
 
 using namespace std::chrono_literals;
@@ -55,7 +64,7 @@ inline Work& work() {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
   dispenso::ThreadPool pool(num_threads);
 
@@ -66,6 +75,52 @@ void BM_dispenso(benchmark::State& state) {
     }
   }
 }
+
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+void BM_folly(benchmark::State& state) {
+  const int num_threads = state.range(0);
+  const int num_elements = state.range(1);
+  folly::CPUThreadPoolExecutor follyExec(num_threads, num_threads);
+
+  for (auto UNUSED_VAR : state) {
+    folly::VirtualExecutor tasks(&follyExec);
+    for (int i = 0; i < num_elements; ++i) {
+      tasks.add([i]() { work() += i; });
+    }
+  }
+}
+
+void BM_folly2(benchmark::State& state) {
+  const int num_threads = state.range(0);
+  const int num_elements = state.range(1);
+
+  if (num_elements > 10000) {
+    state.SkipWithError("We run out of memory here with too many elements");
+  }
+
+  folly::CPUThreadPoolExecutor follyExec(num_threads, num_threads);
+  for (auto UNUSED_VAR : state) {
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      std::vector<folly::coro::Task<void>> tasks;
+      for (int i = 0; i < num_elements; ++i) {
+        tasks.push_back(folly::coro::co_invoke([num_elements]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::vector<folly::coro::Task<void>> tasks2;
+          int num = std::sqrt(num_elements);
+          for (int j = 0; j < num; ++j) {
+            tasks2.push_back(folly::coro::co_invoke([j]() -> folly::coro::Task<void> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              work() += j;
+            }));
+          }
+          co_await folly::coro::collectAllRange(std::move(tasks2));
+        }));
+      }
+      co_await folly::coro::collectAllRange(std::move(tasks)).scheduleOn(&follyExec);
+    }());
+  }
+}
+#endif // !BENCHMARK_WITHOUT_FOLLY
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
@@ -155,7 +210,7 @@ void BM_tbb_very_idle(benchmark::State& state) {
 #endif // !BENCHMARK_WITHOUT_TBB
 
 void BM_dispenso2(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
 
   for (auto UNUSED_VAR : state) {
@@ -173,7 +228,7 @@ void BM_dispenso2(benchmark::State& state) {
 }
 
 void BM_dispenso_mostly_idle(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
 
   struct Recurse {
@@ -205,7 +260,7 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
 }
 
 void BM_dispenso_very_idle(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = state.range(0) - 1;
   startRusage();
 
   for (auto UNUSED_VAR : state) {
@@ -235,11 +290,18 @@ static void CustomArgumentsVeryIdle(benchmark::internal::Benchmark* b) {
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
+
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+BENCHMARK(BM_folly)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_FOLLY
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb2)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+BENCHMARK(BM_folly2)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_FOLLY
 BENCHMARK(BM_dispenso2)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
