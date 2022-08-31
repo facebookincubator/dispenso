@@ -92,15 +92,19 @@ void TaskSet::wait() {
   // progress could be made without stealing.
   while (pool_.tryExecuteNextFromProducerToken(token_)) {
   }
+
   while (outstandingTaskCount_.load(std::memory_order_acquire)) {
-    std::this_thread::yield();
+    if (!pool_.tryExecuteNext()) {
+      std::this_thread::yield();
+    }
   }
 
   testAndResetException();
 }
 
 bool TaskSet::tryWait(size_t maxToExecute) {
-  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExecute--) {
+  ssize_t maxToExe = static_cast<ssize_t>(maxToExecute);
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe--) {
     if (!pool_.tryExecuteNextFromProducerToken(token_)) {
       break;
     }
@@ -109,6 +113,15 @@ bool TaskSet::tryWait(size_t maxToExecute) {
   // Must check completion prior to checking exceptions, otherwise there could be a case where
   // exceptions are checked, then an exception is propagated, and then we return whether all items
   // have been completed, thus dropping the exception.
+
+  maxToExe = std::max<ssize_t>(0, maxToExe);
+
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe--) {
+    if (!pool_.tryExecuteNext()) {
+      std::this_thread::yield();
+    }
+  }
+
   if (outstandingTaskCount_.load(std::memory_order_acquire)) {
     return false;
   }
