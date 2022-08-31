@@ -697,10 +697,7 @@ TEST(Future, SimpleExceptionsReference) {
 TEST(Future, SimpleExceptionsVoid) {
   bool handledException = false;
   int val = 333;
-  auto voidFuture = dispenso::async([&val]() -> int& {
-    throw(std::logic_error("oops"));
-    val = 222;
-  });
+  auto voidFuture = dispenso::async([]() { throw(std::logic_error("oops")); });
 
   try {
     voidFuture.get();

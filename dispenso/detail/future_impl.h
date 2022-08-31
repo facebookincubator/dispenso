@@ -345,7 +345,7 @@ class FutureImplSmall : public FutureImplBase<Result> {
     deallocSmallBuffer<kBufferSize>(this);
   }
 
-  ~FutureImplSmall() override = default;
+  ~FutureImplSmall() override {}
 
  private:
   alignas(F) char func_[sizeof(F)];
@@ -360,7 +360,7 @@ class FutureImplSmall<kBufferSize, void, Result> : public FutureImplBase<Result>
     deallocSmallBuffer<kBufferSize>(this);
   }
 
-  ~FutureImplSmall() override = default;
+  ~FutureImplSmall() override {}
 };
 
 template <typename F, typename Result>
@@ -381,7 +381,7 @@ class FutureImplAlloc : public FutureImplBase<Result> {
     alignedFree(this);
   }
 
-  ~FutureImplAlloc() override = default;
+  ~FutureImplAlloc() override {}
 
  private:
   alignas(F) char func_[sizeof(F)];
