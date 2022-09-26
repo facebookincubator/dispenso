@@ -281,3 +281,30 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
     ++i;
   }
 }
+
+TEST_P(ThreadPoolTest, CrossPoolTest) {
+  constexpr int kWorkItems = 10000;
+  std::vector<int> outputs(kWorkItems, 0);
+  std::atomic<int> completed(0);
+  {
+    dispenso::ThreadPool otherPool(8);
+    initPool(10);
+    int i = 0;
+    for (int& o : outputs) {
+      schedule([i, &o, &completed, &otherPool]() {
+        otherPool.schedule([i, &o, &completed]() {
+          o = i * i;
+          completed.fetch_add(1, std::memory_order_relaxed);
+        });
+      });
+      ++i;
+    }
+    destroyPool();
+  }
+
+  int i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}

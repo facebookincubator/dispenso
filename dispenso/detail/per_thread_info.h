@@ -14,6 +14,7 @@ namespace detail {
 
 struct alignas(kCacheLineSize) PerThreadInfo {
   void* pool = nullptr;
+  void* producer = nullptr;
   int parForRecursionLevel = 0;
 };
 
@@ -34,12 +35,20 @@ class ParForRecursion {
 
 class PerPoolPerThreadInfo {
  public:
-  static void registerPool(void* pool) {
-    info().pool = pool;
+  static void registerPool(void* pool, void* producer) {
+    auto& i = info();
+    i.pool = pool;
+    i.producer = producer;
+  }
+
+  static void* producer(void* pool) {
+    auto& i = info();
+    return i.pool == pool ? i.producer : nullptr;
   }
 
   static bool isParForRecursive(void* pool) {
-    return (!info().pool || info().pool == pool) && info().parForRecursionLevel > 0;
+    auto& i = info();
+    return (!i.pool || i.pool == pool) && i.parForRecursionLevel > 0;
   }
 
   static bool isPoolRecursive(void* pool) {

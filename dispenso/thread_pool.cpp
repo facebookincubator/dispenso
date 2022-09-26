@@ -69,11 +69,13 @@ void ThreadPool::threadLoop(PerThreadData& data) {
   constexpr int kBackoffYield = 50;
   constexpr int kBackoffSleep = kBackoffYield + 5;
 
+  moodycamel::ConsumerToken ctoken(work_);
+  moodycamel::ProducerToken ptoken(work_);
+
   OnceFunction next;
 
   int failCount = 0;
-  detail::PerPoolPerThreadInfo::registerPool(this);
-  moodycamel::ConsumerToken token(work_);
+  detail::PerPoolPerThreadInfo::registerPool(this, &ptoken);
   uint32_t epoch = epochWaiter_.current();
 
   if (enableEpochWaiter_) {
@@ -81,7 +83,7 @@ void ThreadPool::threadLoop(PerThreadData& data) {
     idleButAwake_.fetch_add(1, std::memory_order_acq_rel);
 
     while (data.running()) {
-      while (work_.try_dequeue(token, next)) {
+      while (work_.try_dequeue(ctoken, next)) {
         queuedWork_.fetch_sub(1, std::memory_order_acq_rel);
         if (idle) {
           idle = false;
@@ -110,7 +112,7 @@ void ThreadPool::threadLoop(PerThreadData& data) {
     idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
   } else {
     while (data.running()) {
-      while (work_.try_dequeue(token, next)) {
+      while (work_.try_dequeue(ctoken, next)) {
         executeNext(std::move(next));
         failCount = 0;
       }

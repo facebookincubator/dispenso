@@ -10,9 +10,11 @@
 namespace dispenso {
 namespace detail {
 
+namespace {
+DISPENSO_THREAD_LOCAL PerThreadInfo g_perThreadInfo;
+}
 PerThreadInfo& PerPoolPerThreadInfo::info() {
-  static DISPENSO_THREAD_LOCAL PerThreadInfo perThreadInfo;
-  return perThreadInfo;
+  return g_perThreadInfo;
 }
 
 } // namespace detail

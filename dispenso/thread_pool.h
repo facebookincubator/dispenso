@@ -265,12 +265,18 @@ inline void ThreadPool::schedule(F&& f) {
       (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
     f();
   } else {
-    schedule(std::move(f), ForceQueuingTag());
+    schedule(std::forward<F>(f), ForceQueuingTag());
   }
 }
 
 template <typename F>
 inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
+  if (auto* token =
+          static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this))) {
+    schedule(*token, std::forward<F>(f), ForceQueuingTag());
+    return;
+  }
+
   if (!numThreads_.load(std::memory_order_relaxed)) {
     f();
     return;
@@ -294,7 +300,7 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f) {
       (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
     f();
   } else {
-    schedule(token, std::move(f), ForceQueuingTag());
+    schedule(token, std::forward<F>(f), ForceQueuingTag());
   }
 }
 
