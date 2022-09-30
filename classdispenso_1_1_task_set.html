@@ -100,11 +100,13 @@ $(document).ready(function(){initNavTree('classdispenso_1_1_task_set.html',''); 
 <div class="contents">
 
 <p><code>#include &lt;<a class="el" href="task__set_8h_source.html">task_set.h</a>&gt;</code></p>
+
+<p>Inherits TaskSetBase.</p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:afaef02654e2110ffeb0356c0e1dcbf39"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#afaef02654e2110ffeb0356c0e1dcbf39">TaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;p, ssize_t stealingLoadMultiplier=4)</td></tr>
-<tr class="separator:afaef02654e2110ffeb0356c0e1dcbf39"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e35883d55573e9a836d8df983a2bdfc"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#a7e35883d55573e9a836d8df983a2bdfc">TaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;p, ParentCascadeCancel registerForParentCancel=ParentCascadeCancel::kOff, ssize_t stealingLoadMultiplier=4)</td></tr>
+<tr class="separator:a7e35883d55573e9a836d8df983a2bdfc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaf4587ca2134a5a0d4584a6ea3c2c10e"><td class="memItemLeft" align="right" valign="top"><a id="aaf4587ca2134a5a0d4584a6ea3c2c10e" name="aaf4587ca2134a5a0d4584a6ea3c2c10e"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>TaskSet</b> (<a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> &amp;&amp;other)=delete</td></tr>
 <tr class="separator:aaf4587ca2134a5a0d4584a6ea3c2c10e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -117,14 +119,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aa6d01bd26f44e6547108e6c588ff454e"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
 <tr class="memitem:aa6d01bd26f44e6547108e6c588ff454e"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#aa6d01bd26f44e6547108e6c588ff454e">schedule</a> (F &amp;&amp;f, <a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a> fq)</td></tr>
 <tr class="separator:aa6d01bd26f44e6547108e6c588ff454e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af686482876a0f074084cf7216bf11a71"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#af686482876a0f074084cf7216bf11a71">wait</a> ()</td></tr>
-<tr class="separator:af686482876a0f074084cf7216bf11a71"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeb89ca02444f82497b0ed81543ab4d4b"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#aeb89ca02444f82497b0ed81543ab4d4b">wait</a> ()</td></tr>
+<tr class="separator:aeb89ca02444f82497b0ed81543ab4d4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a17cf46f5790f1a818ac404167a796bd5"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#a17cf46f5790f1a818ac404167a796bd5">tryWait</a> (size_t maxToExecute)</td></tr>
 <tr class="separator:a17cf46f5790f1a818ac404167a796bd5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaefc70ac2d223663935d35c99454486c"><td class="memItemLeft" align="right" valign="top">ssize_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#aaefc70ac2d223663935d35c99454486c">numPoolThreads</a> () const</td></tr>
-<tr class="separator:aaefc70ac2d223663935d35c99454486c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2bd8c4915a6c3d1766851d82e2b3e2c3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#a2bd8c4915a6c3d1766851d82e2b3e2c3">pool</a> ()</td></tr>
-<tr class="separator:a2bd8c4915a6c3d1766851d82e2b3e2c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adaf78b774cf53f55332f6708f988fc02"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#adaf78b774cf53f55332f6708f988fc02">cancel</a> ()</td></tr>
+<tr class="separator:adaf78b774cf53f55332f6708f988fc02"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa78e80f5277f1d3ed7132a41a87e913"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#aaa78e80f5277f1d3ed7132a41a87e913">canceled</a> () const</td></tr>
+<tr class="separator:aaa78e80f5277f1d3ed7132a41a87e913"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2fbdd27aa8ffcb216e51f45aad709f12"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_task_set.html#a2fbdd27aa8ffcb216e51f45aad709f12">~TaskSet</a> ()</td></tr>
 <tr class="separator:a2fbdd27aa8ffcb216e51f45aad709f12"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -132,10 +134,10 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><p ><code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> is an object that allows scheduling multiple functors to a thread pool, and allows to wait on that set of tasks. <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> supplies more efficient schedule/wait than <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, but at the expense of only being usable from one thread at a time.</p>
 <p ><code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> is "thread-compatible". This means that you can safely use different <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> objects on different threads concurrently. Any given <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> object may only be used from a single thread, so no concurrent use of that object is allowed. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00038">38</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00035">35</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="afaef02654e2110ffeb0356c0e1dcbf39" name="afaef02654e2110ffeb0356c0e1dcbf39"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afaef02654e2110ffeb0356c0e1dcbf39">&#9670;&nbsp;</a></span>TaskSet()</h2>
+<a id="a7e35883d55573e9a836d8df983a2bdfc" name="a7e35883d55573e9a836d8df983a2bdfc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e35883d55573e9a836d8df983a2bdfc">&#9670;&nbsp;</a></span>TaskSet()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -148,6 +150,12 @@ Public Member Functions</h2></td></tr>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;&#160;</td>
           <td class="paramname"><em>p</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ParentCascadeCancel&#160;</td>
+          <td class="paramname"><em>registerForParentCancel</em> = <code>ParentCascadeCancel::kOff</code>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -176,7 +184,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00047">47</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00044">44</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -204,13 +212,13 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Destroy the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00166">166</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00140">140</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="aaefc70ac2d223663935d35c99454486c" name="aaefc70ac2d223663935d35c99454486c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaefc70ac2d223663935d35c99454486c">&#9670;&nbsp;</a></span>numPoolThreads()</h2>
+<a id="adaf78b774cf53f55332f6708f988fc02" name="adaf78b774cf53f55332f6708f988fc02"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adaf78b774cf53f55332f6708f988fc02">&#9670;&nbsp;</a></span>cancel()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -219,36 +227,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">ssize_t dispenso::TaskSet::numPoolThreads </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p >Get the number of threads backing the underlying thread pool.</p>
-<dl class="section return"><dt>Returns</dt><dd>The number of threads in the pool. </dd></dl>
-
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00149">149</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
-
-</div>
-</div>
-<a id="a2bd8c4915a6c3d1766851d82e2b3e2c3" name="a2bd8c4915a6c3d1766851d82e2b3e2c3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2bd8c4915a6c3d1766851d82e2b3e2c3">&#9670;&nbsp;</a></span>pool()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp; dispenso::TaskSet::pool </td>
+          <td class="memname">void dispenso::TaskSet::cancel </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -260,10 +239,38 @@ Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p >Access the underlying pool.</p>
-<dl class="section return"><dt>Returns</dt><dd>The thread pool. </dd></dl>
+<p >Set the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="classdispenso_1_1_task_set.html#aaa78e80f5277f1d3ed7132a41a87e913">canceled()</a> status to exit early. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00158">158</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00123">123</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<a id="aaa78e80f5277f1d3ed7132a41a87e913" name="aaa78e80f5277f1d3ed7132a41a87e913"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaa78e80f5277f1d3ed7132a41a87e913">&#9670;&nbsp;</a></span>canceled()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool dispenso::TaskSet::canceled </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p >Check the canceled status of the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>.</p>
+<dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> has been canceled. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00132">132</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -301,7 +308,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task is run inline. Otherwise, exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00072">72</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00067">67</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -349,7 +356,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00104">104</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00090">90</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -375,29 +382,30 @@ template&lt;typename F &gt; </div>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd><code>true</code> if all currently scheduled functors have been completed prior to returning, and <code>false</code> otherwise. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if all currently scheduled functors have been completed prior to returning, and <code>false</code> otherwise. This includes returning false if the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> was cancelled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00105">105</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00106">106</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>
-<a id="af686482876a0f074084cf7216bf11a71" name="af686482876a0f074084cf7216bf11a71"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af686482876a0f074084cf7216bf11a71">&#9670;&nbsp;</a></span>wait()</h2>
+<a id="aeb89ca02444f82497b0ed81543ab4d4b" name="aeb89ca02444f82497b0ed81543ab4d4b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeb89ca02444f82497b0ed81543ab4d4b">&#9670;&nbsp;</a></span>wait()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void dispenso::TaskSet::wait </td>
+          <td class="memname">bool dispenso::TaskSet::wait </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p >Wait for all currently scheduled functors to finish execution. If exceptions are thrown during execution of the set of tasks, <code>wait</code> will propagate the first exception. </p>
+<p >Wait for all currently scheduled functors to finish execution. If exceptions are thrown during execution of the set of tasks, <code>wait</code> will propagate the first exception.</p>
+<dl class="section return"><dt>Returns</dt><dd>true if the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> was canceled, false otherwise </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00088">88</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00089">89</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>

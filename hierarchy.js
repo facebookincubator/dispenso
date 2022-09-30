@@ -6,7 +6,6 @@ var hierarchy =
     [ "dispenso::ChunkedRange< IntegerT >", "structdispenso_1_1_chunked_range.html", null ],
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
-    [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
     [ "dispenso::DefaultConcurrentVectorTraits", "structdispenso_1_1_default_concurrent_vector_traits.html", null ],
@@ -34,6 +33,9 @@ var hierarchy =
       [ "dispenso::UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ],
     [ "dispenso::ChunkedRange< IntegerT >::Static", "structdispenso_1_1_chunked_range_1_1_static.html", null ],
-    [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ],
+    [ "TaskSetBase", null, [
+      [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],
+      [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ]
+    ] ],
     [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ]
 ];

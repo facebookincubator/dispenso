@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['wait_0',['wait',['../classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522',1,'dispenso::CompletionEvent::wait()'],['../classdispenso_1_1_future.html#a4d8ce8faf23b4e63fda01518b5a3870c',1,'dispenso::Future::wait()'],['../classdispenso_1_1_task_set.html#af686482876a0f074084cf7216bf11a71',1,'dispenso::TaskSet::wait()'],['../classdispenso_1_1_concurrent_task_set.html#aee2b6988bb64a162ea3163439721280e',1,'dispenso::ConcurrentTaskSet::wait()']]],
+  ['wait_0',['wait',['../classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522',1,'dispenso::CompletionEvent::wait()'],['../classdispenso_1_1_future.html#a4d8ce8faf23b4e63fda01518b5a3870c',1,'dispenso::Future::wait()'],['../classdispenso_1_1_task_set.html#aeb89ca02444f82497b0ed81543ab4d4b',1,'dispenso::TaskSet::wait()'],['../classdispenso_1_1_concurrent_task_set.html#a72ff3af1484a7104e364d564b6ef63ae',1,'dispenso::ConcurrentTaskSet::wait()']]],
   ['wait_5ffor_1',['wait_for',['../classdispenso_1_1_future.html#a5ace98c08729172161d545a1efc892e8',1,'dispenso::Future']]],
   ['wait_5funtil_2',['wait_until',['../classdispenso_1_1_future.html#a35007e2927c1277d4d612fae6498cb5a',1,'dispenso::Future']]],
   ['waitfor_3',['waitFor',['../classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48',1,'dispenso::CompletionEvent']]],
