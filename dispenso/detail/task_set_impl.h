@@ -25,6 +25,9 @@ class FutureBase;
 
 class LimitGatedScheduler;
 
+DISPENSO_DLL_ACCESS void pushThreadTaskSet(TaskSetBase* tasks);
+DISPENSO_DLL_ACCESS void popThreadTaskSet();
+
 } // namespace detail
 
 class TaskSetBase {
@@ -48,6 +51,14 @@ class TaskSetBase {
     return pool_;
   }
 
+  void cancel() {
+    canceled_.store(true, std::memory_order_release);
+  }
+
+  bool canceled() const {
+    return canceled_.load(std::memory_order_acquire);
+  }
+
   ~TaskSetBase() {
 #if defined DISPENSO_DEBUG
     pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
@@ -59,24 +70,29 @@ class TaskSetBase {
   auto packageTask(F&& f) {
     outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     return [this, f = std::move(f)]() mutable {
+      detail::pushThreadTaskSet(this);
+      if (!canceled_.load(std::memory_order_acquire)) {
 #if defined(__cpp_exceptions)
-      try {
-        f();
-      } catch (...) {
-        trySetCurrentException();
-      }
+        try {
+          f();
+        } catch (...) {
+          trySetCurrentException();
+        }
 #else
-      f();
+        f();
 #endif // __cpp_exceptions
+      }
+      detail::popThreadTaskSet();
       outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
     };
   }
 
   DISPENSO_DLL_ACCESS void trySetCurrentException();
-  void testAndResetException();
+  bool testAndResetException();
 
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
+  alignas(kCacheLineSize) std::atomic<bool> canceled_{false};
   const ssize_t taskSetLoadFactor_;
 #if defined(__cpp_exceptions)
   enum ExceptionState { kUnset, kSetting, kSet };

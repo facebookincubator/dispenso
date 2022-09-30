@@ -58,6 +58,9 @@ class TaskSet : public TaskSetBase {
    **/
   template <typename F>
   void schedule(F&& f) {
+    if (DISPENSO_EXPECT(canceled(), false)) {
+      return;
+    }
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_) {
       f();
     } else {
@@ -84,8 +87,11 @@ class TaskSet : public TaskSetBase {
   /**
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
+   * Canceled status will be reset by wait.
+   *
+   * @return true if the TaskSet was canceled, false otherwise
    **/
-  DISPENSO_DLL_ACCESS void wait();
+  DISPENSO_DLL_ACCESS bool wait();
 
   /**
    * See if the currently scheduled functors can be completed while stealing and executing at most
@@ -96,11 +102,33 @@ class TaskSet : public TaskSetBase {
    * <code>tryWait</code> will propagate the first of them.
    *
    * @param maxToExecute The maximum number of tasks to proactively execute on the current thread.
+   * @param wasCanceled A pointer to a boolean.  If provided, gets set to the canceled status prior
+   * to reset.
    *
    * @return <code>true</code> if all currently scheduled functors have been completed prior to
-   * returning, and <code>false</code> otherwise.
+   * returning, and <code>false</code> otherwise.  This includes returning false if the TaskSet was
+   * cancelled.
    **/
   DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
+
+  /**
+   * Set the TaskSet to canceled state.  No unexecuted tasks will execute once this is set.
+   * Already executing tasks may check canceled() status to exit early.
+   *
+   * @note This will be reset automatically by wait.
+   **/
+  void cancel() {
+    TaskSetBase::cancel();
+  }
+
+  /**
+   * Check the canceled status of the TaskSet.
+   *
+   * @return a boolean indicating whether or not the TaskSet has been canceled.
+   **/
+  bool canceled() const {
+    return TaskSetBase::canceled();
+  }
 
   /**
    * Destroy the TaskSet, first waiting for all currently scheduled functors to
@@ -162,7 +190,8 @@ class ConcurrentTaskSet : public TaskSetBase {
    **/
   template <typename F>
   void schedule(F&& f, bool skipRecheck = false) {
-    if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_) {
+    if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_ &&
+        DISPENSO_EXPECT(!canceled(), true)) {
       f();
     } else if (skipRecheck) {
       pool_.schedule(packageTask(std::forward<F>(f)), ForceQueuingTag());
@@ -191,7 +220,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    **/
-  DISPENSO_DLL_ACCESS void wait();
+  DISPENSO_DLL_ACCESS bool wait();
 
   /**
    * See if the currently scheduled functors can be completed while stealing and executing at most
@@ -207,6 +236,25 @@ class ConcurrentTaskSet : public TaskSetBase {
    * returning, and <code>false</code> otherwise.
    **/
   DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
+
+  /**
+   * Set the ConcurrentTaskSet to canceled state.  No unexecuted tasks will execute once this is
+   * set.  Already executing tasks may check canceled() status to exit early.
+   *
+   * @note This will be reset automatically by wait.
+   **/
+  void cancel() {
+    TaskSetBase::cancel();
+  }
+
+  /**
+   * Check the canceled status of the ConcurrentTaskSet.
+   *
+   * @return a boolean indicating whether or not the ConcurrentTaskSet has been canceled.
+   **/
+  bool canceled() const {
+    return TaskSetBase::canceled();
+  }
 
   /**
    * Destroy the ConcurrentTaskSet, first waiting for all currently scheduled functors to
@@ -226,5 +274,12 @@ class ConcurrentTaskSet : public TaskSetBase {
 
   friend class detail::LimitGatedScheduler;
 };
+
+/**
+ * Get access to the parent task set that scheduled the currently running code. nullptr if called
+ * outside the context of a (Concurrent)TaskSet schedule.
+ *
+ **/
+DISPENSO_DLL_ACCESS TaskSetBase* parentTaskSet();
 
 } // namespace dispenso

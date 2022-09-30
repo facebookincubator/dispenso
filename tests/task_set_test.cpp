@@ -232,6 +232,36 @@ TEST(ConcurrentTaskSet, DoTree) {
   verifyTree(root, 20);
 }
 
+TEST(TaskSet, OneChildCancels) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.schedule(
+      []() {
+        while (!dispenso::parentTaskSet()->canceled())
+          ;
+      },
+      dispenso::ForceQueuingTag());
+
+  tasks.schedule([]() { dispenso::parentTaskSet()->cancel(); }, dispenso::ForceQueuingTag());
+  EXPECT_TRUE(tasks.wait());
+}
+
+TEST(TaskSet, ParentThreadCancels) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.schedule(
+      []() {
+        while (!dispenso::parentTaskSet()->canceled())
+          ;
+      },
+      dispenso::ForceQueuingTag());
+
+  tasks.cancel();
+  EXPECT_TRUE(tasks.wait());
+}
+
 #if defined(__cpp_exceptions)
 TEST(TaskSet, Exception) {
   dispenso::ThreadPool pool(10);
@@ -381,6 +411,32 @@ TEST(ConcurrentTaskSet, ExceptionNoForceQueuingTryWait) {
   try {
     while (!tasks.tryWait(1)) {
     }
+    EXPECT_EQ(data, 12);
+  } catch (...) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+
+TEST(TaskSet, ExceptionCancels) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  int data = 3;
+
+  tasks.schedule(
+      []() {
+        while (!dispenso::parentTaskSet()->canceled())
+          ;
+      },
+      dispenso::ForceQueuingTag());
+
+  tasks.schedule([]() { throw std::logic_error("oops"); }, dispenso::ForceQueuingTag());
+
+  bool caught = false;
+  try {
+    tasks.wait();
     EXPECT_EQ(data, 12);
   } catch (...) {
     caught = true;

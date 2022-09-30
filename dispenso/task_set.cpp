@@ -9,17 +9,39 @@
 
 namespace dispenso {
 
+namespace detail {
+// 64 depth is pretty ridiculous, but try not to step on anyone's feet.
+constexpr size_t kMaxTasksStackSize = 64;
+
+DISPENSO_THREAD_LOCAL TaskSetBase* g_taskStack[kMaxTasksStackSize];
+DISPENSO_THREAD_LOCAL size_t g_taskStackSize = 0;
+
+void pushThreadTaskSet(TaskSetBase* t) {
+  assert(g_taskStackSize < kMaxTasksStackSize - 1);
+  g_taskStack[g_taskStackSize++] = t;
+}
+void popThreadTaskSet() {
+  --g_taskStackSize;
+}
+} // namespace detail
+
+TaskSetBase* parentTaskSet() {
+  using namespace detail;
+  return g_taskStackSize ? g_taskStack[g_taskStackSize - 1] : nullptr;
+}
+
 void TaskSetBase::trySetCurrentException() {
 #if defined(__cpp_exceptions)
   auto status = kUnset;
   if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
     exception_ = std::current_exception();
     guardException_.store(kSet, std::memory_order_release);
+    canceled_.store(true, std::memory_order_release);
   }
 #endif // __cpp_exceptions
 }
 
-inline void TaskSetBase::testAndResetException() {
+inline bool TaskSetBase::testAndResetException() {
 #if defined(__cpp_exceptions)
   if (guardException_.load(std::memory_order_acquire) == kSet) {
     auto exception = std::move(exception_);
@@ -27,9 +49,10 @@ inline void TaskSetBase::testAndResetException() {
     std::rethrow_exception(exception);
   }
 #endif // __cpp_exceptions
+  return canceled_.exchange(false, std::memory_order_acq_rel);
 }
 
-void ConcurrentTaskSet::wait() {
+bool ConcurrentTaskSet::wait() {
   // Steal work until our set is unblocked.  Note that this is not the
   // fastest possible way to unblock the current set, but it will alleviate
   // deadlock, and should provide decent throughput for all waiters.
@@ -43,7 +66,7 @@ void ConcurrentTaskSet::wait() {
     }
   }
 
-  testAndResetException();
+  return testAndResetException();
 }
 
 bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
@@ -60,12 +83,10 @@ bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
     return false;
   }
 
-  testAndResetException();
-
-  return true;
+  return !testAndResetException();
 }
 
-void TaskSet::wait() {
+bool TaskSet::wait() {
   // Steal work until our set is unblocked.
   // The deadlock scenario mentioned goes as follows:  N threads in the
   // ThreadPool.  Each thread is running code that is using TaskSets.  No
@@ -79,7 +100,7 @@ void TaskSet::wait() {
     }
   }
 
-  testAndResetException();
+  return testAndResetException();
 }
 
 bool TaskSet::tryWait(size_t maxToExecute) {
@@ -106,8 +127,7 @@ bool TaskSet::tryWait(size_t maxToExecute) {
     return false;
   }
 
-  testAndResetException();
-  return true;
+  return !testAndResetException();
 }
 
 } // namespace dispenso
