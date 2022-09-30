@@ -49,7 +49,7 @@ inline bool TaskSetBase::testAndResetException() {
     std::rethrow_exception(exception);
   }
 #endif // __cpp_exceptions
-  return canceled_.exchange(false, std::memory_order_acq_rel);
+  return canceled_.load(std::memory_order_acquire);
 }
 
 bool ConcurrentTaskSet::wait() {

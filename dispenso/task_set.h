@@ -87,7 +87,6 @@ class TaskSet : public TaskSetBase {
   /**
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
-   * Canceled status will be reset by wait.
    *
    * @return true if the TaskSet was canceled, false otherwise
    **/
@@ -102,8 +101,6 @@ class TaskSet : public TaskSetBase {
    * <code>tryWait</code> will propagate the first of them.
    *
    * @param maxToExecute The maximum number of tasks to proactively execute on the current thread.
-   * @param wasCanceled A pointer to a boolean.  If provided, gets set to the canceled status prior
-   * to reset.
    *
    * @return <code>true</code> if all currently scheduled functors have been completed prior to
    * returning, and <code>false</code> otherwise.  This includes returning false if the TaskSet was
@@ -115,7 +112,6 @@ class TaskSet : public TaskSetBase {
    * Set the TaskSet to canceled state.  No unexecuted tasks will execute once this is set.
    * Already executing tasks may check canceled() status to exit early.
    *
-   * @note This will be reset automatically by wait.
    **/
   void cancel() {
     TaskSetBase::cancel();
@@ -233,7 +229,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param maxToExecute The maximum number of tasks to proactively execute on the current thread.
    *
    * @return <code>true</code> if all currently scheduled functors have been completed prior to
-   * returning, and <code>false</code> otherwise.
+   * returning, and <code>false</code> otherwise (including cancelled cases).
    **/
   DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
 

@@ -30,6 +30,8 @@ DISPENSO_DLL_ACCESS void popThreadTaskSet();
 
 } // namespace detail
 
+DISPENSO_DLL_ACCESS TaskSetBase* parentTaskSet();
+
 class TaskSetBase {
  public:
   TaskSetBase(ThreadPool& p, ssize_t stealingLoadMultiplier = 4)
@@ -38,6 +40,13 @@ class TaskSetBase {
     assert(stealingLoadMultiplier > 0);
     pool_.outstandingTaskSets_.fetch_add(1, std::memory_order_acquire);
 #endif
+
+    if (auto* pt = parentTaskSet()) {
+      pt->registerChild(this);
+      if (pt->canceled()) {
+        canceled_.store(true, std::memory_order_release);
+      }
+    }
   }
 
   TaskSetBase(TaskSetBase&& other) = delete;
@@ -53,6 +62,7 @@ class TaskSetBase {
 
   void cancel() {
     canceled_.store(true, std::memory_order_release);
+    cancelChildren();
   }
 
   bool canceled() const {
@@ -63,6 +73,10 @@ class TaskSetBase {
 #if defined DISPENSO_DEBUG
     pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
 #endif
+
+    if (auto* p = parentTaskSet()) {
+      p->unregisterChild(this);
+    }
   }
 
  protected:
@@ -90,6 +104,48 @@ class TaskSetBase {
   DISPENSO_DLL_ACCESS void trySetCurrentException();
   bool testAndResetException();
 
+  void registerChild(TaskSetBase* child) {
+    std::lock_guard<std::mutex> lk(mtx_);
+
+    child->prev_ = tail_;
+    child->next_ = nullptr;
+    if (tail_) {
+      tail_->next_ = child;
+      tail_ = child;
+    } else {
+      head_ = tail_ = child;
+    }
+  }
+
+  void unregisterChild(TaskSetBase* child) {
+    std::lock_guard<std::mutex> lk(mtx_);
+
+    if (child->prev_) {
+      child->prev_->next_ = child->next_;
+    } else {
+      // We're head
+      assert(child == head_);
+      head_ = child->next_;
+    }
+    if (child->next_) {
+      child->next_->prev_ = child->prev_;
+    } else {
+      // We're tail
+      assert(child == tail_);
+      tail_ = child->prev_;
+    }
+  }
+
+  void cancelChildren() {
+    std::lock_guard<std::mutex> lk(mtx_);
+
+    auto* node = head_;
+    while (node) {
+      node->cancel();
+      node = node->next_;
+    }
+  }
+
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskCount_{0};
   alignas(kCacheLineSize) ThreadPool& pool_;
   alignas(kCacheLineSize) std::atomic<bool> canceled_{false};
@@ -99,6 +155,15 @@ class TaskSetBase {
   std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
+
+  // This mutex guards modifications/use of the intusive linked list between head_ and tail_
+  std::mutex mtx_;
+  TaskSetBase* head_{nullptr};
+  TaskSetBase* tail_{nullptr};
+
+  // prev_ and next_ are links in our *parent's* intrusive linked list.
+  TaskSetBase* prev_;
+  TaskSetBase* next_;
 };
 
 } // namespace dispenso

@@ -262,6 +262,98 @@ TEST(TaskSet, ParentThreadCancels) {
   EXPECT_TRUE(tasks.wait());
 }
 
+TEST(TaskSet, CascadingCancelOne) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.schedule(
+      [&pool]() {
+        dispenso::TaskSet tasks2(pool);
+        tasks2.schedule([]() {
+          while (!dispenso::parentTaskSet()->canceled())
+            ;
+        });
+      },
+      dispenso::ForceQueuingTag());
+
+  tasks.cancel();
+  EXPECT_TRUE(tasks.wait());
+}
+
+TEST(TaskSet, CascadingOne) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  int a = 5;
+
+  tasks.schedule(
+      [&pool, &a]() {
+        dispenso::TaskSet tasks2(pool);
+        tasks2.schedule([&a]() { a = 7; });
+      },
+      dispenso::ForceQueuingTag());
+
+  EXPECT_FALSE(tasks.wait());
+  EXPECT_EQ(a, 7);
+}
+
+TEST(TaskSet, CascadingManyCancel) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  // Use nonconst instead of constexpr to avoid older MSVC error
+  size_t kBranchFactor = 200;
+
+  std::vector<size_t> values(kBranchFactor * kBranchFactor);
+
+  for (size_t i = 0; i < kBranchFactor; ++i) {
+    tasks.schedule(
+        [&pool, kBranchFactor]() {
+          dispenso::TaskSet tasks2(pool);
+          for (size_t j = 0; j < kBranchFactor; ++j) {
+            tasks2.schedule([]() {
+              while (!dispenso::parentTaskSet()->canceled()) {
+              }
+            });
+          }
+        },
+        dispenso::ForceQueuingTag());
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  tasks.cancel();
+
+  EXPECT_TRUE(tasks.wait());
+}
+
+TEST(TaskSet, CascadingMany) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  // Use nonconst instead of constexpr to avoid older MSVC error
+  size_t kBranchFactor = 200;
+
+  std::vector<size_t> values(kBranchFactor * kBranchFactor);
+
+  for (size_t i = 0; i < kBranchFactor; ++i) {
+    tasks.schedule(
+        [&pool, &values, i, kBranchFactor]() {
+          dispenso::TaskSet tasks2(pool);
+          for (size_t j = 0; j < kBranchFactor; ++j) {
+            tasks2.schedule(
+                [&values, i, j, kBranchFactor]() { values[i * kBranchFactor + j] = i + j; });
+          }
+        },
+        dispenso::ForceQueuingTag());
+  }
+  EXPECT_FALSE(tasks.wait());
+  for (size_t i = 0; i < kBranchFactor; ++i) {
+    for (size_t j = 0; j < kBranchFactor; ++j) {
+      EXPECT_EQ(i + j, values[i * kBranchFactor + j]);
+    }
+  }
+}
+
 #if defined(__cpp_exceptions)
 TEST(TaskSet, Exception) {
   dispenso::ThreadPool pool(10);
