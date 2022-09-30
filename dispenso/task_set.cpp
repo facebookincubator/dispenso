@@ -9,7 +9,7 @@
 
 namespace dispenso {
 
-void ConcurrentTaskSet::trySetCurrentException() {
+void TaskSetBase::trySetCurrentException() {
 #if defined(__cpp_exceptions)
   auto status = kUnset;
   if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
@@ -19,27 +19,7 @@ void ConcurrentTaskSet::trySetCurrentException() {
 #endif // __cpp_exceptions
 }
 
-void TaskSet::trySetCurrentException() {
-#if defined(__cpp_exceptions)
-  auto status = kUnset;
-  if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
-    exception_ = std::current_exception();
-    guardException_.store(kSet, std::memory_order_release);
-  }
-#endif // __cpp_exceptions
-}
-
-inline void ConcurrentTaskSet::testAndResetException() {
-#if defined(__cpp_exceptions)
-  if (guardException_.load(std::memory_order_acquire) == kSet) {
-    auto exception = std::move(exception_);
-    guardException_.store(kUnset, std::memory_order_release);
-    std::rethrow_exception(exception);
-  }
-#endif // __cpp_exceptions
-}
-
-inline void TaskSet::testAndResetException() {
+inline void TaskSetBase::testAndResetException() {
 #if defined(__cpp_exceptions)
   if (guardException_.load(std::memory_order_acquire) == kSet) {
     auto exception = std::move(exception_);

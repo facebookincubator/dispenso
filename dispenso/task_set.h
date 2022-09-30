@@ -13,16 +13,9 @@
 
 #pragma once
 
-#include <dispenso/thread_pool.h>
+#include <dispenso/detail/task_set_impl.h>
 
 namespace dispenso {
-
-namespace detail {
-template <typename Result>
-class FutureBase;
-
-class LimitGatedScheduler;
-} // namespace detail
 
 /**
  * <code>TaskSet</code> is an object that allows scheduling multiple functors to a thread pool, and
@@ -35,7 +28,7 @@ class LimitGatedScheduler;
  * <code>TaskSet</code> object may only be used from a single thread, so no concurrent use of that
  * object is allowed.
  **/
-class TaskSet {
+class TaskSet : public TaskSetBase {
  public:
   /**
    * Construct a TaskSet with the given backing pool.
@@ -45,12 +38,7 @@ class TaskSet {
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
   TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier = 4)
-      : pool_(p), token_(p.work_), taskSetLoadFactor_(stealingLoadMultiplier * p.numThreads()) {
-#if defined DISPENSO_DEBUG
-    assert(stealingLoadMultiplier > 0);
-    pool_.outstandingTaskSets_.fetch_add(1, std::memory_order_acquire);
-#endif
-  }
+      : TaskSetBase(p, stealingLoadMultiplier), token_(p.work_) {}
 
   TaskSet(TaskSet&& other) = delete;
   TaskSet& operator=(TaskSet&& other) = delete;
@@ -73,19 +61,7 @@ class TaskSet {
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_) {
       f();
     } else {
-      outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-      pool_.schedule(token_, [this, f = std::move(f)]() mutable {
-#if defined(__cpp_exceptions)
-        try {
-          f();
-        } catch (...) {
-          trySetCurrentException();
-        }
-#else
-          f();
-#endif // __cpp_exceptions
-        outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
-      });
+      pool_.schedule(token_, packageTask(std::forward<F>(f)));
     }
   }
 
@@ -102,22 +78,7 @@ class TaskSet {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag fq) {
-    outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-    pool_.schedule(
-        token_,
-        [this, f = std::move(f)]() mutable {
-#if defined(__cpp_exceptions)
-          try {
-            f();
-          } catch (...) {
-            trySetCurrentException();
-          }
-#else
-          f();
-#endif // __cpp_exceptions
-          outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
-        },
-        fq);
+    pool_.schedule(token_, packageTask(std::forward<F>(f)), fq);
   }
 
   /**
@@ -142,47 +103,15 @@ class TaskSet {
   DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
 
   /**
-   * Get the number of threads backing the underlying thread pool.
-   *
-   * @return The number of threads in the pool.
-   **/
-  ssize_t numPoolThreads() const {
-    return pool_.numThreads();
-  }
-
-  /**
-   * Access the underlying pool.
-   *
-   * @return The thread pool.
-   **/
-  ThreadPool& pool() {
-    return pool_;
-  }
-
-  /**
    * Destroy the TaskSet, first waiting for all currently scheduled functors to
    * finish execution.
    **/
   ~TaskSet() {
     wait();
-#if defined DISPENSO_DEBUG
-    pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
-#endif
   }
 
  private:
-  DISPENSO_DLL_ACCESS void trySetCurrentException();
-  void testAndResetException();
-
-  alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskCount_{0};
-  alignas(kCacheLineSize) ThreadPool& pool_;
   moodycamel::ProducerToken token_;
-  const ssize_t taskSetLoadFactor_;
-#if defined(__cpp_exceptions)
-  enum ExceptionState { kUnset, kSetting, kSet };
-  std::atomic<ExceptionState> guardException_{kUnset};
-  std::exception_ptr exception_;
-#endif // __cpp_exceptions
 
   template <typename Result>
   friend class detail::FutureBase;
@@ -200,7 +129,7 @@ class TaskSet {
  * It is an error to call wait() concurrently with schedule() on the same
  * <code>ConcurrentTaskSet</code>.
  */
-class ConcurrentTaskSet {
+class ConcurrentTaskSet : public TaskSetBase {
  public:
   /**
    * Construct a ConcurrentTaskSet with the given backing pool.
@@ -210,12 +139,7 @@ class ConcurrentTaskSet {
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
   ConcurrentTaskSet(ThreadPool& pool, ssize_t stealingLoadMultiplier = 4)
-      : pool_(pool), taskSetLoadFactor_(stealingLoadMultiplier * pool.numThreads()) {
-#if defined DISPENSO_DEBUG
-    assert(stealingLoadMultiplier > 0);
-    pool_.outstandingTaskSets_.fetch_add(1, std::memory_order_acquire);
-#endif
-  }
+      : TaskSetBase(pool, stealingLoadMultiplier) {}
 
   ConcurrentTaskSet(ConcurrentTaskSet&& other) = delete;
   ConcurrentTaskSet& operator=(ConcurrentTaskSet&& other) = delete;
@@ -228,17 +152,22 @@ class ConcurrentTaskSet {
    * passing lambdas, other concrete functors, or <code>OnceFunction</code>, but
    * <code>std::function</code> or similarly type-erased objects will also work.
    *
+   * @param skipRecheck A poweruser knob that says that if we don't have enough outstanding tasks to
+   * immediately work steal, we should bypass the similar check in the ThreadPool.
+   *
    * @note If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task
    * is run inline.  Otherwise, exceptions will be caught on the running thread and best-effort
    * propagated to the <code>ConcurrentTaskSet</code>, where the first one from the set is rethrown
    * in <code>wait</code>.
    **/
   template <typename F>
-  void schedule(F&& f) {
+  void schedule(F&& f, bool skipRecheck = false) {
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_) {
       f();
+    } else if (skipRecheck) {
+      pool_.schedule(packageTask(std::forward<F>(f)), ForceQueuingTag());
     } else {
-      schedule(std::forward<F>(f), ForceQueuingTag());
+      pool_.schedule(packageTask(std::forward<F>(f)));
     }
   }
 
@@ -255,21 +184,7 @@ class ConcurrentTaskSet {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag fq) {
-    outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
-    pool_.schedule(
-        [this, f = std::move(f)]() mutable {
-#if defined(__cpp_exceptions)
-          try {
-            f();
-          } catch (...) {
-            trySetCurrentException();
-          }
-#else
-          f();
-#endif // __cpp_exceptions
-          outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
-        },
-        fq);
+    pool_.schedule(packageTask(std::forward<F>(f)), fq);
   }
 
   /**
@@ -294,50 +209,17 @@ class ConcurrentTaskSet {
   DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute);
 
   /**
-   * Get the number of threads backing the underlying thread pool.
-   *
-   * @return The number of threads in the pool.
-   **/
-  ssize_t numPoolThreads() const {
-    return pool_.numThreads();
-  }
-
-  /**
-   * Access the underlying pool.
-   *
-   * @return The thread pool.
-   **/
-  ThreadPool& pool() {
-    return pool_;
-  }
-
-  /**
    * Destroy the ConcurrentTaskSet, first waiting for all currently scheduled functors to
    * finish execution.
    **/
   ~ConcurrentTaskSet() {
     wait();
-#if defined DISPENSO_DEBUG
-    pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
-#endif
   }
 
  private:
-  DISPENSO_DLL_ACCESS void trySetCurrentException();
-  void testAndResetException();
-
   bool tryExecuteNext() {
     return pool_.tryExecuteNext();
   }
-
-  std::atomic<ssize_t> outstandingTaskCount_{0};
-  alignas(kCacheLineSize) ThreadPool& pool_;
-  const ssize_t taskSetLoadFactor_;
-#if defined(__cpp_exceptions)
-  enum ExceptionState { kUnset, kSetting, kSet };
-  std::atomic<ExceptionState> guardException_{kUnset};
-  std::exception_ptr exception_;
-#endif // __cpp_exceptions
 
   template <typename Result>
   friend class detail::FutureBase;

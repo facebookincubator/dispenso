@@ -284,14 +284,18 @@ void dispensoTaskSetTree(
     return;
   }
 
-  tasks.schedule([&tasks, &allocator, node, depth, bitset, modulo]() {
-    node->left = allocator.alloc();
-    dispensoTaskSetTree(tasks, node->left, allocator, depth, (bitset << 1), modulo);
-  });
-  tasks.schedule([&tasks, &allocator, node, depth, bitset, modulo]() {
-    node->right = allocator.alloc();
-    dispensoTaskSetTree(tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
-  });
+  tasks.schedule(
+      [&tasks, &allocator, node, depth, bitset, modulo]() {
+        node->left = allocator.alloc();
+        dispensoTaskSetTree(tasks, node->left, allocator, depth, (bitset << 1), modulo);
+      },
+      true);
+  tasks.schedule(
+      [&tasks, &allocator, node, depth, bitset, modulo]() {
+        node->right = allocator.alloc();
+        dispensoTaskSetTree(tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
+      },
+      true);
 }
 
 template <size_t depth>
@@ -303,7 +307,7 @@ void BM_dispenso_taskset_tree(benchmark::State& state) {
   uint32_t modulo;
   Node root;
 
-  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool(), 2);
 
   size_t m = 0;
 
