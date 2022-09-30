@@ -13,6 +13,10 @@
 
 #pragma once
 
+namespace dispenso {
+enum class ParentCascadeCancel { kOff, kOn };
+}
+
 #include <dispenso/detail/task_set_impl.h>
 
 namespace dispenso {
@@ -37,8 +41,11 @@ class TaskSet : public TaskSetBase {
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
-  TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier = 4)
-      : TaskSetBase(p, stealingLoadMultiplier), token_(p.work_) {}
+  TaskSet(
+      ThreadPool& p,
+      ParentCascadeCancel registerForParentCancel = ParentCascadeCancel::kOff,
+      ssize_t stealingLoadMultiplier = 4)
+      : TaskSetBase(p, registerForParentCancel, stealingLoadMultiplier), token_(p.work_) {}
 
   TaskSet(TaskSet&& other) = delete;
   TaskSet& operator=(TaskSet&& other) = delete;
@@ -162,8 +169,11 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
-  ConcurrentTaskSet(ThreadPool& pool, ssize_t stealingLoadMultiplier = 4)
-      : TaskSetBase(pool, stealingLoadMultiplier) {}
+  ConcurrentTaskSet(
+      ThreadPool& pool,
+      ParentCascadeCancel registerForParentCancel = ParentCascadeCancel::kOff,
+      ssize_t stealingLoadMultiplier = 4)
+      : TaskSetBase(pool, registerForParentCancel, stealingLoadMultiplier) {}
 
   ConcurrentTaskSet(ConcurrentTaskSet&& other) = delete;
   ConcurrentTaskSet& operator=(ConcurrentTaskSet&& other) = delete;

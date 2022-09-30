@@ -34,16 +34,21 @@ DISPENSO_DLL_ACCESS TaskSetBase* parentTaskSet();
 
 class TaskSetBase {
  public:
-  TaskSetBase(ThreadPool& p, ssize_t stealingLoadMultiplier = 4)
+  TaskSetBase(
+      ThreadPool& p,
+      ParentCascadeCancel registerForParentCancel = ParentCascadeCancel::kOff,
+      ssize_t stealingLoadMultiplier = 4)
       : pool_(p), taskSetLoadFactor_(stealingLoadMultiplier * p.numThreads()) {
 #if defined DISPENSO_DEBUG
     assert(stealingLoadMultiplier > 0);
     pool_.outstandingTaskSets_.fetch_add(1, std::memory_order_acquire);
 #endif
 
-    if (auto* pt = parentTaskSet()) {
-      pt->registerChild(this);
-      if (pt->canceled()) {
+    parent_ = (registerForParentCancel == ParentCascadeCancel::kOn) ? parentTaskSet() : nullptr;
+
+    if (parent_) {
+      parent_->registerChild(this);
+      if (parent_->canceled()) {
         canceled_.store(true, std::memory_order_release);
       }
     }
@@ -74,8 +79,8 @@ class TaskSetBase {
     pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);
 #endif
 
-    if (auto* p = parentTaskSet()) {
-      p->unregisterChild(this);
+    if (parent_) {
+      parent_->unregisterChild(this);
     }
   }
 
@@ -155,6 +160,8 @@ class TaskSetBase {
   std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
 #endif // __cpp_exceptions
+
+  TaskSetBase* parent_;
 
   // This mutex guards modifications/use of the intusive linked list between head_ and tail_
   std::mutex mtx_;

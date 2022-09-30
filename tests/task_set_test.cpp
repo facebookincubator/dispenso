@@ -268,7 +268,7 @@ TEST(TaskSet, CascadingCancelOne) {
 
   tasks.schedule(
       [&pool]() {
-        dispenso::TaskSet tasks2(pool);
+        dispenso::TaskSet tasks2(pool, dispenso::ParentCascadeCancel::kOn);
         tasks2.schedule([]() {
           while (!dispenso::parentTaskSet()->canceled())
             ;
@@ -309,7 +309,7 @@ TEST(TaskSet, CascadingManyCancel) {
   for (size_t i = 0; i < kBranchFactor; ++i) {
     tasks.schedule(
         [&pool, kBranchFactor]() {
-          dispenso::TaskSet tasks2(pool);
+          dispenso::TaskSet tasks2(pool, dispenso::ParentCascadeCancel::kOn);
           for (size_t j = 0; j < kBranchFactor; ++j) {
             tasks2.schedule([]() {
               while (!dispenso::parentTaskSet()->canceled()) {

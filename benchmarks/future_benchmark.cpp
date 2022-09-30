@@ -307,7 +307,8 @@ void BM_dispenso_taskset_tree(benchmark::State& state) {
   uint32_t modulo;
   Node root;
 
-  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool(), 2);
+  dispenso::ConcurrentTaskSet tasks(
+      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
 
   size_t m = 0;
 
