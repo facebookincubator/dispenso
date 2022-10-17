@@ -21,6 +21,8 @@ enum class ParentCascadeCancel { kOff, kOn };
 
 namespace dispenso {
 
+constexpr ssize_t kDefaultStealingMultiplier = 4;
+
 /**
  * <code>TaskSet</code> is an object that allows scheduling multiple functors to a thread pool, and
  * allows to wait on that set of tasks.  <code>TaskSet</code> supplies more efficient schedule/wait
@@ -43,9 +45,13 @@ class TaskSet : public TaskSetBase {
    **/
   TaskSet(
       ThreadPool& p,
-      ParentCascadeCancel registerForParentCancel = ParentCascadeCancel::kOff,
-      ssize_t stealingLoadMultiplier = 4)
+      ParentCascadeCancel registerForParentCancel,
+      ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier)
       : TaskSetBase(p, registerForParentCancel, stealingLoadMultiplier), token_(p.work_) {}
+
+  TaskSet(ThreadPool& p) : TaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
+  TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
+      : TaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier) {}
 
   TaskSet(TaskSet&& other) = delete;
   TaskSet& operator=(TaskSet&& other) = delete;
@@ -171,9 +177,14 @@ class ConcurrentTaskSet : public TaskSetBase {
    **/
   ConcurrentTaskSet(
       ThreadPool& pool,
-      ParentCascadeCancel registerForParentCancel = ParentCascadeCancel::kOff,
-      ssize_t stealingLoadMultiplier = 4)
+      ParentCascadeCancel registerForParentCancel,
+      ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier)
       : TaskSetBase(pool, registerForParentCancel, stealingLoadMultiplier) {}
+
+  ConcurrentTaskSet(ThreadPool& p)
+      : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
+  ConcurrentTaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
+      : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier) {}
 
   ConcurrentTaskSet(ConcurrentTaskSet&& other) = delete;
   ConcurrentTaskSet& operator=(ConcurrentTaskSet&& other) = delete;

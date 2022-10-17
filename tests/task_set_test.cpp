@@ -181,6 +181,22 @@ TEST_P(TaskSetTest, MultiSetTryWait) {
   }
 }
 
+TEST(TaskSetTest, ParamConstruction) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet taskSetA(pool);
+  dispenso::TaskSet taskSetB(pool, 4);
+  dispenso::TaskSet taskSetC(pool, dispenso::ParentCascadeCancel::kOn);
+  dispenso::TaskSet taskSetD(pool, dispenso::ParentCascadeCancel::kOff, 4);
+}
+
+TEST(ConcurrentTaskSetTest, ParamConstruction) {
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet taskSetA(pool);
+  dispenso::ConcurrentTaskSet taskSetB(pool, 4);
+  dispenso::ConcurrentTaskSet taskSetC(pool, dispenso::ParentCascadeCancel::kOn);
+  dispenso::ConcurrentTaskSet taskSetD(pool, dispenso::ParentCascadeCancel::kOff, 4);
+}
+
 void recursiveFunc(dispenso::ThreadPool& pool, int num) {
   if (num <= 0)
     return;
