@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @file Utilities for getting the current time.
+ **/
+
 #pragma once
 
 #include <dispenso/platform.h>

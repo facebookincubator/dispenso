@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @file Utilities for getting a unique thread identifier
+ **/
+
 #pragma once
 
 #include <dispenso/platform.h>
