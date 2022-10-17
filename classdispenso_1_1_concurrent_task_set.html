@@ -105,8 +105,12 @@ $(document).ready(function(){initNavTree('classdispenso_1_1_concurrent_task_set.
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a5e24949b2f516da72763c009763bbec6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_concurrent_task_set.html#a5e24949b2f516da72763c009763bbec6">ConcurrentTaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;pool, ParentCascadeCancel registerForParentCancel=ParentCascadeCancel::kOff, ssize_t stealingLoadMultiplier=4)</td></tr>
-<tr class="separator:a5e24949b2f516da72763c009763bbec6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5e48f4df33cd5cf87b3973ffb9153f16"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_concurrent_task_set.html#a5e48f4df33cd5cf87b3973ffb9153f16">ConcurrentTaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;pool, ParentCascadeCancel registerForParentCancel, ssize_t stealingLoadMultiplier=kDefaultStealingMultiplier)</td></tr>
+<tr class="separator:a5e48f4df33cd5cf87b3973ffb9153f16"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad594abbb3f6399eaaa121c829157296a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_concurrent_task_set.html#ad594abbb3f6399eaaa121c829157296a">ConcurrentTaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;p)</td></tr>
+<tr class="separator:ad594abbb3f6399eaaa121c829157296a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a248cfe647d470b481b062b4d7f531151"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_concurrent_task_set.html#a248cfe647d470b481b062b4d7f531151">ConcurrentTaskSet</a> (<a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;p, ssize_t stealingLoadMultiplier)</td></tr>
+<tr class="separator:a248cfe647d470b481b062b4d7f531151"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a19226a4f942f0ceeda8a8f8f294116f9"><td class="memItemLeft" align="right" valign="top"><a id="a19226a4f942f0ceeda8a8f8f294116f9" name="a19226a4f942f0ceeda8a8f8f294116f9"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>ConcurrentTaskSet</b> (<a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;&amp;other)=delete</td></tr>
 <tr class="separator:a19226a4f942f0ceeda8a8f8f294116f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -134,10 +138,10 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><p ><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> fulfills the same API as <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> with one minor difference: It may be used to schedule tasks concurrently from multiple threads (see more below). It is an object that allows scheduling multiple function-like objects to a thread pool, and allows to wait on that set of tasks.</p>
 <p ><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> is "thread-compatible". This means that you can safely use different <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> objects on different threads concurrently. <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> also allows multiple threads to concurrently schedule against it. It is an error to call <a class="el" href="classdispenso_1_1_concurrent_task_set.html#a72ff3af1484a7104e364d564b6ef63ae">wait()</a> concurrently with <a class="el" href="classdispenso_1_1_concurrent_task_set.html#a141919e5ebb3e61135d4827f3906f108">schedule()</a> on the same <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00163">163</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00169">169</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="a5e24949b2f516da72763c009763bbec6" name="a5e24949b2f516da72763c009763bbec6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5e24949b2f516da72763c009763bbec6">&#9670;&nbsp;</a></span>ConcurrentTaskSet()</h2>
+<a id="a5e48f4df33cd5cf87b3973ffb9153f16" name="a5e48f4df33cd5cf87b3973ffb9153f16"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5e48f4df33cd5cf87b3973ffb9153f16">&#9670;&nbsp;</a></span>ConcurrentTaskSet() <span class="overload">[1/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -155,13 +159,13 @@ Public Member Functions</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">ParentCascadeCancel&#160;</td>
-          <td class="paramname"><em>registerForParentCancel</em> = <code>ParentCascadeCancel::kOff</code>, </td>
+          <td class="paramname"><em>registerForParentCancel</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">ssize_t&#160;</td>
-          <td class="paramname"><em>stealingLoadMultiplier</em> = <code>4</code>&#160;</td>
+          <td class="paramname"><em>stealingLoadMultiplier</em> = <code>kDefaultStealingMultiplier</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -184,7 +188,73 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00172">172</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00178">178</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<a id="ad594abbb3f6399eaaa121c829157296a" name="ad594abbb3f6399eaaa121c829157296a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad594abbb3f6399eaaa121c829157296a">&#9670;&nbsp;</a></span>ConcurrentTaskSet() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">dispenso::ConcurrentTaskSet::ConcurrentTaskSet </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;&#160;</td>
+          <td class="paramname"><em>p</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00184">184</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<a id="a248cfe647d470b481b062b4d7f531151" name="a248cfe647d470b481b062b4d7f531151"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a248cfe647d470b481b062b4d7f531151">&#9670;&nbsp;</a></span>ConcurrentTaskSet() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">dispenso::ConcurrentTaskSet::ConcurrentTaskSet </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> &amp;&#160;</td>
+          <td class="paramname"><em>p</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ssize_t&#160;</td>
+          <td class="paramname"><em>stealingLoadMultiplier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00186">186</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -212,7 +282,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Destroy the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00269">269</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00280">280</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -242,7 +312,7 @@ Public Member Functions</h2></td></tr>
 <p >Set the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled()</a> status to exit early.</p>
 <dl class="section note"><dt>Note</dt><dd>This will be reset automatically by wait. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00252">252</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00263">263</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -271,7 +341,7 @@ Public Member Functions</h2></td></tr>
 <p >Check the canceled status of the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> has been canceled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00261">261</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00272">272</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -320,7 +390,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task is run inline. Otherwise, exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00198">198</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00209">209</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -368,7 +438,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00221">221</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00232">232</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>

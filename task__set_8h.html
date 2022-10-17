@@ -95,7 +95,8 @@ $(document).ready(function(){initNavTree('task__set_8h.html',''); initResizable(
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">task_set.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
@@ -121,6 +122,11 @@ Enumerations</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:aff0e5c216460dbadab4af999d2a5ebc7"><td class="memItemLeft" align="right" valign="top">TaskSetBase *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task__set_8cpp.html#aff0e5c216460dbadab4af999d2a5ebc7">dispenso::parentTaskSet</a> ()</td></tr>
 <tr class="separator:aff0e5c216460dbadab4af999d2a5ebc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:ab494729615fd3ee2cc03396edb56b133"><td class="memItemLeft" align="right" valign="top">constexpr ssize_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task__set_8h.html#ab494729615fd3ee2cc03396edb56b133">dispenso::kDefaultStealingMultiplier</a> = 4</td></tr>
+<tr class="separator:ab494729615fd3ee2cc03396edb56b133"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A file providing TaskSet and ConcurrentTaskSet. These interfaces allow the user to submit/schedule multiple closures and then wait on them. </p>
@@ -169,6 +175,31 @@ Functions</h2></td></tr>
 <p >Get access to the parent task set that scheduled the currently running code. nullptr if called outside the context of a (Concurrent)TaskSet schedule. </p>
 
 <p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00028">28</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="ab494729615fd3ee2cc03396edb56b133" name="ab494729615fd3ee2cc03396edb56b133"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab494729615fd3ee2cc03396edb56b133">&#9670;&nbsp;</a></span>kDefaultStealingMultiplier</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr ssize_t dispenso::kDefaultStealingMultiplier = 4</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00024">24</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
