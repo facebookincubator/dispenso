@@ -101,7 +101,7 @@ void randomWorkConcurrently() {
   tasks.wait(); // After this, A, B done.
   tasks.schedule(doC);
   tasks.schedule([&stateD]() { doD(stateD); });
-} // tasks waits internal to it's destructor
+} // TaskSet's destructor waits for all scheduled tasks to finish
 ```
 ### ConcurrentTaskSet
 ```cpp
@@ -150,7 +150,7 @@ useResult(result.get());
 ConcurrentVector<std::unique_ptr<int>> values;
 dispenso::parallel_for(
   dispenso::makeChunkedRange(0, length, dispenso::ParForChunking::kStatic),
-  [&values, containerPush](int i, int end) {
+  [&values](int i, int end) {
     values.grow_by_generator(end - i, [i]() mutable { return std::make_unique<int>(i++); });
   });
 ```
