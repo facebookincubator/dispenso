@@ -588,8 +588,8 @@ void operatorComparisonsCorrect(int num, CVec& vec) {
   EXPECT_TRUE(it <= mid);
   EXPECT_FALSE(mid < it);
   EXPECT_FALSE(it > mid);
-  ++it;
-  for (int i = midLen; i < num; ++i, ++it) {
+  for (int i = midLen; i < num; ++i) {
+    ++it;
     EXPECT_TRUE(mid < it);
     EXPECT_TRUE(mid <= it);
     EXPECT_TRUE(it > mid);
