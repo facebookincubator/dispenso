@@ -1,14 +1,13 @@
-# 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-# 
+#
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-# 
+
 
 cmake_minimum_required(VERSION 3.12)
 project(
   Dispenso
-  VERSION 1.0.0
+  VERSION 1.1.0
   DESCRIPTION "Dispenso is a library for working with sets of parallel tasks"
   LANGUAGES CXX)
 
