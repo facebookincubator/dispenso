@@ -6,6 +6,7 @@
   - [Comparison of dispenso vs other libraries](#comparison)
   - [When not to use dispenso](#nottouse)
   - [Documentation and Examples](#examples)
+- [Installing dispenso](#installing)
 - [Building dispenso](#building)
 - [Testing dispenso](#testing)
 - [Benchmarking dispenso](#benchmarking)
@@ -154,6 +155,13 @@ dispenso::parallel_for(
     values.grow_by_generator(end - i, [i]() mutable { return std::make_unique<int>(i++); });
   });
 ```
+
+<div id='installing'/>
+
+# Installing dispenso
+Binary builds of dispenso are currently available for some Linux distributions, and can be installed using their respective package managers. If your distribution or platform is not on the list, see [the next section](#building) for instructions to build it yourself.
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg)](https://repology.org/project/dispenso/versions)
 
 <div id='building'/>
 
