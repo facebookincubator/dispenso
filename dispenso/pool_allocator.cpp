@@ -25,7 +25,7 @@ PoolAllocator::PoolAllocator(
 
 char* PoolAllocator::alloc() {
   while (true) {
-    uint32_t allocId = backingAllocLock_.fetch_add(1, std::memory_order_acquire);
+    uint32_t allocId = backingAllocLock_.fetch_or(1, std::memory_order_acquire);
 
     if (allocId == 0) {
       if (chunks_.empty()) {
@@ -58,7 +58,7 @@ void PoolAllocator::dealloc(char* ptr) {
   // front, and then never again.
 
   while (true) {
-    uint32_t allocId = backingAllocLock_.fetch_add(1, std::memory_order_acquire);
+    uint32_t allocId = backingAllocLock_.fetch_or(1, std::memory_order_acquire);
     if (allocId == 0) {
       chunks_.push_back(ptr);
       backingAllocLock_.store(0, std::memory_order_release);
