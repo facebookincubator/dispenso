@@ -126,7 +126,7 @@ $(document).ready(function(){initNavTree('pool__allocator_8cpp_source.html','');
 <div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span> </div>
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_allocator.html#a38a9be5293b77653b1560cb8e74b5bd4">   26</a></span><span class="keywordtype">char</span>* <a class="code hl_function" href="classdispenso_1_1_pool_allocator.html#a38a9be5293b77653b1560cb8e74b5bd4">PoolAllocator::alloc</a>() {</div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>  <span class="keywordflow">while</span> (<span class="keyword">true</span>) {</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    uint32_t allocId = backingAllocLock_.fetch_add(1, std::memory_order_acquire);</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    uint32_t allocId = backingAllocLock_.fetch_or(1, std::memory_order_acquire);</div>
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
 <div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    <span class="keywordflow">if</span> (allocId == 0) {</div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>      <span class="keywordflow">if</span> (chunks_.empty()) {</div>
@@ -159,7 +159,7 @@ $(document).ready(function(){initNavTree('pool__allocator_8cpp_source.html','');
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>  <span class="comment">// front, and then never again.</span></div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
 <div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>  <span class="keywordflow">while</span> (<span class="keyword">true</span>) {</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    uint32_t allocId = backingAllocLock_.fetch_add(1, std::memory_order_acquire);</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    uint32_t allocId = backingAllocLock_.fetch_or(1, std::memory_order_acquire);</div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    <span class="keywordflow">if</span> (allocId == 0) {</div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>      chunks_.push_back(ptr);</div>
 <div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>      backingAllocLock_.store(0, std::memory_order_release);</div>
