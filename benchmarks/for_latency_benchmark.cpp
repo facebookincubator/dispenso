@@ -81,29 +81,6 @@ const std::vector<int>& getInputs(int numElements) {
   return res.first->second;
 }
 
-double getMean(const std::vector<double>& data) {
-  double sum = 0.0;
-  for (auto d : data) {
-    sum += d;
-  }
-  return sum / data.size();
-}
-
-double getStddev(double mean, const std::vector<double>& data) {
-  double sumsq = 0.0;
-  for (auto d : data) {
-    auto dev = mean - d;
-    sumsq += dev * dev;
-  }
-  return std::sqrt(sumsq / data.size());
-}
-
-void doStats(const std::vector<double>& times, benchmark::State& state) {
-  double mean = getMean(times);
-  state.counters["mean"] = mean;
-  state.counters["stddev"] = getStddev(mean, times);
-}
-
 void BM_serial(benchmark::State& state) {
   std::vector<int> output(kSize, 0);
   auto& input = getInputs(kSize);

@@ -45,15 +45,15 @@ class EpochWaiter {
     return epoch_.load(std::memory_order_acquire);
   }
 
-  uint32_t waitFor(uint32_t expectedEpoch, uint32_t relTimeUs) const {
+  uint32_t waitFor(uint32_t expectedEpoch, uint64_t relTimeUs) const {
     uint32_t current;
     if ((current = epoch_.load(std::memory_order_acquire)) != expectedEpoch) {
       return current;
     }
 
     struct timespec ts;
-    ts.tv_sec = relTimeUs / 1000000;
-    ts.tv_nsec = (relTimeUs - (ts.tv_sec * 1000000)) * 1000;
+    ts.tv_sec = static_cast<decltype(ts.tv_sec)>(relTimeUs / 1000000);
+    ts.tv_nsec = static_cast<decltype(ts.tv_nsec)>((relTimeUs - (ts.tv_sec * 1000000)) * 1000);
 
     // allow spurious wakeups
     if ((current = epoch_.load(std::memory_order_acquire)) == expectedEpoch) {
@@ -116,14 +116,14 @@ class EpochWaiter {
     return epoch_.load(std::memory_order_acquire);
   }
 
-  uint32_t waitFor(uint32_t expectedEpoch, uint32_t relTimeUs) const {
+  uint32_t waitFor(uint32_t expectedEpoch, uint64_t relTimeUs) const {
     uint32_t current;
     if ((current = epoch_.load(std::memory_order_acquire)) != expectedEpoch) {
       return current;
     }
 
     mach_timespec_t ts;
-    ts.tv_sec = relTimeUs / 1000000;
+    ts.tv_sec = static_cast<uint32_t>(relTimeUs / 1000000);
     ts.tv_nsec = static_cast<clock_res_t>((relTimeUs - (ts.tv_sec * 1000000)) * 1000);
 
     // Allow spurious wake
@@ -175,7 +175,7 @@ class EpochWaiter {
     return epoch_.load(std::memory_order_acquire);
   }
 
-  uint32_t waitFor(uint32_t expectedEpoch, uint32_t relTimeUs) const {
+  uint32_t waitFor(uint32_t expectedEpoch, uint64_t relTimeUs) const {
     uint32_t current;
     if ((current = epoch_.load(std::memory_order_acquire)) != expectedEpoch) {
       return current;
