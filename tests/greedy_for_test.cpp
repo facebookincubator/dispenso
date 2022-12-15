@@ -261,7 +261,7 @@ TEST(GreedyFor, AvoidOverflow1) {
 }
 
 TEST(GreedyFor, AvoidOverflow2) {
-  dispenso::ThreadPool pool(1);
+  dispenso::ThreadPool pool(8);
   dispenso::TaskSet taskSet(pool);
   dispenso::ParForOptions options;
   options.wait = false;
