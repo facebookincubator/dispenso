@@ -50,6 +50,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <stdexcept>
+#include <utility>
 
 #include <dispenso/detail/math.h>
 #include <dispenso/platform.h>
