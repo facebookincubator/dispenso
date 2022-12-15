@@ -109,6 +109,7 @@ $(document).ready(function(){initNavTree('concurrent__vector_8h.html',''); initR
 <code>#include &lt;cstring&gt;</code><br />
 <code>#include &lt;initializer_list&gt;</code><br />
 <code>#include &lt;stdexcept&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;dispenso/detail/math.h&gt;</code><br />
 <code>#include &lt;dispenso/platform.h&gt;</code><br />
 <code>#include &lt;dispenso/detail/concurrent_vector_impl.h&gt;</code><br />
@@ -194,7 +195,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 <p >Available strategies to use for ConcurrentVector reallocation. kFullBufferAhead means that once we begin to use a buffer, we will also ensure that the next buffer is allocated. kHalfBufferAhead means that once we begin to use an address halfway through the current buffer, we will allocate the next buffer. kAsNeeded means that once we are ready to use an address in the next buffer (we are using the last valid address in the current buffer), we allocate the next buffer. kAsNeeded should be the default to avoid using too much memory, but a small speedup is possible due to less thread waiting when the other options are used. kFullBufferAhead is fastest, then kHalfBufferAhead, then kAsNeeded, and the correspondingly kFullBufferAhead uses the most memory, then kHalfBufferAhead, and kAsNeeded uses the least. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00070">70</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00071">71</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -235,7 +236,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01092">1092</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01093">1093</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -275,7 +276,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01099">1099</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01100">1100</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -315,7 +316,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01113">1113</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01114">1114</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -355,7 +356,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01085">1085</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01086">1086</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -395,7 +396,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01106">1106</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01107">1107</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -435,7 +436,7 @@ template&lt;typename T , class Traits1 , class Traits2 &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01120">1120</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01121">1121</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -475,7 +476,7 @@ template&lt;typename T , class Traits &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01127">1127</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l01128">1128</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
@@ -501,7 +502,7 @@ template&lt;typename T , class Traits &gt; </div>
 </div><div class="memdoc">
 <p >This ReserveTag can be passed into the reserving constructor for better performance, if even a rough guess can be made at the number of elements that will be required. </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00077">77</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00078">78</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 
 </div>
 </div>
