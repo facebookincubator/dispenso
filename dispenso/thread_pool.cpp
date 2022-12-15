@@ -184,6 +184,9 @@ ThreadPool::~ThreadPool() {
     threads_.back().thread_.join();
     threads_.pop_back();
   }
+
+  while (tryExecuteNext()) {
+  }
 }
 ThreadPool& globalThreadPool() {
   // It should be illegal to access globalThreadPool after exiting main.
