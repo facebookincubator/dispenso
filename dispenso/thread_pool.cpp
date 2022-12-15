@@ -5,28 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "thread_pool.h"
-
-#ifdef _WIN32
-#include <Windows.h>
-#include <timeapi.h>
-
-namespace {
-struct OsQuantaSetter {
-  OsQuantaSetter() {
-    timeBeginPeriod(1);
-  }
-  ~OsQuantaSetter() {
-    timeEndPeriod(1);
-  }
-};
-} // namespace
-#else
-namespace {
-struct OsQuantaSetter {};
-} // namespace
-
-#endif // _WIN32
+#include <dispenso/detail/quanta.h>
+#include <dispenso/thread_pool.h>
 
 namespace dispenso {
 void ThreadPool::PerThreadData::setThread(std::thread&& t) {
@@ -52,8 +32,7 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
     : poolLoadMultiplier_(poolLoadMultiplier),
       poolLoadFactor_(static_cast<ssize_t>(n * poolLoadMultiplier)),
       numThreads_(static_cast<ssize_t>(n)) {
-  static OsQuantaSetter quantaSetter;
-  (void)quantaSetter;
+  detail::registerFineSchedulerQuanta();
 #if defined DISPENSO_DEBUG
   assert(poolLoadMultiplier > 0);
 #endif // DISPENSO_DEBUG
