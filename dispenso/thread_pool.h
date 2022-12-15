@@ -322,7 +322,10 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQ
 
 inline bool ThreadPool::tryExecuteNext() {
   OnceFunction next;
-  if (work_.try_dequeue(next)) {
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  bool dequeued = work_.try_dequeue(next);
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+  if (dequeued) {
     executeNext(std::move(next));
     return true;
   }

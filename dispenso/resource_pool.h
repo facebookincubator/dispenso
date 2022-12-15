@@ -109,7 +109,9 @@ class ResourcePool {
    **/
   Resource<T> acquire() {
     T* t;
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
     pool_.wait_dequeue(t);
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
     return Resource<T>(t, this);
   }
 
@@ -121,7 +123,9 @@ class ResourcePool {
     assert(pool_.size_approx() == size_);
     for (size_t i = 0; i < size_; ++i) {
       T* t;
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       pool_.wait_dequeue(t);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
       t->~T();
     }
     detail::alignedFree(backingResources_);

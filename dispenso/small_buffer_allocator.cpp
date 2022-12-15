@@ -145,6 +145,11 @@ SmallBufferAllocator<kChunkSize>::PerThreadQueuingData::~PerThreadQueuingData() 
   if (g_smallBufferSchwarzCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
     destroySmallBufferGlobals();
   }
+
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  ptoken().~ProducerToken();
+  ctoken().~ConsumerToken();
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
 }
 
 template class SmallBufferAllocator<8>;

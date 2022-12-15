@@ -57,7 +57,10 @@ class LimitGatedScheduler {
       queue_.enqueue([this, fPipe = std::move(fPipe)]() mutable {
         fPipe([this]() {
           OnceFunction func;
-          if (queue_.try_dequeue(func)) {
+          DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+          bool deqd = queue_.try_dequeue(func);
+          DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+          if (deqd) {
             tasks_.schedule(std::move(func));
           } else {
             resources_.fetch_add(1, std::memory_order_acq_rel);
@@ -69,7 +72,10 @@ class LimitGatedScheduler {
 
       while (resources_.fetch_sub(1, std::memory_order_acq_rel) > 0) {
         OnceFunction func;
-        if (queue_.try_dequeue(func)) {
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool deqd = queue_.try_dequeue(func);
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        if (deqd) {
           tasks_.schedule(std::move(func));
         } else {
           break;
@@ -81,7 +87,13 @@ class LimitGatedScheduler {
     void wait() {
       if (!unlimited_) {
         OnceFunction func;
-        while (queue_.try_dequeue(func)) {
+        while (true) {
+          DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+          bool deqd = queue_.try_dequeue(func);
+          DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+          if (!deqd) {
+            break;
+          }
           while (resources_.fetch_sub(1, std::memory_order_acq_rel) <= 0) {
             std::this_thread::yield();
             resources_.fetch_add(1, std::memory_order_acq_rel);

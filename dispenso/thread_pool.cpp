@@ -83,7 +83,13 @@ void ThreadPool::threadLoop(PerThreadData& data) {
     idleButAwake_.fetch_add(1, std::memory_order_acq_rel);
 
     while (data.running()) {
-      while (work_.try_dequeue(ctoken, next)) {
+      while (true) {
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool got = work_.try_dequeue(ctoken, next);
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        if (!got) {
+          break;
+        }
         queuedWork_.fetch_sub(1, std::memory_order_acq_rel);
         if (idle) {
           idle = false;
@@ -112,7 +118,13 @@ void ThreadPool::threadLoop(PerThreadData& data) {
     idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
   } else {
     while (data.running()) {
-      while (work_.try_dequeue(ctoken, next)) {
+      while (true) {
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool got = work_.try_dequeue(ctoken, next);
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        if (!got) {
+          break;
+        }
         executeNext(std::move(next));
         failCount = 0;
       }

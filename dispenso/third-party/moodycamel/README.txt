@@ -1,61 +1,55 @@
 https://github.com/cameron314/concurrentqueue
 
-commit 4cc3bee07b9ef252cfdfd3fddbdb476dc750179f (HEAD -> master, origin/master, origin/HEAD)
+commit 65d6970912fc3f6bb62d80edf95ca30e0df85137 (HEAD -> master, origin/master, origin/HEAD)
+Merge: d49fa2b 08dcafc
 Author: Cameron <cameron@moodycamel.com>
-Date:   Fri Jun 26 08:42:52 2020 -0400
+Date:   Sun Jul 24 10:02:12 2022 -0400
 
-    Fixed accidental reference being taken on new static const variable with g++ (issue #208)
-
-commit 790db30df598bb45fdc63b571847160a2f9eb60b
-Author: Cameron <cameron@moodycamel.com>
-Date:   Wed Jun 24 15:05:32 2020 -0400
-
-    Added MAX_SEMA_SPINS to traits to control semaphore spin-waiting (see issue #205)
-
-commit 7912b95d041e658732e0732dd01794232a0a2892
-Author: Cameron <cameron@moodycamel.com>
-Date:   Wed Jun 24 14:43:30 2020 -0400
-
-    Updated license comments to make extra-clear that the code is dual-licensed under the Boost terms (issue #207)
-
-commit 38e6a6f0185a98c3aaf2a95aa109ba041221d527
-Merge: 5c27828 de16a68
-Author: Cameron <cameron@moodycamel.com>
-Date:   Wed Apr 22 11:35:07 2020 -0400
-
-    Merge pull request #200 from khuck/master
+    Merge pull request #308 from r8bhavneet/master
     
-    Fixing check for address sanitizer
+    Update README.md
 
-commit de16a68f453f9fcaec742111f5269ea7a3d4dcdf
-Author: Kevin Huck <khuck@cs.uoregon.edu>
-Date:   Wed Apr 22 08:33:09 2020 -0700
+commit 08dcafcd131b46e1a63abdc9b5f73c852193edca
+Author: r8bhavneet <98200254+r8bhavneet@users.noreply.github.com>
+Date:   Sun Jul 24 02:35:57 2022 -0700
 
-    Update concurrentqueue.h
-
-commit a2fe6f5dfb12791a8ec4d8a60a03e42a9329461b
-Author: Kevin Huck <khuck@cs.uoregon.edu>
-Date:   Wed Apr 22 08:21:10 2020 -0700
-
-    Fixing check for address sanitizer
-
-commit 5c278285c247ff315059459762cb9ca15c8c4bcf
-Merge: c8632bb da34fb9
-Author: Cameron <cameron@moodycamel.com>
-Date:   Tue Apr 21 19:46:29 2020 -0400
-
-    Merge pull request #198 from graphicsMan/master
+    Update README.md
     
-    Add macro to disable TSAN reporting on a per-function basis
+    Hey, I really liked the project and was reading through the Readme.md file when I came across some redundant words and phrases which you might have missed whil
+e editing the documentation. It would be really a great opportunity for me if I could contribute to this project. Thank you.
 
-commit da34fb977c0bae9120f4990e810324f7993537f4
-Author: Brian Budge <bbudge@fb.com>
-Date:   Thu Apr 16 09:41:12 2020 -0700
+commit d49fa2b0bd1c6185d93509f48c8987f9759d7238
+Merge: 0a40449 9dc1b2c
+Author: Cameron <cameron@moodycamel.com>
+Date:   Mon May 9 07:43:29 2022 -0400
 
-    Add comments about the purpose/usage of MOODYCAMEL_NO_TSAN
+    Merge pull request #296 from MathiasMagnus/fix-c4554
+    
+    Proper MSVC warning fix and note
 
-commit 75732bf18f0fe890c495656ac12594e97c838d42
-Author: Brian Budge <bbudge@fb.com>
-Date:   Thu Apr 16 08:32:09 2020 -0700
+commit 9dc1b2cfcad03b4ee22ea57ddb5c453c41c19ac9
+Author: Máté Ferenc Nagy-Egri <mate@streamhpc.com>
+Date:   Mon May 9 13:19:39 2022 +0200
 
-    Add a macro for per-function TSAN report suppression
+    Proper MSVC warning fix and note
+
+commit 0a404492ac2c0bba0f62eb2b859ec152e494f8bf
+Author: Cameron <cameron@moodycamel.com>
+Date:   Sat May 7 12:04:00 2022 -0400
+
+    Attempt to resolve -Wsign-conversion warnings in concurrentqueue.h (see #294)
+
+commit 22c78daf65d2c8cce9399a29171676054aa98807
+Merge: c52e5ef 263c55d
+Author: Cameron <cameron@moodycamel.com>
+Date:   Sun Mar 20 15:16:30 2022 -0400
+
+    Merge pull request #290 from usurai/master
+    
+    Fix link in README
+
+commit 263c55d5c95545abee1ef25662c752c5296d7c34
+Author: usurai <crowdwei@gmail.com>
+Date:   Thu Mar 17 16:09:14 2022 +0800
+
+    Fix link in README

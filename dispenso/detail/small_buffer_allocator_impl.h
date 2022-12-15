@@ -121,27 +121,40 @@ class SmallBufferAllocator {
         moodycamel::ConcurrentQueue<char*>& cstore,
         std::tuple<char**, size_t&> buffersAndCount)
         : cstore_(cstore),
-          ptoken_(cstore),
-          ctoken_(cstore),
           buffers_(std::get<0>(buffersAndCount)),
-          count_(std::get<1>(buffersAndCount)) {}
+          count_(std::get<1>(buffersAndCount)) {
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+      new (ptokenBuf_) moodycamel::ProducerToken(cstore);
+      new (ctokenBuf_) moodycamel::ConsumerToken(cstore);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+    }
 
     ~PerThreadQueuingData();
 
     void enqueue_bulk(char** buffers, size_t count) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-      cstore_.enqueue_bulk(ptoken_, buffers, count);
+      cstore_.enqueue_bulk(ptoken(), buffers, count);
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
     }
 
     size_t try_dequeue_bulk(char** buffers, size_t count) {
-      return cstore_.try_dequeue_bulk(ctoken_, buffers, count);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+      size_t actual = cstore_.try_dequeue_bulk(ctoken(), buffers, count);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+      return actual;
     }
 
    private:
+    moodycamel::ProducerToken& ptoken() {
+      return *reinterpret_cast<moodycamel::ProducerToken*>(ptokenBuf_);
+    }
+    moodycamel::ConsumerToken& ctoken() {
+      return *reinterpret_cast<moodycamel::ConsumerToken*>(ctokenBuf_);
+    }
+
     moodycamel::ConcurrentQueue<char*>& cstore_;
-    moodycamel::ProducerToken ptoken_;
-    moodycamel::ConsumerToken ctoken_;
+    alignas(moodycamel::ProducerToken) char ptokenBuf_[sizeof(moodycamel::ProducerToken)];
+    alignas(moodycamel::ConsumerToken) char ctokenBuf_[sizeof(moodycamel::ConsumerToken)];
     char** buffers_;
     size_t& count_;
   };
