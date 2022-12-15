@@ -87,7 +87,7 @@ struct ConcurrentObjectArena {
         allocatedSize_(other.allocatedSize_.load(std::memory_order_relaxed)),
         buffersSize_(other.buffersSize_),
         buffersPos_(other.buffersPos_) {
-    T** otherBuffers = other.buffers_.load(std::memory_order_relaxed);
+    T** otherBuffers = other.buffers_.load(std::memory_order_acquire);
     T** newBuffers = new T*[buffersSize_];
     for (Index i = 0; i < buffersSize_; ++i) {
       void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
@@ -98,7 +98,7 @@ struct ConcurrentObjectArena {
       std::memcpy(ptr, otherBuffers[i], kBufferSize * sizeof(T));
       newBuffers[i] = static_cast<T*>(ptr);
     }
-    buffers_.store(newBuffers, std::memory_order_relaxed);
+    buffers_.store(newBuffers, std::memory_order_release);
   }
 
   /**
@@ -117,7 +117,7 @@ struct ConcurrentObjectArena {
   }
 
   ~ConcurrentObjectArena() {
-    T** buffers = buffers_.load(std::memory_order_relaxed);
+    T** buffers = buffers_.load(std::memory_order_acquire);
 
     for (Index i = 0; i < buffersPos_; i++)
       detail::alignedFree(buffers[i]);
@@ -193,7 +193,7 @@ struct ConcurrentObjectArena {
     const Index bufIndex = index >> kLog2BuffSize;
     const Index i = index & kMask;
 
-    return buffers_.load(std::memory_order_relaxed)[bufIndex][i];
+    return buffers_.load(std::memory_order_acquire)[bufIndex][i];
   }
 
   /**
@@ -240,7 +240,7 @@ struct ConcurrentObjectArena {
    * @return The pointer to the buffer.
    **/
   const T* getBuffer(const Index index) const {
-    return buffers_.load(std::memory_order_relaxed)[index];
+    return buffers_.load(std::memory_order_acquire)[index];
   }
 
   /**
@@ -249,7 +249,7 @@ struct ConcurrentObjectArena {
    * @return The pointer to the buffer.
    **/
   T* getBuffer(const Index index) {
-    return buffers_.load(std::memory_order_relaxed)[index];
+    return buffers_.load(std::memory_order_acquire)[index];
   }
 
   /**
@@ -290,9 +290,9 @@ struct ConcurrentObjectArena {
         lhs.allocatedSize_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     lhs.allocatedSize_.store(rhs_allocatedSize, std::memory_order_relaxed);
 
-    T** const rhs_buffers = rhs.buffers_.load(std::memory_order_relaxed);
-    rhs.buffers_.store(lhs.buffers_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    lhs.buffers_.store(rhs_buffers, std::memory_order_relaxed);
+    T** const rhs_buffers = rhs.buffers_.load(std::memory_order_acquire);
+    rhs.buffers_.store(lhs.buffers_.load(std::memory_order_acquire), std::memory_order_release);
+    lhs.buffers_.store(rhs_buffers, std::memory_order_release);
 
     swap(lhs.buffersSize_, rhs.buffersSize_);
     swap(lhs.buffersPos_, rhs.buffersPos_);
@@ -308,10 +308,10 @@ struct ConcurrentObjectArena {
 #endif // __cpp_exceptions
 
     if (buffersPos_ < buffersSize_) {
-      buffers_.load(std::memory_order_relaxed)[buffersPos_++] = static_cast<T*>(ptr);
+      buffers_.load(std::memory_order_acquire)[buffersPos_++] = static_cast<T*>(ptr);
     } else {
       const Index oldBuffersSize = buffersSize_;
-      T** oldBuffers = buffers_.load(std::memory_order_relaxed);
+      T** oldBuffers = buffers_.load(std::memory_order_acquire);
 
       buffersSize_ = oldBuffersSize == 0 ? 2 : oldBuffersSize * 2;
       T** newBuffers = new T*[buffersSize_];
@@ -322,7 +322,7 @@ struct ConcurrentObjectArena {
       }
 
       newBuffers[buffersPos_++] = static_cast<T*>(ptr);
-      buffers_.store(newBuffers, std::memory_order_relaxed);
+      buffers_.store(newBuffers, std::memory_order_release);
     }
   }
 
@@ -332,7 +332,7 @@ struct ConcurrentObjectArena {
 
     Index bufStart = beginIndex & kMask;
     for (Index b = startBuffer; b <= endBuffer; ++b) {
-      T* buf = buffers_.load(std::memory_order_relaxed)[b];
+      T* buf = buffers_.load(std::memory_order_acquire)[b];
       const Index bufEnd = b == endBuffer ? (endIndex & kMask) : kBufferSize;
       for (Index i = bufStart; i < bufEnd; ++i)
         new (buf + i) T();
