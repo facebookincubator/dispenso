@@ -126,9 +126,7 @@ class SmallBufferAllocator {
           buffers_(std::get<0>(buffersAndCount)),
           count_(std::get<1>(buffersAndCount)) {}
 
-    ~PerThreadQueuingData() {
-      enqueue_bulk(buffers_, count_);
-    }
+    ~PerThreadQueuingData();
 
     void enqueue_bulk(char** buffers, size_t count) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();

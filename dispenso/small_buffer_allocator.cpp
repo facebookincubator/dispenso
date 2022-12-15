@@ -41,7 +41,7 @@ SMALL_BUFFER_GLOBAL_FUNC_DEFS(128)
 SMALL_BUFFER_GLOBAL_FUNC_DEFS(256)
 
 SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
-  if (g_smallBufferSchwarzCounter.fetch_add(1) == 0) {
+  if (g_smallBufferSchwarzCounter.fetch_add(1, std::memory_order_acq_rel) == 0) {
     ::new (&g_globals8) SmallBufferGlobals();
     ::new (&g_globals16) SmallBufferGlobals();
     ::new (&g_globals32) SmallBufferGlobals();
@@ -50,16 +50,21 @@ SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
     ::new (&g_globals256) SmallBufferGlobals();
   }
 }
+
+void destroySmallBufferGlobals() {
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  g_globals8.~SmallBufferGlobals();
+  g_globals16.~SmallBufferGlobals();
+  g_globals32.~SmallBufferGlobals();
+  g_globals64.~SmallBufferGlobals();
+  g_globals128.~SmallBufferGlobals();
+  g_globals256.~SmallBufferGlobals();
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+}
+
 SchwarzSmallBufferInit::~SchwarzSmallBufferInit() {
-  if (g_smallBufferSchwarzCounter.fetch_sub(1) == 1) {
-    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-    g_globals8.~SmallBufferGlobals();
-    g_globals16.~SmallBufferGlobals();
-    g_globals32.~SmallBufferGlobals();
-    g_globals64.~SmallBufferGlobals();
-    g_globals128.~SmallBufferGlobals();
-    g_globals256.~SmallBufferGlobals();
-    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+  if (g_smallBufferSchwarzCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+    destroySmallBufferGlobals();
   }
 }
 
@@ -125,6 +130,20 @@ size_t approxBytesAllocatedSmallBufferImpl(size_t ordinal) {
     default:
       assert(false && "Invalid small buffer ordinal requested");
       return 0;
+  }
+}
+
+template <size_t kChunkSize>
+SmallBufferAllocator<kChunkSize>::PerThreadQueuingData::~PerThreadQueuingData() {
+  // Sadly, it is entirely possible that some threads shut down after exiting main, which could mean
+  // that the SmallBufferGlobals are no longer valid.  We need to "lock" on the schwarz counter to
+  // ensure it is safe to release these resources.
+  if (g_smallBufferSchwarzCounter.fetch_add(1, std::memory_order_acq_rel) > 0) {
+    enqueue_bulk(buffers_, count_);
+  }
+
+  if (g_smallBufferSchwarzCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+    destroySmallBufferGlobals();
   }
 }
 
