@@ -228,7 +228,7 @@ void BM_dispenso2(benchmark::State& state) {
 }
 
 void BM_dispenso_mostly_idle(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = std::max<int>(1, state.range(0) - 1);
   const int num_elements = state.range(1);
 
   struct Recurse {
