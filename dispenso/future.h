@@ -20,6 +20,7 @@
 
 #include <dispenso/detail/future_impl.h>
 #include <dispenso/detail/result_of.h>
+#include <dispenso/schedulable.h>
 
 namespace dispenso {
 
@@ -38,74 +39,6 @@ constexpr std::launch kNotAsync = static_cast<std::launch>(0);
  * <code>std::launch::deferred</code>
  **/
 constexpr std::launch kNotDeferred = static_cast<std::launch>(0);
-
-/**
- * A class fullfilling the Schedulable concept that immediately invokes the functor.  This can be
- * used in place of <code>ThreadPool</code> or <code>TaskSet</code> with <code>Future</code>s at
- * construction or through <code>then</code>.
- **/
-class ImmediateInvoker {
- public:
-  /**
-   * Schedule a functor to be executed.  It will be invoked immediately.
-   *
-   * @param f The functor to be executed.  <code>f</code>'s signature must match void().  Best
-   * performance will come from passing lambdas, other concrete functors, or OnceFunction, but
-   * std::function or similarly type-erased objects will also work.
-   **/
-  template <typename F>
-  void schedule(F&& f) const {
-    f();
-  }
-
-  /**
-   * Schedule a functor to be executed.  It is a bit oxymoronical to call this function, since
-   * ForceQueuingTag will have no effect, and it's use is discouraged.
-   *
-   **/
-  template <typename F>
-  void schedule(F&& f, ForceQueuingTag) const {
-    // TODO(bbudge): Are there actually reasons we may want to allow this function to be called?
-    // assert(false);
-    f();
-  }
-};
-
-constexpr ImmediateInvoker kImmediateInvoker;
-
-/**
- * A class fullfilling the Schedulable concept that always invokes on a new thread.  This can be
- * used in place of <code>ThreadPool</code> or <code>TaskSet</code> with <code>Future</code>s at
- * construction or through <code>then</code>.
- **/
-class NewThreadInvoker {
- public:
-  /**
-   * Schedule a functor to be executed on a new thread.
-   *
-   * @param f The functor to be executed.  <code>f</code>'s signature must match void().  Best
-   * performance will come from passing lambdas, other concrete functors, or OnceFunction, but
-   * std::function or similarly type-erased objects will also work.
-   **/
-  template <typename F>
-  void schedule(F&& f) const {
-    schedule(std::forward<F>(f), ForceQueuingTag());
-  }
-  /**
-   * Schedule a functor to be executed on a new thread.
-   *
-   * @param f The functor to be executed.  <code>f</code>'s signature must match void().  Best
-   * performance will come from passing lambdas, other concrete functors, or OnceFunction, but
-   * std::function or similarly type-erased objects will also work.
-   **/
-  template <typename F>
-  void schedule(F&& f, ForceQueuingTag) const {
-    std::thread thread(std::forward<F>(f));
-    thread.detach();
-  }
-};
-
-constexpr NewThreadInvoker kNewThreadInvoker;
 
 /**
  * A class that implements a hybrid of the interfaces for std::experimental::future, and
