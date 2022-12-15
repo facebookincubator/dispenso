@@ -44,6 +44,13 @@ class CompletionEvent {
   }
 
   /**
+   * Peek to see if the event has been notified in any thread
+   **/
+  bool completed() const {
+    return impl_.intrusiveStatus().load(std::memory_order_acquire);
+  }
+
+  /**
    * Wait for another thread to <code>notify</code> or for the relative timeout to expire, whichever
    * is first.
    *
