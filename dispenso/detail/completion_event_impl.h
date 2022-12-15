@@ -298,6 +298,10 @@ class CompletionEventImpl {
     return status_;
   }
 
+  const std::atomic<int>& intrusiveStatus() const {
+    return status_;
+  }
+
  private:
   mutable std::mutex mtx_;
   mutable std::condition_variable cv_;
