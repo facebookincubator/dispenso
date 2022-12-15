@@ -168,7 +168,7 @@ class dispenso::Future&lt; Result &gt;</div><p >A class that implements a hybrid
 <p ><a class="el" href="classdispenso_1_1_future.html">Future</a> is thread-safe to call into, with the usual caveats (one thread may not be calling anything on the <a class="el" href="classdispenso_1_1_future.html">Future</a> while another thread assigns to it or destructs it). It is thread-safe to assign or destruct on one copy of a <a class="el" href="classdispenso_1_1_future.html">Future</a> while making calls on another copy of a <a class="el" href="classdispenso_1_1_future.html">Future</a> with the same backing state.</p>
 <p >Because <a class="el" href="classdispenso_1_1_future.html">Future</a> is designed to work well with the dispenso <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> and <a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a> aggressively work steals in <code>get</code> and <code>wait</code> functions. This prevents deadlock due to thread pool resource starvation, similar to how TaskSets avoid that flavor of deadlock. It is important to note that deadlock is still possible due to traditional cyclic dependency, e.g. <a class="el" href="classdispenso_1_1_future.html">Future</a> A and <a class="el" href="classdispenso_1_1_future.html">Future</a> B which wait on each other. Just as with a cyclic mutex locking requirement, cyclic <a class="el" href="classdispenso_1_1_future.html">Future</a> waits are considered programmer error. </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00136">136</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00069">69</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ab7cdf5be1df80fb28505a280206e8168" name="ab7cdf5be1df80fb28505a280206e8168"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab7cdf5be1df80fb28505a280206e8168">&#9670;&#160;</a></span>Future() <span class="overload">[1/6]</span></h2>
@@ -196,7 +196,7 @@ template&lt;typename Result &gt; </div>
 </div><div class="memdoc">
 <p >Construct an invalid <a class="el" href="classdispenso_1_1_future.html">Future</a>. </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00143">143</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00076">76</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -233,7 +233,7 @@ template&lt;typename Result &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00150">150</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00083">83</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -263,7 +263,7 @@ template&lt;typename Result &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00151">151</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00084">84</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -300,7 +300,7 @@ template&lt;typename Result &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00159">159</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00092">92</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -330,7 +330,7 @@ template&lt;typename Result &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00160">160</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00093">93</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -394,7 +394,7 @@ template&lt;typename F , typename Schedulable &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00177">177</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00110">110</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -454,7 +454,7 @@ template&lt;typename Result &gt; </div>
 <p >Get the result of the future functor. This function blocks until the result is ready.</p>
 <dl class="section return"><dt>Returns</dt><dd>A const reference to the result's value. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00285">285</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00218">218</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -485,7 +485,7 @@ template&lt;typename Result &gt; </div>
 <p >Is the <a class="el" href="classdispenso_1_1_future.html">Future</a> ready?</p>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if the value associated with this <a class="el" href="classdispenso_1_1_future.html">Future</a> has already be computed, and <code>get</code> can return the value immediately. Returns &lt;false&gt; if the functor is logically queued, or is in progress. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00228">228</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00161">161</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -522,7 +522,7 @@ template&lt;typename Result &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00198">198</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00131">131</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -559,7 +559,7 @@ template&lt;typename Result &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00189">189</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00122">122</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -589,7 +589,7 @@ template&lt;typename Result &gt; </div>
 </div><div class="memdoc">
 <p >Provide a shared future. <code>share</code> is here only to provide compatible api with <code>std::experimental::future</code>, but <a class="el" href="classdispenso_1_1_future.html">Future</a> already works like std::shared_future. </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00276">276</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00209">209</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -621,7 +621,7 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00317">317</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00250">250</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -687,7 +687,7 @@ template&lt;typename F , typename Schedulable &gt; </div>
 <dl class="section return"><dt>Returns</dt><dd>A future containing the result of the functor. </dd></dl>
 <p></code></code></p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00306">306</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00239">239</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -718,7 +718,7 @@ template&lt;typename Result &gt; </div>
 <p >Is this <a class="el" href="classdispenso_1_1_future.html">Future</a> valid?</p>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if the <a class="el" href="classdispenso_1_1_future.html">Future</a> was constructed with a functor/schedulable, with result value, or indirectly from a <a class="el" href="classdispenso_1_1_future.html">Future</a> that was constructed one of those ways. <code>false</code> if the <a class="el" href="classdispenso_1_1_future.html">Future</a> was constructed via the default constructor, or indrectly from a <a class="el" href="classdispenso_1_1_future.html">Future</a> that was constructed that way. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00217">217</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00150">150</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -749,7 +749,7 @@ template&lt;typename Result &gt; </div>
 <p >Wait until <code>is_ready</code> is <code>true</code>.</p>
 <dl class="section note"><dt>Note</dt><dd>This function will invoke the functor if it is still logically queued. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00237">237</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00170">170</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -790,7 +790,7 @@ template&lt;class Rep , class Period &gt; </div>
 <dl class="section return"><dt>Returns</dt><dd><code>std::future_status::ready</code> if <code>get</code> can return immediately, <code>std::future_status::timeout</code> if the function timed out while waiting.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>This function may invoke the functor if it is still logically queued, and <code>std::launch::deferred</code> was specified at construction. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00253">253</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00186">186</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -831,7 +831,7 @@ template&lt;class Clock , class Duration &gt; </div>
 <dl class="section return"><dt>Returns</dt><dd><code>std::future_status::ready</code> if <code>get</code> can return immediately, <code>std::future_status::timeout</code> if the function timed out while waiting.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>This function may invoke the functor if it is still logically queued, and <code>std::launch::deferred</code> was specified at construction. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00268">268</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00201">201</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -860,7 +860,7 @@ template&lt;typename R &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00331">331</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00264">264</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -899,7 +899,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00643">643</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00576">576</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>

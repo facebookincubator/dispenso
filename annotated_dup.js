@@ -16,6 +16,7 @@ var annotated_dup =
       [ "Future< Result & >", "classdispenso_1_1_future_3_01_result_01_6_01_4.html", "classdispenso_1_1_future_3_01_result_01_6_01_4" ],
       [ "Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", "classdispenso_1_1_future_3_01void_01_4" ],
       [ "ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", "classdispenso_1_1_immediate_invoker" ],
+      [ "Latch", "classdispenso_1_1_latch.html", "classdispenso_1_1_latch" ],
       [ "NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", "classdispenso_1_1_new_thread_invoker" ],
       [ "OnceFunction", "classdispenso_1_1_once_function.html", "classdispenso_1_1_once_function" ],
       [ "ParForOptions", "structdispenso_1_1_par_for_options.html", "structdispenso_1_1_par_for_options" ],
@@ -26,6 +27,8 @@ var annotated_dup =
       [ "RWLock", "classdispenso_1_1_r_w_lock.html", null ],
       [ "TaskSet", "classdispenso_1_1_task_set.html", "classdispenso_1_1_task_set" ],
       [ "ThreadPool", "classdispenso_1_1_thread_pool.html", "classdispenso_1_1_thread_pool" ],
+      [ "TimedTask", "classdispenso_1_1_timed_task.html", "classdispenso_1_1_timed_task" ],
+      [ "TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", "classdispenso_1_1_timed_task_scheduler" ],
       [ "UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ]
 ];

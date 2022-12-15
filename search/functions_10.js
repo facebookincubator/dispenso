@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['valid_0',['valid',['../classdispenso_1_1_future.html#ad784baf84f9c498d58185d44442855da',1,'dispenso::Future']]]
+  ['updaterequested_0',['updateRequested',['../classdispenso_1_1_async_request.html#a730fe3b28a3dd39854f92534dab533f6',1,'dispenso::AsyncRequest']]]
 ];

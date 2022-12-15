@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['oncefunction_0',['OnceFunction',['../classdispenso_1_1_once_function.html',1,'dispenso']]]
+  ['newthreadinvoker_0',['NewThreadInvoker',['../classdispenso_1_1_new_thread_invoker.html',1,'dispenso']]]
 ];

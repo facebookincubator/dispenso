@@ -111,6 +111,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a1f9b7f701ae43bb379478855abc670b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aafa2bdf7f80421bf7a258ef986b60522"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_completion_event.html#aafa2bdf7f80421bf7a258ef986b60522">wait</a> () const</td></tr>
 <tr class="separator:aafa2bdf7f80421bf7a258ef986b60522"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadf4486fc37923878b4d732f0a7f47f4"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_completion_event.html#aadf4486fc37923878b4d732f0a7f47f4">completed</a> () const</td></tr>
+<tr class="separator:aadf4486fc37923878b4d732f0a7f47f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab61ff064823ed3e997d324e24679dd48"><td class="memTemplParams" colspan="2">template&lt;class Rep , class Period &gt; </td></tr>
 <tr class="memitem:ab61ff064823ed3e997d324e24679dd48"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_completion_event.html#ab61ff064823ed3e997d324e24679dd48">waitFor</a> (const std::chrono::duration&lt; Rep, Period &gt; &amp;relTime) const</td></tr>
 <tr class="separator:ab61ff064823ed3e997d324e24679dd48"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -125,6 +127,34 @@ Public Member Functions</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00029">29</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="aadf4486fc37923878b4d732f0a7f47f4" name="aadf4486fc37923878b4d732f0a7f47f4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadf4486fc37923878b4d732f0a7f47f4">&#9670;&#160;</a></span>completed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool dispenso::CompletionEvent::completed </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p >Peek to see if the event has been notified in any thread </p>
+
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00049">49</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+
+</div>
+</div>
 <a id="a1f9b7f701ae43bb379478855abc670b1" name="a1f9b7f701ae43bb379478855abc670b1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1f9b7f701ae43bb379478855abc670b1">&#9670;&#160;</a></span>notify()</h2>
 
@@ -177,7 +207,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Resets the event to "not-completed". This should not be called while an active <code>wait*\/notify</code> sequence is still currently in play. </p>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00072">72</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00079">79</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -237,7 +267,7 @@ template&lt;class Rep , class Period &gt; </div>
 <p >Wait for another thread to <code>notify</code> or for the relative timeout to expire, whichever is first.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if status is "completed", false if timed out. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00053">53</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00060">60</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>
@@ -269,7 +299,7 @@ template&lt;class Clock , class Duration &gt; </div>
 <p >Wait for another thread to <code>notify</code> or for the absolute timeout to expire, whichever is first.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if status is "completed", false if timed out. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00064">64</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="completion__event_8h_source.html#l00071">71</a> of file <a class="el" href="completion__event_8h_source.html">completion_event.h</a>.</p>
 
 </div>
 </div>

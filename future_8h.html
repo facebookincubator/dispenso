@@ -107,16 +107,13 @@ $(document).ready(function(){initNavTree('future_8h.html',''); initResizable(); 
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &lt;dispenso/detail/future_impl.h&gt;</code><br />
 <code>#include &lt;dispenso/detail/result_of.h&gt;</code><br />
+<code>#include &lt;<a class="el" href="schedulable_8h_source.html">dispenso/schedulable.h</a>&gt;</code><br />
 <code>#include &lt;dispenso/detail/future_impl2.h&gt;</code><br />
 </div>
 <p><a href="future_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_new_thread_invoker.html">dispenso::NewThreadInvoker</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_future.html">dispenso::Future&lt; Result &gt;</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_future_3_01_result_01_6_01_4.html">dispenso::Future&lt; Result &amp; &gt;</a></td></tr>
@@ -191,10 +188,6 @@ Variables</h2></td></tr>
 <tr class="separator:a8421f24280762e7f0fc576158306ebac"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a945a27b88a64b1cf58ee4f7ef62f5e31"><td class="memItemLeft" align="right" valign="top">constexpr std::launch&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="future_8h.html#a945a27b88a64b1cf58ee4f7ef62f5e31">dispenso::kNotDeferred</a> = static_cast&lt;std::launch&gt;(0)</td></tr>
 <tr class="separator:a945a27b88a64b1cf58ee4f7ef62f5e31"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae4660a3431819dd99d2964ec683d1018"><td class="memItemLeft" align="right" valign="top">constexpr ImmediateInvoker&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="future_8h.html#ae4660a3431819dd99d2964ec683d1018">dispenso::kImmediateInvoker</a></td></tr>
-<tr class="separator:ae4660a3431819dd99d2964ec683d1018"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a94a5931e75d5352ae2184b9596c22c97"><td class="memItemLeft" align="right" valign="top">constexpr NewThreadInvoker&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="future_8h.html#a94a5931e75d5352ae2184b9596c22c97">dispenso::kNewThreadInvoker</a></td></tr>
-<tr class="separator:a94a5931e75d5352ae2184b9596c22c97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A file providing Futures, as well as functionality for creating futures, and for how to invoke Futures' closures.</p>
@@ -253,7 +246,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00600">600</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00533">533</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -315,7 +308,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00587">587</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00520">520</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -363,7 +356,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00508">508</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00441">441</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -418,7 +411,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00631">631</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00564">564</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -480,7 +473,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00618">618</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00551">551</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -535,7 +528,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00496">496</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00429">429</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -590,7 +583,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00569">569</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00502">502</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -652,7 +645,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00556">556</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00489">489</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -707,7 +700,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00538">538</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00471">471</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -769,7 +762,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00525">525</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00458">458</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -797,7 +790,7 @@ template&lt;class F , class... Args&gt; </div>
 </div><div class="memdoc">
 <p >Make a <code>Future&lt;void&gt;</code> in a ready state. </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00662">662</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00595">595</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -834,7 +827,7 @@ template&lt;typename X &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00654">654</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00587">587</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -871,7 +864,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00643">643</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00576">576</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -1028,54 +1021,6 @@ template&lt;class InputIt &gt; </div>
 </div>
 </div>
 <h2 class="groupheader">Variable Documentation</h2>
-<a id="ae4660a3431819dd99d2964ec683d1018" name="ae4660a3431819dd99d2964ec683d1018"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae4660a3431819dd99d2964ec683d1018">&#9670;&#160;</a></span>kImmediateInvoker</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">constexpr ImmediateInvoker dispenso::kImmediateInvoker</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00074">74</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="a94a5931e75d5352ae2184b9596c22c97" name="a94a5931e75d5352ae2184b9596c22c97"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a94a5931e75d5352ae2184b9596c22c97">&#9670;&#160;</a></span>kNewThreadInvoker</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">constexpr NewThreadInvoker dispenso::kNewThreadInvoker</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00108">108</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
 <a id="a8421f24280762e7f0fc576158306ebac" name="a8421f24280762e7f0fc576158306ebac"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8421f24280762e7f0fc576158306ebac">&#9670;&#160;</a></span>kNotAsync</h2>
 
@@ -1097,7 +1042,7 @@ template&lt;class InputIt &gt; </div>
 </div><div class="memdoc">
 <p >A <code>std::launch</code> policy specifying we won't force asynchronicity. Opposite of <code>std::launch::async</code> </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00034">34</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00035">35</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -1122,7 +1067,7 @@ template&lt;class InputIt &gt; </div>
 </div><div class="memdoc">
 <p >A <code>std::launch</code> policy specifying we won't allow <code>Future::wait_for</code> and <code>Future::wait_util</code> to invoke the Future's underlying functor. Opposite of <code>std::launch::deferred</code> </p>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00040">40</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00041">41</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>

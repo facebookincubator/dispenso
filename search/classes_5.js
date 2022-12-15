@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['newthreadinvoker_0',['NewThreadInvoker',['../classdispenso_1_1_new_thread_invoker.html',1,'dispenso']]]
+  ['latch_0',['Latch',['../classdispenso_1_1_latch.html',1,'dispenso']]]
 ];

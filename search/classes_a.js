@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['taskset_0',['TaskSet',['../classdispenso_1_1_task_set.html',1,'dispenso']]],
-  ['threadpool_1',['ThreadPool',['../classdispenso_1_1_thread_pool.html',1,'dispenso']]]
+  ['static_0',['Static',['../structdispenso_1_1_chunked_range_1_1_static.html',1,'dispenso::ChunkedRange']]]
 ];

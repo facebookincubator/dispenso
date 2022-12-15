@@ -21,6 +21,7 @@ var hierarchy =
       [ "dispenso::Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", null ]
     ] ],
     [ "dispenso::ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", null ],
+    [ "dispenso::Latch", "classdispenso_1_1_latch.html", null ],
     [ "dispenso::NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", null ],
     [ "dispenso::OnceFunction", "classdispenso_1_1_once_function.html", null ],
     [ "dispenso::ParForOptions", "structdispenso_1_1_par_for_options.html", null ],
@@ -37,5 +38,7 @@ var hierarchy =
       [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],
       [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ]
     ] ],
-    [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ]
+    [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ],
+    [ "dispenso::TimedTask", "classdispenso_1_1_timed_task.html", null ],
+    [ "dispenso::TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", null ]
 ];

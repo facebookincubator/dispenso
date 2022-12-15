@@ -1,7 +1,5 @@
 var future_8h =
 [
-    [ "dispenso::ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", "classdispenso_1_1_immediate_invoker" ],
-    [ "dispenso::NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", "classdispenso_1_1_new_thread_invoker" ],
     [ "dispenso::Future< Result >", "classdispenso_1_1_future.html", "classdispenso_1_1_future" ],
     [ "dispenso::Future< Result & >", "classdispenso_1_1_future_3_01_result_01_6_01_4.html", "classdispenso_1_1_future_3_01_result_01_6_01_4" ],
     [ "dispenso::Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", "classdispenso_1_1_future_3_01void_01_4" ],
