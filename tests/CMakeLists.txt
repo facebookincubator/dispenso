@@ -16,28 +16,44 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(GoogleTest)
 include(GoogleTest)
 
-macro(package_add_test TESTNAME)
-    add_executable(${TESTNAME} ${ARGN})
-    target_compile_features(${TESTNAME} PRIVATE cxx_std_14)
-    target_compile_options(${TESTNAME} PRIVATE
+macro(package_add_test TEST_NAME LABEL TEST_FILE)
+    add_executable(${TEST_NAME} ${TEST_FILE})
+    target_compile_features(${TEST_NAME} PRIVATE cxx_std_14)
+    target_compile_options(${TEST_NAME} PRIVATE
       $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
       $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
       )
-    target_link_libraries(${TESTNAME} gmock_main dispenso)
-    gtest_discover_tests(${TESTNAME}
+    target_link_libraries(${TEST_NAME} gmock_main dispenso)
+    gtest_discover_tests(${TEST_NAME}
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
       PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-      )
-    set_target_properties(${TESTNAME} PROPERTIES FOLDER tests)
+      LABELS "${LABEL}")
+    set_target_properties(${TEST_NAME} PROPERTIES FOLDER tests)
 endmacro()
 
 file(GLOB TEST_FILES CONFIGURE_DEPENDS "*test.cpp")
+
 #TODO(elliotsegal, bbudge): Help add the shared_pool_test for CMake
 LIST(REMOVE_ITEM TEST_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/shared_pool_test.cpp)
 
+# Filter out these tests specifically because they are inherently flaky because they rely on OS behaviors that are not
+# guaranteed, and only really useful for manual runs when making changes to the related functionality.  Note that
+# possibly an even better test for both priority and timed_task behavior is to use the timed_task_benchmark.
+LIST(REMOVE_ITEM TEST_FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+
 foreach(TEST_FILE ${TEST_FILES})
   set(TEST_NAME)
   get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
-  package_add_test(${TEST_NAME} ${TEST_FILE})
+  package_add_test(${TEST_NAME} unittest ${TEST_FILE})
+endforeach()
+
+SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+
+foreach(TEST_FILE ${FLAKY_TEST_FILES})
+  set(TEST_NAME)
+  get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
+  package_add_test(${TEST_NAME} flaky ${TEST_FILE})
 endforeach()

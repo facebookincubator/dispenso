@@ -20,4 +20,4 @@ jobs:
           command: 'cd build && cmake --build .'
       - run:
           name: Running Unit Tests
-          command: 'cd build && ctest'
+          command: 'cd build && ctest -LE flaky'
