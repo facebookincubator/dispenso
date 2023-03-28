@@ -77,9 +77,36 @@ class NewThreadInvoker {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag) const {
-    std::thread thread(std::forward<F>(f));
+    static ThreadWaiter waiter;
+    waiter.add();
+    std::thread thread([f = std::move(f)]() {
+      f();
+      waiter.remove();
+    });
     thread.detach();
   }
+
+  // This is to protect against accessing stale memory after main exits.  This was encountered on
+  // occasion in conjunction with Futures in tests where the work was stolen locally long before the
+  // thread could be launched, and the process already is exiting when the thread is executing.
+  // Because it was after shutdown, backing memory for things could be no longer available.
+  struct ThreadWaiter {
+    detail::CompletionEventImpl impl_{0};
+
+    void add() {
+      impl_.intrusiveStatus().fetch_add(1, std::memory_order_acq_rel);
+    }
+
+    void remove() {
+      if (impl_.intrusiveStatus().fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        impl_.notify(0);
+      }
+    }
+
+    ~ThreadWaiter() {
+      impl_.wait(0);
+    }
+  };
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;
