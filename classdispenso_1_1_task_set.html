@@ -220,7 +220,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00052">52</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00053">53</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -258,7 +258,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00053">53</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00054">54</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -286,7 +286,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Destroy the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00146">146</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00147">147</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -315,7 +315,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Set the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="classdispenso_1_1_task_set.html#aaa78e80f5277f1d3ed7132a41a87e913">canceled()</a> status to exit early. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00129">129</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00130">130</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -344,7 +344,7 @@ Public Member Functions</h2></td></tr>
 <p >Check the canceled status of the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> has been canceled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00138">138</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00139">139</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -382,7 +382,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task is run inline. Otherwise, exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00073">73</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00074">74</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -430,7 +430,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00096">96</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00097">97</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -458,7 +458,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if all currently scheduled functors have been completed prior to returning, and <code>false</code> otherwise. This includes returning false if the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> was cancelled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00106">106</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00110">110</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>
@@ -479,7 +479,7 @@ template&lt;typename F &gt; </div>
 <p >Wait for all currently scheduled functors to finish execution. If exceptions are thrown during execution of the set of tasks, <code>wait</code> will propagate the first exception.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> was canceled, false otherwise </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00089">89</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8cpp_source.html#l00093">93</a> of file <a class="el" href="task__set_8cpp_source.html">task_set.cpp</a>.</p>
 
 </div>
 </div>

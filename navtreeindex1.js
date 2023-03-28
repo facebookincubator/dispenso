@@ -35,6 +35,7 @@ var NAVTREEINDEX1 =
 "structdispenso_1_1_for_each_options.html#a3f07fbd0ae91b2738612be10d0ac61a8":[0,0,0,10,0],
 "structdispenso_1_1_for_each_options.html#acb75ca2a2707c9b78df5fc5584e58c6c":[0,0,0,10,1],
 "structdispenso_1_1_force_queuing_tag.html":[0,0,0,9],
+"structdispenso_1_1_new_thread_invoker_1_1_thread_waiter.html":[0,0,0,16,0],
 "structdispenso_1_1_par_for_options.html":[0,0,0,18],
 "structdispenso_1_1_par_for_options.html#a2cfd7b948697c97874c727940529d1d8":[0,0,0,18,0],
 "structdispenso_1_1_par_for_options.html#ad5a5132b77e3715b07ed1424ec1013f6":[0,0,0,18,1],
