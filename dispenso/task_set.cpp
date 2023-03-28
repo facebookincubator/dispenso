@@ -86,6 +86,10 @@ bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
   return !testAndResetException();
 }
 
+moodycamel::ProducerToken TaskSet::makeToken(moodycamel::ConcurrentQueue<OnceFunction>& pool) {
+  return moodycamel::ProducerToken(pool);
+}
+
 bool TaskSet::wait() {
   // Steal work until our set is unblocked.
   // The deadlock scenario mentioned goes as follows:  N threads in the

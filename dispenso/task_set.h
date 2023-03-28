@@ -47,7 +47,8 @@ class TaskSet : public TaskSetBase {
       ThreadPool& p,
       ParentCascadeCancel registerForParentCancel,
       ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier)
-      : TaskSetBase(p, registerForParentCancel, stealingLoadMultiplier), token_(p.work_) {}
+      : TaskSetBase(p, registerForParentCancel, stealingLoadMultiplier),
+        token_(makeToken(p.work_)) {}
 
   TaskSet(ThreadPool& p) : TaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
   TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
@@ -148,6 +149,9 @@ class TaskSet : public TaskSetBase {
   }
 
  private:
+  DISPENSO_DLL_ACCESS moodycamel::ProducerToken makeToken(
+      moodycamel::ConcurrentQueue<OnceFunction>& pool);
+
   moodycamel::ProducerToken token_;
 
   template <typename Result>
