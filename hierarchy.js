@@ -39,7 +39,6 @@ var hierarchy =
       [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ]
     ] ],
     [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ],
-    [ "dispenso::NewThreadInvoker::ThreadWaiter", "structdispenso_1_1_new_thread_invoker_1_1_thread_waiter.html", null ],
     [ "dispenso::TimedTask", "classdispenso_1_1_timed_task.html", null ],
     [ "dispenso::TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", null ]
 ];
