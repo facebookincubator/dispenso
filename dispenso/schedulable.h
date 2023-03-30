@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <dispenso/detail/completion_event_impl.h>
 #include <dispenso/task_set.h>
 
 namespace dispenso {
@@ -77,15 +78,16 @@ class NewThreadInvoker {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag) const {
-    static ThreadWaiter waiter;
+    auto& waiter = getWaiter();
     waiter.add();
-    std::thread thread([f = std::move(f)]() {
+    std::thread thread([f = std::move(f), &waiter]() {
       f();
       waiter.remove();
     });
     thread.detach();
   }
 
+ private:
   // This is to protect against accessing stale memory after main exits.  This was encountered on
   // occasion in conjunction with Futures in tests where the work was stolen locally long before the
   // thread could be launched, and the process already is exiting when the thread is executing.
@@ -107,6 +109,7 @@ class NewThreadInvoker {
       impl_.wait(0);
     }
   };
+  DISPENSO_DLL_ACCESS static ThreadWaiter& getWaiter();
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;
