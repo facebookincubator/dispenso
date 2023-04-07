@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <dispenso/detail/quanta.h>
+
 namespace dispenso {
 #ifdef _WIN32
 #include <Windows.h>

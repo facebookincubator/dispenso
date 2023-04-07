@@ -51,7 +51,7 @@ SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
   }
 }
 
-void destroySmallBufferGlobals() {
+static void destroySmallBufferGlobals() {
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   g_globals8.~SmallBufferGlobals();
   g_globals16.~SmallBufferGlobals();

@@ -55,7 +55,7 @@ uint64_t rdtscp(void) {
 
 #if defined(DISPENSO_HAS_TIMESTAMP)
 
-bool snapFreq(double& firstApprox) {
+static bool snapFreq(double& firstApprox) {
   switch ((int)firstApprox) {
     case 0:
       if (std::abs(int(firstApprox * 10.0)) <= 1) {
@@ -86,7 +86,7 @@ bool snapFreq(double& firstApprox) {
   return false;
 }
 
-double fallbackTicksPerSecond() {
+static double fallbackTicksPerSecond() {
   using namespace std::chrono_literals;
   constexpr double kChronoOverheadBias = 250e-9;
 
@@ -128,7 +128,7 @@ double fallbackTicksPerSecond() {
 }
 
 #if defined(__MACH__)
-double ticksPerSecond() {
+static double ticksPerSecond() {
   mach_timebase_info_data_t info;
   if (mach_timebase_info(&info) != KERN_SUCCESS) {
     return fallbackTicksPerSecond();
