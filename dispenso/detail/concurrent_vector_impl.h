@@ -22,6 +22,7 @@ class ConVecIterBase {
   using difference_type = ssize_t;
   using value_type = T;
 
+  ConVecIterBase() = default;
   ConVecIterBase(const VecT* vec, BucketInfo info);
 
  protected:
@@ -98,6 +99,8 @@ class ConcurrentVectorIterator : public ConVecIterBase<VecT, T> {
   using pointer = std::conditional_t<kIsConst, std::add_const_t<T*>, T*>;
   using reference = std::conditional_t<kIsConst, std::add_const_t<T&>, T&>;
 
+  ConcurrentVectorIterator() = default;
+
   ConcurrentVectorIterator(const VecT* vec, BucketInfo info) : ConVecIterBase<VecT, T>(vec, info) {}
   ConcurrentVectorIterator(const VecT* vec, size_t /*index*/, BucketInfo info)
       : ConcurrentVectorIterator(vec, info) {}
@@ -156,6 +159,8 @@ class CompactCVecIterBase {
   using difference_type = ssize_t;
   using value_type = T;
 
+  CompactCVecIterBase() = default;
+
   CompactCVecIterBase(const VecT* vec, size_t index) : vec_(vec), index_(index) {}
 
  protected:
@@ -196,6 +201,8 @@ class CompactCVecIterator : public CompactCVecIterBase<VecT, T> {
   using pointer = std::conditional_t<kIsConst, std::add_const_t<T*>, T*>;
   using reference = std::conditional_t<kIsConst, std::add_const_t<T&>, T&>;
   using iterator_category = std::random_access_iterator_tag;
+
+  CompactCVecIterator() = default;
 
   CompactCVecIterator(const VecT* vec, size_t index, BucketInfo)
       : CompactCVecIterator(vec, index) {}

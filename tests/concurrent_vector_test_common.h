@@ -64,6 +64,11 @@ void indexCorrect(int num, CVec& vec) {
   }
 }
 
+TYPED_TEST(ConcurrentVectorTest, UninitializedIterator) {
+  typename dispenso::ConcurrentVector<int, TypeParam>::iterator iter;
+  (void)iter;
+}
+
 TYPED_TEST(ConcurrentVectorTest, IndexCorrectTiny) {
   RUN_VARIED_TEST(4, indexCorrect, std::unique_ptr<int>);
 }

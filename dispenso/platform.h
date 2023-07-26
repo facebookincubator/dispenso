@@ -107,6 +107,10 @@ class CacheAligned {
     return t_;
   }
 
+  operator const T&() const {
+    return t_;
+  }
+
  private:
   alignas(kCacheLineSize) T t_;
 };
