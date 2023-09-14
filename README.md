@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/facebookincubator/dispenso.svg?style=shield&circle-token=6257757aba00378bfd8fa892e3c03128757f77d1)](https://app.circleci.com/pipelines/github/facebookincubator/dispenso)
+[![CircleCI](https://circleci.com/gh/facebookincubator/dispenso.svg?style=shield)](https://app.circleci.com/pipelines/github/facebookincubator/dispenso)
 
 # Dispenso
 
