@@ -168,59 +168,37 @@ makeChunkedRange(IntegerA start, IntegerB end, IntegerC chunkSize) {
 
 namespace detail {
 
-template <typename TaskSetT, typename IntegerT, typename F>
-void parallel_for_staticImpl(
-    TaskSetT& taskSet,
-    const ChunkedRange<IntegerT>& range,
-    F&& f,
-    ParForOptions options) {
-  ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
-  // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<ssize_t>(numThreads, range.size()) + options.wait;
+struct NoOpIter {
+  int& operator*() const {
+    static int i = 0;
+    return i;
+  }
+  NoOpIter& operator++() {
+    return *this;
+  }
+  NoOpIter operator++(int) {
+    return *this;
+  }
+};
 
-  auto chunking = detail::staticChunkSize(range.size(), numThreads);
-  IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
-
-  bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
-
-  // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  ssize_t firstLoopLen = static_cast<ssize_t>(chunking.transitionTaskIndex) - perfectlyChunked;
-
-  IntegerT start = range.start;
-  ssize_t t;
-  for (t = 0; t < firstLoopLen; ++t) {
-    IntegerT next = static_cast<IntegerT>(start + chunkSize);
-    taskSet.schedule([start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      f(start, next);
-    });
-    start = next;
+struct NoOpContainer {
+  NoOpIter begin() {
+    return {};
   }
 
-  // Reduce the remaining chunk sizes by 1.
-  chunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
-  // Finish submitting all but the last item.
-  for (; t < numThreads - 1; ++t) {
-    IntegerT next = static_cast<IntegerT>(start + chunkSize);
-    taskSet.schedule([start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      f(start, next);
-    });
-    start = next;
-  }
+  void emplace_back(int) {}
 
-  if (options.wait) {
-    f(start, range.end);
-    taskSet.wait();
-  } else {
-    taskSet.schedule(
-        [start, end = range.end, f]() {
-          auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-          f(start, end);
-        },
-        ForceQueuingTag());
+  int& front() {
+    static int i;
+    return i;
   }
-}
+};
+
+struct NoOpStateGen {
+  int operator()() const {
+    return 0;
+  }
+};
 
 template <
     typename TaskSetT,
@@ -289,119 +267,6 @@ void parallel_for_staticImpl(
 }
 
 } // namespace detail
-
-/**
- * Execute loop over the range in parallel.
- *
- * @param taskSet The task set to schedule the loop on.
- * @param range The range defining the loop extents as well as chunking strategy.
- * @param f The functor to execute in parallel.  Must have a signature like
- * <code>void(size_t begin, size_t end)</code>.
- * @param options See ParForOptions for details.
- **/
-template <typename TaskSetT, typename IntegerT, typename F>
-void parallel_for(
-    TaskSetT& taskSet,
-    const ChunkedRange<IntegerT>& range,
-    F&& f,
-    ParForOptions options = {}) {
-  if (range.empty()) {
-    if (options.wait) {
-      taskSet.wait();
-    }
-    return;
-  }
-  // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
-  // recursive case?
-  const ssize_t N = taskSet.numPoolThreads();
-  if (N == 0 || !options.maxThreads || range.size() == 1 ||
-      detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
-    f(range.start, range.end);
-    if (options.wait) {
-      // Note that we may have to wait here despite currently running single threaded because we may
-      // need to block prior work on the taskSet
-      taskSet.wait();
-    }
-    return;
-  }
-
-  if (range.isStatic()) {
-    detail::parallel_for_staticImpl(taskSet, range, std::forward<F>(f), options);
-    return;
-  }
-
-  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N);
-
-  if (numToLaunch == 1 && !options.wait) {
-    taskSet.schedule([range, f = std::move(f)]() { f(range.start, range.end); });
-    return;
-  }
-
-  const IntegerT chunk = range.calcChunkSize(numToLaunch, options.wait);
-
-  if (options.wait) {
-    alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);
-    auto worker = [end = range.end, &index, f = std::move(f), chunk]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      while (true) {
-        IntegerT cur = index.fetch_add(chunk, std::memory_order_relaxed);
-        if (cur >= end) {
-          break;
-        }
-        f(cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
-      }
-    };
-
-    using Function = decltype(worker);
-
-    for (ssize_t i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule(Function(worker));
-    }
-    worker();
-    taskSet.wait();
-  } else {
-    struct Atomic {
-      Atomic(IntegerT i) : index(i) {}
-      char buffer[kCacheLineSize];
-      std::atomic<IntegerT> index;
-      char buffer2[kCacheLineSize];
-    };
-    // TODO(bbudge): dispenso::make_shared?
-    auto wrapper = std::make_shared<Atomic>(range.start);
-    auto worker = [end = range.end, wrapper = std::move(wrapper), f, chunk]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      while (true) {
-        IntegerT cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
-        if (cur >= end) {
-          break;
-        }
-        f(cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
-      }
-    };
-
-    using Function = decltype(worker);
-
-    for (ssize_t i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule(Function(worker), ForceQueuingTag());
-    }
-  }
-}
-
-/**
- * Execute loop over the range in parallel on the global thread pool, and wait until complete.
- *
- * @param range The range defining the loop extents as well as chunking strategy.
- * @param f The functor to execute in parallel.  Must have a signature like
- * <code>void(size_t begin, size_t end)</code>.
- * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
- *to true.
- **/
-template <typename IntegerT, typename F>
-void parallel_for(const ChunkedRange<IntegerT>& range, F&& f, ParForOptions options = {}) {
-  TaskSet taskSet(globalThreadPool());
-  options.wait = true;
-  parallel_for(taskSet, range, std::forward<F>(f), options);
-}
 
 /**
  * Execute loop over the range in parallel.
@@ -514,6 +379,47 @@ void parallel_for(
       taskSet.schedule([&s = *it++, worker]() { worker(s); }, ForceQueuingTag());
     }
   }
+}
+
+/**
+ * Execute loop over the range in parallel.
+ *
+ * @param taskSet The task set to schedule the loop on.
+ * @param range The range defining the loop extents as well as chunking strategy.
+ * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(size_t begin, size_t end)</code>.
+ * @param options See ParForOptions for details.
+ **/
+template <typename TaskSetT, typename IntegerT, typename F>
+void parallel_for(
+    TaskSetT& taskSet,
+    const ChunkedRange<IntegerT>& range,
+    F&& f,
+    ParForOptions options = {}) {
+  detail::NoOpContainer container;
+  parallel_for(
+      taskSet,
+      container,
+      detail::NoOpStateGen(),
+      range,
+      [f = std::move(f)](int /*noop*/, auto i, auto j) { f(i, j); },
+      options);
+}
+
+/**
+ * Execute loop over the range in parallel on the global thread pool, and wait until complete.
+ *
+ * @param range The range defining the loop extents as well as chunking strategy.
+ * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(size_t begin, size_t end)</code>.
+ * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
+ *to true.
+ **/
+template <typename IntegerT, typename F>
+void parallel_for(const ChunkedRange<IntegerT>& range, F&& f, ParForOptions options = {}) {
+  TaskSet taskSet(globalThreadPool());
+  options.wait = true;
+  parallel_for(taskSet, range, std::forward<F>(f), options);
 }
 
 /**
