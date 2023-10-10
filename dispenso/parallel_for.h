@@ -70,6 +70,14 @@ struct ParForOptions {
  **/
 template <typename IntegerT = ssize_t>
 struct ChunkedRange {
+  // We need to utilize 64-bit integers to avoid overflow, e.g. passing -2**30, 2**30 as int32 will
+  // result in overflow unless we cast to 64-bit.  Note that if we have a range of e.g. -2**63+1 to
+  // 2**63-1, we cannot hold the result in an int64_t.  We could in a uint64_t, but it is quite
+  // tricky to make this work.  However, I do not expect ranges larger than can be held in int64_t
+  // since people want their computations to finish before the heat death of the sun (slight
+  // exaggeration).
+  using size_type = std::conditional_t<std::is_signed<IntegerT>::value, int64_t, uint64_t>;
+
   struct Static {};
   struct Auto {};
   static constexpr IntegerT kStatic = std::numeric_limits<IntegerT>::max();
@@ -106,30 +114,29 @@ struct ChunkedRange {
     return end <= start;
   }
 
-  // This code returns int64 in order to avoid overflow, e.g. passing -2**30, 2**30 as int32 will
-  // result in overflow unless we cast to 64-bit.
-  int64_t size() const {
-    return static_cast<int64_t>(end) - start;
+  size_type size() const {
+    return static_cast<size_type>(end) - start;
   }
 
   template <typename OtherInt>
-  IntegerT calcChunkSize(OtherInt numLaunched, bool oneOnCaller) const {
-    ssize_t workingThreads = static_cast<ssize_t>(numLaunched) + ssize_t{oneOnCaller};
+  std::tuple<size_type, size_type> calcChunkSize(OtherInt numLaunched, bool oneOnCaller) const {
+    size_type workingThreads = static_cast<size_type>(numLaunched) + size_type{oneOnCaller};
     assert(workingThreads > 1);
 
     if (!chunk) {
       // TODO(bbudge): play with different load balancing factors for auto.
       // IntegerT dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
       // cyclesPerIndex_));
-      constexpr ssize_t dynFactor = 16;
-      const ssize_t chunks = dynFactor * workingThreads;
-      return static_cast<IntegerT>((size() + chunks) / chunks);
+      constexpr size_type dynFactor = 16;
+      const size_type chunks = dynFactor * workingThreads;
+      const size_type chunkSize = (size() + chunks - 1) / chunks;
+      return {chunkSize, (size() + chunkSize - 1) / chunkSize};
     } else if (chunk == kStatic) {
       // This should never be called.  The static distribution versions of the parallel_for
       // functions should be invoked instead.
       std::abort();
     }
-    return chunk;
+    return {chunk, (size() + chunk - 1) / chunk};
   }
 
   IntegerT start;
@@ -333,19 +340,27 @@ void parallel_for(
     return;
   }
 
-  const IntegerT chunk = range.calcChunkSize(numToLaunch, options.wait);
+  auto chunkInfo = range.calcChunkSize(numToLaunch, options.wait);
+  auto chunkSize = std::get<0>(chunkInfo);
+  auto numChunks = std::get<1>(chunkInfo);
 
   if (options.wait) {
-    alignas(kCacheLineSize) std::atomic<IntegerT> index(range.start);
-    auto worker = [end = range.end, &index, f, chunk](auto& s) {
+    alignas(kCacheLineSize) std::atomic<decltype(numChunks)> index(0);
+    auto worker = [start = range.start, end = range.end, &index, f, chunkSize, numChunks](auto& s) {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
 
       while (true) {
-        IntegerT cur = index.fetch_add(chunk, std::memory_order_relaxed);
-        if (cur >= end) {
+        auto cur = index.fetch_add(1, std::memory_order_relaxed);
+        if (cur >= numChunks) {
           break;
         }
-        f(s, cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
+        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
+        if (cur + 1 == numChunks) {
+          f(s, sidx, end);
+        } else {
+          auto eidx = static_cast<IntegerT>(sidx + chunkSize);
+          f(s, sidx, eidx);
+        }
       }
     };
 
@@ -357,20 +372,30 @@ void parallel_for(
     taskSet.wait();
   } else {
     struct Atomic {
-      Atomic(IntegerT i) : index(i) {}
-      char buffer[kCacheLineSize];
-      std::atomic<IntegerT> index;
-      char buffer2[kCacheLineSize];
+      Atomic() : index(0) {}
+      alignas(kCacheLineSize) std::atomic<decltype(numChunks)> index;
+      char buffer[kCacheLineSize - sizeof(index)];
     };
-    auto wrapper = std::make_shared<Atomic>(range.start);
-    auto worker = [end = range.end, wrapper = std::move(wrapper), f, chunk](auto& s) {
+    auto wrapper = std::make_shared<Atomic>();
+    auto worker = [start = range.start,
+                   end = range.end,
+                   wrapper = std::move(wrapper),
+                   f,
+                   chunkSize,
+                   numChunks](auto& s) {
       auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
       while (true) {
-        IntegerT cur = wrapper->index.fetch_add(chunk, std::memory_order_relaxed);
-        if (cur >= end) {
+        auto cur = wrapper->index.fetch_add(1, std::memory_order_relaxed);
+        if (cur >= numChunks) {
           break;
         }
-        f(s, cur, std::min<IntegerT>(static_cast<IntegerT>(cur + chunk), end));
+        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
+        if (cur + 1 == numChunks) {
+          f(s, sidx, end);
+        } else {
+          auto eidx = static_cast<IntegerT>(sidx + chunkSize);
+          f(s, sidx, eidx);
+        }
       }
     };
 

@@ -142,3 +142,128 @@ TEST(ChunkedFor, LoopWithVectorState) {
 TEST(ChunkedFor, LoopWithListState) {
   loopWithStateImpl<std::list<int64_t>>();
 }
+
+TEST(ChunkedFor, SimpleLoopSmallRangeAtLargeValues) {
+  std::atomic<uint64_t> numCalls(0);
+
+  dispenso::ThreadPool pool(6);
+  dispenso::TaskSet tasks(pool);
+
+  dispenso::parallel_for(
+      tasks,
+      dispenso::makeChunkedRange(
+          std::numeric_limits<uint64_t>::max() / 2 - 100,
+          std::numeric_limits<uint64_t>::max() / 2 + 1000,
+          dispenso::ParForChunking::kAuto),
+      [&numCalls](auto ystart, auto yend) {
+        numCalls.fetch_add(yend - ystart, std::memory_order_relaxed);
+      });
+
+  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), 1100);
+}
+
+TEST(ChunkedFor, SimpleLoopSmallRange) {
+  std::atomic<int> numCalls(0);
+
+  dispenso::ThreadPool pool(6);
+  dispenso::TaskSet tasks(pool);
+
+  dispenso::parallel_for(
+      tasks,
+      dispenso::makeChunkedRange(
+          std::numeric_limits<int16_t>::min(),
+          std::numeric_limits<int16_t>::max(),
+          dispenso::ParForChunking::kAuto),
+      [&numCalls](auto ystart, auto yend) {
+        numCalls.fetch_add(yend - ystart, std::memory_order_relaxed);
+      });
+
+  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), (1 << 16) - 1);
+}
+
+TEST(ChunkedFor, LoopSmallRangeWithState) {
+  std::atomic<int> numCalls(0);
+
+  dispenso::ThreadPool pool(6);
+  dispenso::TaskSet tasks(pool);
+
+  std::vector<int> state;
+
+  dispenso::parallel_for(
+      tasks,
+      state,
+      []() { return 0; },
+      dispenso::makeChunkedRange(
+          std::numeric_limits<int16_t>::min(),
+          std::numeric_limits<int16_t>::max(),
+          dispenso::ParForChunking::kAuto),
+      [&numCalls](auto& s, auto ystart, auto yend) {
+        numCalls.fetch_add(yend - ystart, std::memory_order_relaxed);
+        s += (yend - ystart);
+      });
+
+  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), (1 << 16) - 1);
+  int total = 0;
+  for (int s : state) {
+    total += s;
+  }
+  EXPECT_EQ(total, (1 << 16) - 1);
+}
+
+TEST(ChunkedFor, SimpleLoopSmallRangeExternalWait) {
+  std::atomic<int> numCalls(0);
+
+  dispenso::ThreadPool pool(6);
+  dispenso::TaskSet tasks(pool);
+
+  dispenso::ParForOptions options;
+  options.wait = false;
+
+  dispenso::parallel_for(
+      tasks,
+      dispenso::makeChunkedRange(
+          std::numeric_limits<int16_t>::min(),
+          std::numeric_limits<int16_t>::max(),
+          dispenso::ParForChunking::kAuto),
+      [&numCalls](auto ystart, auto yend) {
+        numCalls.fetch_add(yend - ystart, std::memory_order_relaxed);
+      },
+      options);
+  tasks.wait();
+
+  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), (1 << 16) - 1);
+}
+
+TEST(ChunkedFor, LoopSmallRangeWithStateWithExternalWait) {
+  std::atomic<int> numCalls(0);
+
+  dispenso::ThreadPool pool(6);
+  dispenso::TaskSet tasks(pool);
+
+  std::vector<int> state;
+  dispenso::ParForOptions options;
+  options.wait = false;
+
+  dispenso::parallel_for(
+      tasks,
+      state,
+      []() { return 0; },
+      dispenso::makeChunkedRange(
+          std::numeric_limits<int16_t>::min(),
+          std::numeric_limits<int16_t>::max(),
+          dispenso::ParForChunking::kAuto),
+      [&numCalls](auto& s, auto ystart, auto yend) {
+        numCalls.fetch_add(yend - ystart, std::memory_order_relaxed);
+        s += (yend - ystart);
+      },
+      options);
+
+  tasks.wait();
+
+  EXPECT_EQ(numCalls.load(std::memory_order_relaxed), (1 << 16) - 1);
+  int total = 0;
+  for (int s : state) {
+    total += s;
+  }
+  EXPECT_EQ(total, (1 << 16) - 1);
+}
