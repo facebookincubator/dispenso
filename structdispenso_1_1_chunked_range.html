@@ -98,6 +98,7 @@ $(document).ready(function(){initNavTree('structdispenso_1_1_chunked_range.html'
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
@@ -115,6 +116,11 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range_1_1_static.html">Static</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a9cd720c1573e64285937795e3e9a31a7"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a9cd720c1573e64285937795e3e9a31a7">size_type</a> = std::conditional_t&lt; std::is_signed&lt; IntegerT &gt;::value, int64_t, uint64_t &gt;</td></tr>
+<tr class="separator:a9cd720c1573e64285937795e3e9a31a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a644b2269aed883922db39c928a009b16"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a644b2269aed883922db39c928a009b16">ChunkedRange</a> (IntegerT s, IntegerT e, IntegerT c)</td></tr>
@@ -125,13 +131,15 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a488b20ac57d038c6088ba6289c05dd47"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5df90a188dd09b5808ccb91614eb347f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a5df90a188dd09b5808ccb91614eb347f">isStatic</a> () const</td></tr>
 <tr class="separator:a5df90a188dd09b5808ccb91614eb347f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac3c4298a4f5efba8c4a1c55a692b47e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#aac3c4298a4f5efba8c4a1c55a692b47e">isAuto</a> () const</td></tr>
+<tr class="separator:aac3c4298a4f5efba8c4a1c55a692b47e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6f37cef3063edc9de19ba0cf2023dda"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#aa6f37cef3063edc9de19ba0cf2023dda">empty</a> () const</td></tr>
 <tr class="separator:aa6f37cef3063edc9de19ba0cf2023dda"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a275f609936989a1bfc8cefed74a9029f"><td class="memItemLeft" align="right" valign="top">int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a275f609936989a1bfc8cefed74a9029f">size</a> () const</td></tr>
-<tr class="separator:a275f609936989a1bfc8cefed74a9029f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a790d3ff16ec71a53735b10804a394f6e"><td class="memTemplParams" colspan="2">template&lt;typename OtherInt &gt; </td></tr>
-<tr class="memitem:a790d3ff16ec71a53735b10804a394f6e"><td class="memTemplItemLeft" align="right" valign="top">IntegerT&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a790d3ff16ec71a53735b10804a394f6e">calcChunkSize</a> (OtherInt numLaunched, bool oneOnCaller) const</td></tr>
-<tr class="separator:a790d3ff16ec71a53735b10804a394f6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d9be63db13f4c7200c6498de3fa0e8b"><td class="memItemLeft" align="right" valign="top">size_type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#a7d9be63db13f4c7200c6498de3fa0e8b">size</a> () const</td></tr>
+<tr class="separator:a7d9be63db13f4c7200c6498de3fa0e8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa20d3a8c257c7dec165b7070faeda450"><td class="memTemplParams" colspan="2">template&lt;typename OtherInt &gt; </td></tr>
+<tr class="memitem:aa20d3a8c257c7dec165b7070faeda450"><td class="memTemplItemLeft" align="right" valign="top">std::tuple&lt; size_type, size_type &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_chunked_range.html#aa20d3a8c257c7dec165b7070faeda450">calcChunkSize</a> (OtherInt numLaunched, bool oneOnCaller, size_type minChunkSize) const</td></tr>
+<tr class="separator:aa20d3a8c257c7dec165b7070faeda450"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -151,8 +159,27 @@ Static Public Attributes</h2></td></tr>
 <div class="textblock"><div class="compoundTemplParams">template&lt;typename IntegerT = ssize_t&gt;<br />
 struct dispenso::ChunkedRange&lt; IntegerT &gt;</div><p >A helper class for <code>parallel_for</code>. It provides various configuration parameters to describe how to break up work for parallel processing. ChunkedRanges can be created with <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking, <a class="el" href="structdispenso_1_1_chunked_range_1_1_static.html">Static</a> chunking, or specific chunking. <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking makes large chunks for better cache utilization, but tries to make enough chunks to provide some dynamic load balancing. <a class="el" href="structdispenso_1_1_chunked_range_1_1_static.html">Static</a> chunking makes N chunks given N threads to run the loop on. User-specified chunking can be useful for ensuring e.g. that at least a multiple of SIMD width is provided per chunk. <code>parallel_for</code> calls that don't accept a <a class="el" href="structdispenso_1_1_chunked_range.html">ChunkedRange</a> will create a <a class="el" href="structdispenso_1_1_chunked_range.html">ChunkedRange</a> internally using <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00072">72</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00079">79</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+</div><h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="a9cd720c1573e64285937795e3e9a31a7" name="a9cd720c1573e64285937795e3e9a31a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9cd720c1573e64285937795e3e9a31a7">&#9670;&#160;</a></span>size_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename IntegerT  = ssize_t&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::size_type =  std::conditional_t&lt;std::is_signed&lt;IntegerT&gt;::value, int64_t, uint64_t&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00086">86</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a644b2269aed883922db39c928a009b16" name="a644b2269aed883922db39c928a009b16"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a644b2269aed883922db39c928a009b16">&#9670;&#160;</a></span>ChunkedRange() <span class="overload">[1/3]</span></h2>
 
@@ -204,7 +231,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00084">84</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00099">99</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -258,7 +285,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00091">91</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00106">106</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -312,13 +339,13 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00099">99</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00114">114</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a790d3ff16ec71a53735b10804a394f6e" name="a790d3ff16ec71a53735b10804a394f6e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a790d3ff16ec71a53735b10804a394f6e">&#9670;&#160;</a></span>calcChunkSize()</h2>
+<a id="aa20d3a8c257c7dec165b7070faeda450" name="aa20d3a8c257c7dec165b7070faeda450"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa20d3a8c257c7dec165b7070faeda450">&#9670;&#160;</a></span>calcChunkSize()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -331,7 +358,7 @@ template&lt;typename OtherInt &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">IntegerT <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::calcChunkSize </td>
+          <td class="memname">std::tuple&lt; size_type, size_type &gt; <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::calcChunkSize </td>
           <td>(</td>
           <td class="paramtype">OtherInt&#160;</td>
           <td class="paramname"><em>numLaunched</em>, </td>
@@ -340,7 +367,13 @@ template&lt;typename OtherInt &gt; </div>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>oneOnCaller</em>&#160;</td>
+          <td class="paramname"><em>oneOnCaller</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_type&#160;</td>
+          <td class="paramname"><em>minChunkSize</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -355,7 +388,7 @@ template&lt;typename OtherInt &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00116">116</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00134">134</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -384,7 +417,36 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00105">105</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00124">124</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+
+</div>
+</div>
+<a id="aac3c4298a4f5efba8c4a1c55a692b47e" name="aac3c4298a4f5efba8c4a1c55a692b47e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac3c4298a4f5efba8c4a1c55a692b47e">&#9670;&#160;</a></span>isAuto()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename IntegerT  = ssize_t&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::isAuto </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00120">120</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -413,12 +475,12 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00101">101</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00116">116</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
-<a id="a275f609936989a1bfc8cefed74a9029f" name="a275f609936989a1bfc8cefed74a9029f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a275f609936989a1bfc8cefed74a9029f">&#9670;&#160;</a></span>size()</h2>
+<a id="a7d9be63db13f4c7200c6498de3fa0e8b" name="a7d9be63db13f4c7200c6498de3fa0e8b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7d9be63db13f4c7200c6498de3fa0e8b">&#9670;&#160;</a></span>size()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -429,7 +491,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">int64_t <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::size </td>
+          <td class="memname">size_type <a class="el" href="structdispenso_1_1_chunked_range.html">dispenso::ChunkedRange</a>&lt; IntegerT &gt;::size </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -442,7 +504,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00111">111</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00128">128</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -461,7 +523,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00137">137</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00157">157</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -479,7 +541,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00136">136</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00156">156</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -505,7 +567,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00075">75</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00090">90</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -523,7 +585,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00135">135</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00155">155</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

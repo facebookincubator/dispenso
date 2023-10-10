@@ -113,6 +113,8 @@ Public Attributes</h2></td></tr>
 <tr class="separator:ad7d5a8b0ab699da6818e85e63332eb7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2cfd7b948697c97874c727940529d1d8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="parallel__for_8h.html#a6937a5697393f11085906ecf68d79634">ParForChunking</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_par_for_options.html#a2cfd7b948697c97874c727940529d1d8">defaultChunking</a> = ParForChunking::kStatic</td></tr>
 <tr class="separator:a2cfd7b948697c97874c727940529d1d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a293e1d655c40ee3b3aaf8138799771e3"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_par_for_options.html#a293e1d655c40ee3b3aaf8138799771e3">minItemsPerChunk</a> = 1</td></tr>
+<tr class="separator:a293e1d655c40ee3b3aaf8138799771e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A set of options to control parallel_for </p>
@@ -150,6 +152,23 @@ Public Attributes</h2></td></tr>
 <p >The maximum number of threads to use. This can be used to limit the number of threads below the number associated with the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>'s thread pool. Setting maxThreads to zero will result in serial operation. </p>
 
 <p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00043">43</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+
+</div>
+</div>
+<a id="a293e1d655c40ee3b3aaf8138799771e3" name="a293e1d655c40ee3b3aaf8138799771e3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a293e1d655c40ee3b3aaf8138799771e3">&#9670;&#160;</a></span>minItemsPerChunk</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t dispenso::ParForOptions::minItemsPerChunk = 1</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p >Specify a minimum number of items per chunk for static or auto dynamic load balancing. Cheaper workloads should have a higher number of minWorkItems. Will be ignored if an explicit chunk size is provided to <a class="el" href="structdispenso_1_1_chunked_range.html">ChunkedRange</a>. </p>
+
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00065">65</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
