@@ -8,6 +8,7 @@
 #include <list>
 #include <vector>
 
+#include <dispenso/concurrent_vector.h>
 #include <dispenso/parallel_for.h>
 #include <gtest/gtest.h>
 
@@ -266,4 +267,44 @@ TEST(ChunkedFor, LoopSmallRangeWithStateWithExternalWait) {
     total += s;
   }
   EXPECT_EQ(total, (1 << 16) - 1);
+}
+
+void minChunkSize(dispenso::ParForChunking choice, int start, int end, int minSize) {
+  dispenso::ConcurrentVector<std::pair<int, int>> ranges;
+
+  dispenso::ThreadPool pool(16);
+
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = minSize;
+
+  dispenso::parallel_for(
+      dispenso::makeChunkedRange(start, end, choice),
+      [&ranges](int ystart, int yend) {
+        ranges.push_back({ystart, yend});
+      },
+      options);
+
+  EXPECT_GE(ranges.size(), 1);
+
+  for (auto& r : ranges) {
+    if (r.second != end) {
+      EXPECT_LE(minSize, r.second - r.first);
+    }
+  }
+}
+
+TEST(ChunkedFor, MinChunkSizeLoopAuto) {
+  minChunkSize(dispenso::ParForChunking::kAuto, 0, 1000000, 200);
+  minChunkSize(dispenso::ParForChunking::kAuto, 0, 100, 200);
+  minChunkSize(dispenso::ParForChunking::kAuto, 10000, 10020, 200);
+  minChunkSize(dispenso::ParForChunking::kAuto, 1000000, 10000000, 20000);
+  minChunkSize(dispenso::ParForChunking::kAuto, -10000000, -1000000, 20000);
+}
+
+TEST(ChunkedFor, MinChunkSizeLoopStatic) {
+  minChunkSize(dispenso::ParForChunking::kStatic, 0, 1000000, 200);
+  minChunkSize(dispenso::ParForChunking::kStatic, 0, 100, 200);
+  minChunkSize(dispenso::ParForChunking::kStatic, 10000, 10020, 200);
+  minChunkSize(dispenso::ParForChunking::kStatic, 1000000, 10000000, 20000);
+  minChunkSize(dispenso::ParForChunking::kStatic, -10000000, -1000000, 20000);
 }

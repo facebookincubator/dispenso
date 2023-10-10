@@ -359,3 +359,17 @@ TEST(GreedyFor, ZeroThreadsWithState) {
   dispenso::ThreadPool pool(0);
   loopWithStateImpl<std::vector<int64_t>>(pool);
 }
+
+TEST(GreedyFor, SimpleLoopFewerItemsThanThreads) {
+  int w = 1000;
+  int h = 3;
+  dispenso::ThreadPool pool(5);
+  std::vector<int> image(w * h, 7);
+
+  std::atomic<int64_t> sum(0);
+
+  dispenso::TaskSet tasks(pool);
+  dispenso::parallel_for(tasks, 0, h, [w, &image, &sum](int y) { simpleInner(w, y, image, sum); });
+
+  EXPECT_EQ(sum.load(std::memory_order_relaxed), w * h * 7);
+}

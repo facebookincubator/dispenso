@@ -80,6 +80,9 @@ void BM_dispenso(benchmark::State& state) {
   int64_t sum = 0;
   int foo = 0;
 
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = 50000;
+
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
@@ -98,7 +101,8 @@ void BM_dispenso(benchmark::State& state) {
             lsum += input[i] * input[i] - 3 * foo * input[i];
           }
           lsumStore += lsum;
-        });
+        },
+        options);
     sum = 0;
     for (auto s : sums) {
       sum += s;

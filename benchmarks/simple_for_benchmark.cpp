@@ -26,6 +26,8 @@ static constexpr int kSmallSize = 1000;
 static constexpr int kMediumSize = 1000000;
 static constexpr int kLargeSize = 100000000;
 
+static constexpr uint32_t kMinSizePerChunk = 10000;
+
 const std::vector<int>& getInputs(int num_elements) {
   static std::unordered_map<int, std::vector<int>> vecs;
   auto it = vecs.find(num_elements);
@@ -73,12 +75,18 @@ void BM_dispenso(benchmark::State& state) {
   std::vector<int> output(num_elements, 0);
   dispenso::ThreadPool pool(num_threads);
 
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = kMinSizePerChunk;
+
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
-    dispenso::parallel_for(tasks, 0, num_elements, [&input, &output](size_t i) {
-      output[i] = input[i] * input[i] - 3 * input[i];
-    });
+    dispenso::parallel_for(
+        tasks,
+        0,
+        num_elements,
+        [&input, &output](size_t i) { output[i] = input[i] * input[i] - 3 * input[i]; },
+        options);
   }
   checkResults(input, output);
 }
@@ -90,15 +98,22 @@ void BM_dispenso_static_chunk(benchmark::State& state) {
   std::vector<int> output(num_elements, 0);
   dispenso::ThreadPool pool(num_threads);
 
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = kMinSizePerChunk;
+
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     auto range = dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kStatic);
-    dispenso::parallel_for(tasks, range, [&input, &output](size_t begin, size_t end) {
-      for (size_t i = begin; i < end; ++i) {
-        output[i] = input[i] * input[i] - 3 * input[i];
-      }
-    });
+    dispenso::parallel_for(
+        tasks,
+        range,
+        [&input, &output](size_t begin, size_t end) {
+          for (size_t i = begin; i < end; ++i) {
+            output[i] = input[i] * input[i] - 3 * input[i];
+          }
+        },
+        options);
   }
   checkResults(input, output);
 }
@@ -109,16 +124,22 @@ void BM_dispenso_auto_chunk(benchmark::State& state) {
 
   std::vector<int> output(num_elements, 0);
   dispenso::ThreadPool pool(num_threads);
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = kMinSizePerChunk;
 
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     auto range = dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kAuto);
-    dispenso::parallel_for(tasks, range, [&input, &output](size_t begin, size_t end) {
-      for (size_t i = begin; i < end; ++i) {
-        output[i] = input[i] * input[i] - 3 * input[i];
-      }
-    });
+    dispenso::parallel_for(
+        tasks,
+        range,
+        [&input, &output](size_t begin, size_t end) {
+          for (size_t i = begin; i < end; ++i) {
+            output[i] = input[i] * input[i] - 3 * input[i];
+          }
+        },
+        options);
   }
   checkResults(input, output);
 }

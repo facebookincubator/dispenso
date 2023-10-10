@@ -56,6 +56,13 @@ struct ParForOptions {
    * used when invoking the version of parallel_for that takes index parameters (vs a ChunkedRange).
    **/
   ParForChunking defaultChunking = ParForChunking::kStatic;
+
+  /**
+   * Specify a minimum number of items per chunk for static or auto dynamic load balancing.  Cheaper
+   * workloads should have a higher number of minWorkItems.  Will be ignored if an explicit chunk
+   * size is provided to ChunkedRange.
+   **/
+  uint32_t minItemsPerChunk = 1;
 };
 
 /**
@@ -110,6 +117,10 @@ struct ChunkedRange {
     return chunk == kStatic;
   }
 
+  bool isAuto() const {
+    return chunk == 0;
+  }
+
   bool empty() const {
     return end <= start;
   }
@@ -119,17 +130,19 @@ struct ChunkedRange {
   }
 
   template <typename OtherInt>
-  std::tuple<size_type, size_type> calcChunkSize(OtherInt numLaunched, bool oneOnCaller) const {
+  std::tuple<size_type, size_type>
+  calcChunkSize(OtherInt numLaunched, bool oneOnCaller, size_type minChunkSize) const {
     size_type workingThreads = static_cast<size_type>(numLaunched) + size_type{oneOnCaller};
     assert(workingThreads > 1);
 
     if (!chunk) {
-      // TODO(bbudge): play with different load balancing factors for auto.
-      // IntegerT dynFactor = std::log2(1.0f + (end_ - start_) / (cyclesPerIndex_ *
-      // cyclesPerIndex_));
-      constexpr size_type dynFactor = 16;
-      const size_type chunks = dynFactor * workingThreads;
-      const size_type chunkSize = (size() + chunks - 1) / chunks;
+      size_type dynFactor = std::min<size_type>(16, size() / workingThreads);
+      size_type chunkSize;
+      do {
+        size_type roughChunks = dynFactor * workingThreads;
+        chunkSize = (size() + roughChunks - 1) / roughChunks;
+        --dynFactor;
+      } while (chunkSize < minChunkSize);
       return {chunkSize, (size() + chunkSize - 1) / chunkSize};
     } else if (chunk == kStatic) {
       // This should never be called.  The static distribution versions of the parallel_for
@@ -219,26 +232,29 @@ void parallel_for_staticImpl(
     const StateGen& defaultState,
     const ChunkedRange<IntegerT>& range,
     F&& f,
-    ParForOptions options) {
-  ssize_t numThreads = std::min<ssize_t>(taskSet.numPoolThreads(), options.maxThreads);
-  // Reduce threads used if they exceed work to be done.
-  numThreads = std::min<ssize_t>(numThreads, range.size()) + options.wait;
+    ssize_t maxThreads,
+    bool wait) {
+  using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  for (ssize_t i = 0; i < numThreads; ++i) {
+  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads(), maxThreads);
+  // Reduce threads used if they exceed work to be done.
+  numThreads = std::min(numThreads, range.size()) + wait;
+
+  for (size_type i = 0; i < numThreads; ++i) {
     states.emplace_back(defaultState());
   }
 
   auto chunking = detail::staticChunkSize(range.size(), numThreads);
   IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
 
-  bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
+  bool perfectlyChunked = static_cast<size_type>(chunking.transitionTaskIndex) == numThreads;
 
   // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  ssize_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+  size_type firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
 
   auto stateIt = states.begin();
   IntegerT start = range.start;
-  ssize_t t;
+  size_type t;
   for (t = 0; t < firstLoopLen; ++t) {
     IntegerT next = static_cast<IntegerT>(start + chunkSize);
     taskSet.schedule([it = stateIt++, start, next, f]() {
@@ -260,7 +276,7 @@ void parallel_for_staticImpl(
     start = next;
   }
 
-  if (options.wait) {
+  if (wait) {
     f(*stateIt, start, range.end);
     taskSet.wait();
   } else {
@@ -310,8 +326,16 @@ void parallel_for(
     }
     return;
   }
-  const ssize_t N = taskSet.numPoolThreads();
-  if (N == 0 || !options.maxThreads || range.size() == 1 ||
+
+  using size_type = typename ChunkedRange<IntegerT>::size_type;
+
+  // Ensure minItemsPerChunk is sane
+  uint32_t minItemsPerChunk = std::max<uint32_t>(1, options.minItemsPerChunk);
+  size_type maxThreads = options.maxThreads;
+  bool isStatic = range.isStatic();
+
+  const size_type N = taskSet.numPoolThreads();
+  if (N == 0 || !options.maxThreads || range.size() <= minItemsPerChunk ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     states.emplace_back(defaultState());
     f(*states.begin(), range.start, range.end);
@@ -321,15 +345,32 @@ void parallel_for(
     return;
   }
 
-  if (range.isStatic()) {
+  // Adjust down workers if we would have too-small chunks
+  if (minItemsPerChunk > 1) {
+    size_type maxWorkers = range.size() / minItemsPerChunk;
+    if (maxWorkers < maxThreads) {
+      maxThreads = static_cast<uint32_t>(maxWorkers);
+    }
+    if (range.size() / (maxThreads + options.wait) < minItemsPerChunk && range.isAuto()) {
+      isStatic = true;
+    }
+  } else if (range.size() <= N + options.wait) {
+    if (range.isAuto()) {
+      isStatic = true;
+    } else if (!range.isStatic()) {
+      maxThreads = range.size() - options.wait;
+    }
+  }
+
+  if (isStatic) {
     detail::parallel_for_staticImpl(
-        taskSet, states, defaultState, range, std::forward<F>(f), options);
+        taskSet, states, defaultState, range, std::forward<F>(f), maxThreads, options.wait);
     return;
   }
 
-  const ssize_t numToLaunch = std::min<ssize_t>(options.maxThreads, N);
+  const size_type numToLaunch = std::min<size_type>(maxThreads, N);
 
-  for (ssize_t i = 0; i < numToLaunch + options.wait; ++i) {
+  for (size_type i = 0; i < numToLaunch + options.wait; ++i) {
     states.emplace_back(defaultState());
   }
 
@@ -340,7 +381,7 @@ void parallel_for(
     return;
   }
 
-  auto chunkInfo = range.calcChunkSize(numToLaunch, options.wait);
+  auto chunkInfo = range.calcChunkSize(numToLaunch, options.wait, minItemsPerChunk);
   auto chunkSize = std::get<0>(chunkInfo);
   auto numChunks = std::get<1>(chunkInfo);
 
@@ -365,7 +406,7 @@ void parallel_for(
     };
 
     auto it = states.begin();
-    for (ssize_t i = 0; i < numToLaunch; ++i) {
+    for (size_type i = 0; i < numToLaunch; ++i) {
       taskSet.schedule([&s = *it++, worker]() { worker(s); });
     }
     worker(*it);
@@ -400,7 +441,7 @@ void parallel_for(
     };
 
     auto it = states.begin();
-    for (ssize_t i = 0; i < numToLaunch; ++i) {
+    for (size_type i = 0; i < numToLaunch; ++i) {
       taskSet.schedule([&s = *it++, worker]() { worker(s); }, ForceQueuingTag());
     }
   }
