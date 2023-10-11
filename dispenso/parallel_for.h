@@ -16,6 +16,7 @@
 #include <limits>
 #include <memory>
 
+#include <dispenso/detail/can_invoke.h>
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/task_set.h>
 
@@ -533,7 +534,8 @@ template <
     typename IntegerB,
     typename F,
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
-    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
+    std::enable_if_t<detail::CanInvoke<F(IntegerA)>::value, bool> = true>
 void parallel_for(
     TaskSetT& taskSet,
     IntegerA start,
@@ -552,6 +554,24 @@ void parallel_for(
         }
       },
       options);
+}
+
+template <
+    typename TaskSetT,
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
+    std::enable_if_t<detail::CanInvoke<F(IntegerA, IntegerB)>::value, bool> = true>
+void parallel_for(
+    TaskSetT& taskSet,
+    IntegerA start,
+    IntegerB end,
+    F&& f,
+    ParForOptions options = {}) {
+  auto range = makeChunkedRange(start, end, options.defaultChunking);
+  parallel_for(taskSet, range, std::forward<F>(f), options);
 }
 
 /**
@@ -601,7 +621,10 @@ template <
     typename StateContainer,
     typename StateGen,
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
-    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
+    std::enable_if_t<
+        detail::CanInvoke<F(typename StateContainer::reference, IntegerA)>::value,
+        bool> = true>
 void parallel_for(
     TaskSetT& taskSet,
     StateContainer& states,
@@ -623,6 +646,30 @@ void parallel_for(
         }
       },
       options);
+}
+
+template <
+    typename TaskSetT,
+    typename IntegerA,
+    typename IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen,
+    std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
+    std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
+    std::enable_if_t<
+        detail::CanInvoke<F(typename StateContainer::reference, IntegerA, IntegerB)>::value,
+        bool> = true>
+void parallel_for(
+    TaskSetT& taskSet,
+    StateContainer& states,
+    const StateGen& defaultState,
+    IntegerA start,
+    IntegerB end,
+    F&& f,
+    ParForOptions options = {}) {
+  auto range = makeChunkedRange(start, end, options.defaultChunking);
+  parallel_for(taskSet, states, defaultState, range, std::forward<F>(f), options);
 }
 
 /**
