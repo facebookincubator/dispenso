@@ -159,7 +159,7 @@ Static Public Attributes</h2></td></tr>
 <div class="textblock"><div class="compoundTemplParams">template&lt;typename IntegerT = ssize_t&gt;<br />
 struct dispenso::ChunkedRange&lt; IntegerT &gt;</div><p >A helper class for <code>parallel_for</code>. It provides various configuration parameters to describe how to break up work for parallel processing. ChunkedRanges can be created with <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking, <a class="el" href="structdispenso_1_1_chunked_range_1_1_static.html">Static</a> chunking, or specific chunking. <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking makes large chunks for better cache utilization, but tries to make enough chunks to provide some dynamic load balancing. <a class="el" href="structdispenso_1_1_chunked_range_1_1_static.html">Static</a> chunking makes N chunks given N threads to run the loop on. User-specified chunking can be useful for ensuring e.g. that at least a multiple of SIMD width is provided per chunk. <code>parallel_for</code> calls that don't accept a <a class="el" href="structdispenso_1_1_chunked_range.html">ChunkedRange</a> will create a <a class="el" href="structdispenso_1_1_chunked_range.html">ChunkedRange</a> internally using <a class="el" href="structdispenso_1_1_chunked_range_1_1_auto.html">Auto</a> chunking. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00079">79</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00087">87</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a9cd720c1573e64285937795e3e9a31a7" name="a9cd720c1573e64285937795e3e9a31a7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9cd720c1573e64285937795e3e9a31a7">&#9670;&#160;</a></span>size_type</h2>
@@ -175,7 +175,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00086">86</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00094">94</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -231,7 +231,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00099">99</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00107">107</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -285,7 +285,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00106">106</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00114">114</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -339,7 +339,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00114">114</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00122">122</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -388,7 +388,7 @@ template&lt;typename OtherInt &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00134">134</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00142">142</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -417,7 +417,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00124">124</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00132">132</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -446,7 +446,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00120">120</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00128">128</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -475,7 +475,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00116">116</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00124">124</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -504,7 +504,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00128">128</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00136">136</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -523,7 +523,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00157">157</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00165">165</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -541,7 +541,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00156">156</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00164">164</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -567,7 +567,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00090">90</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00098">98</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -585,7 +585,7 @@ template&lt;typename IntegerT  = ssize_t&gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00155">155</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00163">163</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

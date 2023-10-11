@@ -106,6 +106,7 @@ $(document).ready(function(){initNavTree('parallel__for_8h.html',''); initResiza
 <div class="textblock"><code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;limits&gt;</code><br />
 <code>#include &lt;memory&gt;</code><br />
+<code>#include &lt;dispenso/detail/can_invoke.h&gt;</code><br />
 <code>#include &lt;dispenso/detail/per_thread_info.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="task__set_8h_source.html">dispenso/task_set.h</a>&gt;</code><br />
 </div>
@@ -149,15 +150,15 @@ Functions</h2></td></tr>
 <tr class="memitem:acd1434f629d379d54363d93c6970440a"><td class="memTemplParams" colspan="2">template&lt;typename F , typename IntegerT , typename StateContainer , typename StateGen &gt; </td></tr>
 <tr class="memitem:acd1434f629d379d54363d93c6970440a"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#acd1434f629d379d54363d93c6970440a">dispenso::parallel_for</a> (StateContainer &amp;states, const StateGen &amp;defaultState, const ChunkedRange&lt; IntegerT &gt; &amp;range, F &amp;&amp;f, ParForOptions options={})</td></tr>
 <tr class="separator:acd1434f629d379d54363d93c6970440a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51ecad096c8c363c8cdd966bd9cce807"><td class="memTemplParams" colspan="2">template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </td></tr>
-<tr class="memitem:a51ecad096c8c363c8cdd966bd9cce807"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#a51ecad096c8c363c8cdd966bd9cce807">dispenso::parallel_for</a> (TaskSetT &amp;taskSet, IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
-<tr class="separator:a51ecad096c8c363c8cdd966bd9cce807"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c7907a22bed40a3cdb0890936e6e402"><td class="memTemplParams" colspan="2">template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true, std::enable_if_t&lt; detail::CanInvoke&lt; F(IntegerA)&gt;::value, bool &gt;  = true&gt; </td></tr>
+<tr class="memitem:a4c7907a22bed40a3cdb0890936e6e402"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#a4c7907a22bed40a3cdb0890936e6e402">dispenso::parallel_for</a> (TaskSetT &amp;taskSet, IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
+<tr class="separator:a4c7907a22bed40a3cdb0890936e6e402"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4b3adc98a791e37ef19708242b30d047"><td class="memTemplParams" colspan="2">template&lt;typename IntegerA , typename IntegerB , typename F , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </td></tr>
 <tr class="memitem:a4b3adc98a791e37ef19708242b30d047"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#a4b3adc98a791e37ef19708242b30d047">dispenso::parallel_for</a> (IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
 <tr class="separator:a4b3adc98a791e37ef19708242b30d047"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9632d360417b9ad6c5c2d694b6eadff"><td class="memTemplParams" colspan="2">template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , typename StateContainer , typename StateGen , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </td></tr>
-<tr class="memitem:ab9632d360417b9ad6c5c2d694b6eadff"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#ab9632d360417b9ad6c5c2d694b6eadff">dispenso::parallel_for</a> (TaskSetT &amp;taskSet, StateContainer &amp;states, const StateGen &amp;defaultState, IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
-<tr class="separator:ab9632d360417b9ad6c5c2d694b6eadff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac28cb63caa4dc43f836ea3c4d03e9255"><td class="memTemplParams" colspan="2">template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , typename StateContainer , typename StateGen , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true, std::enable_if_t&lt; detail::CanInvoke&lt; F(typename StateContainer::reference, IntegerA)&gt;::value, bool &gt;  = true&gt; </td></tr>
+<tr class="memitem:ac28cb63caa4dc43f836ea3c4d03e9255"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#ac28cb63caa4dc43f836ea3c4d03e9255">dispenso::parallel_for</a> (TaskSetT &amp;taskSet, StateContainer &amp;states, const StateGen &amp;defaultState, IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
+<tr class="separator:ac28cb63caa4dc43f836ea3c4d03e9255"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac0f644b9ba92c8c5c0d86101bf5007fc"><td class="memTemplParams" colspan="2">template&lt;typename IntegerA , typename IntegerB , typename F , typename StateContainer , typename StateGen , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </td></tr>
 <tr class="memitem:ac0f644b9ba92c8c5c0d86101bf5007fc"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="parallel__for_8h.html#ac0f644b9ba92c8c5c0d86101bf5007fc">dispenso::parallel_for</a> (StateContainer &amp;states, const StateGen &amp;defaultState, IntegerA start, IntegerB end, F &amp;&amp;f, ParForOptions options={})</td></tr>
 <tr class="separator:ac0f644b9ba92c8c5c0d86101bf5007fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -188,7 +189,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 <p >Chunking strategy. Typically if the cost of each loop iteration is roughly constant, kStatic load balancing is preferred. Additionally, when making a non-waiting parallel_for call in conjunction with other parallel_for calls or with other task submissions to a TaskSet, some dynamic load balancing is automatically introduced, and selecting kStatic load balancing here can be better. If the workload per iteration deviates a lot from constant, and some ranges may be much cheaper than others, select kAuto. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00032">32</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00033">33</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -244,7 +245,7 @@ template&lt;typename IntegerA , typename IntegerB , typename IntegerC &gt; </div
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00185">185</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00193">193</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -299,7 +300,7 @@ template&lt;typename IntegerA , typename IntegerB &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00169">169</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00177">177</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -346,7 +347,7 @@ template&lt;typename IntegerT , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00485">485</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00530">530</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -400,7 +401,7 @@ template&lt;typename IntegerA , typename IntegerB , typename F , std::enable_if_
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00573">573</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00637">637</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -461,7 +462,7 @@ template&lt;typename F , typename IntegerT , typename StateContainer , typename 
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00509">509</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00554">554</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -529,7 +530,7 @@ template&lt;typename IntegerA , typename IntegerB , typename F , typename StateC
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00654">654</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00745">745</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -583,17 +584,17 @@ template&lt;typename TaskSetT , typename IntegerT , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00460">460</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00505">505</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
-<a id="a51ecad096c8c363c8cdd966bd9cce807" name="a51ecad096c8c363c8cdd966bd9cce807"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a51ecad096c8c363c8cdd966bd9cce807">&#9670;&#160;</a></span>parallel_for() <span class="overload">[6/8]</span></h2>
+<a id="a4c7907a22bed40a3cdb0890936e6e402" name="a4c7907a22bed40a3cdb0890936e6e402"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c7907a22bed40a3cdb0890936e6e402">&#9670;&#160;</a></span>parallel_for() <span class="overload">[6/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
-template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </div>
+template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true, std::enable_if_t&lt; detail::CanInvoke&lt; F(IntegerA)&gt;::value, bool &gt;  = true&gt; </div>
       <table class="memname">
         <tr>
           <td class="memname">void dispenso::parallel_for </td>
@@ -644,7 +645,7 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00537">537</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00583">583</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -712,17 +713,17 @@ template&lt;typename TaskSetT , typename IntegerT , typename F , typename StateC
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00316">316</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00342">342</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
-<a id="ab9632d360417b9ad6c5c2d694b6eadff" name="ab9632d360417b9ad6c5c2d694b6eadff"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab9632d360417b9ad6c5c2d694b6eadff">&#9670;&#160;</a></span>parallel_for() <span class="overload">[8/8]</span></h2>
+<a id="ac28cb63caa4dc43f836ea3c4d03e9255" name="ac28cb63caa4dc43f836ea3c4d03e9255"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac28cb63caa4dc43f836ea3c4d03e9255">&#9670;&#160;</a></span>parallel_for() <span class="overload">[8/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
-template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , typename StateContainer , typename StateGen , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true&gt; </div>
+template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename F , typename StateContainer , typename StateGen , std::enable_if_t&lt; std::is_integral&lt; IntegerA &gt;::value, bool &gt;  = true, std::enable_if_t&lt; std::is_integral&lt; IntegerB &gt;::value, bool &gt;  = true, std::enable_if_t&lt; detail::CanInvoke&lt; F(typename StateContainer::reference, IntegerA)&gt;::value, bool &gt;  = true&gt; </div>
       <table class="memname">
         <tr>
           <td class="memname">void dispenso::parallel_for </td>
@@ -787,7 +788,7 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00605">605</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00672">672</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

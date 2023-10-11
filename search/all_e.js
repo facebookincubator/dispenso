@@ -11,5 +11,6 @@ var searchData=
   ['resource_8',['Resource',['../classdispenso_1_1_resource.html',1,'dispenso']]],
   ['resource_5fpool_2eh_9',['resource_pool.h',['../resource__pool_8h.html',1,'']]],
   ['resourcepool_10',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso::ResourcePool&lt; T &gt;'],['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool::ResourcePool()']]],
-  ['rwlock_11',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
+  ['reuseexistingstate_11',['reuseExistingState',['../structdispenso_1_1_par_for_options.html#a84a0af7b2f1c7e7d9335173f91c1b075',1,'dispenso::ParForOptions']]],
+  ['rwlock_12',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
 ];
