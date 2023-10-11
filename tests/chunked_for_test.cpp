@@ -308,3 +308,51 @@ TEST(ChunkedFor, MinChunkSizeLoopStatic) {
   minChunkSize(dispenso::ParForChunking::kStatic, 1000000, 10000000, 20000);
   minChunkSize(dispenso::ParForChunking::kStatic, -10000000, -1000000, 20000);
 }
+
+template <typename StateContainer>
+void loopWithStateImplReuseState() {
+  int w = 1024;
+  int h = 1024;
+  std::vector<int> image(static_cast<size_t>(w * h), 7);
+
+  StateContainer state;
+
+  dispenso::ParForOptions options;
+  options.reuseExistingState = true;
+
+  for (size_t i = 0; i < 3; ++i) {
+    dispenso::parallel_for(
+        state,
+        []() { return int64_t{0}; },
+        dispenso::makeChunkedRange(0, h, 16),
+        [w, &image](int64_t& sum, int ystart, int yend) {
+          EXPECT_EQ(yend - ystart, 16);
+          int64_t s = 0;
+          for (int y = ystart; y < yend; ++y) {
+            int* row = image.data() + y * w;
+            for (int i = 0; i < w; ++i) {
+              s += row[i];
+            }
+          }
+          sum += s;
+        },
+        options);
+  }
+
+  int64_t sum = 0;
+  for (int64_t s : state) {
+    sum += s;
+  }
+
+  EXPECT_EQ(sum, 3 * w * h * 7);
+}
+
+TEST(ChunkedFor, LoopWithDequeStateReuse) {
+  loopWithStateImplReuseState<std::deque<int64_t>>();
+}
+TEST(ChunkedFor, LoopWithVectorStateReuse) {
+  loopWithStateImplReuseState<std::vector<int64_t>>();
+}
+TEST(ChunkedFor, LoopWithListStateReuse) {
+  loopWithStateImplReuseState<std::list<int64_t>>();
+}

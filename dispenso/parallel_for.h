@@ -64,6 +64,13 @@ struct ParForOptions {
    * size is provided to ChunkedRange.
    **/
   uint32_t minItemsPerChunk = 1;
+
+  /**
+   * When set to false, and StateContainers are supplied to parallel_for, re-create container from
+   * scratch each call to parallel_for.  When true, reuse existing state as much as possible (only
+   * create new state if we require more than is already available in the container).
+   **/
+  bool reuseExistingState = false;
 };
 
 /**
@@ -203,6 +210,16 @@ struct NoOpIter {
 };
 
 struct NoOpContainer {
+  size_t size() const {
+    return 0;
+  }
+
+  bool empty() const {
+    return true;
+  }
+
+  void clear() {}
+
   NoOpIter begin() {
     return {};
   }
@@ -234,14 +251,22 @@ void parallel_for_staticImpl(
     const ChunkedRange<IntegerT>& range,
     F&& f,
     ssize_t maxThreads,
-    bool wait) {
+    bool wait,
+    bool reuseExistingState) {
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
   size_type numThreads = std::min<size_type>(taskSet.numPoolThreads(), maxThreads);
   // Reduce threads used if they exceed work to be done.
   numThreads = std::min(numThreads, range.size()) + wait;
 
-  for (size_type i = 0; i < numThreads; ++i) {
+  if (!reuseExistingState) {
+    states.clear();
+  }
+
+  size_t numToEmplace =
+      states.size() < static_cast<size_t>(numThreads) ? numThreads - states.size() : 0;
+
+  for (; numToEmplace--;) {
     states.emplace_back(defaultState());
   }
 
@@ -338,7 +363,12 @@ void parallel_for(
   const size_type N = taskSet.numPoolThreads();
   if (N == 0 || !options.maxThreads || range.size() <= minItemsPerChunk ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
-    states.emplace_back(defaultState());
+    if (!options.reuseExistingState) {
+      states.clear();
+    }
+    if (states.empty()) {
+      states.emplace_back(defaultState());
+    }
     f(*states.begin(), range.start, range.end);
     if (options.wait) {
       taskSet.wait();
@@ -365,13 +395,27 @@ void parallel_for(
 
   if (isStatic) {
     detail::parallel_for_staticImpl(
-        taskSet, states, defaultState, range, std::forward<F>(f), maxThreads, options.wait);
+        taskSet,
+        states,
+        defaultState,
+        range,
+        std::forward<F>(f),
+        maxThreads,
+        options.wait,
+        options.reuseExistingState);
     return;
   }
 
   const size_type numToLaunch = std::min<size_type>(maxThreads, N);
 
-  for (size_type i = 0; i < numToLaunch + options.wait; ++i) {
+  if (!options.reuseExistingState) {
+    states.clear();
+  }
+
+  size_t numToEmplace = static_cast<size_type>(states.size()) < (numToLaunch + options.wait)
+      ? (numToLaunch + options.wait) - states.size()
+      : 0;
+  for (; numToEmplace--;) {
     states.emplace_back(defaultState());
   }
 
