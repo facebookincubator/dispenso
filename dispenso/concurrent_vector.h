@@ -47,6 +47,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <cstring>
 #include <initializer_list>
 #include <stdexcept>
@@ -99,7 +100,9 @@ struct DefaultConcurrentVectorSizeTraits {
    * petabytes, the class can use less space.  Additionally, some minor optimizations may be
    * possible if the max size is less than 32-bits.
    **/
-  static constexpr size_t kMaxVectorSize = (size_t{1} << 47) / sizeof(T);
+  static constexpr size_t kMaxVectorSize =
+      (size_t{1} << (sizeof(size_t) * CHAR_BIT >= 47 ? 47 : sizeof(size_t) * CHAR_BIT - 1)) /
+      sizeof(T);
 };
 
 /**
@@ -765,9 +768,11 @@ class ConcurrentVector {
    * still the users responsibility to avoid racing on the element itself.
    **/
   const T& at(size_type index) const {
+#if defined(__cpp_exceptions)
     if (index >= size_.load(std::memory_order_relaxed)) {
       throw std::out_of_range("Index too large");
     }
+#endif
     return operator[](index);
   }
 
@@ -781,9 +786,11 @@ class ConcurrentVector {
    * still the users responsibility to avoid racing on the element itself.
    **/
   T& at(size_type index) {
+#if defined(__cpp_exceptions)
     if (index >= size_.load(std::memory_order_relaxed)) {
       throw std::out_of_range("Index too large");
     }
+#endif
     return operator[](index);
   }
 
