@@ -145,7 +145,7 @@ Friends</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >The basic executor for dispenso. It provides typical thread pool functionality, plus allows work stealing by related types (e.g. <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a>, etc...), which prevents deadlock when waiting for pool-recursive tasks. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00062">62</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00070">70</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a2442016e8a4924ca665d3993c1879b4d" name="a2442016e8a4924ca665d3993c1879b4d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2442016e8a4924ca665d3993c1879b4d">&#9670;&#160;</a></span>ThreadPool()</h2>
@@ -181,7 +181,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00031">31</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00035">35</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -201,7 +201,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p >Destruct the pool. This destructor is blocking until all queued work is completed. It is illegal to call the destructor while any other thread makes calls to the pool (as is generally the case with C++ classes). </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00156">156</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00160">160</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -231,7 +231,7 @@ Friends</h2></td></tr>
 <p >Get the number of threads backing the pool. If called concurrently to <code>resize</code>, the number returned may be stale.</p>
 <dl class="section return"><dt>Returns</dt><dd>The current number of threads backing the pool. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00119">119</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00127">127</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -259,7 +259,7 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00212">212</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00220">220</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -287,7 +287,7 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00209">209</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00217">217</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -322,7 +322,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00108">108</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00116">116</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -359,7 +359,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00260">260</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00268">268</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -406,7 +406,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00273">273</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00281">281</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -455,7 +455,7 @@ template&lt;class Rep , class Period &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>It is highly recommended to leave signaling wake enabled on Windows platforms, as sleeping/polling tends to perform poorly for intermittent workloads. For Mac/Linux platforms, it is okay to enable signaling wake, particularly if you wish to set a longer expected duration between work. If signaling wake is disabled, ensure sleepDuration is small (e.g. 200us) for best performance. Most users will not need to call this function, as defaults are reasonable. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00092">92</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00100">100</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -480,7 +480,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00239">239</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00247">247</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -504,7 +504,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00240">240</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00248">248</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>

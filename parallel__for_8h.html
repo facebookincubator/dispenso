@@ -395,7 +395,7 @@ template&lt;typename IntegerA , typename IntegerB , typename F , std::enable_if_
   <table class="params">
     <tr><td class="paramname">start</td><td>The start of the loop extents. </td></tr>
     <tr><td class="paramname">end</td><td>The end of the loop extents. </td></tr>
-    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(size_t index)</code>. </td></tr>
+    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(size_t index)</code> or <code>void(size_t begin, size_t end)</code>. </td></tr>
     <tr><td class="paramname">options</td><td>See ParForOptions for details. <code>options.wait</code> will always be reset to true. </td></tr>
   </table>
   </dd>
@@ -524,13 +524,13 @@ template&lt;typename IntegerA , typename IntegerB , typename F , typename StateC
     <tr><td class="paramname">defaultState</td><td>A functor with signature State(). It will be called to initialize the objects for <code>states</code>. </td></tr>
     <tr><td class="paramname">start</td><td>The start of the loop extents. </td></tr>
     <tr><td class="paramname">end</td><td>The end of the loop extents. </td></tr>
-    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(State &amp;s, size_t begin, size_t end)</code>. </td></tr>
+    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(State &amp;s, size_t index)</code> or <code>void(State &amp;s, size_t begin, size_t end)</code>. </td></tr>
     <tr><td class="paramname">options</td><td>See ParForOptions for details. <code>options.wait</code> will always be reset to true. </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00745">745</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00747">747</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -639,7 +639,7 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
     <tr><td class="paramname">taskSet</td><td>The task set to schedule the loop on. </td></tr>
     <tr><td class="paramname">start</td><td>The start of the loop extents. </td></tr>
     <tr><td class="paramname">end</td><td>The end of the loop extents. </td></tr>
-    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(size_t index)</code>. </td></tr>
+    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(size_t index)</code> or <code>void(size_t begin, size_t end)</code>. </td></tr>
     <tr><td class="paramname">options</td><td>See ParForOptions for details. </td></tr>
   </table>
   </dd>
@@ -782,13 +782,13 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
     <tr><td class="paramname">defaultState</td><td>A functor with signature State(). It will be called to initialize the objects for <code>states</code>. </td></tr>
     <tr><td class="paramname">start</td><td>The start of the loop extents. </td></tr>
     <tr><td class="paramname">end</td><td>The end of the loop extents. </td></tr>
-    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(State &amp;s, size_t begin, size_t end)</code>. </td></tr>
+    <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(State &amp;s, size_t index)</code> or <code>void(State &amp;s, size_t begin, size_t end)</code>. </td></tr>
     <tr><td class="paramname">options</td><td>See ParForOptions for details. </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00672">672</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00673">673</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

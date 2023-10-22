@@ -583,86 +583,86 @@ $(document).ready(function(){initNavTree('parallel__for_8h_source.html',''); ini
 <div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span>  parallel_for(taskSet, start, end, std::forward&lt;F&gt;(f), options);</div>
 <div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span>}</div>
 <div class="line"><a id="l00642" name="l00642"></a><span class="lineno">  642</span> </div>
-<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span><span class="keyword">template</span> &lt;</div>
-<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span>    <span class="keyword">typename</span> TaskSetT,</div>
-<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>    <span class="keyword">typename</span> IntegerA,</div>
-<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>    <span class="keyword">typename</span> IntegerB,</div>
-<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>    <span class="keyword">typename</span> F,</div>
-<div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span>    <span class="keyword">typename</span> StateContainer,</div>
-<div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span>    <span class="keyword">typename</span> StateGen,</div>
-<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
-<div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
-<div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span>    std::enable_if_t&lt;</div>
-<div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span>        detail::CanInvoke&lt;F(<span class="keyword">typename</span> StateContainer::reference, IntegerA)&gt;::value,</div>
-<div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>        <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
-<div class="line"><a id="l00672" name="l00672"></a><span class="lineno"><a class="line" href="parallel__for_8h.html#ac28cb63caa4dc43f836ea3c4d03e9255">  672</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
-<div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span>    TaskSetT&amp; taskSet,</div>
-<div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>    StateContainer&amp; states,</div>
-<div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
-<div class="line"><a id="l00676" name="l00676"></a><span class="lineno">  676</span>    IntegerA start,</div>
-<div class="line"><a id="l00677" name="l00677"></a><span class="lineno">  677</span>    IntegerB end,</div>
-<div class="line"><a id="l00678" name="l00678"></a><span class="lineno">  678</span>    F&amp;&amp; f,</div>
-<div class="line"><a id="l00679" name="l00679"></a><span class="lineno">  679</span>    <a class="code hl_struct" href="structdispenso_1_1_par_for_options.html">ParForOptions</a> options = {}) {</div>
-<div class="line"><a id="l00680" name="l00680"></a><span class="lineno">  680</span>  <span class="keyword">using </span>IntegerT = std::common_type_t&lt;IntegerA, IntegerB&gt;;</div>
-<div class="line"><a id="l00681" name="l00681"></a><span class="lineno">  681</span>  <span class="keyword">auto</span> range = makeChunkedRange(start, end, options.defaultChunking);</div>
-<div class="line"><a id="l00682" name="l00682"></a><span class="lineno">  682</span>  parallel_for(</div>
-<div class="line"><a id="l00683" name="l00683"></a><span class="lineno">  683</span>      taskSet,</div>
-<div class="line"><a id="l00684" name="l00684"></a><span class="lineno">  684</span>      states,</div>
-<div class="line"><a id="l00685" name="l00685"></a><span class="lineno">  685</span>      defaultState,</div>
-<div class="line"><a id="l00686" name="l00686"></a><span class="lineno">  686</span>      range,</div>
-<div class="line"><a id="l00687" name="l00687"></a><span class="lineno">  687</span>      [f = std::move(f)](<span class="keyword">auto</span>&amp; state, IntegerT s, IntegerT e) {</div>
-<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span>        <span class="keywordflow">for</span> (IntegerT i = s; i &lt; e; ++i) {</div>
-<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span>          f(state, i);</div>
-<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span>        }</div>
-<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span>      },</div>
-<div class="line"><a id="l00692" name="l00692"></a><span class="lineno">  692</span>      options);</div>
-<div class="line"><a id="l00693" name="l00693"></a><span class="lineno">  693</span>}</div>
-<div class="line"><a id="l00694" name="l00694"></a><span class="lineno">  694</span> </div>
-<div class="line"><a id="l00695" name="l00695"></a><span class="lineno">  695</span><span class="keyword">template</span> &lt;</div>
-<div class="line"><a id="l00696" name="l00696"></a><span class="lineno">  696</span>    <span class="keyword">typename</span> TaskSetT,</div>
-<div class="line"><a id="l00697" name="l00697"></a><span class="lineno">  697</span>    <span class="keyword">typename</span> IntegerA,</div>
-<div class="line"><a id="l00698" name="l00698"></a><span class="lineno">  698</span>    <span class="keyword">typename</span> IntegerB,</div>
-<div class="line"><a id="l00699" name="l00699"></a><span class="lineno">  699</span>    <span class="keyword">typename</span> F,</div>
-<div class="line"><a id="l00700" name="l00700"></a><span class="lineno">  700</span>    <span class="keyword">typename</span> StateContainer,</div>
-<div class="line"><a id="l00701" name="l00701"></a><span class="lineno">  701</span>    <span class="keyword">typename</span> StateGen,</div>
-<div class="line"><a id="l00702" name="l00702"></a><span class="lineno">  702</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
-<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
-<div class="line"><a id="l00704" name="l00704"></a><span class="lineno">  704</span>    std::enable_if_t&lt;</div>
-<div class="line"><a id="l00705" name="l00705"></a><span class="lineno">  705</span>        detail::CanInvoke&lt;F(<span class="keyword">typename</span> StateContainer::reference, IntegerA, IntegerB)&gt;::value,</div>
-<div class="line"><a id="l00706" name="l00706"></a><span class="lineno">  706</span>        <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
-<div class="line"><a id="l00707" name="l00707"></a><span class="lineno">  707</span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
-<div class="line"><a id="l00708" name="l00708"></a><span class="lineno">  708</span>    TaskSetT&amp; taskSet,</div>
-<div class="line"><a id="l00709" name="l00709"></a><span class="lineno">  709</span>    StateContainer&amp; states,</div>
-<div class="line"><a id="l00710" name="l00710"></a><span class="lineno">  710</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
-<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span>    IntegerA start,</div>
-<div class="line"><a id="l00712" name="l00712"></a><span class="lineno">  712</span>    IntegerB end,</div>
-<div class="line"><a id="l00713" name="l00713"></a><span class="lineno">  713</span>    F&amp;&amp; f,</div>
-<div class="line"><a id="l00714" name="l00714"></a><span class="lineno">  714</span>    ParForOptions options = {}) {</div>
-<div class="line"><a id="l00715" name="l00715"></a><span class="lineno">  715</span>  <span class="keyword">auto</span> range = <a class="code hl_function" href="parallel__for_8h.html#aa25d40224b10469dc019bc2523b0ae87">makeChunkedRange</a>(start, end, options.defaultChunking);</div>
-<div class="line"><a id="l00716" name="l00716"></a><span class="lineno">  716</span>  <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(taskSet, states, defaultState, range, std::forward&lt;F&gt;(f), options);</div>
-<div class="line"><a id="l00717" name="l00717"></a><span class="lineno">  717</span>}</div>
-<div class="line"><a id="l00718" name="l00718"></a><span class="lineno">  718</span> </div>
-<div class="line"><a id="l00737" name="l00737"></a><span class="lineno">  737</span><span class="keyword">template</span> &lt;</div>
-<div class="line"><a id="l00738" name="l00738"></a><span class="lineno">  738</span>    <span class="keyword">typename</span> IntegerA,</div>
-<div class="line"><a id="l00739" name="l00739"></a><span class="lineno">  739</span>    <span class="keyword">typename</span> IntegerB,</div>
-<div class="line"><a id="l00740" name="l00740"></a><span class="lineno">  740</span>    <span class="keyword">typename</span> F,</div>
-<div class="line"><a id="l00741" name="l00741"></a><span class="lineno">  741</span>    <span class="keyword">typename</span> StateContainer,</div>
-<div class="line"><a id="l00742" name="l00742"></a><span class="lineno">  742</span>    <span class="keyword">typename</span> StateGen,</div>
-<div class="line"><a id="l00743" name="l00743"></a><span class="lineno">  743</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
-<div class="line"><a id="l00744" name="l00744"></a><span class="lineno">  744</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
-<div class="line"><a id="l00745" name="l00745"></a><span class="lineno"><a class="line" href="parallel__for_8h.html#ac0f644b9ba92c8c5c0d86101bf5007fc">  745</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
-<div class="line"><a id="l00746" name="l00746"></a><span class="lineno">  746</span>    StateContainer&amp; states,</div>
-<div class="line"><a id="l00747" name="l00747"></a><span class="lineno">  747</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
-<div class="line"><a id="l00748" name="l00748"></a><span class="lineno">  748</span>    IntegerA start,</div>
-<div class="line"><a id="l00749" name="l00749"></a><span class="lineno">  749</span>    IntegerB end,</div>
-<div class="line"><a id="l00750" name="l00750"></a><span class="lineno">  750</span>    F&amp;&amp; f,</div>
-<div class="line"><a id="l00751" name="l00751"></a><span class="lineno">  751</span>    <a class="code hl_struct" href="structdispenso_1_1_par_for_options.html">ParForOptions</a> options = {}) {</div>
-<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span>  TaskSet taskSet(globalThreadPool());</div>
-<div class="line"><a id="l00753" name="l00753"></a><span class="lineno">  753</span>  options.wait = <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00754" name="l00754"></a><span class="lineno">  754</span>  parallel_for(taskSet, states, defaultState, start, end, std::forward&lt;F&gt;(f), options);</div>
-<div class="line"><a id="l00755" name="l00755"></a><span class="lineno">  755</span>}</div>
-<div class="line"><a id="l00756" name="l00756"></a><span class="lineno">  756</span> </div>
-<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span><span class="keyword">template</span> &lt;</div>
+<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>    <span class="keyword">typename</span> TaskSetT,</div>
+<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>    <span class="keyword">typename</span> IntegerA,</div>
+<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>    <span class="keyword">typename</span> IntegerB,</div>
+<div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span>    <span class="keyword">typename</span> F,</div>
+<div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span>    <span class="keyword">typename</span> StateContainer,</div>
+<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span>    <span class="keyword">typename</span> StateGen,</div>
+<div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
+<div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
+<div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span>    std::enable_if_t&lt;</div>
+<div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>        detail::CanInvoke&lt;F(<span class="keyword">typename</span> StateContainer::reference, IntegerA)&gt;::value,</div>
+<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span>        <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
+<div class="line"><a id="l00673" name="l00673"></a><span class="lineno"><a class="line" href="parallel__for_8h.html#ac28cb63caa4dc43f836ea3c4d03e9255">  673</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
+<div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>    TaskSetT&amp; taskSet,</div>
+<div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span>    StateContainer&amp; states,</div>
+<div class="line"><a id="l00676" name="l00676"></a><span class="lineno">  676</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
+<div class="line"><a id="l00677" name="l00677"></a><span class="lineno">  677</span>    IntegerA start,</div>
+<div class="line"><a id="l00678" name="l00678"></a><span class="lineno">  678</span>    IntegerB end,</div>
+<div class="line"><a id="l00679" name="l00679"></a><span class="lineno">  679</span>    F&amp;&amp; f,</div>
+<div class="line"><a id="l00680" name="l00680"></a><span class="lineno">  680</span>    <a class="code hl_struct" href="structdispenso_1_1_par_for_options.html">ParForOptions</a> options = {}) {</div>
+<div class="line"><a id="l00681" name="l00681"></a><span class="lineno">  681</span>  <span class="keyword">using </span>IntegerT = std::common_type_t&lt;IntegerA, IntegerB&gt;;</div>
+<div class="line"><a id="l00682" name="l00682"></a><span class="lineno">  682</span>  <span class="keyword">auto</span> range = makeChunkedRange(start, end, options.defaultChunking);</div>
+<div class="line"><a id="l00683" name="l00683"></a><span class="lineno">  683</span>  parallel_for(</div>
+<div class="line"><a id="l00684" name="l00684"></a><span class="lineno">  684</span>      taskSet,</div>
+<div class="line"><a id="l00685" name="l00685"></a><span class="lineno">  685</span>      states,</div>
+<div class="line"><a id="l00686" name="l00686"></a><span class="lineno">  686</span>      defaultState,</div>
+<div class="line"><a id="l00687" name="l00687"></a><span class="lineno">  687</span>      range,</div>
+<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span>      [f = std::move(f)](<span class="keyword">auto</span>&amp; state, IntegerT s, IntegerT e) {</div>
+<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span>        <span class="keywordflow">for</span> (IntegerT i = s; i &lt; e; ++i) {</div>
+<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span>          f(state, i);</div>
+<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span>        }</div>
+<div class="line"><a id="l00692" name="l00692"></a><span class="lineno">  692</span>      },</div>
+<div class="line"><a id="l00693" name="l00693"></a><span class="lineno">  693</span>      options);</div>
+<div class="line"><a id="l00694" name="l00694"></a><span class="lineno">  694</span>}</div>
+<div class="line"><a id="l00695" name="l00695"></a><span class="lineno">  695</span> </div>
+<div class="line"><a id="l00696" name="l00696"></a><span class="lineno">  696</span><span class="keyword">template</span> &lt;</div>
+<div class="line"><a id="l00697" name="l00697"></a><span class="lineno">  697</span>    <span class="keyword">typename</span> TaskSetT,</div>
+<div class="line"><a id="l00698" name="l00698"></a><span class="lineno">  698</span>    <span class="keyword">typename</span> IntegerA,</div>
+<div class="line"><a id="l00699" name="l00699"></a><span class="lineno">  699</span>    <span class="keyword">typename</span> IntegerB,</div>
+<div class="line"><a id="l00700" name="l00700"></a><span class="lineno">  700</span>    <span class="keyword">typename</span> F,</div>
+<div class="line"><a id="l00701" name="l00701"></a><span class="lineno">  701</span>    <span class="keyword">typename</span> StateContainer,</div>
+<div class="line"><a id="l00702" name="l00702"></a><span class="lineno">  702</span>    <span class="keyword">typename</span> StateGen,</div>
+<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
+<div class="line"><a id="l00704" name="l00704"></a><span class="lineno">  704</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
+<div class="line"><a id="l00705" name="l00705"></a><span class="lineno">  705</span>    std::enable_if_t&lt;</div>
+<div class="line"><a id="l00706" name="l00706"></a><span class="lineno">  706</span>        detail::CanInvoke&lt;F(<span class="keyword">typename</span> StateContainer::reference, IntegerA, IntegerB)&gt;::value,</div>
+<div class="line"><a id="l00707" name="l00707"></a><span class="lineno">  707</span>        <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
+<div class="line"><a id="l00708" name="l00708"></a><span class="lineno">  708</span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
+<div class="line"><a id="l00709" name="l00709"></a><span class="lineno">  709</span>    TaskSetT&amp; taskSet,</div>
+<div class="line"><a id="l00710" name="l00710"></a><span class="lineno">  710</span>    StateContainer&amp; states,</div>
+<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
+<div class="line"><a id="l00712" name="l00712"></a><span class="lineno">  712</span>    IntegerA start,</div>
+<div class="line"><a id="l00713" name="l00713"></a><span class="lineno">  713</span>    IntegerB end,</div>
+<div class="line"><a id="l00714" name="l00714"></a><span class="lineno">  714</span>    F&amp;&amp; f,</div>
+<div class="line"><a id="l00715" name="l00715"></a><span class="lineno">  715</span>    ParForOptions options = {}) {</div>
+<div class="line"><a id="l00716" name="l00716"></a><span class="lineno">  716</span>  <span class="keyword">auto</span> range = <a class="code hl_function" href="parallel__for_8h.html#aa25d40224b10469dc019bc2523b0ae87">makeChunkedRange</a>(start, end, options.defaultChunking);</div>
+<div class="line"><a id="l00717" name="l00717"></a><span class="lineno">  717</span>  <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(taskSet, states, defaultState, range, std::forward&lt;F&gt;(f), options);</div>
+<div class="line"><a id="l00718" name="l00718"></a><span class="lineno">  718</span>}</div>
+<div class="line"><a id="l00719" name="l00719"></a><span class="lineno">  719</span> </div>
+<div class="line"><a id="l00739" name="l00739"></a><span class="lineno">  739</span><span class="keyword">template</span> &lt;</div>
+<div class="line"><a id="l00740" name="l00740"></a><span class="lineno">  740</span>    <span class="keyword">typename</span> IntegerA,</div>
+<div class="line"><a id="l00741" name="l00741"></a><span class="lineno">  741</span>    <span class="keyword">typename</span> IntegerB,</div>
+<div class="line"><a id="l00742" name="l00742"></a><span class="lineno">  742</span>    <span class="keyword">typename</span> F,</div>
+<div class="line"><a id="l00743" name="l00743"></a><span class="lineno">  743</span>    <span class="keyword">typename</span> StateContainer,</div>
+<div class="line"><a id="l00744" name="l00744"></a><span class="lineno">  744</span>    <span class="keyword">typename</span> StateGen,</div>
+<div class="line"><a id="l00745" name="l00745"></a><span class="lineno">  745</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerA&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>,</div>
+<div class="line"><a id="l00746" name="l00746"></a><span class="lineno">  746</span>    std::enable_if_t&lt;std::is_integral&lt;IntegerB&gt;::value, <span class="keywordtype">bool</span>&gt; = <span class="keyword">true</span>&gt;</div>
+<div class="line"><a id="l00747" name="l00747"></a><span class="lineno"><a class="line" href="parallel__for_8h.html#ac0f644b9ba92c8c5c0d86101bf5007fc">  747</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">parallel_for</a>(</div>
+<div class="line"><a id="l00748" name="l00748"></a><span class="lineno">  748</span>    StateContainer&amp; states,</div>
+<div class="line"><a id="l00749" name="l00749"></a><span class="lineno">  749</span>    <span class="keyword">const</span> StateGen&amp; defaultState,</div>
+<div class="line"><a id="l00750" name="l00750"></a><span class="lineno">  750</span>    IntegerA start,</div>
+<div class="line"><a id="l00751" name="l00751"></a><span class="lineno">  751</span>    IntegerB end,</div>
+<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span>    F&amp;&amp; f,</div>
+<div class="line"><a id="l00753" name="l00753"></a><span class="lineno">  753</span>    <a class="code hl_struct" href="structdispenso_1_1_par_for_options.html">ParForOptions</a> options = {}) {</div>
+<div class="line"><a id="l00754" name="l00754"></a><span class="lineno">  754</span>  TaskSet taskSet(globalThreadPool());</div>
+<div class="line"><a id="l00755" name="l00755"></a><span class="lineno">  755</span>  options.wait = <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00756" name="l00756"></a><span class="lineno">  756</span>  parallel_for(taskSet, states, defaultState, start, end, std::forward&lt;F&gt;(f), options);</div>
+<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span>}</div>
+<div class="line"><a id="l00758" name="l00758"></a><span class="lineno">  758</span> </div>
+<div class="line"><a id="l00759" name="l00759"></a><span class="lineno">  759</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aparallel__for_8h_html_a6937a5697393f11085906ecf68d79634"><div class="ttname"><a href="parallel__for_8h.html#a6937a5697393f11085906ecf68d79634">dispenso::ParForChunking</a></div><div class="ttdeci">ParForChunking</div><div class="ttdef"><b>Definition:</b> <a href="parallel__for_8h_source.html#l00033">parallel_for.h:33</a></div></div>
 <div class="ttc" id="aparallel__for_8h_html_a8201f4fc565c557f5cbaf6b4403991b1"><div class="ttname"><a href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">dispenso::parallel_for</a></div><div class="ttdeci">void parallel_for(TaskSetT &amp;taskSet, StateContainer &amp;states, const StateGen &amp;defaultState, const ChunkedRange&lt; IntegerT &gt; &amp;range, F &amp;&amp;f, ParForOptions options={})</div><div class="ttdef"><b>Definition:</b> <a href="parallel__for_8h_source.html#l00342">parallel_for.h:342</a></div></div>
 <div class="ttc" id="aparallel__for_8h_html_aa25d40224b10469dc019bc2523b0ae87"><div class="ttname"><a href="parallel__for_8h.html#aa25d40224b10469dc019bc2523b0ae87">dispenso::makeChunkedRange</a></div><div class="ttdeci">ChunkedRange&lt; std::common_type_t&lt; IntegerA, IntegerB &gt; &gt; makeChunkedRange(IntegerA start, IntegerB end, ParForChunking chunking=ParForChunking::kStatic)</div><div class="ttdef"><b>Definition:</b> <a href="parallel__for_8h_source.html#l00177">parallel_for.h:177</a></div></div>
