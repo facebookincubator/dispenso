@@ -18,7 +18,11 @@ void ThreadPool::PerThreadData::stop() {
 }
 
 uint32_t ThreadPool::wait(uint32_t currentEpoch) {
-  return epochWaiter_.waitFor(currentEpoch, sleepLengthUs_.load(std::memory_order_acquire));
+  if (sleepLengthUs_ > 0) {
+    return epochWaiter_.waitFor(currentEpoch, sleepLengthUs_.load(std::memory_order_acquire));
+  } else {
+    return epochWaiter_.current();
+  }
 }
 void ThreadPool::wake() {
   epochWaiter_.bumpAndWake();

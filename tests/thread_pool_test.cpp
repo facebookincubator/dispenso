@@ -65,7 +65,7 @@ class ThreadPoolTest : public testing::TestWithParam<ScheduleType> {
     pool_.reset();
   }
 
- private:
+ protected:
   std::unique_ptr<dispenso::ThreadPool> pool_;
   size_t count_ = 0;
 };
@@ -78,15 +78,11 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(ThreadPoolTest, SimpleWork) {
   constexpr int kWorkItems = 10000;
   std::vector<int> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     initPool(10);
     int i = 0;
     for (int& o : outputs) {
-      schedule([i, &o, &completed]() {
-        o = i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
+      schedule([i, &o]() { o = i * i; });
       ++i;
     }
     destroyPool();
@@ -103,20 +99,13 @@ TEST_P(ThreadPoolTest, MixedWork) {
   constexpr size_t kWorkItems = 10000;
   std::vector<size_t> outputsA(kWorkItems, 0);
   std::vector<size_t> outputsB(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     initPool(10);
     for (size_t i = 0; i < kWorkItems; ++i) {
       auto& a = outputsA[i];
       auto& b = outputsB[i];
-      schedule([i, &a, &completed]() {
-        a = i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
-      schedule([i, &b, &completed]() {
-        b = i * i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
+      schedule([i, &a]() { a = i * i; });
+      schedule([i, &b]() { b = i * i * i; });
     }
     destroyPool();
   }
@@ -130,15 +119,11 @@ TEST_P(ThreadPoolTest, MixedWork) {
 TEST(ThreadPool, ResizeConcurrent) {
   constexpr int kWorkItems = 10000;
   std::vector<int> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     dispenso::ThreadPool pool(10);
     int i = 0;
     for (int& o : outputs) {
-      pool.schedule([i, &o, &completed]() {
-        o = i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
+      pool.schedule([i, &o]() { o = i * i; });
       ++i;
 
       if ((i & 127) == 0) {
@@ -161,7 +146,6 @@ TEST(ThreadPool, ResizeConcurrent) {
 TEST(ThreadPool, ResizeMoreConcurrent) {
   constexpr int kWorkItems = 1000000;
   std::vector<int64_t> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     dispenso::ThreadPool pool(10);
 
@@ -179,10 +163,7 @@ TEST(ThreadPool, ResizeMoreConcurrent) {
 
     int64_t i = 0;
     for (int64_t& o : outputs) {
-      pool.schedule([i, &o, &completed]() {
-        o = i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
+      pool.schedule([i, &o]() { o = i * i; });
       ++i;
     }
     resizer0.join();
@@ -202,7 +183,6 @@ TEST(ThreadPool, SetSignalingWakeConcurrent) {
   using namespace std::chrono_literals;
   constexpr int kWorkItems = 1000000;
   std::vector<int64_t> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     dispenso::ThreadPool pool(10);
 
@@ -220,10 +200,7 @@ TEST(ThreadPool, SetSignalingWakeConcurrent) {
 
     int64_t i = 0;
     for (int64_t& o : outputs) {
-      pool.schedule([i, &o, &completed]() {
-        o = i * i;
-        completed.fetch_add(1, std::memory_order_relaxed);
-      });
+      pool.schedule([i, &o]() { o = i * i; });
       ++i;
     }
     resetter0.join();
@@ -285,24 +262,101 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 TEST_P(ThreadPoolTest, CrossPoolTest) {
   constexpr int kWorkItems = 10000;
   std::vector<int> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
   {
     dispenso::ThreadPool otherPool(8);
     initPool(10);
     int i = 0;
     for (int& o : outputs) {
-      schedule([i, &o, &completed, &otherPool]() {
-        otherPool.schedule([i, &o, &completed]() {
-          o = i * i;
-          completed.fetch_add(1, std::memory_order_relaxed);
-        });
-      });
+      schedule([i, &o, &otherPool]() { otherPool.schedule([i, &o]() { o = i * i; }); });
       ++i;
     }
     destroyPool();
   }
 
   int i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
+TEST(ThreadPool, SetSignalingWakeConcurrentZeroLatency) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 1000000;
+  std::vector<int64_t> outputs(kWorkItems, 0);
+  {
+    dispenso::ThreadPool pool(10);
+
+    std::thread resetter0([&pool]() {
+      for (int i = 0; i < 100; ++i) {
+        pool.setSignalingWake(true, 0us);
+      }
+    });
+
+    std::thread resetter1([&pool]() {
+      for (int i = 0; i < 100; ++i) {
+        pool.setSignalingWake(false, 400us);
+      }
+    });
+
+    int64_t i = 0;
+    for (int64_t& o : outputs) {
+      pool.schedule([i, &o]() { o = i * i; });
+      ++i;
+    }
+    resetter0.join();
+    resetter1.join();
+
+    EXPECT_EQ(static_cast<int>(pool.numThreads()), 10);
+  }
+
+  int64_t i = 0;
+  for (int64_t o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
+TEST_P(ThreadPoolTest, SimpleWorkZeroLatencyPoll) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 10000;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  int i;
+
+  {
+    initPool(10);
+    pool_->setSignalingWake(true, 0us);
+
+    i = 0;
+    for (int& o : outputs) {
+      schedule([i, &o]() { o = i * i; });
+      ++i;
+    }
+    destroyPool();
+  }
+
+  i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+
+  // switch scheduling method
+
+  {
+    initPool(10);
+    pool_->setSignalingWake(false, 0us);
+
+    i = 0;
+    for (int& o : outputs) {
+      schedule([i, &o]() { o = i * i; });
+      ++i;
+    }
+    destroyPool();
+  }
+
+  i = 0;
   for (int o : outputs) {
     EXPECT_EQ(o, i * i);
     ++i;
