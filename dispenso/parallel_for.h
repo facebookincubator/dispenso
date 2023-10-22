@@ -569,7 +569,7 @@ void parallel_for(
  * @param start The start of the loop extents.
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
- * <code>void(size_t index)</code>.
+ * <code>void(size_t index)</code> or <code>void(size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
 template <
@@ -624,7 +624,7 @@ void parallel_for(
  * @param start The start of the loop extents.
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
- * <code>void(size_t index)</code>.
+ * <code>void(size_t index)</code> or <code>void(size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
@@ -654,6 +654,7 @@ void parallel_for(IntegerA start, IntegerB end, F&& f, ParForOptions options = {
  * @param start The start of the loop extents.
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(State &s, size_t index)</code> or
  * <code>void(State &s, size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
@@ -730,6 +731,7 @@ void parallel_for(
  * @param start The start of the loop extents.
  * @param end The end of the loop extents.
  * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(State &s, size_t index)</code> or
  * <code>void(State &s, size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
