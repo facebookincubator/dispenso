@@ -55,6 +55,7 @@
 
 #include <dispenso/detail/math.h>
 #include <dispenso/platform.h>
+#include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
 

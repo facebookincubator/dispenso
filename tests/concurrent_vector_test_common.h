@@ -804,10 +804,8 @@ void growByConcurrent(int num, int growBy, CVec& vec) {
   EXPECT_EQ(vec.size(), num);
 
   std::vector<uint8_t> which(static_cast<size_t>(num));
-  size_t idx = 0;
   for (auto& i : vec) {
     ++which[*i];
-    ++idx;
   }
 
   for (size_t i = 0; i < which.size(); ++i) {

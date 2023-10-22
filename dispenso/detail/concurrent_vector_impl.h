@@ -451,6 +451,9 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
     }
     for (size_t bucket = binfo.bucket; bucket <= bend.bucket; ++bucket) {
       while (DISPENSO_EXPECT(!this->buffers_[bucket].load(std::memory_order_acquire), 0)) {
+#if defined(DISPENSO_HAS_TSAN)
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+#endif // DISPENSO_HAS_TSAN
       }
     }
   }
