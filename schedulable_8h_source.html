@@ -136,11 +136,11 @@ $(document).ready(function(){initNavTree('schedulable_8h_source.html',''); initR
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  }</div>
 <div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
 <div class="line"><a id="l00080" name="l00080"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">   80</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">schedule</a>(F&amp;&amp; f, <a class="code hl_struct" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>    <span class="keyword">auto</span>&amp; waiter = getWaiter();</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    waiter.add();</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    std::thread thread([f = std::move(f), &amp;waiter]() {</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>    <span class="keyword">auto</span>* waiter = getWaiter();</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    waiter-&gt;add();</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    std::thread thread([f = std::move(f), waiter]() {</div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>      f();</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>      waiter.remove();</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>      waiter-&gt;remove();</div>
 <div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    });</div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    thread.detach();</div>
 <div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>  }</div>
@@ -167,12 +167,14 @@ $(document).ready(function(){initNavTree('schedulable_8h_source.html',''); initR
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>      impl_.wait(0);</div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    }</div>
 <div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  };</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> ThreadWaiter&amp; getWaiter();</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>};</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span> </div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> ThreadWaiter* getWaiter();</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> destroyThreadWaiter();</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>};</div>
 <div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span> </div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00027">schedulable.h:27</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00037">schedulable.h:37</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a598694c79562918e3c67d2cd23a36529"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f, ForceQueuingTag) const</div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00047">schedulable.h:47</a></div></div>

@@ -110,12 +110,34 @@ $(document).ready(function(){initNavTree('schedulable_8cpp_source.html',''); ini
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="keyword">namespace </span>dispenso {</div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span> </div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>NewThreadInvoker::ThreadWaiter&amp; NewThreadInvoker::getWaiter() {</div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span>  <span class="keyword">static</span> ThreadWaiter waiter;</div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span>  <span class="keywordflow">return</span> waiter;</div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>}</div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span> </div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="keyword">namespace </span>{</div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span>std::atomic&lt;uintptr_t&gt; g_waiter(0);</div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span>} <span class="comment">// namespace</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>NewThreadInvoker::ThreadWaiter* NewThreadInvoker::getWaiter() {</div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>  uintptr_t waiter;</div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>  <span class="comment">// Common case check first</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>  <span class="keywordflow">if</span> ((waiter = g_waiter.load(std::memory_order_acquire)) &gt; 1) {</div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>ThreadWaiter*<span class="keyword">&gt;</span>(waiter);</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>  }</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>  uintptr_t exp = 0;</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>  <span class="keywordflow">if</span> (g_waiter.compare_exchange_strong(exp, 1, std::memory_order_acq_rel)) {</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    g_waiter.store(<span class="keyword">reinterpret_cast&lt;</span>uintptr_t<span class="keyword">&gt;</span>(<span class="keyword">new</span> ThreadWaiter()), std::memory_order_release);</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    std::atexit(destroyThreadWaiter);</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>  }</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span> </div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>  <span class="keywordflow">while</span> ((waiter = g_waiter.load(std::memory_order_acquire)) &lt; 2) {</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>  }</div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>ThreadWaiter*<span class="keyword">&gt;</span>(waiter);</div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>}</div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span> </div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="keywordtype">void</span> NewThreadInvoker::destroyThreadWaiter() {</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>  <span class="keyword">delete</span> <span class="keyword">reinterpret_cast&lt;</span>ThreadWaiter*<span class="keyword">&gt;</span>(g_waiter.load(std::memory_order_acquire));</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>}</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span> </div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aschedulable_8h_html"><div class="ttname"><a href="schedulable_8h.html">schedulable.h</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
