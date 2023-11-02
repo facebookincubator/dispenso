@@ -78,11 +78,11 @@ class NewThreadInvoker {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag) const {
-    auto& waiter = getWaiter();
-    waiter.add();
-    std::thread thread([f = std::move(f), &waiter]() {
+    auto* waiter = getWaiter();
+    waiter->add();
+    std::thread thread([f = std::move(f), waiter]() {
       f();
-      waiter.remove();
+      waiter->remove();
     });
     thread.detach();
   }
@@ -109,7 +109,9 @@ class NewThreadInvoker {
       impl_.wait(0);
     }
   };
-  DISPENSO_DLL_ACCESS static ThreadWaiter& getWaiter();
+  DISPENSO_DLL_ACCESS static ThreadWaiter* getWaiter();
+
+  static void destroyThreadWaiter();
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;
