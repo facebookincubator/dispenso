@@ -24,8 +24,9 @@ TEST(ConcurrentObjectArena, ParallelGrowBy) {
     taskSet.schedule([=, &arena]() {
       for (size_t i = 0; i < numLoops; i++) {
         const size_t p = arena.grow_by(delta);
-        for (size_t j = 0; j < delta; j++)
+        for (size_t j = 0; j < delta; j++) {
           arena[p + j] = ti * numLoops * delta + i;
+        }
       }
     });
   }
@@ -35,14 +36,16 @@ TEST(ConcurrentObjectArena, ParallelGrowBy) {
   EXPECT_EQ(arena.capacity() / arena.numBuffers(), arena.getBufferSize(0));
 
   size_t totalSize = 0;
-  for (size_t i = 0; i < arena.numBuffers(); ++i)
+  for (size_t i = 0; i < arena.numBuffers(); ++i) {
     totalSize += arena.getBufferSize(i);
+  }
   EXPECT_EQ(totalSize, arena.size());
 
   for (size_t i = 0; i < numLoops * numTasks; i++) {
     const size_t firstElement = arena[i * delta];
-    for (size_t j = 1; j < delta; j++)
+    for (size_t j = 1; j < delta; j++) {
       EXPECT_EQ(arena[i * delta + j], firstElement);
+    }
   }
 }
 
@@ -64,8 +67,9 @@ TEST(ConcurrentObjectArena, ObjectsConstuction) {
   arena->grow_by(bigGrow);
 
   const size_t num = arena->size();
-  for (size_t i = 0; i < num; ++i)
+  for (size_t i = 0; i < num; ++i) {
     EXPECT_EQ((*arena)[i].value, defaultValue);
+  }
 
   dispenso::ConcurrentObjectArena<TestData> copyArena(*arena);
 
@@ -77,8 +81,9 @@ TEST(ConcurrentObjectArena, ObjectsConstuction) {
 
   const size_t numBuffers = arena->numBuffers();
   std::vector<const TestData*> bufferPtrs(numBuffers);
-  for (size_t i = 0; i < numBuffers; ++i)
+  for (size_t i = 0; i < numBuffers; ++i) {
     bufferPtrs[i] = arena->getBuffer(i);
+  }
 
   dispenso::ConcurrentObjectArena<TestData> moveArena(std::move(*arena));
 
