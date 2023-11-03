@@ -11,7 +11,6 @@
 #include <dispenso/graph.h>
 #include <dispenso/parallel_for.h>
 #include <dispenso/platform.h>
-#include <unordered_set>
 
 namespace dispenso {
 /**

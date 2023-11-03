@@ -7,47 +7,30 @@
 
 #include <dispenso/graph_executor.h>
 
-namespace {
-void appendGroup(
-    const dispenso::Node* /* node */,
-    std::unordered_set<const std::vector<const dispenso::BiPropNode*>*>& /* groups */) {}
-
-void appendGroup(
-    const dispenso::BiPropNode* node,
-    std::unordered_set<const std::vector<const dispenso::BiPropNode*>*>& groups) {
-  const std::vector<const dispenso::BiPropNode*>* group = node->bidirectionalPropagationSet();
-  if (group != nullptr) {
-    groups.insert(group);
-  }
-}
-} // anonymous namespace
 namespace dispenso {
 
 template <typename G>
 void SingleThreadExecutor::operator()(const G& graph) {
-  using SubgraphType = typename G::SubgraphType;
   using NodeType = typename G::NodeType;
   nodesToExecute_.clear();
   nodesToExecuteNext_.clear();
 
-  for (const SubgraphType& subgraph : graph.subgraphs()) {
-    for (const NodeType& node : subgraph.nodes()) {
-      if (hasNoIncompletePredecessors(node)) {
-        nodesToExecute_.emplace_back(&node);
-      }
+  graph.forEachNode([&](const NodeType& node) {
+    if (hasNoIncompletePredecessors(node)) {
+      nodesToExecute_.emplace_back(&node);
     }
-  }
+  });
 
   while (!nodesToExecute_.empty()) {
     for (const Node* n : nodesToExecute_) {
       const NodeType* node = static_cast<const NodeType*>(n);
       node->run();
-      for (const Node* const d : node->dependents()) {
+      node->forEachDependent([&](const Node& d) {
         if (decNumIncompletePredecessors(
-                static_cast<const NodeType&>(*d), std::memory_order_relaxed)) {
-          nodesToExecuteNext_.emplace_back(static_cast<const NodeType*>(d));
+                static_cast<const NodeType&>(d), std::memory_order_relaxed)) {
+          nodesToExecuteNext_.emplace_back(static_cast<const NodeType*>(&d));
         }
-      }
+      });
     }
     nodesToExecute_.swap(nodesToExecuteNext_);
     nodesToExecuteNext_.clear();
@@ -56,28 +39,26 @@ void SingleThreadExecutor::operator()(const G& graph) {
 
 template <typename TaskSetT, typename G>
 void ParallelForExecutor::operator()(TaskSetT& taskSet, const G& graph) {
-  using SubgraphType = typename G::SubgraphType;
   using NodeType = typename G::NodeType;
   nodesToExecute_.clear();
   nodesToExecuteNext_.clear();
 
-  for (const SubgraphType& subgraph : graph.subgraphs()) {
-    for (const NodeType& node : subgraph.nodes()) {
-      if (hasNoIncompletePredecessors(node)) {
-        nodesToExecute_.emplace_back(&node);
-      }
+  graph.forEachNode([&](const NodeType& node) {
+    if (hasNoIncompletePredecessors(node)) {
+      nodesToExecute_.emplace_back(&node);
     }
-  }
+  });
   while (!nodesToExecute_.empty()) {
     dispenso::parallel_for(taskSet, size_t(0), nodesToExecute_.size(), [this](size_t i) {
       const NodeType* node = static_cast<const NodeType*>(nodesToExecute_[i]);
       node->run();
-      for (const Node* const d : node->dependents()) {
+
+      node->forEachDependent([&](const Node& d) {
         if (decNumIncompletePredecessors(
-                static_cast<const NodeType&>(*d), std::memory_order_acq_rel)) {
-          nodesToExecuteNext_.emplace_back(static_cast<const NodeType*>(d));
+                static_cast<const NodeType&>(d), std::memory_order_acq_rel)) {
+          nodesToExecuteNext_.emplace_back(static_cast<const NodeType*>(&d));
         }
-      }
+      });
     });
 
     nodesToExecute_.swap(nodesToExecuteNext_);
@@ -91,16 +72,13 @@ void ConcurrentTaskSetExecutor::operator()(
     const G& graph,
     bool wait) {
   using NodeType = typename G::NodeType;
-  using SubgraphType = typename G::SubgraphType;
   startNodes_.clear();
 
-  for (const SubgraphType& subgraph : graph.subgraphs()) {
-    for (const NodeType& node : subgraph.nodes()) {
-      if (hasNoIncompletePredecessors(node)) {
-        startNodes_.emplace_back(&node);
-      }
+  graph.forEachNode([&](const NodeType& node) {
+    if (hasNoIncompletePredecessors(node)) {
+      startNodes_.emplace_back(&node);
     }
-  }
+  });
 
   for (const Node* n : startNodes_) {
     const NodeType* node = static_cast<const NodeType*>(n);
@@ -113,19 +91,15 @@ void ConcurrentTaskSetExecutor::operator()(
 
 template <typename G>
 void setAllNodesIncomplete(const G& graph) {
-  using SubgraphType = typename G::SubgraphType;
   using NodeType = typename G::NodeType;
 
-  for (const SubgraphType& subgraph : graph.subgraphs()) {
-    for (const NodeType& node : subgraph.nodes()) {
-      node.numIncompletePredecessors_.store(node.numPredecessors(), std::memory_order_relaxed);
-    }
-  }
+  graph.forEachNode([&](const NodeType& node) {
+    node.numIncompletePredecessors_.store(node.numPredecessors(), std::memory_order_relaxed);
+  });
 }
 
 template <typename G>
 void ForwardPropagator::operator()(const G& graph) {
-  using SubgraphType = typename G::SubgraphType;
   using NodeType = typename G::NodeType;
 
   nodesToVisit_.clear();
@@ -133,25 +107,23 @@ void ForwardPropagator::operator()(const G& graph) {
   visited_.clear();
   groups_.clear();
 
-  for (const SubgraphType& subgraph : graph.subgraphs()) {
-    for (const NodeType& node : subgraph.nodes()) {
-      if (!node.isCompleted()) {
-        nodesToVisit_.emplace_back(&node);
-        visited_.insert(&node);
-        appendGroup(static_cast<const NodeType*>(&node), groups_);
-      }
+  graph.forEachNode([&](const NodeType& node) {
+    if (!node.isCompleted()) {
+      nodesToVisit_.emplace_back(&node);
+      visited_.insert(&node);
+      appendGroup(static_cast<const NodeType*>(&node), groups_);
     }
-  }
+  });
 
   while (!nodesToVisit_.empty()) {
     for (const Node* node : nodesToVisit_) {
-      for (const Node* const d : node->dependents()) {
-        addIncompletePredecessor(*d);
-        if (visited_.insert(static_cast<const NodeType*>(d)).second) {
-          nodesToVisitNext_.emplace_back(static_cast<const NodeType*>(d));
-          appendGroup(static_cast<const NodeType*>(d), groups_);
+      node->forEachDependent([&](const Node& d) {
+        addIncompletePredecessor(d);
+        if (visited_.insert(static_cast<const NodeType*>(&d)).second) {
+          nodesToVisitNext_.emplace_back(static_cast<const NodeType*>(&d));
+          appendGroup(static_cast<const NodeType*>(&d), groups_);
         }
-      }
+      });
     }
     nodesToVisit_.swap(nodesToVisitNext_);
     nodesToVisitNext_.clear();
@@ -176,9 +148,7 @@ void ForwardPropagator::propagateIncompleteStateBidirectionally<BiPropNode>() {
 
   for (const Node* node : nodesToVisit_) {
     const BiPropNode* biPropNode = static_cast<const BiPropNode*>(node);
-    for (const dispenso::Node* d : biPropNode->dependents()) {
-      ifIncompleteAddIncompletePredecessor(*d);
-    }
+    biPropNode->forEachDependent([](const Node& d) { ifIncompleteAddIncompletePredecessor(d); });
   }
 }
 

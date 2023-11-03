@@ -24,15 +24,15 @@ TEST(Graph, Simple) {
   float p = 0.f;
   dispenso::Graph g;
 
-  dispenso::Node* N0 = g.addNode([&v]() { v += 1; });
-  dispenso::Node* N1 = g.addNode([&v]() { v *= 2; });
-  dispenso::Node* N2 = g.addNode([&p]() { p += 8; });
-  dispenso::Node* N3 = g.addNode([&p]() { p /= 2; });
-  dispenso::Node* N4 = g.addNode([&p, &v]() { v += p; });
+  dispenso::Node& N0 = g.addNode([&v]() { v += 1; });
+  dispenso::Node& N1 = g.addNode([&v]() { v *= 2; });
+  dispenso::Node& N2 = g.addNode([&p]() { p += 8; });
+  dispenso::Node& N3 = g.addNode([&p]() { p /= 2; });
+  dispenso::Node& N4 = g.addNode([&p, &v]() { v += p; });
 
-  N4->dependsOn(N1, N3);
-  N1->dependsOn(N0);
-  N3->dependsOn(N2);
+  N4.dependsOn(N1, N3);
+  N1.dependsOn(N0);
+  N3.dependsOn(N2);
 
   dispenso::ConcurrentTaskSet concurrentTaskSet(dispenso::globalThreadPool());
   dispenso::ConcurrentTaskSetExecutor concurrentTaskSetExecutor;
@@ -54,6 +54,8 @@ TEST(Graph, Simple) {
   setAllNodesIncomplete(g);
   singleThreadExecutor(g);
   EXPECT_EQ(v, 6.f);
+
+  EXPECT_EQ(g.numNodes(), 5);
 }
 enum class EvalMode : uint8_t { singleThread, parallelFor, concurrentTaskSet };
 
@@ -111,18 +113,19 @@ class TwoSubgraphs : public testing::TestWithParam<EvalMode> {
     // ¦ └────────────┘ ¦ ¦ └───────────────┘ ¦
     // ∙----------------∙ ∙-------------------∙
 
-    subgraph1_ = graph_.addSubgraph();
-    subgraph2_ = graph_.addSubgraph();
+    EXPECT_EQ(graph_.numSubgraphs(), 1); // graph has subgraph 0 by default
+    subgraph1_ = &graph_.addSubgraph();
+    subgraph2_ = &graph_.addSubgraph();
 
-    N_[0] = subgraph1_->addNode([&]() { r_[0] += 1; });
-    N_[2] = subgraph1_->addNode([&]() { r_[2] += 8; });
-    N_[1] = subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
-    N_[3] = subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
-    N_[4] = graph_.addNode([&]() { r_[4] += r_[1] + r_[3]; });
+    N_[0] = &subgraph1_->addNode([&]() { r_[0] += 1; });
+    N_[2] = &subgraph1_->addNode([&]() { r_[2] += 8; });
+    N_[1] = &subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
+    N_[3] = &subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
+    N_[4] = &graph_.addNode([&]() { r_[4] += r_[1] + r_[3]; });
 
-    N_[4]->dependsOn(N_[1], N_[3]);
-    N_[1]->dependsOn(N_[0]);
-    N_[3]->dependsOn(N_[2]);
+    N_[4]->dependsOn(*N_[1], *N_[3]);
+    N_[1]->dependsOn(*N_[0]);
+    N_[3]->dependsOn(*N_[2]);
   }
 
   void evaluateGraph(const dispenso::Graph& graph) {
@@ -137,19 +140,24 @@ class TwoSubgraphs : public testing::TestWithParam<EvalMode> {
   Executor executor_;
   dispenso::ForwardPropagator forwardPropagator_;
 };
-
 TEST_P(TwoSubgraphs, ReplaceSourceGraph) {
   setAllNodesIncomplete(graph_);
   r_ = {0, 0, 0, 0, 0};
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
+  EXPECT_EQ(graph_.numSubgraphs(), 3);
+  EXPECT_EQ(subgraph1_->numNodes(), 2);
+  EXPECT_EQ(subgraph2_->numNodes(), 2);
 
   subgraph1_->clear();
+  EXPECT_EQ(subgraph1_->numNodes(), 0);
 
-  N_[0] = subgraph1_->addNode([&]() { r_[0] += 1; });
-  N_[2] = subgraph1_->addNode([&]() { r_[2] += 8; });
-  N_[1]->dependsOn(N_[0]);
-  N_[3]->dependsOn(N_[2]);
+  N_[0] = &subgraph1_->addNode([&]() { r_[0] += 1; });
+  EXPECT_EQ(subgraph1_->numNodes(), 1);
+  N_[2] = &subgraph1_->addNode([&]() { r_[2] += 8; });
+  EXPECT_EQ(subgraph1_->numNodes(), 2);
+  N_[1]->dependsOn(*N_[0]);
+  N_[3]->dependsOn(*N_[2]);
 
   setAllNodesIncomplete(graph_);
   r_ = {0, 0, 0, 0, 0};
@@ -166,11 +174,11 @@ TEST_P(TwoSubgraphs, ReplaceMiddleGraph) {
   dispenso::Graph movedGraph(std::move(graph_));
   subgraph2_->clear();
 
-  N_[1] = subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
-  N_[3] = subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
-  N_[1]->dependsOn(N_[0]);
-  N_[3]->dependsOn(N_[2]);
-  N_[4]->dependsOn(N_[1], N_[3]);
+  N_[1] = &subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
+  N_[3] = &subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
+  N_[1]->dependsOn(*N_[0]);
+  N_[3]->dependsOn(*N_[2]);
+  N_[4]->dependsOn(*N_[1], *N_[3]);
 
   setAllNodesIncomplete(movedGraph);
   r_ = {0, 0, 0, 0, 0};
@@ -188,14 +196,14 @@ TEST_P(TwoSubgraphs, ReplaceBothGraphs) {
   dispenso::Graph movedGraph = std::move(graph_);
   subgraph1_->clear();
 
-  N_[0] = subgraph1_->addNode([&]() { r_[0] += 1; });
-  N_[2] = subgraph1_->addNode([&]() { r_[2] += 8; });
-  N_[1] = subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
-  N_[3] = subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
+  N_[0] = &subgraph1_->addNode([&]() { r_[0] += 1; });
+  N_[2] = &subgraph1_->addNode([&]() { r_[2] += 8; });
+  N_[1] = &subgraph2_->addNode([&]() { r_[1] += r_[0] * 2; });
+  N_[3] = &subgraph2_->addNode([&]() { r_[3] += r_[2] / 2; });
 
-  N_[4]->dependsOn(N_[1], N_[3]);
-  N_[1]->dependsOn(N_[0]);
-  N_[3]->dependsOn(N_[2]);
+  N_[4]->dependsOn(*N_[1], *N_[3]);
+  N_[1]->dependsOn(*N_[0]);
+  N_[3]->dependsOn(*N_[2]);
 
   setAllNodesIncomplete(movedGraph);
   r_ = {0, 0, 0, 0, 0};
@@ -209,12 +217,7 @@ TEST_P(TwoSubgraphs, PartialEvaluation) {
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
-  for (const dispenso::Subgraph& graph : graph_.subgraphs()) {
-    const auto& nodes = graph.nodes();
-    for (const dispenso::Node& node : nodes) {
-      EXPECT_FALSE(!node.isCompleted());
-    }
-  }
+  graph_.forEachNode([](const dispenso::Node& node) { EXPECT_FALSE(!node.isCompleted()); });
   N_[1]->setIncomplete();
   r_[1] = r_[4] = 0;
   forwardPropagator_(graph_);
@@ -294,30 +297,30 @@ class BiPropGraphTest : public testing::TestWithParam<EvalMode> {
     //  ──▶ Normal dependency
     //  ──▷ Bidirectional propagation dependency
     //  m4  variable modified only in node 4
-    N[0] = g.addNode([&]() {
+    N[0] = &g.addNode([&]() {
       a += 1;
       b += 5;
       m0 += a + b;
     });
-    N[1] = g.addNode([&]() { c += m0; });
-    N[2] = g.addNode([&]() { a += 3; });
-    N[3] = g.addNode([&]() {
+    N[1] = &g.addNode([&]() { c += m0; });
+    N[2] = &g.addNode([&]() { a += 3; });
+    N[3] = &g.addNode([&]() {
       b += 5;
       m3 += b;
     });
-    N[4] = g.addNode([&]() { m4 += 3; });
-    N[5] = g.addNode([&]() { m5 += m3 * m4; });
-    N[6] = g.addNode([&]() { b /= m4; });
-    N[7] = g.addNode([&]() { c += 5; });
+    N[4] = &g.addNode([&]() { m4 += 3; });
+    N[5] = &g.addNode([&]() { m5 += m3 * m4; });
+    N[6] = &g.addNode([&]() { b /= m4; });
+    N[7] = &g.addNode([&]() { c += 5; });
 
-    N[5]->dependsOn(N[3], N[4]);
-    N[1]->dependsOn(N[0]);
-    N[6]->dependsOn(N[4]);
+    N[5]->dependsOn(*N[3], *N[4]);
+    N[1]->dependsOn(*N[0]);
+    N[6]->dependsOn(*N[4]);
 
-    N[2]->biPropDependsOn(N[0]);
-    N[3]->biPropDependsOn(N[0]);
-    N[6]->biPropDependsOn(N[3]);
-    N[1]->biPropDependsOn(N[7]);
+    N[2]->biPropDependsOn(*N[0]);
+    N[3]->biPropDependsOn(*N[0]);
+    N[6]->biPropDependsOn(*N[3]);
+    N[1]->biPropDependsOn(*N[7]);
   }
 
   void checkResults() {
@@ -400,7 +403,6 @@ class BigTree : public testing::Test {
     for (size_t level = 1; level < numLevels_; ++level) {
       const size_t s = sizeOfLevel(level);
       data_[level].resize(s, size_t(0));
-      nodes_[level].resize(s);
     }
 
     // zero level data is input data for calcualtion
@@ -408,8 +410,8 @@ class BigTree : public testing::Test {
     std::iota(data_[0].begin(), data_[0].end(), 0);
 
     for (size_t level = 1; level < numLevels_; ++level) {
-      SubGraphType* subgraph = g_.addSubgraph();
-      levelSubgraphs_[level] = subgraph;
+      SubGraphType* subgraph = &g_.addSubgraph();
+      subgraphs_[level] = subgraph;
       buildLevel(level);
     }
   }
@@ -427,19 +429,19 @@ class BigTree : public testing::Test {
       if (level1 > 1) {
         for (size_t j = 0; j < numPredecessors_; ++j) {
           const size_t index = (n << shiftStep_) | j;
-          nodes_[level1][n]->dependsOn(nodes_[level1 - 1][index]);
+          subgraphs_[level1]->node(n).dependsOn(subgraphs_[level1 - 1]->node(index));
         }
       }
     }
   }
 
   void buildLevel(size_t level) {
-    SubGraphType* subgraph = levelSubgraphs_[level];
+    SubGraphType* subgraph = subgraphs_[level];
 
     const size_t numNodes = size_t(1) << (numBits_ - shiftStep_ * level);
 
     for (size_t n = 0; n < numNodes; ++n) {
-      nodes_[level][n] = subgraph->addNode([this, level, n]() {
+      subgraph->addNode([this, level, n]() {
         for (size_t j = 0; j < numPredecessors_; ++j) {
           const size_t index = (n << shiftStep_) | j;
           data_[level][n] += data_[level - 1][index];
@@ -448,7 +450,7 @@ class BigTree : public testing::Test {
       if (level > 1) {
         for (size_t j = 0; j < numPredecessors_; ++j) {
           const size_t index = (n << shiftStep_) | j;
-          nodes_[level][n]->dependsOn(nodes_[level - 1][index]);
+          subgraphs_[level]->node(n).dependsOn(subgraphs_[level - 1]->node(index));
         }
       }
     }
@@ -465,8 +467,7 @@ class BigTree : public testing::Test {
   static constexpr EvalMode mode_ = std::tuple_element_t<1, T>::mode;
 
   std::array<std::vector<size_t>, numLevels_> data_;
-  std::array<SubGraphType*, numLevels_> levelSubgraphs_;
-  std::array<std::vector<typename GraphType::NodeType*>, numLevels_> nodes_;
+  std::array<SubGraphType*, numLevels_> subgraphs_;
   GraphType g_;
   Executor executor_;
   dispenso::ForwardPropagator forwardPropagator_;
@@ -503,7 +504,7 @@ TYPED_TEST(BigTree, FullAndPartialEvaluation) {
       const size_t dataIndex = dist(rng);
       const size_t node1Index = dataIndex >> this->shiftStep_;
       this->data_[0][dataIndex] = dist(rng);
-      this->nodes_[1][node1Index]->setIncomplete();
+      this->subgraphs_[1]->node(node1Index).setIncomplete();
       // clean up nodes data. We don't touch other nodes' data so that the test fail if we evaluated
       // more than necessary.
       for (size_t level = 1; level < this->numLevels_; ++level) {
@@ -534,7 +535,7 @@ TYPED_TEST(BigTree, SubgraphClearAndRebuild) {
   for (uint32_t i = 0; i < numExperiments; ++i) {
     const size_t level = distLevel(rng);
 
-    this->levelSubgraphs_[level]->clear();
+    this->subgraphs_[level]->clear();
     this->rebuildLevel(level);
     this->forwardPropagator_(this->g_);
     // clean up nodes data.

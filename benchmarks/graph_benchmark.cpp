@@ -20,8 +20,8 @@ class BigTree {
   }
   void buildTree() {
     for (size_t level = 1; level < numLevels_; ++level) {
-      SubGraphType* subgraph = g_.addSubgraph();
-      levelSubgraphs_[level] = subgraph;
+      SubGraphType* subgraph = &g_.addSubgraph();
+      subgraphs_[level] = subgraph;
       buildLevel(level);
     }
   }
@@ -31,7 +31,6 @@ class BigTree {
     for (size_t level = 1; level < numLevels_; ++level) {
       const size_t s = sizeOfLevel(level);
       data_[level].resize(s, 0lu);
-      nodes_[level].resize(s);
     }
 
     // zero level data is input data for calculation
@@ -40,12 +39,12 @@ class BigTree {
   }
 
   void buildLevel(size_t level) {
-    SubGraphType* subgraph = levelSubgraphs_[level];
+    SubGraphType* subgraph = subgraphs_[level];
 
     const size_t numNodes = 1ul << (numBits_ - shiftStep_ * level);
 
     for (size_t n = 0; n < numNodes; ++n) {
-      nodes_[level][n] = subgraph->addNode([this, level, n]() {
+      subgraph->addNode([this, level, n]() {
         for (size_t j = 0; j < numPredecessors_; ++j) {
           const size_t index = (n << shiftStep_) | j;
           data_[level][n] += data_[level - 1][index];
@@ -54,7 +53,7 @@ class BigTree {
       if (level > 1) {
         for (size_t j = 0; j < numPredecessors_; ++j) {
           const size_t index = (n << shiftStep_) | j;
-          nodes_[level][n]->dependsOn(nodes_[level - 1][index]);
+          subgraphs_[level]->node(n).dependsOn(subgraphs_[level - 1]->node(index));
         }
       }
     }
@@ -69,8 +68,7 @@ class BigTree {
   using SubGraphType = typename G::SubgraphType;
 
   std::array<std::vector<size_t>, numLevels_> data_;
-  std::array<SubGraphType*, numLevels_> levelSubgraphs_;
-  std::array<std::vector<typename G::NodeType*>, numLevels_> nodes_;
+  std::array<SubGraphType*, numLevels_> subgraphs_;
   G g_;
 };
 
@@ -88,10 +86,10 @@ static void BM_build_bi_prop_dependency_chain(benchmark::State& state) {
   size_t counter;
   for (auto _ : state) {
     dispenso::BiPropGraph graph;
-    dispenso::BiPropNode* prevNode = graph.addNode([&counter]() { counter++; });
+    dispenso::BiPropNode* prevNode = &graph.addNode([&counter]() { counter++; });
     for (size_t i = 1; i < 1024; ++i) {
-      dispenso::BiPropNode* node = graph.addNode([&counter]() { counter++; });
-      prevNode->biPropDependsOn(node);
+      dispenso::BiPropNode* node = &graph.addNode([&counter]() { counter++; });
+      prevNode->biPropDependsOn(*node);
       prevNode = node;
     }
   }
@@ -102,10 +100,10 @@ static void BM_build_dependnecy_chain(benchmark::State& state) {
   size_t counter;
   for (auto _ : state) {
     G graph;
-    typename G::NodeType* prevNode = graph.addNode([&counter]() { counter++; });
+    typename G::NodeType* prevNode = &graph.addNode([&counter]() { counter++; });
     for (size_t i = 1; i < 1024; ++i) {
-      typename G::NodeType* node = graph.addNode([&counter]() { counter++; });
-      prevNode->dependsOn(node);
+      typename G::NodeType* node = &graph.addNode([&counter]() { counter++; });
+      prevNode->dependsOn(*node);
       prevNode = node;
     }
   }
@@ -115,10 +113,10 @@ template <class G>
 static void BM_execute_dependnecy_chain(benchmark::State& state) {
   size_t counter;
   G graph;
-  typename G::NodeType* prevNode = graph.addNode([&counter]() { counter++; });
+  typename G::NodeType* prevNode = &graph.addNode([&counter]() { counter++; });
   for (size_t i = 1; i < 1024; ++i) {
-    typename G::NodeType* node = graph.addNode([&counter]() { counter++; });
-    prevNode->dependsOn(node);
+    typename G::NodeType* node = &graph.addNode([&counter]() { counter++; });
+    prevNode->dependsOn(*node);
     prevNode = node;
   }
 
@@ -137,12 +135,12 @@ static void BM_build_bi_prop_dependency_group(benchmark::State& state) {
   for (auto _ : state) {
     dispenso::BiPropGraph graph;
     for (size_t i = 0; i < numNodes; ++i) {
-      nodes1[i] = graph.addNode([&counter]() { counter++; });
-      nodes2[i] = graph.addNode([&counter]() { counter++; });
-      nodes1[i]->biPropDependsOn(nodes2[i]);
+      nodes1[i] = &graph.addNode([&counter]() { counter++; });
+      nodes2[i] = &graph.addNode([&counter]() { counter++; });
+      nodes1[i]->biPropDependsOn(*nodes2[i]);
     }
     for (size_t i = 1; i < numNodes; ++i) {
-      nodes1[i - 1]->biPropDependsOn(nodes1[i]);
+      nodes1[i - 1]->biPropDependsOn(*nodes1[i]);
     }
   }
 }
@@ -157,20 +155,19 @@ static void BM_forward_propagator_node(benchmark::State& state) {
 
   std::mt19937 rng(12345);
 
-  nodes[0] = graph.addNode([&counter]() { counter++; }); // root
+  nodes[0] = &graph.addNode([&counter]() { counter++; }); // root
   for (size_t i = 1; i < numNodes; ++i) {
-    nodes[i] = graph.addNode([&counter]() { counter++; });
+    nodes[i] = &graph.addNode([&counter]() { counter++; });
     std::uniform_int_distribution<> parentDistr(0, i - 1);
-    nodes[i]->dependsOn(nodes[parentDistr(rng)]);
+    nodes[i]->dependsOn(*nodes[parentDistr(rng)]);
   }
 
   dispenso::ForwardPropagator forwardPropagator;
 
   for (auto _ : state) {
     state.PauseTiming();
-    for (const dispenso::Node& node : graph.nodes()) {
-      node.setCompleted();
-    }
+    graph.forEachNode([](const dispenso::Node& node) { node.setCompleted(); });
+
     nodes[0]->setIncomplete();
     state.ResumeTiming();
     forwardPropagator(graph);

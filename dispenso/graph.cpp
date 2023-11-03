@@ -29,22 +29,22 @@ void set_insert(std::vector<const dispenso::BiPropNode*>& s, const dispenso::BiP
 
 namespace dispenso {
 
-void BiPropNode::biPropDependsOnOneNode(BiPropNode* node) {
+void BiPropNode::biPropDependsOnOneNode(BiPropNode& node) {
   Node::dependsOnOneNode(node);
-  if (node->biPropSet_ == nullptr && biPropSet_ == nullptr) {
+  if (node.biPropSet_ == nullptr && biPropSet_ == nullptr) {
     biPropSet_ = std::make_shared<std::vector<const BiPropNode*>>();
     set_insert(*biPropSet_, this);
-    set_insert(*biPropSet_, node);
-    node->biPropSet_ = biPropSet_;
-  } else if (node->biPropSet_ != nullptr && biPropSet_ != nullptr) {
-    set_union(*biPropSet_, *node->biPropSet_);
-    node->biPropSet_ = biPropSet_;
+    set_insert(*biPropSet_, &node);
+    node.biPropSet_ = biPropSet_;
+  } else if (node.biPropSet_ != nullptr && biPropSet_ != nullptr) {
+    set_union(*biPropSet_, *node.biPropSet_);
+    node.biPropSet_ = biPropSet_;
   } else if (biPropSet_ == nullptr) {
-    biPropSet_ = node->biPropSet_;
+    biPropSet_ = node.biPropSet_;
     set_insert(*biPropSet_, this);
   } else {
-    node->biPropSet_ = biPropSet_;
-    set_insert(*biPropSet_, node);
+    node.biPropSet_ = biPropSet_;
+    set_insert(*biPropSet_, &node);
   }
 }
 
@@ -123,10 +123,10 @@ GraphT<N>& GraphT<N>::operator=(GraphT&& other) {
 }
 
 template <class N>
-SubgraphT<N>* GraphT<N>::addSubgraph() {
+SubgraphT<N>& GraphT<N>::addSubgraph() {
   subgraphs_.push_back(SubgraphType(this));
   SubgraphT<N>& subgraph = subgraphs_.back();
-  return &subgraph;
+  return subgraph;
 }
 
 template class DISPENSO_DLL_ACCESS SubgraphT<Node>;

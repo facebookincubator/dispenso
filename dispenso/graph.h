@@ -15,7 +15,6 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
-
 /*
 Terminology
 --------------------------------------------------------------------------------
@@ -42,19 +41,18 @@ Example:
 //   └────────────┘     └───────────────┘
 
 std::array<float, 5> r;
-std::array<dispenso::Node*, 5> N;
 
 dispenso::Graph graph;
 
-N[0] = graph.addNode([&]() { r[0] += 1; });
-N[2] = graph.addNode([&]() { r[2] += 8; });
-N[1] = graph.addNode([&]() { r[1] += r[0] * 2; });
-N[3] = graph.addNode([&]() { r[3] += r[2] / 2; });
-N[4] = graph.addNode([&]() { r[4] += r[1] + r[3]; });
+dispenso::Node& N0 = graph.addNode([&]() { r[0] += 1; });
+dispenso::Node& N2 = graph.addNode([&]() { r[2] += 8; });
+dispenso::Node& N1 = graph.addNode([&]() { r[1] += r[0] * 2; });
+dispenso::Node& N3 = graph.addNode([&]() { r[3] += r[2] / 2; });
+dispenso::Node& N4 = graph.addNode([&]() { r[4] += r[1] + r[3]; });
 
-N[4]->dependsOn(N[1], N[3]);
-N[1]->dependsOn(N[0]);
-N[3]->dependsOn(N[2]);
+N4.dependsOn(N1, N3);
+N1.dependsOn(N0);
+N3.dependsOn(N2);
 
 dispenso::TaskSet taskSet(dispenso::globalThreadPool());
 dispenso::ParallelForExecutor parallelForExecutor;
@@ -79,7 +77,7 @@ recompute and after use functor `ForwardPropagator` to mark as "incomplete" all 
 
 Example:
 ~~~
-N[1]->setIncomplete();
+N1.setIncomplete();
 r[1] = r[4] = 0;
 ForwardPropagator forwardPropagator;
 forwardPropagator(graph);
@@ -104,23 +102,20 @@ Example:
 // ¦ └────────────┘ ¦ ¦ └───────────────┘ ¦
 // ∙----------------∙ ∙-------------------∙
 std::array<float, 5> r;
-std::array<dispenso::Node*, 5> N;
 dispenso::Graph graph;
-dispenso::Subgraph* subgraph1;
-dispenso::Subgraph* subgraph2;
 
-subgraph1 = graph.addSubgraph();
-subgraph2 = graph.addSubgraph();
+dispenso::Subgraph& subgraph1 = graph.addSubgraph();
+dispenso::Subgraph& subgraph2 = graph.addSubgraph();
 
-N[0] = subgraph1->addNode([&]() { r[0] += 1; });
-N[2] = subgraph1->addNode([&]() { r[2] += 8; });
-N[1] = subgraph2->addNode([&]() { r[1] += r[0] * 2; });
-N[3] = subgraph2->addNode([&]() { r[3] += r[2] / 2; });
-N[4] = graph.addNode([&]() { r[4] += r[1] + r[3]; });
+dispenso::Node& N0 = subgraph1.addNode([&]() { r[0] += 1; });
+dispenso::Node& N2 = subgraph1.addNode([&]() { r[2] += 8; });
+dispenso::Node& N1 = subgraph2.addNode([&]() { r[1] += r[0] * 2; });
+dispenso::Node& N3 = subgraph2.addNode([&]() { r[3] += r[2] / 2; });
+dispenso::Node& N4 = graph.addNode([&]() { r[4] += r[1] + r[3]; });
 
-N[4]->dependsOn(N[1], N[3]);
-N[1]->dependsOn(N[0]);
-N[3]->dependsOn(N[2]);
+N4.dependsOn(N1, N3);
+N1.dependsOn(N0);
+N3.dependsOn(N2);
 
 // evaluate graph first time
 r = {0, 0, 0, 0, 0};
@@ -129,14 +124,15 @@ dispenso::ConcurrentTaskSetExecutor concurrentTaskSetExecutor;
 concurrentTaskSetExecutor(concurrentTaskSet, graph);
 
 // disconnect and destroy nodes of subgraph2
-subgraph2->clear();
+// it invalidates node references/pointers of this subgraph
+subgraph2.clear();
 
 // create another nodes
-N[1] = subgraph2->addNode([&]() { r[1] += r[0] * 20; });
-N[3] = subgraph2->addNode([&]() { r[3] += r[2] / 20; });
-N[1]->dependsOn(N[0]);
-N[3]->dependsOn(N[2]);
-N[4]->dependsOn(N[1], N[3]);
+dispenso::Node& newN1 = subgraph2.addNode([&]() { r[1] += r[0] * 20; });
+dispenso::Node& newN3 = subgraph2.addNode([&]() { r[3] += r[2] / 20; });
+newN1.dependsOn(N0);
+newN3.dependsOn(N2);
+N4.dependsOn(newN1, newN3);
 
 // and revaluae the graph
 setAllNodesIncomplete(movedGraph);
@@ -170,16 +166,16 @@ float  b,  m3, m4
 dispenso::BiPropGraph g;
 std::array<dispenso::BiPropNode*, 8> N;
 
-N[0] = g.addNode([&]() { b += 5; });
-N[1] = g.addNode([&]() { b *= 5; });
-N[2] = g.addNode([&]() { b /= m4; });
-N[3] = g.addNode([&]() { m3 += b*b; });
-N[4] = g.addNode([&]() { m4 += 2; });
+dispenso::BiPropNode& N0 = g.addNode([&]() { b += 5; });
+dispenso::BiPropNode& N1 = g.addNode([&]() { b *= 5; });
+dispenso::BiPropNode& N2 = g.addNode([&]() { b /= m4; });
+dispenso::BiPropNode& N3 = g.addNode([&]() { m3 += b*b; });
+dispenso::BiPropNode& N4 = g.addNode([&]() { m4 += 2; });
 
-N[3]->dependsOn(N[1]);
-N[2]->dependsOn(N[4]);
-N[2]->biPropDependsOn(N[1]);
-N[1]->biPropDependsOn(N[0]);
+N3.dependsOn(N1);
+N2.dependsOn(N4);
+N2.biPropDependsOn(N1);
+N1.biPropDependsOn(N0);
 
 // first execution
 b = m3 = m4 = 0.f;
@@ -187,7 +183,7 @@ dispenso::ConcurrentTaskSet concurrentTaskSet(dispenso::globalThreadPool());
 dispenso::ConcurrentTaskSetExecutor concurrentTaskSetExecutor;
 concurrentTaskSetExecutor(concurrentTaskSet, g);
 
-N[4]->setIncomplete();
+N[4].setIncomplete();
 // if node 4 is incomplete after propagation node 2 become incomplete. Taking in account that node 2
 // bidirectionally depends on nodes 0 and 1 they will be marked as incomplete as well
 b =  m4 = 0.f;
@@ -223,8 +219,8 @@ class Node {
    * @param nodes predecessors of the node
    **/
   template <typename... Ns>
-  inline void dependsOn(Ns... nodes) {
-    ((void)std::initializer_list<int>{(dependsOnOneNode(std::forward<Ns>(nodes)), 0)...});
+  inline void dependsOn(Ns&... nodes) {
+    ((void)std::initializer_list<int>{(dependsOnOneNode(nodes), 0)...});
   }
   /**
    * Invoke the type-erased functor. Change competed state of the node to "Incomplete".
@@ -235,10 +231,26 @@ class Node {
     numIncompletePredecessors_.store(kCompleted, std::memory_order_release);
   }
   /**
-   * Return vectoor of nodes depends on this node. Concurrency safe.
+   * apply an func to each dependent of the node
+   *
+   * @param func a functor with signature <code>void(const Node&)</code>
    **/
-  inline const std::vector<Node*>& dependents() const {
-    return dependents_;
+  template <class F>
+  inline void forEachDependent(F func) const {
+    for (const Node* dependent : dependents_) {
+      func(*dependent);
+    }
+  }
+  /**
+   * apply an func to each dependent of the node This is not concurrency safe.
+   *
+   * @param func a functor with signature <code>void(Node&)</code>
+   **/
+  template <class F>
+  inline void forEachDependent(F func) {
+    for (Node* dependent : dependents_) {
+      func(*dependent);
+    }
   }
   /**
    * Return the number of nodes this node depends on. Concurrency safe.
@@ -283,8 +295,8 @@ class Node {
   template <class T, class X = std::enable_if_t<!std::is_base_of<Node, T>::value, void>>
   Node(T&& f) : numIncompletePredecessors_(0), f_(std::forward<T>(f)) {}
 
-  void dependsOnOneNode(Node* node) {
-    node->dependents_.emplace_back(this);
+  void dependsOnOneNode(Node& node) {
+    node.dependents_.emplace_back(this);
     numPredecessors_++;
   }
 
@@ -322,14 +334,8 @@ class BiPropNode : public Node {
    * @param nodes predecessors of the node
    **/
   template <class... Ns>
-  inline void biPropDependsOn(Ns... nodes) {
-    ((void)std::initializer_list<int>{(biPropDependsOnOneNode(std::forward<Ns>(nodes)), 0)...});
-  }
-  /**
-   * Return Set of nodes connected by bidirectional propagation dependencies with this node.
-   **/
-  const std::vector<const BiPropNode*>* bidirectionalPropagationSet() const {
-    return biPropSet_.get();
+  inline void biPropDependsOn(Ns&... nodes) {
+    ((void)std::initializer_list<int>{(biPropDependsOnOneNode(nodes), 0)...});
   }
 
  private:
@@ -344,12 +350,13 @@ class BiPropNode : public Node {
     }
   }
 
-  DISPENSO_DLL_ACCESS void biPropDependsOnOneNode(BiPropNode* node);
+  DISPENSO_DLL_ACCESS void biPropDependsOnOneNode(BiPropNode& node);
 
   std::shared_ptr<std::vector<const BiPropNode*>> biPropSet_;
 
   template <class N>
   friend class SubgraphT;
+  friend class ::detail::ExecutorBase;
 };
 
 template <class N>
@@ -367,23 +374,57 @@ class SubgraphT {
    * Construct a <code>NodeType</code> with a valid functor. This is not concurrency safe.
    *
    * @param f A functor with signature void().
+   * @return reference to the created node.
    **/
   template <class T>
-  N* addNode(T&& f) {
+  N& addNode(T&& f) {
     nodes_.push_back(NodeType(std::forward<T>(f)));
-    return &nodes_.back();
+    return nodes_.back();
   }
   /**
-   * Return nodes of the subgraph. Concurrency safe.
+   * Return number of nodes in subgraph. Concurrency safe.
    **/
-  const std::deque<N>& nodes() const {
-    return nodes_;
+  size_t numNodes() const {
+    return nodes_.size();
   }
   /**
-   * Return nodes of the subgraph. Concurrency safe.
+   * Return const reference to node with index. Concurrency safe.
+   *
+   * @param index - index of the node
    **/
-  std::deque<N>& nodes() {
-    return nodes_;
+  const N& node(size_t index) const {
+    return nodes_[index];
+  }
+  /**
+   * Return reference to node with index. Concurrency safe.
+   *
+   * @param index - index of the node
+   **/
+  N& node(size_t index) {
+    return nodes_[index];
+  }
+  /**
+   * apply an func to each node of the subgraph. Concurrency safe.
+   *
+   * @param func a functor with signature <code>void(const Node&)</code>
+   **/
+  template <class F>
+  inline void forEachNode(F func) const {
+    for (const N& node : nodes_) {
+      func(node);
+    }
+  }
+  /**
+   * apply an func to each node of the subgraph. This is not concurrency safe.
+   * This methods should never be called concurrent to when the graph execution is happening
+   *
+   * @param func a functor with signature <code>void(Node&)</code>
+   **/
+  template <class F>
+  inline void forEachNode(F func) {
+    for (N& node : nodes_) {
+      func(node);
+    }
   }
   /**
    * Removes all dependency between nodes of this subgraph and other nodes, destroy this subgraph
@@ -437,35 +478,111 @@ class GraphT {
    **/
   GraphT<N>& operator=(GraphT&& other);
   /**
-   * Construct a <code>NodeType</code> with a valid functor. This is not concurrency safe.
+   * Construct a <code>NodeType</code> with a valid functor. This node is created into subgraph 0.
+   * This is not concurrency safe.
    *
    * @param f A functor with signature void().
    **/
   template <class T>
-  N* addNode(T&& f) {
+  N& addNode(T&& f) {
     return subgraphs_[0].addNode(std::forward<T>(f));
   }
   /**
-   * Return nodes that do not belong to subgraphs. Concurrency safe.
+   * Return number of nodes in subgraph 0. Concurrency safe.
    **/
-  const std::deque<N>& nodes() const {
-    return subgraphs_[0].nodes_;
+  size_t numNodes() const {
+    return subgraphs_[0].numNodes();
   }
   /**
-   * Return nodes that do not belong to subgraphs. Concurrency safe.
+   * Return const reference to node with index in subgraph 0. Concurrency safe.
+   *
+   * @param index - index of the node
    **/
-  std::deque<N>& nodes() {
-    return subgraphs_[0].nodes_;
+  const N& node(size_t index) const {
+    return subgraphs_[0].node(index);
+  }
+  /**
+   * Return reference to node with index in subgraph 0. Concurrency safe.
+   *
+   * @param index - index of the node
+   **/
+  N& node(size_t index) {
+    return subgraphs_[0].node(index);
   }
   /**
    * Create an empty subgraph. This is not concurrency safe.
    **/
-  SubgraphT<N>* addSubgraph();
+  SubgraphT<N>& addSubgraph();
   /**
-   * Return subgraphs of this graph. Concurrency safe.
+   * Return number of subgraphs in the graph including subgraph 0. Concurrency safe.
    **/
-  const std::deque<SubgraphT<N>>& subgraphs() const {
-    return subgraphs_;
+  size_t numSubgraphs() const {
+    return subgraphs_.size();
+  }
+  /**
+   * Return const reference to subgraph with index. Concurrency safe.
+   *
+   * @param index - index of the subgraph.
+   **/
+  const SubgraphT<N>& subgraphs(size_t index) const {
+    return subgraphs_[index];
+  }
+  /**
+   * Return reference to subgraph with index. Concurrency safe.
+   *
+   * @param index - index of the subgraph.
+   **/
+  SubgraphT<N>& subgraphs(size_t index) {
+    return subgraphs_[index];
+  }
+  /**
+   * apply an func to each subgraph in the graph. Concurrency safe.
+   *
+   * @param func a functor with signature <code>void(const SubgraphT<N>&)</code>
+   **/
+  template <class F>
+  inline void forEachSubgraph(F&& func) const {
+    for (const SubgraphT<N>& subgraph : subgraphs_) {
+      func(subgraph);
+    }
+  }
+  /**
+   * apply an func to each subgraph in the graph. Concurrency safe.
+   *
+   * @param func a functor with signature <code>void(SubgraphT<N>&)</code>
+   **/
+  template <class F>
+  inline void forEachSubgraph(F&& func) {
+    for (SubgraphT<N>& subgraph : subgraphs_) {
+      func(subgraph);
+    }
+  }
+  /**
+   * apply an func to each node in the graph including all nodes from all subgraphs. Concurrency
+   * safe.
+   *
+   * @param func a functor with signature <code>void(const Node&)</code>
+   **/
+  template <class F>
+  inline void forEachNode(F&& func) const {
+    for (const SubgraphT<N>& subgraph : subgraphs_) {
+      for (const N& node : subgraph.nodes_) {
+        func(node);
+      }
+    }
+  }
+  /**
+   * apply an func to each node in the graph. Concurrency safe.
+   *
+   * @param func a functor with signature <code>void(const Node&)</code>
+   **/
+  template <class F>
+  inline void forEachNode(F&& func) {
+    for (SubgraphT<N>& subgraph : subgraphs_) {
+      for (N& node : subgraph.nodes_) {
+        func(node);
+      }
+    }
   }
   /**
    * Destroy all nodes and subgraphs. This is not concurrency safe.

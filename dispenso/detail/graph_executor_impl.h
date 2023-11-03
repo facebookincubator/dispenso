@@ -8,6 +8,7 @@
 #pragma once
 #include <dispenso/graph.h>
 #include <dispenso/task_set.h>
+#include <unordered_set>
 
 namespace detail {
 
@@ -52,11 +53,24 @@ class ExecutorBase {
   template <class N>
   inline static void evaluateNodeConcurrently(dispenso::ConcurrentTaskSet& tasks, const N* node) {
     node->run();
-    for (const dispenso::Node* const d : node->dependents()) {
+    for (const dispenso::Node* const d : node->dependents_) {
       if (decNumIncompletePredecessors(static_cast<const N&>(*d), std::memory_order_acq_rel)) {
         tasks.schedule(
             [&tasks, d]() { evaluateNodeConcurrently(tasks, static_cast<const N*>(d)); });
       }
+    }
+  }
+
+  static void appendGroup(
+      const dispenso::Node* /* node */,
+      std::unordered_set<const std::vector<const dispenso::BiPropNode*>*>& /* groups */) {}
+
+  static void appendGroup(
+      const dispenso::BiPropNode* node,
+      std::unordered_set<const std::vector<const dispenso::BiPropNode*>*>& groups) {
+    const std::vector<const dispenso::BiPropNode*>* group = node->biPropSet_.get();
+    if (group != nullptr) {
+      groups.insert(group);
     }
   }
 };

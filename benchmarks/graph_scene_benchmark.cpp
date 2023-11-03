@@ -263,12 +263,12 @@ void transformGeo(
       taskSet, 0, numPoints, [&](size_t i) { g[i] = multiply(inG[i], m); }, options);
 }
 
-struct Nodes {
-  std::vector<dispenso::Node*> inGeoNodes;
-  std::vector<dispenso::Node*> transformNodes;
-  std::vector<dispenso::Node*> outGeoNodes;
+struct Subgraphs {
+  dispenso::Subgraph* inGeo;
+  dispenso::Subgraph* transforms;
+  dispenso::Subgraph* outGeo;
 };
-Nodes prepareGraph(dispenso::ThreadPool& threadPool, Scene& scene, dispenso::Graph& g) {
+Subgraphs prepareGraph(dispenso::ThreadPool& threadPool, Scene& scene, dispenso::Graph& g) {
   std::mt19937 rng(12345);
 
   scene = generateTransformsHierarchy(
@@ -278,38 +278,34 @@ Nodes prepareGraph(dispenso::ThreadPool& threadPool, Scene& scene, dispenso::Gra
   std::vector<Transform>& transforms = scene.transforms;
   std::vector<Geometry>& outGeo = scene.outGeo;
   // calculate inGeo
-  std::vector<dispenso::Node*> inGeoNodes(params::numInGeo);
-
-  dispenso::Subgraph* inGeoSubgraph = g.addSubgraph();
-  dispenso::Subgraph* outGeoSubgraph = g.addSubgraph();
+  dispenso::Subgraph& transformsSub = g.addSubgraph();
+  dispenso::Subgraph& inGeoSub = g.addSubgraph();
+  dispenso::Subgraph& outGeoSub = g.addSubgraph();
 
   for (size_t i = 0; i < params::numInGeo; ++i) {
-    inGeoNodes[i] =
-        inGeoSubgraph->addNode([&threadPool, &inGeo, i]() { generateGeo(threadPool, inGeo, i); });
+    inGeoSub.addNode([&threadPool, &inGeo, i]() { generateGeo(threadPool, inGeo, i); });
   }
 
   // calculate transforms
-  std::vector<dispenso::Node*> transformNodes(params::numTransforms);
-  std::vector<dispenso::Node*> outGeoNodes(outGeo.size());
   for (size_t i = 0; i < params::numTransforms; ++i) {
-    transformNodes[i] = g.addNode([&transforms, i]() { calculateWorldMatrix(transforms, i); });
+    transformsSub.addNode([&transforms, i]() { calculateWorldMatrix(transforms, i); });
     const size_t parentIndex = transforms[i].parent;
     if (parentIndex != kRoot) {
-      transformNodes[i]->dependsOn(transformNodes[parentIndex]);
+      transformsSub.node(i).dependsOn(transformsSub.node(parentIndex));
     }
 
     // calculate outGeo
     const size_t outGeoIndex = transforms[i].outGeoIndex;
     const size_t inGeoIndex = transforms[i].inGeoIndex;
     if (inGeoIndex != kNoGeometry) {
-      outGeoNodes[outGeoIndex] = outGeoSubgraph->addNode([&, i, inGeoIndex, outGeoIndex]() {
+      outGeoSub.addNode([&, i, inGeoIndex, outGeoIndex]() {
         transformGeo(threadPool, outGeo[outGeoIndex], inGeo[inGeoIndex], transforms[i].worldMatrix);
       });
-      outGeoNodes[outGeoIndex]->dependsOn(transformNodes[i], inGeoNodes[inGeoIndex]);
+      outGeoSub.node(outGeoIndex).dependsOn(transformsSub.node(i), inGeoSub.node(inGeoIndex));
     }
   }
 
-  return {inGeoNodes, transformNodes, outGeoNodes};
+  return {&inGeoSub, &transformsSub, &outGeoSub};
 }
 
 //----------------------------------test results----------------------------------
@@ -424,7 +420,7 @@ static void BM_scene_graph_partial_revaluation(benchmark::State& state) {
 
   dispenso::Graph g;
   Scene scene;
-  Nodes nodes = prepareGraph(threadPool, scene, g);
+  Subgraphs subgraphs = prepareGraph(threadPool, scene, g);
 
   const size_t numTransforms = scene.transforms.size();
   std::uniform_real_distribution<float> transformIndexDistr(0, numTransforms - 1);
@@ -447,7 +443,7 @@ static void BM_scene_graph_partial_revaluation(benchmark::State& state) {
       const size_t index = transformIndexDistr(rng);
       Transform& t = scene.transforms[index];
       t.matrix = getRandomTransformMatrix(rng);
-      nodes.transformNodes[index]->setIncomplete();
+      subgraphs.transforms->node(index).setIncomplete();
     }
     state.ResumeTiming();
     // The graph automatically recalculates all children of modified transforms. If these transforms
