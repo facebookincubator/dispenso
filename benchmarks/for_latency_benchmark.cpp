@@ -130,7 +130,7 @@ void BM_omp(benchmark::State& state) {
   const int numThreads = state.range(0);
 
   std::vector<int> output(kSize, 0);
-  omp_set_numThreads(numThreads);
+  omp_set_num_threads(numThreads);
 
   std::vector<double> times;
   times.reserve(1000);

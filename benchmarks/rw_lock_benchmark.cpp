@@ -5,9 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// This benchmark relies on shared_lock from C++17
+#if __cplusplus >= 201703L
+
 #include <dispenso/rw_lock.h>
 
 #include <map>
+
 #include <shared_mutex>
 
 #include <dispenso/task_set.h>
@@ -109,3 +113,5 @@ BENCHMARK_TEMPLATE(BM_serial, dispenso::RWLock)->Apply(CustomArgumentsSerial)->U
 BENCHMARK_TEMPLATE(BM_parallel, std::shared_mutex)->Apply(CustomArgumentsParallel)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_parallel, dispenso::RWLock)->Apply(CustomArgumentsParallel)->UseRealTime();
+
+#endif // C++17
