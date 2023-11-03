@@ -14,7 +14,6 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
-#include <unordered_set>
 #include <vector>
 
 /*
@@ -76,13 +75,14 @@ parallelForExecutor(taskSet, graph);
 
 The graph can be recomputed partially if we have new input data for one or several nodes in the
 graph. It order to do it we need to call `setIncomplete()` method for every node which we need to
-recompute and after use function `propagateIncompleteState` to mark as "incomplete" all dependents.
+recompute and after use functor `ForwardPropagator` to mark as "incomplete" all dependents.
 
 Example:
 ~~~
 N[1]->setIncomplete();
 r[1] = r[4] = 0;
-propagateIncompleteState(graph);
+ForwardPropagator forwardPropagator;
+forwardPropagator(graph);
 evaluateGraph(graph);
 ~~~
 In this exaple only node 1 and 4 will be invoked.
@@ -191,12 +191,17 @@ N[4]->setIncomplete();
 // if node 4 is incomplete after propagation node 2 become incomplete. Taking in account that node 2
 // bidirectionally depends on nodes 0 and 1 they will be marked as incomplete as well
 b =  m4 = 0.f;
-propagateIncompleteState(g);
+ForwardPropagator forwardPropagator;
+forwardPropagator(g);
 concurrentTaskSetExecutor(concurrentTaskSet, g);
 ~~~
 
 Please read tests from `graph_test.cpp` for more examples.
 */
+
+namespace detail {
+class ExecutorBase;
+} // namespace detail
 
 namespace dispenso {
 /**
@@ -251,7 +256,7 @@ class Node {
     return numIncompletePredecessors_.load(std::memory_order_relaxed) == kCompleted;
   }
   /**
-   * Make node incomplete. (that allows reevaluate this node again).
+   * Mark node incomplete. (that allows reevaluate this node again).
    * Concurrency safe. This methods should never be called concurrent to when
    * the graph execution is happening
    *
@@ -263,6 +268,15 @@ class Node {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Mark node completed.
+   * Concurrency safe. This methods should never be called concurrent to when
+   * the graph execution is happening
+   **/
+  inline void setCompleted() const {
+    numIncompletePredecessors_.store(kCompleted, std::memory_order_relaxed);
   }
 
  protected:
@@ -286,6 +300,9 @@ class Node {
 
   template <class N>
   friend class SubgraphT;
+  friend class ::detail::ExecutorBase;
+  template <typename G>
+  friend void setAllNodesIncomplete(const G& graph);
 };
 /**
  * Class to store task with dependencies. Support bidirectional propagation dependency between
@@ -311,7 +328,7 @@ class BiPropNode : public Node {
   /**
    * Return Set of nodes connected by bidirectional propagation dependencies with this node.
    **/
-  const std::unordered_set<const BiPropNode*>* bidirectionalPropagationSet() const {
+  const std::vector<const BiPropNode*>* bidirectionalPropagationSet() const {
     return biPropSet_.get();
   }
 
@@ -320,13 +337,16 @@ class BiPropNode : public Node {
   BiPropNode(T&& f) : Node(std::forward<T>(f)) {}
   inline void removeFromBiPropSet() {
     if (biPropSet_ != nullptr) {
-      biPropSet_->erase(this);
+      auto it = std::find(biPropSet_->begin(), biPropSet_->end(), this);
+      if (it != biPropSet_->end()) {
+        biPropSet_->erase(it);
+      }
     }
   }
 
   DISPENSO_DLL_ACCESS void biPropDependsOnOneNode(BiPropNode* node);
 
-  std::shared_ptr<std::unordered_set<const BiPropNode*>> biPropSet_;
+  std::shared_ptr<std::vector<const BiPropNode*>> biPropSet_;
 
   template <class N>
   friend class SubgraphT;
@@ -360,6 +380,12 @@ class SubgraphT {
     return nodes_;
   }
   /**
+   * Return nodes of the subgraph. Concurrency safe.
+   **/
+  std::deque<N>& nodes() {
+    return nodes_;
+  }
+  /**
    * Removes all dependency between nodes of this subgraph and other nodes, destroy this subgraph
    * nodes. This is not concurrency safe.
    **/
@@ -367,7 +393,7 @@ class SubgraphT {
 
  private:
   explicit SubgraphT<N>(GraphT<N>* graph) : graph_(graph), nodes_() {}
-  void removeNodeFromBiPropSet(Node& /* node */) {}
+  inline void removeNodeFromBiPropSet(Node& /* node */) {}
   void removeNodeFromBiPropSet(BiPropNode& node) {
     node.removeFromBiPropSet();
   }
@@ -426,6 +452,12 @@ class GraphT {
     return subgraphs_[0].nodes_;
   }
   /**
+   * Return nodes that do not belong to subgraphs. Concurrency safe.
+   **/
+  std::deque<N>& nodes() {
+    return subgraphs_[0].nodes_;
+  }
+  /**
    * Create an empty subgraph. This is not concurrency safe.
    **/
   SubgraphT<N>* addSubgraph();
@@ -434,6 +466,13 @@ class GraphT {
    **/
   const std::deque<SubgraphT<N>>& subgraphs() const {
     return subgraphs_;
+  }
+  /**
+   * Destroy all nodes and subgraphs. This is not concurrency safe.
+   **/
+  void clear() {
+    subgraphs_.clear();
+    subgraphs_.push_back(SubgraphType(this));
   }
 
  private:

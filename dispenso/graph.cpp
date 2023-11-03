@@ -10,6 +10,21 @@
 
 namespace {
 constexpr size_t kToDelete = std::numeric_limits<size_t>::max();
+
+void set_union(
+    std::vector<const dispenso::BiPropNode*>& s1,
+    const std::vector<const dispenso::BiPropNode*>& s2) {
+  std::vector<const dispenso::BiPropNode*> tmp(s1);
+  s1.clear();
+  std::set_union(tmp.cbegin(), tmp.cend(), s2.cbegin(), s2.cend(), std::back_inserter(s1));
+}
+
+void set_insert(std::vector<const dispenso::BiPropNode*>& s, const dispenso::BiPropNode* node) {
+  auto it = std::upper_bound(s.begin(), s.end(), node);
+  if (it == s.begin() || *(it - 1) != node) {
+    s.insert(it, node);
+  }
+}
 } // anonymous namespace
 
 namespace dispenso {
@@ -17,18 +32,19 @@ namespace dispenso {
 void BiPropNode::biPropDependsOnOneNode(BiPropNode* node) {
   Node::dependsOnOneNode(node);
   if (node->biPropSet_ == nullptr && biPropSet_ == nullptr) {
-    biPropSet_ = std::make_shared<std::unordered_set<const BiPropNode*>>();
-    biPropSet_->insert({this, node});
+    biPropSet_ = std::make_shared<std::vector<const BiPropNode*>>();
+    set_insert(*biPropSet_, this);
+    set_insert(*biPropSet_, node);
     node->biPropSet_ = biPropSet_;
   } else if (node->biPropSet_ != nullptr && biPropSet_ != nullptr) {
-    biPropSet_->insert(node->biPropSet_->begin(), node->biPropSet_->end());
+    set_union(*biPropSet_, *node->biPropSet_);
     node->biPropSet_ = biPropSet_;
   } else if (biPropSet_ == nullptr) {
     biPropSet_ = node->biPropSet_;
-    biPropSet_->insert(this);
+    set_insert(*biPropSet_, this);
   } else {
     node->biPropSet_ = biPropSet_;
-    biPropSet_->insert(node);
+    set_insert(*biPropSet_, node);
   }
 }
 

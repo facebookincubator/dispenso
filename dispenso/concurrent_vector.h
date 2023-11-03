@@ -102,7 +102,7 @@ struct DefaultConcurrentVectorSizeTraits {
    * possible if the max size is less than 32-bits.
    **/
   static constexpr size_t kMaxVectorSize =
-      (size_t{1} << (sizeof(size_t) * CHAR_BIT >= 47 ? 47 : sizeof(size_t) * CHAR_BIT - 1)) /
+      (size_t{1} << (sizeof(size_t) * CHAR_BIT > 47 ? 47 : sizeof(size_t) * CHAR_BIT - 1)) /
       sizeof(T);
 };
 

@@ -135,6 +135,7 @@ class TwoSubgraphs : public testing::TestWithParam<EvalMode> {
   dispenso::Subgraph* subgraph1_;
   dispenso::Subgraph* subgraph2_;
   Executor executor_;
+  dispenso::ForwardPropagator forwardPropagator_;
 };
 
 TEST_P(TwoSubgraphs, ReplaceSourceGraph) {
@@ -214,36 +215,35 @@ TEST_P(TwoSubgraphs, PartialEvaluation) {
       EXPECT_FALSE(!node.isCompleted());
     }
   }
-
   N_[1]->setIncomplete();
   r_[1] = r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
   N_[2]->setIncomplete();
   r_[2] = r_[3] = r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
   N_[1]->setIncomplete();
   N_[3]->setIncomplete();
   r_[1] = r_[3] = r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
   N_[4]->setIncomplete();
   r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
   N_[2]->setIncomplete();
   N_[0]->setIncomplete();
   r_ = {0, 0, 0, 0, 0};
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
@@ -251,7 +251,7 @@ TEST_P(TwoSubgraphs, PartialEvaluation) {
   N_[1]->setIncomplete();
   N_[4]->setIncomplete();
   r_[0] = r_[1] = r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 
@@ -259,7 +259,7 @@ TEST_P(TwoSubgraphs, PartialEvaluation) {
   N_[3]->setIncomplete();
   N_[4]->setIncomplete();
   r_[2] = r_[3] = r_[4] = 0;
-  propagateIncompleteState(graph_);
+  forwardPropagator_(graph_);
   evaluateGraph(graph_);
   EXPECT_EQ(r_[4], 6.f);
 }
@@ -274,20 +274,20 @@ class BiPropGraphTest : public testing::TestWithParam<EvalMode> {
  protected:
   void SetUp() override {
     //                                     ┌─────────────────┐
-    //                                     │ 5: m5+=m3*2     │
-    //                                     └─────────────────┘
-    //                                       ▲
-    // ┌−−−−−−−−−−−−−−−−Group1 (a,b)−−−−−−−−−│−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−┐
-    // ╎ ┌─────────┐     ┌───────────┐     ┌─────────────────┐     ┌────────────┐ ╎
-    // ╎ │         │     │  0: a+=1  │     │     3: b+=5     │     │            │ ╎
-    // ╎ │ 2: a+=3 │     │   b+=5    │     │     m3+=b       │     │ 6: b/=m4   │ ╎
-    // ╎ │         │ ◁── │ m0+=a+b   │ ──▷ │                 │ ──▷ │            │ ╎
-    // ╎ └─────────┘     └───────────┘     └─────────────────┘     └────────────┘ ╎
-    // └−−−−−−−−−−−−−−−−−−−│−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−▲−−−−−−−−−−−−┘
-    //                     └─────────────────┐                       │
-    //                 ┌−−−−−−−Group2 (c)−−−−▼−−−−−−−−−−−−−−−−−┐     │
-    //                 ╎ ┌───────────┐     ┌─────────────────┐ ╎   ┌────────────┐
-    //                 ╎ │  7: c+=5  │ ──▷ │   1: c+=m0      │ ╎   │ 4: m4+=2   │
+    //                                     │ 5: m5+=m3*m4    │◀─────────────────────┐
+    //                                     └─────────────────┘                      │
+    //                                       ▲                                      │
+    // ┌−−−−−−−−−−−−−−−−Group1 (a,b)−−−−−−−−−│−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−┐ │
+    // ╎ ┌─────────┐     ┌───────────┐     ┌─┴───────────────┐     ┌────────────┐ ╎ │
+    // ╎ │         │     │  0: a+=1  │     │     3: b+=5     │     │            │ ╎ │
+    // ╎ │ 2: a+=3 │     │   b+=5    │     │     m3+=b       │     │ 6: b/=m4   │ ╎ │
+    // ╎ │         │ ◁───┤ m0+=a+b   ├───▷ │                 ├───▷ │            │ ╎ │
+    // ╎ └─────────┘     └─┬─────────┘     └─────────────────┘     └────────────┘ ╎ │
+    // └−−−−−−−−−−−−−−−−−−−│−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−▲−−−−−−−−−−−−┘ │
+    //                     └─────────────────┐                       │              │
+    //                 ┌−−−−−−−Group2 (c)−−−−▼−−−−−−−−−−−−−−−−−┐     │              │
+    //                 ╎ ┌───────────┐     ┌─────────────────┐ ╎   ┌─┴──────────┐   │
+    //                 ╎ │  7: c+=5  ├───▷ │   1: c+=m0      │ ╎   │ 4: m4+=3   ├───┘
     //                 ╎ └───────────┘     └─────────────────┘ ╎   └────────────┘
     //                 └−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−┘
     //  Legend:
@@ -305,12 +305,12 @@ class BiPropGraphTest : public testing::TestWithParam<EvalMode> {
       b += 5;
       m3 += b;
     });
-    N[4] = g.addNode([&]() { m4 += 2; });
-    N[5] = g.addNode([&]() { m5 += m3 * 2; });
+    N[4] = g.addNode([&]() { m4 += 3; });
+    N[5] = g.addNode([&]() { m5 += m3 * m4; });
     N[6] = g.addNode([&]() { b /= m4; });
     N[7] = g.addNode([&]() { c += 5; });
 
-    N[5]->dependsOn(N[3]);
+    N[5]->dependsOn(N[3], N[4]);
     N[1]->dependsOn(N[0]);
     N[6]->dependsOn(N[4]);
 
@@ -322,65 +322,64 @@ class BiPropGraphTest : public testing::TestWithParam<EvalMode> {
 
   void checkResults() {
     EXPECT_EQ(a, 4.f);
-    EXPECT_EQ(b, 5.f);
+    EXPECT_EQ(b, 10.f / 3.f);
     EXPECT_EQ(c, 11.f);
-    EXPECT_EQ(m5, 20.f);
+    EXPECT_EQ(m5, 30.f);
   }
 
   float a, b, c, m0, m3, m4, m5;
   dispenso::BiPropGraph g;
   std::array<dispenso::BiPropNode*, 8> N;
-  Executor executor;
+  Executor executor_;
+  dispenso::ForwardPropagator forwardPropagator_;
 };
 
 TEST_P(BiPropGraphTest, SimpleEvaluation) {
   a = b = c = m0 = m3 = m4 = m5 = 0.f;
   setAllNodesIncomplete(g);
-  executor(GetParam(), g);
-
+  executor_(GetParam(), g);
   checkResults();
 
   a = b = c = m0 = m3 = m4 = m5 = 0.f;
   setAllNodesIncomplete(g);
-  N[4]->setIncomplete();
-  executor(GetParam(), g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[4]->setIncomplete();
-  m4 = m3 = m0 = a = b = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  m5 = m4 = m3 = m0 = a = b = 0.f;
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[1]->setIncomplete();
   c = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[7]->setIncomplete();
   c = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[0]->setIncomplete();
   a = b = c = m0 = m3 = m5 = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[5]->setIncomplete();
   m5 = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 
   N[4]->setIncomplete();
   N[6]->setIncomplete();
-  m4 = m3 = m0 = a = b = 0.f;
-  propagateIncompleteState(g);
-  executor(GetParam(), g);
+  m5 = m4 = m3 = m0 = a = b = 0.f;
+  forwardPropagator_(g);
+  executor_(GetParam(), g);
   checkResults();
 }
 
@@ -470,6 +469,7 @@ class BigTree : public testing::Test {
   std::array<std::vector<typename GraphType::NodeType*>, numLevels_> nodes_;
   GraphType g_;
   Executor executor_;
+  dispenso::ForwardPropagator forwardPropagator_;
 };
 
 using GraphCases = ::testing::Types<
@@ -513,7 +513,7 @@ TYPED_TEST(BigTree, FullAndPartialEvaluation) {
 
     result = std::accumulate(this->data_[0].begin(), this->data_[0].end(), size_t(0));
 
-    propagateIncompleteState(this->g_);
+    this->forwardPropagator_(this->g_);
     this->executor_(this->mode_, this->g_);
     EXPECT_EQ(this->data_[this->numLevels_ - 1][0], result);
   }
@@ -536,7 +536,7 @@ TYPED_TEST(BigTree, SubgraphClearAndRebuild) {
 
     this->levelSubgraphs_[level]->clear();
     this->rebuildLevel(level);
-    propagateIncompleteState(this->g_);
+    this->forwardPropagator_(this->g_);
     // clean up nodes data.
     for (size_t l = level; l < this->numLevels_; ++l) {
       std::fill(this->data_[l].begin(), this->data_[l].end(), size_t(0));

@@ -8,8 +8,10 @@
 #include <dispenso/graph.h>
 #include <fstream>
 
-template <typename... Gs>
-void graphsToDot(const char* filename, const Gs&... graphs) {
+template <typename G>
+void graphsToDot(const char* filename, const G& graph) {
+  using SubgraphType = typename G::SubgraphType;
+  using NodeType = typename G::NodeType;
   std::ofstream datfile(filename);
   datfile << R"dot(
 digraph {
@@ -17,22 +19,32 @@ digraph {
   node [shape = rectangle, style = filled, colorscheme=pastel19]
   )dot";
 
-  for (const dispenso::Graph* graph : {&graphs...}) {
-    datfile << "  "
-            << "subgraph cluster_" << (uint64_t)graph << " { label = \"" << (uint64_t)(graph)
-            << "\"\n";
-    for (const dispenso::Node& node : graph->nodes()) {
-      datfile << "    " << (uint64_t)(&node) << " [color = " << (node.isCompleted() ? 2 : 1)
-              << " label = \"" << (uint64_t)(&node) << "\"]\n";
+  const std::deque<SubgraphType>& subgraphs = graph.subgraphs();
+  printf("subgraphs.size() %lu\n", subgraphs.size()); // DebugCode
+  for (size_t i = 0; i < subgraphs.size(); ++i) {
+    const SubgraphType& s = subgraphs[i];
+    if (i != 0) {
+      datfile << "  "
+              << "subgraph cluster_" << (uint64_t)(&s) << " { label = \"" << (uint64_t)(&s)
+              << "\"\n";
     }
-    datfile << "  }\n";
-
-    for (const dispenso::Node& node : graph->nodes()) {
+    for (const dispenso::Node& node : s.nodes()) {
+      // datfile << "    " << (uint64_t)(&node) << " [color = " << (node.isCompleted() ? 2 : 1)
+      datfile << "    " << (uint64_t)(&node) << " [color = " << (i + 1) << " label = \""
+              << (uint64_t)(&node) << "\"]\n";
+    }
+    if (i != 0) {
+      datfile << "  }\n";
+    }
+  }
+  for (const SubgraphType& subgraph : graph.subgraphs()) {
+    for (const NodeType& node : subgraph.nodes()) {
       for (const dispenso::Node* d : node.dependents()) {
         datfile << "    " << (uint64_t)(&node) << " -> " << (uint64_t)d << '\n';
       }
     }
   }
+
   datfile << "}";
   datfile.close();
 }
