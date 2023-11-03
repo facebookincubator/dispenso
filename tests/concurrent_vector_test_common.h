@@ -328,7 +328,10 @@ void shrinkToFit(int num, CVec& vec) {
 
   EXPECT_LE(
       maxCapacity,
-      2 * std::max<size_t>(dispenso::detail::nextPow2(vec.size() + 1), vec.default_capacity()))
+      2 *
+          std::max<size_t>(
+              static_cast<size_t>(dispenso::detail::nextPow2(vec.size() + 1)),
+              vec.default_capacity()))
       << "Num: " << num << " default: " << vec.default_capacity();
 
   for (int i = 0; i < num / 2; ++i) {
@@ -345,7 +348,10 @@ void shrinkToFit(int num, CVec& vec) {
 
   EXPECT_LE(
       afterPopNShrinkCap,
-      2 * std::max<size_t>(dispenso::detail::nextPow2(vec.size() + 1), vec.default_capacity()))
+      2 *
+          std::max<size_t>(
+              static_cast<size_t>(dispenso::detail::nextPow2(vec.size() + 1)),
+              vec.default_capacity()))
       << "Size: " << vec.size() << " Num: " << num << " default: " << vec.default_capacity();
 
   vec.clear();

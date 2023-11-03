@@ -263,14 +263,16 @@ void parallel_for_staticImpl(
     states.clear();
   }
 
-  size_t numToEmplace =
-      states.size() < static_cast<size_t>(numThreads) ? numThreads - states.size() : 0;
+  size_t numToEmplace = states.size() < static_cast<size_t>(numThreads)
+      ? static_cast<size_t>(numThreads) - states.size()
+      : 0;
 
   for (; numToEmplace--;) {
     states.emplace_back(defaultState());
   }
 
-  auto chunking = detail::staticChunkSize(range.size(), numThreads);
+  auto chunking =
+      detail::staticChunkSize(static_cast<ssize_t>(range.size()), static_cast<ssize_t>(numThreads));
   IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
 
   bool perfectlyChunked = static_cast<size_type>(chunking.transitionTaskIndex) == numThreads;
@@ -400,7 +402,7 @@ void parallel_for(
         defaultState,
         range,
         std::forward<F>(f),
-        maxThreads,
+        static_cast<ssize_t>(maxThreads),
         options.wait,
         options.reuseExistingState);
     return;
@@ -413,7 +415,7 @@ void parallel_for(
   }
 
   size_t numToEmplace = static_cast<size_type>(states.size()) < (numToLaunch + options.wait)
-      ? (numToLaunch + options.wait) - states.size()
+      ? (static_cast<size_t>(numToLaunch) + options.wait) - states.size()
       : 0;
   for (; numToEmplace--;) {
     states.emplace_back(defaultState());
