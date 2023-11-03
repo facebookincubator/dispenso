@@ -170,7 +170,7 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">      (<span class="keywordtype">size_t</span>{1} &lt;&lt; (<span class="keyword">sizeof</span>(size_t) * CHAR_BIT &gt;= 47 ? 47 : <span class="keyword">sizeof</span>(<span class="keywordtype">size_t</span>) * CHAR_BIT - 1)) /</div>
+<div class="line">      (<span class="keywordtype">size_t</span>{1} &lt;&lt; (<span class="keyword">sizeof</span>(size_t) * CHAR_BIT &gt; 47 ? 47 : <span class="keyword">sizeof</span>(<span class="keywordtype">size_t</span>) * CHAR_BIT - 1)) /</div>
 <div class="line">      <span class="keyword">sizeof</span>(T)</div>
 </div><!-- fragment -->
 <p>The maximum possible size for the vector. </p>

@@ -7,8 +7,15 @@ var hierarchy =
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
+    [ "dispenso::ConcurrentVector< const dispenso::Node * >", "classdispenso_1_1_concurrent_vector.html", null ],
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
     [ "dispenso::DefaultConcurrentVectorTraits", "structdispenso_1_1_default_concurrent_vector_traits.html", null ],
+    [ "detail::ExecutorBase", null, [
+      [ "dispenso::ConcurrentTaskSetExecutor", "classdispenso_1_1_concurrent_task_set_executor.html", null ],
+      [ "dispenso::ForwardPropagator", "classdispenso_1_1_forward_propagator.html", null ],
+      [ "dispenso::ParallelForExecutor", "classdispenso_1_1_parallel_for_executor.html", null ],
+      [ "dispenso::SingleThreadExecutor", "classdispenso_1_1_single_thread_executor.html", null ]
+    ] ],
     [ "dispenso::ForceQueuingTag", "structdispenso_1_1_force_queuing_tag.html", null ],
     [ "dispenso::ForEachOptions", "structdispenso_1_1_for_each_options.html", null ],
     [ "dispenso::detail::FutureBase< Result >", null, [
@@ -20,9 +27,13 @@ var hierarchy =
     [ "dispenso::detail::FutureBase< void >", null, [
       [ "dispenso::Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", null ]
     ] ],
+    [ "dispenso::GraphT< N >", "classdispenso_1_1_graph_t.html", null ],
     [ "dispenso::ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", null ],
     [ "dispenso::Latch", "classdispenso_1_1_latch.html", null ],
     [ "dispenso::NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", null ],
+    [ "dispenso::Node", "classdispenso_1_1_node.html", [
+      [ "dispenso::BiPropNode", "classdispenso_1_1_bi_prop_node.html", null ]
+    ] ],
     [ "dispenso::OnceFunction", "classdispenso_1_1_once_function.html", null ],
     [ "dispenso::ParForOptions", "structdispenso_1_1_par_for_options.html", null ],
     [ "dispenso::PoolAllocator", "classdispenso_1_1_pool_allocator.html", null ],
@@ -34,6 +45,7 @@ var hierarchy =
       [ "dispenso::UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ],
     [ "dispenso::ChunkedRange< IntegerT >::Static", "structdispenso_1_1_chunked_range_1_1_static.html", null ],
+    [ "dispenso::SubgraphT< N >", "classdispenso_1_1_subgraph_t.html", null ],
     [ "TaskSetBase", null, [
       [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],
       [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ]

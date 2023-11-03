@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['taskset_0',['TaskSet',['../classdispenso_1_1_task_set.html',1,'dispenso']]],
-  ['threadpool_1',['ThreadPool',['../classdispenso_1_1_thread_pool.html',1,'dispenso']]],
-  ['timedtask_2',['TimedTask',['../classdispenso_1_1_timed_task.html',1,'dispenso']]],
-  ['timedtaskscheduler_3',['TimedTaskScheduler',['../classdispenso_1_1_timed_task_scheduler.html',1,'dispenso']]]
+  ['reservetags_0',['ReserveTagS',['../structdispenso_1_1_reserve_tag_s.html',1,'dispenso']]],
+  ['resource_1',['Resource',['../classdispenso_1_1_resource.html',1,'dispenso']]],
+  ['resourcepool_2',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso']]],
+  ['rwlock_3',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
 ];

@@ -6,5 +6,6 @@ var searchData=
   ['defaultchunking_3',['defaultChunking',['../structdispenso_1_1_par_for_options.html#a2cfd7b948697c97874c727940529d1d8',1,'dispenso::ParForOptions']]],
   ['defaultconcurrentvectorsizetraits_4',['DefaultConcurrentVectorSizeTraits',['../structdispenso_1_1_default_concurrent_vector_size_traits.html',1,'dispenso']]],
   ['defaultconcurrentvectortraits_5',['DefaultConcurrentVectorTraits',['../structdispenso_1_1_default_concurrent_vector_traits.html',1,'dispenso']]],
-  ['detach_6',['detach',['../classdispenso_1_1_timed_task.html#a310952e54d6daf1add1cbbe4c690c8f9',1,'dispenso::TimedTask']]]
+  ['dependson_6',['dependsOn',['../classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a',1,'dispenso::Node']]],
+  ['detach_7',['detach',['../classdispenso_1_1_timed_task.html#a310952e54d6daf1add1cbbe4c690c8f9',1,'dispenso::TimedTask']]]
 ];
