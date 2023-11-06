@@ -63,7 +63,7 @@ template <class T>
 std::string modeName(const testing::TestParamInfo<typename T::ParamType>& info) {
   static std::string names[3] = {"singleThread", "parallelFor", "concurrentTaskSet"};
   return names[static_cast<uint8_t>(info.param)];
-};
+}
 
 class Executor {
  public:
