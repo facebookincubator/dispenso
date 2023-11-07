@@ -73,7 +73,7 @@ class BigTree {
 };
 
 template <class G>
-static void BM_graph_big_tree(benchmark::State& state) {
+static void BM_build_big_tree(benchmark::State& state) {
   BigTree<G> bigTree;
   bigTree.allocateMemory();
   for (auto _ : state) {
@@ -174,8 +174,8 @@ static void BM_forward_propagator_node(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_graph_big_tree<dispenso::Graph>);
-BENCHMARK(BM_graph_big_tree<dispenso::BiPropGraph>);
+BENCHMARK(BM_build_big_tree<dispenso::Graph>);
+BENCHMARK(BM_build_big_tree<dispenso::BiPropGraph>);
 BENCHMARK(BM_build_bi_prop_dependency_chain);
 BENCHMARK(BM_build_bi_prop_dependency_group);
 BENCHMARK(BM_build_dependnecy_chain<dispenso::Graph>);

@@ -8,9 +8,9 @@
 #pragma once
 
 #include <dispenso/platform.h>
+#include <dispenso/small_buffer_allocator.h>
 #include <atomic>
 #include <deque>
-#include <functional>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -197,6 +197,19 @@ Please read tests from `graph_test.cpp` for more examples.
 
 namespace detail {
 class ExecutorBase;
+
+template <typename F>
+void callFunctor(void* ptr) {
+  (*static_cast<F*>(ptr))();
+}
+
+template <typename F>
+void destroyFunctor(void* ptr) {
+  static_cast<F*>(ptr)->~F();
+  constexpr size_t kFuncSize = static_cast<size_t>(dispenso::detail::nextPow2(sizeof(F)));
+  dispenso::deallocSmallBuffer<kFuncSize>(ptr);
+}
+
 } // namespace detail
 
 namespace dispenso {
@@ -211,8 +224,17 @@ class Node {
   Node(Node&& other) noexcept
       : numIncompletePredecessors_(other.numIncompletePredecessors_.load()),
         numPredecessors_(other.numPredecessors_),
-        f_(std::move(other.f_)),
-        dependents_(std::move(other.dependents_)) {}
+        invoke_(other.invoke_),
+        destroy_(other.destroy_),
+        funcBuffer_(other.funcBuffer_),
+        dependents_(std::move(other.dependents_)) {
+    other.funcBuffer_ = nullptr;
+  }
+  ~Node() {
+    if (funcBuffer_) {
+      destroy_(funcBuffer_);
+    }
+  };
   /**
    * Make this node depends on nodes. This is not concurrency safe.
    *
@@ -227,7 +249,7 @@ class Node {
    * Concurrency safe.
    **/
   inline void run() const {
-    f_();
+    invoke_(funcBuffer_);
     numIncompletePredecessors_.store(kCompleted, std::memory_order_release);
   }
   /**
@@ -292,8 +314,16 @@ class Node {
   }
 
  protected:
-  template <class T, class X = std::enable_if_t<!std::is_base_of<Node, T>::value, void>>
-  Node(T&& f) : numIncompletePredecessors_(0), f_(std::forward<T>(f)) {}
+  template <class F, class X = std::enable_if_t<!std::is_base_of<Node, F>::value, void>>
+  Node(F&& f) : numIncompletePredecessors_(0) {
+    using FNoRef = typename std::remove_reference<F>::type;
+
+    constexpr size_t kFuncSize = static_cast<size_t>(detail::nextPow2(sizeof(FNoRef)));
+    funcBuffer_ = allocSmallBuffer<kFuncSize>();
+    new (funcBuffer_) FNoRef(std::forward<F>(f));
+    invoke_ = ::detail::callFunctor<FNoRef>;
+    destroy_ = ::detail::destroyFunctor<FNoRef>;
+  }
 
   void dependsOnOneNode(Node& node) {
     node.dependents_.emplace_back(this);
@@ -305,9 +335,12 @@ class Node {
   size_t numPredecessors_ = 0;
 
  private:
-  // TODO(roman fedotov):create more efficient implementation than std::function
-  // (like  dispenso::OnceFunction)
-  std::function<void()> f_;
+  using InvokerType = void (*)(void* ptr);
+
+  InvokerType invoke_;
+  InvokerType destroy_;
+  char* funcBuffer_;
+
   std::vector<Node*> dependents_; // nodes depend on this
 
   template <class N>

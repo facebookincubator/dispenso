@@ -83,7 +83,7 @@ inline char* allocSmallBuffer() {
   return detail::allocSmallOrLarge<kBlockSize>();
 }
 /**
- * Allocate a small buffer from a small buffer pool.
+ * Free a small buffer from a small buffer pool.
  *
  * @tparam kBlockSize The size of the block to allocate.  Must be a power of two, and must be less
  * than or equal to kMaxSmallBufferSize.
