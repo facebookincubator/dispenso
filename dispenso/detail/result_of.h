@@ -12,13 +12,13 @@
 namespace dispenso {
 namespace detail {
 
-#if __cplusplus < 201703L
+#if defined(__cpp_lib_is_invocable) && __cpp_lib_is_invocable >= 201703L
+template <typename F, typename... Args>
+using ResultOf = typename std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+#else
 template <typename F, typename... Args>
 using ResultOf =
     typename std::result_of<typename std::decay<F>::type(typename std::decay<Args>::type...)>::type;
-#else
-template <typename F, typename... Args>
-using ResultOf = typename std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 #endif // c++17
 
 } // namespace detail
