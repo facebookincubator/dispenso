@@ -96,7 +96,7 @@ static void BM_build_bi_prop_dependency_chain(benchmark::State& state) {
 }
 
 template <class G>
-static void BM_build_dependnecy_chain(benchmark::State& state) {
+static void BM_build_dependency_chain(benchmark::State& state) {
   size_t counter;
   for (auto _ : state) {
     G graph;
@@ -110,7 +110,7 @@ static void BM_build_dependnecy_chain(benchmark::State& state) {
 }
 
 template <class G>
-static void BM_execute_dependnecy_chain(benchmark::State& state) {
+static void BM_execute_dependency_chain(benchmark::State& state) {
   size_t counter;
   G graph;
   typename G::NodeType* prevNode = &graph.addNode([&counter]() { counter++; });
@@ -174,15 +174,15 @@ static void BM_forward_propagator_node(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_build_big_tree<dispenso::Graph>);
-BENCHMARK(BM_build_big_tree<dispenso::BiPropGraph>);
+BENCHMARK_TEMPLATE(BM_build_big_tree, dispenso::Graph);
+BENCHMARK_TEMPLATE(BM_build_big_tree, dispenso::BiPropGraph);
 BENCHMARK(BM_build_bi_prop_dependency_chain);
 BENCHMARK(BM_build_bi_prop_dependency_group);
-BENCHMARK(BM_build_dependnecy_chain<dispenso::Graph>);
-BENCHMARK(BM_build_dependnecy_chain<dispenso::BiPropGraph>);
-BENCHMARK(BM_execute_dependnecy_chain<dispenso::Graph>);
-BENCHMARK(BM_execute_dependnecy_chain<dispenso::BiPropGraph>);
-BENCHMARK(BM_forward_propagator_node<dispenso::Graph>);
-BENCHMARK(BM_forward_propagator_node<dispenso::BiPropGraph>);
+BENCHMARK_TEMPLATE(BM_build_dependency_chain, dispenso::Graph);
+BENCHMARK_TEMPLATE(BM_build_dependency_chain, dispenso::BiPropGraph);
+BENCHMARK_TEMPLATE(BM_execute_dependency_chain, dispenso::Graph);
+BENCHMARK_TEMPLATE(BM_execute_dependency_chain, dispenso::BiPropGraph);
+BENCHMARK_TEMPLATE(BM_forward_propagator_node, dispenso::Graph);
+BENCHMARK_TEMPLATE(BM_forward_propagator_node, dispenso::BiPropGraph);
 
 BENCHMARK_MAIN();

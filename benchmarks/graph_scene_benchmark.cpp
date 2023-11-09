@@ -9,6 +9,9 @@
 #include <dispenso/graph.h>
 #include <dispenso/graph_executor.h>
 #include <taskflow/taskflow.hpp>
+#if TF_VERSION > 300000
+#include <taskflow/algorithm/for_each.hpp>
+#endif // TF_VERSION
 #include <array>
 #include <numeric>
 #include <random>

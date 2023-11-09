@@ -43,8 +43,6 @@ if(WIN32)
   target_link_libraries(dispenso PUBLIC Synchronization)
 endif()
 
-target_compile_features(dispenso PUBLIC cxx_std_14)
-
 if (NOT DISPENSO_STANDALONE)
   return()
 endif()

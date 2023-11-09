@@ -49,6 +49,7 @@ elseif (THREAD_SANITIZER)
   add_link_options(-fsanitize=thread)
 endif()
 
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "the C++ standard to use for this project")
 
 ###########################################################
 # Targets
