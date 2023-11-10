@@ -151,30 +151,35 @@ $(document).ready(function(){initNavTree('schedulable_8h_source.html',''); initR
 <div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>  <span class="comment">// thread could be launched, and the process already is exiting when the thread is executing.</span></div>
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>  <span class="comment">// Because it was after shutdown, backing memory for things could be no longer available.</span></div>
 <div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>  <span class="keyword">struct </span>ThreadWaiter {</div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>    detail::CompletionEventImpl impl_{0};</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span> </div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    <span class="keywordtype">void</span> add() {</div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>      impl_.intrusiveStatus().fetch_add(1, std::memory_order_acq_rel);</div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>    }</div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span> </div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>    <span class="keywordtype">void</span> remove() {</div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>      <span class="keywordflow">if</span> (impl_.intrusiveStatus().fetch_sub(1, std::memory_order_acq_rel) == 1) {</div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>        impl_.notify(0);</div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>      }</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>    }</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>    ~ThreadWaiter() {</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>      impl_.wait(0);</div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>    <span class="keywordtype">int</span> count_ = 0;</div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    std::mutex mtx_;</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    std::condition_variable cond_;</div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>    <span class="keywordtype">void</span> add() {</div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>      std::lock_guard&lt;std::mutex&gt; lk(mtx_);</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>      ++count_;</div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>    }</div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>    <span class="keywordtype">void</span> remove() {</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>      std::lock_guard&lt;std::mutex&gt; lk(mtx_);</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>      <span class="keywordflow">if</span> (--count_ == 0) {</div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>        cond_.notify_one();</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>      }</div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    }</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  };</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> ThreadWaiter* getWaiter();</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> destroyThreadWaiter();</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>};</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span> </div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span> </div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    ~ThreadWaiter() {</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>      std::unique_lock&lt;std::mutex&gt; lk(mtx_);</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>      cond_.wait(lk, [<span class="keyword">this</span>]() { <span class="keywordflow">return</span> count_ == 0; });</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    }</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>  };</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> ThreadWaiter* getWaiter();</div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> destroyThreadWaiter();</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>};</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span> </div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00027">schedulable.h:27</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00037">schedulable.h:37</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a598694c79562918e3c67d2cd23a36529"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f, ForceQueuingTag) const</div><div class="ttdef"><b>Definition:</b> <a href="schedulable_8h_source.html#l00047">schedulable.h:47</a></div></div>
