@@ -3,7 +3,7 @@ var searchData=
   ['acquire_0',['acquire',['../classdispenso_1_1_resource_pool.html#aa3dfd898745a3d729f6ab66311ffd443',1,'dispenso::ResourcePool']]],
   ['addnode_1',['addNode',['../classdispenso_1_1_subgraph_t.html#a3f314f17214ede38225e89be5cdd79ab',1,'dispenso::SubgraphT::addNode()'],['../classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e',1,'dispenso::GraphT::addNode(T &amp;&amp;f)']]],
   ['addsubgraph_2',['addSubgraph',['../classdispenso_1_1_graph_t.html#adf47c5ba380b61e20df7ec680a1cca43',1,'dispenso::GraphT']]],
-  ['alloc_3',['alloc',['../classdispenso_1_1_pool_allocator.html#a38a9be5293b77653b1560cb8e74b5bd4',1,'dispenso::PoolAllocator']]],
+  ['alloc_3',['alloc',['../classdispenso_1_1_pool_allocator_t.html#a04ec8c4a58977f8ca6011431e1860036',1,'dispenso::PoolAllocatorT']]],
   ['allocsmallbuffer_4',['allocSmallBuffer',['../small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a',1,'dispenso']]],
   ['approxbytesallocatedsmallbuffer_5',['approxBytesAllocatedSmallBuffer',['../small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47',1,'dispenso']]],
   ['arrive_5fand_5fwait_6',['arrive_and_wait',['../classdispenso_1_1_latch.html#a20d9a291572a64adf4cb2c419f195292',1,'dispenso::Latch']]],

@@ -8,7 +8,7 @@ var searchData=
   ['pipeline_5',['pipeline',['../pipeline_8h.html#a5438114dce2544c8cdab8100309478ab',1,'dispenso::pipeline(ThreadPool &amp;pool, Stages &amp;&amp;... sIn)'],['../pipeline_8h.html#a9a0289cbbb678c03532bdf458da1401b',1,'dispenso::pipeline(Stages &amp;&amp;... sIn)']]],
   ['pipeline_2eh_6',['pipeline.h',['../pipeline_8h.html',1,'']]],
   ['pool_5fallocator_2eh_7',['pool_allocator.h',['../pool__allocator_8h.html',1,'']]],
-  ['poolallocator_8',['PoolAllocator',['../classdispenso_1_1_pool_allocator.html',1,'dispenso::PoolAllocator'],['../classdispenso_1_1_pool_allocator.html#a7a393687ca662206fea08d6d261cdd20',1,'dispenso::PoolAllocator::PoolAllocator()']]],
+  ['poolallocatort_8',['PoolAllocatorT',['../classdispenso_1_1_pool_allocator_t.html',1,'dispenso::PoolAllocatorT&lt; kThreadSafe &gt;'],['../classdispenso_1_1_pool_allocator_t.html#a82adb70b33422125a6f3de59a0b63d11',1,'dispenso::PoolAllocatorT::PoolAllocatorT()']]],
   ['pop_5fback_9',['pop_back',['../classdispenso_1_1_concurrent_vector.html#a6df17279a0127ce60af3abb56121678b',1,'dispenso::ConcurrentVector']]],
   ['priority_2eh_10',['priority.h',['../priority_8h.html',1,'']]],
   ['push_5fback_11',['push_back',['../classdispenso_1_1_concurrent_vector.html#a1306ac315f6e7062a6b1ee39e2978b22',1,'dispenso::ConcurrentVector::push_back(T &amp;&amp;val)'],['../classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff',1,'dispenso::ConcurrentVector::push_back(const T &amp;val)']]]

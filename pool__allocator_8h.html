@@ -97,7 +97,8 @@ $(document).ready(function(){initNavTree('pool__allocator_8h.html',''); initResi
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a>  </div>
+<a href="#nested-classes">Classes</a> &#124;
+<a href="#typedef-members">Typedefs</a>  </div>
   <div class="headertitle"><div class="title">pool_allocator.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
@@ -110,14 +111,54 @@ $(document).ready(function(){initNavTree('pool__allocator_8h.html',''); initResi
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_pool_allocator.html">dispenso::PoolAllocator</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_pool_allocator_t.html">dispenso::PoolAllocatorT&lt; kThreadSafe &gt;</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:aa1d6334a157d4713ac82c2270084b7a6"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pool__allocator_8h.html#aa1d6334a157d4713ac82c2270084b7a6">dispenso::PoolAllocator</a> = PoolAllocatorT&lt; true &gt;</td></tr>
+<tr class="separator:aa1d6334a157d4713ac82c2270084b7a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a78ad28cc5915f68b846d72c5a01bf011"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pool__allocator_8h.html#a78ad28cc5915f68b846d72c5a01bf011">dispenso::NoLockPoolAllocator</a> = PoolAllocatorT&lt; false &gt;</td></tr>
+<tr class="separator:a78ad28cc5915f68b846d72c5a01bf011"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >A pool allocator to help reduce calls to the underlying allocation and deallocation functions that can be provided custom backing allocation and deallocation functions, e.g. cudaMalloc, cudaFree. </p>
 
 <p class="definition">Definition in file <a class="el" href="pool__allocator_8h_source.html">pool_allocator.h</a>.</p>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Typedef Documentation</h2>
+<a id="a78ad28cc5915f68b846d72c5a01bf011" name="a78ad28cc5915f68b846d72c5a01bf011"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a78ad28cc5915f68b846d72c5a01bf011">&#9670;&#160;</a></span>NoLockPoolAllocator</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classdispenso_1_1_pool_allocator_t.html">dispenso::NoLockPoolAllocator</a> = typedef PoolAllocatorT&lt;false&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="pool__allocator_8h_source.html#l00095">95</a> of file <a class="el" href="pool__allocator_8h_source.html">pool_allocator.h</a>.</p>
+
+</div>
+</div>
+<a id="aa1d6334a157d4713ac82c2270084b7a6" name="aa1d6334a157d4713ac82c2270084b7a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1d6334a157d4713ac82c2270084b7a6">&#9670;&#160;</a></span>PoolAllocator</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classdispenso_1_1_pool_allocator_t.html">dispenso::PoolAllocator</a> = typedef PoolAllocatorT&lt;true&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="pool__allocator_8h_source.html#l00094">94</a> of file <a class="el" href="pool__allocator_8h_source.html">pool_allocator.h</a>.</p>
+
+</div>
+</div>
+</div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->

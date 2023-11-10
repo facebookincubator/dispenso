@@ -26,7 +26,7 @@ var annotated_dup =
       [ "OnceFunction", "classdispenso_1_1_once_function.html", "classdispenso_1_1_once_function" ],
       [ "ParallelForExecutor", "classdispenso_1_1_parallel_for_executor.html", "classdispenso_1_1_parallel_for_executor" ],
       [ "ParForOptions", "structdispenso_1_1_par_for_options.html", "structdispenso_1_1_par_for_options" ],
-      [ "PoolAllocator", "classdispenso_1_1_pool_allocator.html", "classdispenso_1_1_pool_allocator" ],
+      [ "PoolAllocatorT", "classdispenso_1_1_pool_allocator_t.html", "classdispenso_1_1_pool_allocator_t" ],
       [ "ReserveTagS", "structdispenso_1_1_reserve_tag_s.html", null ],
       [ "Resource", "classdispenso_1_1_resource.html", "classdispenso_1_1_resource" ],
       [ "ResourcePool", "classdispenso_1_1_resource_pool.html", "classdispenso_1_1_resource_pool" ],

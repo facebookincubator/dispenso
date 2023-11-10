@@ -36,7 +36,7 @@ var hierarchy =
     ] ],
     [ "dispenso::OnceFunction", "classdispenso_1_1_once_function.html", null ],
     [ "dispenso::ParForOptions", "structdispenso_1_1_par_for_options.html", null ],
-    [ "dispenso::PoolAllocator", "classdispenso_1_1_pool_allocator.html", null ],
+    [ "dispenso::PoolAllocatorT< kThreadSafe >", "classdispenso_1_1_pool_allocator_t.html", null ],
     [ "dispenso::ReserveTagS", "structdispenso_1_1_reserve_tag_s.html", null ],
     [ "dispenso::Resource< T >", "classdispenso_1_1_resource.html", null ],
     [ "dispenso::ResourcePool< T >", "classdispenso_1_1_resource_pool.html", null ],
