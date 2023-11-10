@@ -6,7 +6,9 @@
  */
 
 #include <dispenso/graph.h>
-#include <iostream>
+
+#include <iterator>
+#include <mutex>
 
 namespace {
 constexpr size_t kToDelete = std::numeric_limits<size_t>::max();
@@ -55,13 +57,24 @@ void SubgraphT<N>::clear() {
   if (numGraphPredecessors != 0) {
     removePredecessorDependencies(numGraphPredecessors);
   }
+  for (NodeType* n : nodes_) {
+    n->~NodeType();
+  }
+  allocator_->clear();
   nodes_.clear();
 }
 
 template <class N>
+SubgraphT<N>::~SubgraphT() {
+  for (NodeType* n : nodes_) {
+    n->~NodeType();
+  }
+}
+
+template <class N>
 void SubgraphT<N>::decrementDependentCounters() {
-  for (N& node : nodes_) {
-    for (Node* const dependent : node.dependents_) {
+  for (N* node : nodes_) {
+    for (Node* const dependent : node->dependents_) {
       dependent->numPredecessors_--;
     }
     removeNodeFromBiPropSet(node);
@@ -71,10 +84,10 @@ void SubgraphT<N>::decrementDependentCounters() {
 template <class N>
 size_t SubgraphT<N>::markNodesWithPredicessors() {
   size_t numGraphPredecessors = 0;
-  for (N& node : nodes_) {
-    if (node.numPredecessors_ != 0) {
-      numGraphPredecessors += node.numPredecessors_;
-      node.numPredecessors_ = kToDelete;
+  for (N* node : nodes_) {
+    if (node->numPredecessors_ != 0) {
+      numGraphPredecessors += node->numPredecessors_;
+      node->numPredecessors_ = kToDelete;
     }
   }
   return numGraphPredecessors;
@@ -86,8 +99,8 @@ void SubgraphT<N>::removePredecessorDependencies(size_t numGraphPredecessors) {
     if (&subgraph == this) {
       continue;
     }
-    for (N& node : subgraph.nodes_) {
-      std::vector<Node*>& dependents = node.dependents_;
+    for (N* node : subgraph.nodes_) {
+      std::vector<Node*>& dependents = node->dependents_;
       size_t num = dependents.size();
       for (size_t i = 0; i < num;) {
         if (dependents[i]->numPredecessors_ == kToDelete) {
@@ -104,6 +117,58 @@ void SubgraphT<N>::removePredecessorDependencies(size_t numGraphPredecessors) {
       dependents.resize(num);
     }
   }
+}
+
+namespace {
+constexpr size_t kMaxCache = 8;
+// Don't cache too-large allocators.  This way we will have at most 8*(2**16) = 512K outstanding
+// nodes worth of memory per node type.
+// TODO(bbudge): Make these caching values macro configurable for lightweight platforms.
+constexpr size_t kMaxChunkCapacity = 1 << 16;
+std::vector<std::unique_ptr<NoLockPoolAllocator>> g_sgcache[2];
+std::mutex g_sgcacheMtx;
+
+template <class T>
+constexpr size_t kCacheIndex = size_t{std::is_same<T, BiPropNode>::value};
+
+} // namespace
+
+template <class N>
+typename SubgraphT<N>::PoolPtr SubgraphT<N>::getAllocator() {
+  std::unique_ptr<NoLockPoolAllocator> ptr;
+
+  auto& cache = g_sgcache[kCacheIndex<N>];
+
+  {
+    std::lock_guard<std::mutex> lk(g_sgcacheMtx);
+    if (cache.empty()) {
+      ptr = std::make_unique<NoLockPoolAllocator>(
+          sizeof(NodeType), 128 * sizeof(NodeType), ::malloc, ::free);
+    } else {
+      ptr = std::move(cache.back());
+      ptr->clear();
+      cache.pop_back();
+    }
+  }
+  return PoolPtr(ptr.release(), releaseAllocator);
+}
+
+template <class N>
+void SubgraphT<N>::releaseAllocator(NoLockPoolAllocator* ptr) {
+  if (!ptr) {
+    return;
+  }
+  if (ptr->totalChunkCapacity() < kMaxChunkCapacity) {
+    auto& cache = g_sgcache[kCacheIndex<N>];
+    {
+      std::lock_guard<std::mutex> lk(g_sgcacheMtx);
+      if (cache.size() < kMaxCache) {
+        cache.emplace_back(ptr);
+        return;
+      }
+    }
+  }
+  delete ptr;
 }
 
 template <class N>
@@ -125,8 +190,7 @@ GraphT<N>& GraphT<N>::operator=(GraphT&& other) {
 template <class N>
 SubgraphT<N>& GraphT<N>::addSubgraph() {
   subgraphs_.push_back(SubgraphType(this));
-  SubgraphT<N>& subgraph = subgraphs_.back();
-  return subgraph;
+  return subgraphs_.back();
 }
 
 template class DISPENSO_DLL_ACCESS SubgraphT<Node>;

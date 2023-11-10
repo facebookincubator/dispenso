@@ -7,14 +7,16 @@
 
 #pragma once
 
-#include <dispenso/platform.h>
-#include <dispenso/small_buffer_allocator.h>
 #include <atomic>
 #include <deque>
 #include <limits>
 #include <memory>
 #include <type_traits>
 #include <vector>
+
+#include <dispenso/platform.h>
+#include <dispenso/pool_allocator.h>
+#include <dispenso/small_buffer_allocator.h>
 /*
 Terminology
 --------------------------------------------------------------------------------
@@ -396,13 +398,17 @@ template <class N>
 class GraphT;
 
 template <class N>
-class SubgraphT {
+class DISPENSO_DLL_ACCESS SubgraphT {
  public:
   using NodeType = N;
   SubgraphT() = delete;
   SubgraphT(const SubgraphT<N>&) = delete;
   SubgraphT<N>& operator=(const SubgraphT<N>&) = delete;
-  SubgraphT(SubgraphT<N>&& other) : graph_(other.graph_), nodes_(std::move(other.nodes_)) {}
+  SubgraphT(SubgraphT<N>&& other)
+      : graph_(other.graph_),
+        nodes_(std::move(other.nodes_)),
+        allocator_(std::move(other.allocator_)) {}
+  ~SubgraphT();
   /**
    * Construct a <code>NodeType</code> with a valid functor. This is not concurrency safe.
    *
@@ -411,8 +417,8 @@ class SubgraphT {
    **/
   template <class T>
   N& addNode(T&& f) {
-    nodes_.push_back(NodeType(std::forward<T>(f)));
-    return nodes_.back();
+    nodes_.push_back(new (allocator_->alloc()) NodeType(std::forward<T>(f)));
+    return *nodes_.back();
   }
   /**
    * Return number of nodes in subgraph. Concurrency safe.
@@ -426,7 +432,7 @@ class SubgraphT {
    * @param index - index of the node
    **/
   const N& node(size_t index) const {
-    return nodes_[index];
+    return *nodes_[index];
   }
   /**
    * Return reference to node with index. Concurrency safe.
@@ -434,7 +440,7 @@ class SubgraphT {
    * @param index - index of the node
    **/
   N& node(size_t index) {
-    return nodes_[index];
+    return *nodes_[index];
   }
   /**
    * apply an func to each node of the subgraph. Concurrency safe.
@@ -443,8 +449,8 @@ class SubgraphT {
    **/
   template <class F>
   inline void forEachNode(F func) const {
-    for (const N& node : nodes_) {
-      func(node);
+    for (const N* node : nodes_) {
+      func(*node);
     }
   }
   /**
@@ -455,8 +461,8 @@ class SubgraphT {
    **/
   template <class F>
   inline void forEachNode(F func) {
-    for (N& node : nodes_) {
-      func(node);
+    for (N* node : nodes_) {
+      func(*node);
     }
   }
   /**
@@ -466,21 +472,32 @@ class SubgraphT {
   void clear();
 
  private:
-  explicit SubgraphT<N>(GraphT<N>* graph) : graph_(graph), nodes_() {}
-  inline void removeNodeFromBiPropSet(Node& /* node */) {}
-  void removeNodeFromBiPropSet(BiPropNode& node) {
-    node.removeFromBiPropSet();
+  using DeallocFunc = void (*)(NoLockPoolAllocator*);
+  using PoolPtr = std::unique_ptr<NoLockPoolAllocator, DeallocFunc>;
+
+  static constexpr size_t kNodeSizeP2 = detail::nextPow2(sizeof(NodeType));
+
+  explicit SubgraphT<N>(GraphT<N>* graph) : graph_(graph), nodes_(), allocator_(getAllocator()) {}
+
+  inline void removeNodeFromBiPropSet(Node* /* node */) {}
+  void removeNodeFromBiPropSet(BiPropNode* node) {
+    node->removeFromBiPropSet();
   }
   void decrementDependentCounters();
   size_t markNodesWithPredicessors();
   void removePredecessorDependencies(size_t numGraphPredecessors);
+
+  static PoolPtr getAllocator();
+  static void releaseAllocator(NoLockPoolAllocator* ptr);
 
   GraphT<N>* graph_;
 #if defined(_WIN32)
 #pragma warning(push)
 #pragma warning(disable : 4251)
 #endif
-  std::deque<N> nodes_;
+  std::vector<N*> nodes_;
+
+  PoolPtr allocator_;
 #if defined(_WIN32)
 #pragma warning(pop)
 #endif
@@ -490,7 +507,7 @@ class SubgraphT {
 };
 
 template <class N>
-class GraphT {
+class DISPENSO_DLL_ACCESS GraphT {
  public:
   using NodeType = N;
   using SubgraphType = SubgraphT<N>;
@@ -599,8 +616,8 @@ class GraphT {
   template <class F>
   inline void forEachNode(F&& func) const {
     for (const SubgraphT<N>& subgraph : subgraphs_) {
-      for (const N& node : subgraph.nodes_) {
-        func(node);
+      for (const N* node : subgraph.nodes_) {
+        func(*node);
       }
     }
   }
@@ -612,8 +629,8 @@ class GraphT {
   template <class F>
   inline void forEachNode(F&& func) {
     for (SubgraphT<N>& subgraph : subgraphs_) {
-      for (N& node : subgraph.nodes_) {
-        func(node);
+      for (N* node : subgraph.nodes_) {
+        func(*node);
       }
     }
   }
@@ -626,6 +643,8 @@ class GraphT {
   }
 
  private:
+  static constexpr size_t kSubgraphSizeP2 = detail::nextPow2(sizeof(SubgraphType));
+
 #if defined(_WIN32)
 #pragma warning(push)
 #pragma warning(disable : 4251)
