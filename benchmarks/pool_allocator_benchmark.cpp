@@ -47,6 +47,15 @@ void BM_pool_allocator(benchmark::State& state) {
       [&allocator](char* buf) { allocator.dealloc(buf); });
 }
 
+template <size_t kSize>
+void BM_nl_pool_allocator(benchmark::State& state) {
+  dispenso::NoLockPoolAllocator allocator(kSize, kSize * 32, ::malloc, ::free);
+  run(
+      state,
+      [&allocator]() { return allocator.alloc(); },
+      [&allocator](char* buf) { allocator.dealloc(buf); });
+}
+
 template <size_t kThreads, typename Alloc, typename Free>
 void runThreaded(benchmark::State& state, Alloc alloc, Free dealloc) {
   dispenso::resizeGlobalThreadPool(kThreads);
@@ -88,12 +97,15 @@ void BM_pool_allocator_threaded(benchmark::State& state) {
 
 BENCHMARK_TEMPLATE(BM_mallocfree, kSmallSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kSmallSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kSmallSize)->Range(1 << 13, 1 << 15);
 
 BENCHMARK_TEMPLATE(BM_mallocfree, kMediumSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kMediumSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kMediumSize)->Range(1 << 13, 1 << 15);
 
 BENCHMARK_TEMPLATE(BM_mallocfree, kLargeSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kLargeSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kLargeSize)->Range(1 << 13, 1 << 15);
 
 BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 2)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kSmallSize, 2)->Range(1 << 13, 1 << 15);

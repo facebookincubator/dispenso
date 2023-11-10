@@ -25,7 +25,8 @@ namespace dispenso {
 /**
  * A pool allocator to help reduce calls to the underlying allocation and deallocation functions.
  **/
-class PoolAllocator {
+template <bool kThreadSafe>
+class PoolAllocatorT {
  public:
   /**
    * Construct a PoolAllocator.
@@ -35,7 +36,7 @@ class PoolAllocator {
    * @param allocFunc The underlying allocation function for allocating slabs
    * @param deallocFunc The underlying deallocation function.  Currently only called on destruction.
    **/
-  DISPENSO_DLL_ACCESS PoolAllocator(
+  DISPENSO_DLL_ACCESS PoolAllocatorT(
       size_t chunkSize,
       size_t allocSize,
       std::function<void*(size_t)> allocFunc,
@@ -56,9 +57,23 @@ class PoolAllocator {
   DISPENSO_DLL_ACCESS void dealloc(char* ptr);
 
   /**
+   * Effectively dealloc all previously allocated chunks.  Useful for arenas.
+   * This function is not thread safe, and no previously allocated chunks may be dealloc'd after
+   * clear.
+   **/
+  DISPENSO_DLL_ACCESS void clear();
+
+  /**
+   * Get the total capicity allocated in chunks (how many alloc() could be called without triggering
+   * allocFunc() if all chunks were available)
+   **/
+  size_t totalChunkCapacity() const {
+    return (backingAllocs2_.size() + backingAllocs_.size()) * chunksPerAlloc_;
+  }
+  /**
    * Destruct a PoolAllocator
    **/
-  DISPENSO_DLL_ACCESS ~PoolAllocator();
+  DISPENSO_DLL_ACCESS ~PoolAllocatorT();
 
  private:
   const size_t chunkSize_;
@@ -71,8 +86,12 @@ class PoolAllocator {
   // Use of a spin lock was found to be faster than std::mutex in benchmarks.
   alignas(kCacheLineSize) std::atomic<uint32_t> backingAllocLock_{0};
   std::vector<char*> backingAllocs_;
+  std::vector<char*> backingAllocs2_;
 
   std::vector<char*> chunks_;
 };
+
+using PoolAllocator = PoolAllocatorT<true>;
+using NoLockPoolAllocator = PoolAllocatorT<false>;
 
 } // namespace dispenso

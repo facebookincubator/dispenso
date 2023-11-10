@@ -115,3 +115,39 @@ TEST(PoolAllocator, SimpleThreaded) {
     t.join();
   }
 }
+
+TEST(PoolAllocator, Arena) {
+  dispenso::PoolAllocator allocator(64, 256, ::malloc, ::free);
+
+  std::vector<char*> vec(2000);
+  for (char*& c : vec) {
+    c = allocator.alloc();
+    std::fill_n(c, 64, 0x7f);
+  }
+
+  for (char* c : vec) {
+    EXPECT_TRUE(std::all_of(c, c + 64, [](char v) { return v == 0x7f; }));
+  }
+
+  allocator.clear();
+  vec.resize(128);
+  for (char*& c : vec) {
+    c = allocator.alloc();
+    std::fill_n(c, 64, 0x22);
+  }
+
+  for (char* c : vec) {
+    EXPECT_TRUE(std::all_of(c, c + 64, [](char v) { return v == 0x22; }));
+  }
+
+  allocator.clear();
+  vec.resize(48);
+  for (char*& c : vec) {
+    c = allocator.alloc();
+    std::fill_n(c, 64, 0x11);
+  }
+
+  for (char* c : vec) {
+    EXPECT_TRUE(std::all_of(c, c + 64, [](char v) { return v == 0x11; }));
+  }
+}
