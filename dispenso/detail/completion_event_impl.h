@@ -29,6 +29,8 @@
 namespace dispenso {
 namespace detail {
 
+#define DISPENSO_COMPLETION_SUPPORTS_TRY_NOTIFY
+
 #if defined(__linux__)
 
 class CompletionEventImpl {
@@ -37,6 +39,10 @@ class CompletionEventImpl {
 
   void notify(int completedStatus) {
     status_.store(completedStatus, std::memory_order_release);
+    futex(&ftx_, FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(), nullptr, nullptr, 0);
+  }
+
+  void tryNotify() {
     futex(&ftx_, FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(), nullptr, nullptr, 0);
   }
 
@@ -112,6 +118,10 @@ class CompletionEventImpl {
 
   void notify(int completedStatus) {
     status_.store(completedStatus, std::memory_order_release);
+    semaphore_signal_all(sem_);
+  }
+
+  void tryNotify() {
     semaphore_signal_all(sem_);
   }
 
@@ -191,6 +201,10 @@ class CompletionEventImpl {
     WakeByAddressAll(&status_);
   }
 
+  void tryNotify() {
+    WakeByAddressAll(&status_);
+  }
+
   void wait(int completedStatus) const {
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
@@ -246,6 +260,8 @@ class CompletionEventImpl {
 
 #else
 
+#undef DISPENSO_COMPLETION_SUPPORTS_TRY_NOTIFY
+
 // Fallback C++11 implementation.
 class CompletionEventImpl {
  public:
@@ -285,7 +301,7 @@ class CompletionEventImpl {
   template <class Clock, class Duration>
   bool waitUntil(int completedStatus, const std::chrono::time_point<Clock, Duration>& absTime)
       const {
-    if (status_.load(std::memory_order_acquire)) {
+    if (status_.load(std::memory_order_acquire) == completedStatus) {
       return true;
     }
     std::unique_lock<std::mutex> lk(mtx_);

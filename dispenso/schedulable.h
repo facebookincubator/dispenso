@@ -93,20 +93,25 @@ class NewThreadInvoker {
   // thread could be launched, and the process already is exiting when the thread is executing.
   // Because it was after shutdown, backing memory for things could be no longer available.
   struct ThreadWaiter {
-    detail::CompletionEventImpl impl_{0};
+    int count_ = 0;
+    std::mutex mtx_;
+    std::condition_variable cond_;
 
     void add() {
-      impl_.intrusiveStatus().fetch_add(1, std::memory_order_acq_rel);
+      std::lock_guard<std::mutex> lk(mtx_);
+      ++count_;
     }
 
     void remove() {
-      if (impl_.intrusiveStatus().fetch_sub(1, std::memory_order_acq_rel) == 1) {
-        impl_.notify(0);
+      std::lock_guard<std::mutex> lk(mtx_);
+      if (--count_ == 0) {
+        cond_.notify_one();
       }
     }
 
     ~ThreadWaiter() {
-      impl_.wait(0);
+      std::unique_lock<std::mutex> lk(mtx_);
+      cond_.wait(lk, [this]() { return count_ == 0; });
     }
   };
   DISPENSO_DLL_ACCESS static ThreadWaiter* getWaiter();
