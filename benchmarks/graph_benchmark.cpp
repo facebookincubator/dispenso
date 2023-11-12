@@ -6,22 +6,24 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <dispenso/graph.h>
-#include <dispenso/graph_executor.h>
+#include <taskflow/taskflow.hpp>
 #include <array>
 #include <numeric>
 #include <random>
 
-template <class G>
-class BigTree {
+#include <dispenso/graph.h>
+#include <dispenso/graph_executor.h>
+
+//--------------------------------------------------------------------------------
+//                                    Taskflow
+//--------------------------------------------------------------------------------
+class TaskFlowBigTree {
  public:
   static size_t sizeOfLevel(size_t level) {
     return 1ul << (numBits_ - shiftStep_ * level);
   }
   void buildTree() {
     for (size_t level = 1; level < numLevels_; ++level) {
-      SubGraphType* subgraph = &g_.addSubgraph();
-      subgraphs_[level] = subgraph;
       buildLevel(level);
     }
   }
@@ -35,6 +37,87 @@ class BigTree {
 
     // zero level data is input data for calculation
     data_[0].resize(1ul << numBits_);
+    std::iota(data_[0].begin(), data_[0].end(), 0);
+  }
+  void initData() {
+    for (size_t level = 1; level < numLevels_; ++level) {
+      std::fill(data_[level].begin(), data_[level].end(), 0.f);
+    }
+    std::iota(data_[0].begin(), data_[0].end(), 0);
+  }
+
+  void buildLevel(size_t level) {
+    std::vector<tf::Task>& tasks = levelTasks_[level];
+
+    const size_t numNodes = 1ul << (numBits_ - shiftStep_ * level);
+
+    for (size_t n = 0; n < numNodes; ++n) {
+      tasks.push_back(taskflow_.emplace([this, level, n]() {
+        for (size_t j = 0; j < numPredecessors_; ++j) {
+          const size_t index = (n << shiftStep_) | j;
+          data_[level][n] += data_[level - 1][index];
+        }
+      }));
+      if (level > 1) {
+        for (size_t j = 0; j < numPredecessors_; ++j) {
+          const size_t index = (n << shiftStep_) | j;
+          levelTasks_[level][n].succeed(levelTasks_[level - 1][index]);
+        }
+      }
+    }
+  }
+
+  bool testTree() {
+    const size_t result = std::accumulate(this->data_[0].begin(), this->data_[0].end(), size_t(0));
+    executor_.run(taskflow_).wait();
+    const bool isTestPass = data_[numLevels_ - 1][0] == result;
+    initData();
+    return isTestPass;
+  }
+  static constexpr size_t shiftStep_ = 4; // 4
+  static constexpr size_t numBits_ = 5 * shiftStep_; // 5 // should be divisible by shiftStep
+  static constexpr size_t numPredecessors_ = 1 << shiftStep_;
+  static constexpr size_t startShnft_ = shiftStep_;
+  static constexpr size_t numLevels_ = numBits_ / shiftStep_ + 1;
+  static constexpr size_t level0Size_ = 1ul << numBits_;
+
+  std::array<std::vector<size_t>, numLevels_> data_;
+  std::array<std::vector<tf::Task>, numLevels_> levelTasks_;
+  tf::Taskflow taskflow_;
+  tf::Executor executor_;
+};
+//--------------------------------------------------------------------------------
+//                                dispenso::Graph
+//--------------------------------------------------------------------------------
+template <class G>
+class BigTree {
+ public:
+  static size_t sizeOfLevel(size_t level) {
+    return 1ul << (numBits_ - shiftStep_ * level);
+  }
+  void buildTree() {
+    for (size_t level = 1; level < numLevels_; ++level) {
+      subgraphs_[level] = &g_.addSubgraph();
+      buildLevel(level);
+    }
+  }
+
+  void allocateMemory() {
+    // the goal of this task is to calculate the sum of the numbers in this array
+    for (size_t level = 1; level < numLevels_; ++level) {
+      const size_t s = sizeOfLevel(level);
+      data_[level].resize(s, 0lu);
+    }
+
+    // zero level data is input data for calculation
+    data_[0].resize(1ul << numBits_);
+    std::iota(data_[0].begin(), data_[0].end(), 0);
+  }
+
+  void initData() {
+    for (size_t level = 1; level < numLevels_; ++level) {
+      std::fill(data_[level].begin(), data_[level].end(), 0.f);
+    }
     std::iota(data_[0].begin(), data_[0].end(), 0);
   }
 
@@ -58,6 +141,20 @@ class BigTree {
       }
     }
   }
+
+  bool testTree() {
+    const size_t result = std::accumulate(this->data_[0].begin(), this->data_[0].end(), size_t(0));
+
+    dispenso::ThreadPool& threadPool = dispenso::globalThreadPool();
+    dispenso::ConcurrentTaskSet concurrentTaskSet(threadPool);
+    setAllNodesIncomplete(g_);
+    executor_(concurrentTaskSet, g_);
+    concurrentTaskSet.wait();
+
+    const bool isTestPass = data_[numLevels_ - 1][0] == result;
+    initData();
+    return isTestPass;
+  }
   static constexpr size_t shiftStep_ = 4; // 4
   static constexpr size_t numBits_ = 5 * shiftStep_; // 5 // should be divisible by shiftStep
   static constexpr size_t numPredecessors_ = 1 << shiftStep_;
@@ -70,7 +167,21 @@ class BigTree {
   std::array<std::vector<size_t>, numLevels_> data_;
   std::array<SubGraphType*, numLevels_> subgraphs_;
   G g_;
+  dispenso::ConcurrentTaskSetExecutor executor_;
 };
+
+static void BM_taskflow_build_big_tree(benchmark::State& state) {
+  TaskFlowBigTree bigTree;
+  bigTree.allocateMemory();
+  for (auto _ : state) {
+    bigTree.buildTree();
+    assert(bigTree.testTree());
+    bigTree.taskflow_.clear();
+    for (uint32_t i = 0; i < TaskFlowBigTree::numLevels_; ++i) {
+      bigTree.levelTasks_[i].clear();
+    }
+  }
+}
 
 template <class G>
 static void BM_build_big_tree(benchmark::State& state) {
@@ -78,6 +189,7 @@ static void BM_build_big_tree(benchmark::State& state) {
   bigTree.allocateMemory();
   for (auto _ : state) {
     bigTree.buildTree();
+    assert(bigTree.testTree());
     bigTree.g_.clear();
   }
 }
@@ -174,6 +286,7 @@ static void BM_forward_propagator_node(benchmark::State& state) {
   }
 }
 
+BENCHMARK(BM_taskflow_build_big_tree);
 BENCHMARK_TEMPLATE(BM_build_big_tree, dispenso::Graph);
 BENCHMARK_TEMPLATE(BM_build_big_tree, dispenso::BiPropGraph);
 BENCHMARK(BM_build_bi_prop_dependency_chain);
