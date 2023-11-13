@@ -30,6 +30,17 @@ void run(benchmark::State& state, Alloc alloc, Free dealloc) {
   }
 }
 
+template <typename PoolAlloc>
+void runArena(benchmark::State& state, PoolAlloc& allocator) {
+  std::vector<char*> ptrs(state.range(0));
+  for (auto UNUSED_VAR : state) {
+    for (char*& p : ptrs) {
+      p = allocator.alloc();
+    }
+    allocator.clear();
+  }
+}
+
 template <size_t kSize>
 void BM_mallocfree(benchmark::State& state) {
   run(
@@ -54,6 +65,18 @@ void BM_nl_pool_allocator(benchmark::State& state) {
       state,
       [&allocator]() { return allocator.alloc(); },
       [&allocator](char* buf) { allocator.dealloc(buf); });
+}
+
+template <size_t kSize>
+void BM_pool_allocator_arena(benchmark::State& state) {
+  dispenso::PoolAllocator allocator(kSize, kSize * 32, ::malloc, ::free);
+  runArena(state, allocator);
+}
+
+template <size_t kSize>
+void BM_nl_pool_allocator_arena(benchmark::State& state) {
+  dispenso::NoLockPoolAllocator allocator(kSize, kSize * 32, ::malloc, ::free);
+  runArena(state, allocator);
 }
 
 template <size_t kThreads, typename Alloc, typename Free>
@@ -106,6 +129,15 @@ BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kMediumSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_mallocfree, kLargeSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kLargeSize)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kLargeSize)->Range(1 << 13, 1 << 15);
+
+BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kSmallSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kSmallSize)->Range(1 << 13, 1 << 15);
+
+BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kMediumSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kMediumSize)->Range(1 << 13, 1 << 15);
+
+BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kLargeSize)->Range(1 << 13, 1 << 15);
+BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kLargeSize)->Range(1 << 13, 1 << 15);
 
 BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 2)->Range(1 << 13, 1 << 15);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kSmallSize, 2)->Range(1 << 13, 1 << 15);
