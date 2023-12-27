@@ -57,6 +57,11 @@ void SubgraphT<N>::clear() {
   if (numGraphPredecessors != 0) {
     removePredecessorDependencies(numGraphPredecessors);
   }
+  destroyNodes();
+}
+
+template <class N>
+void SubgraphT<N>::destroyNodes() {
   for (NodeType* n : nodes_) {
     n->~NodeType();
   }

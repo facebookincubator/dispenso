@@ -36,6 +36,7 @@ Makefile
 
 /build/*
 docs/doxygen/
-# clangd files #
-################
+
+# Clang #
+#########
 .cache/

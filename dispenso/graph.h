@@ -260,7 +260,7 @@ class Node {
    * @param func a functor with signature <code>void(const Node&)</code>
    **/
   template <class F>
-  inline void forEachDependent(F func) const {
+  inline void forEachDependent(F&& func) const {
     for (const Node* dependent : dependents_) {
       func(*dependent);
     }
@@ -271,7 +271,7 @@ class Node {
    * @param func a functor with signature <code>void(Node&)</code>
    **/
   template <class F>
-  inline void forEachDependent(F func) {
+  inline void forEachDependent(F&& func) {
     for (Node* dependent : dependents_) {
       func(*dependent);
     }
@@ -372,6 +372,15 @@ class BiPropNode : public Node {
   inline void biPropDependsOn(Ns&... nodes) {
     ((void)std::initializer_list<int>{(biPropDependsOnOneNode(nodes), 0)...});
   }
+  /**
+   * Return true if node belongs to the same propogation set. (That means both nodes after
+   * propogation become completed/incomplete together.)
+   *
+   * @param node to test
+   **/
+  inline bool isSameSet(const BiPropNode& node) const {
+    return biPropSet_ && biPropSet_ == node.biPropSet_;
+  }
 
  private:
   template <class T, class X = std::enable_if_t<!std::is_base_of<BiPropNode, T>::value, void>>
@@ -448,7 +457,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
    * @param func a functor with signature <code>void(const Node&)</code>
    **/
   template <class F>
-  inline void forEachNode(F func) const {
+  inline void forEachNode(F&& func) const {
     for (const N* node : nodes_) {
       func(*node);
     }
@@ -460,7 +469,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
    * @param func a functor with signature <code>void(Node&)</code>
    **/
   template <class F>
-  inline void forEachNode(F func) {
+  inline void forEachNode(F&& func) {
     for (N* node : nodes_) {
       func(*node);
     }
@@ -486,6 +495,8 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   void decrementDependentCounters();
   size_t markNodesWithPredicessors();
   void removePredecessorDependencies(size_t numGraphPredecessors);
+
+  void destroyNodes();
 
   static PoolPtr getAllocator();
   static void releaseAllocator(NoLockPoolAllocator* ptr);
@@ -574,7 +585,7 @@ class DISPENSO_DLL_ACCESS GraphT {
    *
    * @param index - index of the subgraph.
    **/
-  const SubgraphT<N>& subgraphs(size_t index) const {
+  const SubgraphT<N>& subgraph(size_t index) const {
     return subgraphs_[index];
   }
   /**
@@ -582,7 +593,7 @@ class DISPENSO_DLL_ACCESS GraphT {
    *
    * @param index - index of the subgraph.
    **/
-  SubgraphT<N>& subgraphs(size_t index) {
+  SubgraphT<N>& subgraph(size_t index) {
     return subgraphs_[index];
   }
   /**
@@ -637,9 +648,17 @@ class DISPENSO_DLL_ACCESS GraphT {
   /**
    * Destroy all nodes and subgraphs. This is not concurrency safe.
    **/
-  void clear() {
+  inline void clear() {
     subgraphs_.clear();
     subgraphs_.push_back(SubgraphType(this));
+  }
+  /**
+   * Destroy all nodes. Keeps subgraphs. This is not concurrency safe.
+   **/
+  inline void clearSubgraphs() {
+    for (SubgraphT<N>& subgraph : subgraphs_) {
+      subgraph.destroyNodes();
+    }
   }
 
  private:
