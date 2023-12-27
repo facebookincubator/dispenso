@@ -5,6 +5,7 @@ var classdispenso_1_1_graph_t =
     [ "addNode", "classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e", null ],
     [ "addSubgraph", "classdispenso_1_1_graph_t.html#adf47c5ba380b61e20df7ec680a1cca43", null ],
     [ "clear", "classdispenso_1_1_graph_t.html#a23d36763edcc0162257ee176355ee1da", null ],
+    [ "clearSubgraphs", "classdispenso_1_1_graph_t.html#ad9f8a493f281d8a17ef0db8d6211ff0d", null ],
     [ "forEachNode", "classdispenso_1_1_graph_t.html#a3f648335d15c97603bc6a81d16f26cf7", null ],
     [ "forEachNode", "classdispenso_1_1_graph_t.html#a22f4214e82e711d82770830fde0a4d43", null ],
     [ "forEachSubgraph", "classdispenso_1_1_graph_t.html#a77eb80216600caca5a6c6c03e93205a3", null ],
@@ -14,6 +15,6 @@ var classdispenso_1_1_graph_t =
     [ "numNodes", "classdispenso_1_1_graph_t.html#ae92cbfe6f02b870cf5e466872f069c56", null ],
     [ "numSubgraphs", "classdispenso_1_1_graph_t.html#a5c307fa77893c5d9c2ea0e5527825821", null ],
     [ "operator=", "classdispenso_1_1_graph_t.html#aa2ee3104f142782e0c5aa5a689f87ddd", null ],
-    [ "subgraphs", "classdispenso_1_1_graph_t.html#a3af58d956a3073c39780dc2d0d2e4860", null ],
-    [ "subgraphs", "classdispenso_1_1_graph_t.html#a049150fe3d50ebb3c121e7b45cc94717", null ]
+    [ "subgraph", "classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96", null ],
+    [ "subgraph", "classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18", null ]
 ];

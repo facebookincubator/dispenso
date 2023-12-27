@@ -126,12 +126,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:abfb52f4bd018eee8791499a9bd160c8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af73f196ba6ccba6081ac5ef46b61c256"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256">run</a> () const</td></tr>
 <tr class="separator:af73f196ba6ccba6081ac5ef46b61c256"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2fd8f2a09e75b8cbaa76e43f1634fab2"><td class="memTemplParams" colspan="2">template&lt;class F &gt; </td></tr>
-<tr class="memitem:a2fd8f2a09e75b8cbaa76e43f1634fab2"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#a2fd8f2a09e75b8cbaa76e43f1634fab2">forEachDependent</a> (F func) const</td></tr>
-<tr class="separator:a2fd8f2a09e75b8cbaa76e43f1634fab2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a29dcdde915094ed0163f7d7b1df6ac07"><td class="memTemplParams" colspan="2">template&lt;class F &gt; </td></tr>
-<tr class="memitem:a29dcdde915094ed0163f7d7b1df6ac07"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#a29dcdde915094ed0163f7d7b1df6ac07">forEachDependent</a> (F func)</td></tr>
-<tr class="separator:a29dcdde915094ed0163f7d7b1df6ac07"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae47de98edecefb02d31366f8ed508f3"><td class="memTemplParams" colspan="2">template&lt;class F &gt; </td></tr>
+<tr class="memitem:aae47de98edecefb02d31366f8ed508f3"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#aae47de98edecefb02d31366f8ed508f3">forEachDependent</a> (F &amp;&amp;func) const</td></tr>
+<tr class="separator:aae47de98edecefb02d31366f8ed508f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab2e3aef325d6395d35d35ebb04d45773"><td class="memTemplParams" colspan="2">template&lt;class F &gt; </td></tr>
+<tr class="memitem:ab2e3aef325d6395d35d35ebb04d45773"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#ab2e3aef325d6395d35d35ebb04d45773">forEachDependent</a> (F &amp;&amp;func)</td></tr>
+<tr class="separator:ab2e3aef325d6395d35d35ebb04d45773"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae961b329557136eeb3f2787ee66c062e"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#ae961b329557136eeb3f2787ee66c062e">numPredecessors</a> () const</td></tr>
 <tr class="separator:ae961b329557136eeb3f2787ee66c062e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0176c8a462083b6fb4ce31ac3a06b692"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_node.html#a0176c8a462083b6fb4ce31ac3a06b692">isCompleted</a> () const</td></tr>
@@ -326,8 +326,8 @@ template&lt;typename... Ns&gt; </div>
 
 </div>
 </div>
-<a id="a29dcdde915094ed0163f7d7b1df6ac07" name="a29dcdde915094ed0163f7d7b1df6ac07"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a29dcdde915094ed0163f7d7b1df6ac07">&#9670;&#160;</a></span>forEachDependent() <span class="overload">[1/2]</span></h2>
+<a id="ab2e3aef325d6395d35d35ebb04d45773" name="ab2e3aef325d6395d35d35ebb04d45773"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab2e3aef325d6395d35d35ebb04d45773">&#9670;&#160;</a></span>forEachDependent() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -340,7 +340,7 @@ template&lt;class F &gt; </div>
         <tr>
           <td class="memname">void dispenso::Node::forEachDependent </td>
           <td>(</td>
-          <td class="paramtype">F&#160;</td>
+          <td class="paramtype">F &amp;&amp;&#160;</td>
           <td class="paramname"><em>func</em></td><td>)</td>
           <td></td>
         </tr>
@@ -363,8 +363,8 @@ template&lt;class F &gt; </div>
 
 </div>
 </div>
-<a id="a2fd8f2a09e75b8cbaa76e43f1634fab2" name="a2fd8f2a09e75b8cbaa76e43f1634fab2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2fd8f2a09e75b8cbaa76e43f1634fab2">&#9670;&#160;</a></span>forEachDependent() <span class="overload">[2/2]</span></h2>
+<a id="aae47de98edecefb02d31366f8ed508f3" name="aae47de98edecefb02d31366f8ed508f3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae47de98edecefb02d31366f8ed508f3">&#9670;&#160;</a></span>forEachDependent() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -377,7 +377,7 @@ template&lt;class F &gt; </div>
         <tr>
           <td class="memname">void dispenso::Node::forEachDependent </td>
           <td>(</td>
-          <td class="paramtype">F&#160;</td>
+          <td class="paramtype">F &amp;&amp;&#160;</td>
           <td class="paramname"><em>func</em></td><td>)</td>
           <td> const</td>
         </tr>
