@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(
   Dispenso
-  VERSION 1.1.0
+  VERSION 1.2.0
   DESCRIPTION "Dispenso is a library for working with sets of parallel tasks"
   LANGUAGES CXX)
 
