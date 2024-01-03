@@ -83,7 +83,7 @@ void TimedTaskScheduler::timeQueueRunLoop() {
     std::unique_lock<std::mutex> lk(queueMutex_);
     timeRemaining = tasks_.top()->nextAbsTime - curTime;
     if (timeRemaining < kSmallTimeBuffer) {
-      auto next = std::move(tasks_.top());
+      auto next = tasks_.top();
       tasks_.pop();
       lk.unlock();
 
