@@ -133,11 +133,11 @@ bool setCurrentThreadPriority(ThreadPriority prio) {
   switch (prio) {
     case ThreadPriority::kLow:
       errno = 0;
-      nice(10);
+      (void)!nice(10);
       break;
     case ThreadPriority::kNormal:
       errno = 0;
-      nice(0);
+      (void)!nice(0);
       break;
     case ThreadPriority::kHigh: // fallthrough
     case ThreadPriority::kRealtime: {
@@ -149,7 +149,7 @@ bool setCurrentThreadPriority(ThreadPriority prio) {
       rlim.rlim_cur = rlim.rlim_max;
       setrlimit(RLIMIT_NICE, &rlim);
       errno = 0;
-      nice(static_cast<int>(20 - rlim.rlim_max));
+      (void)!nice(static_cast<int>(20 - rlim.rlim_max));
     }
   }
   if (errno != 0) {
