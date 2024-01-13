@@ -12,6 +12,7 @@
 #pragma once
 #include <algorithm>
 #include <atomic>
+#include <cstdlib>
 #include <thread>
 #include <type_traits>
 
