@@ -163,10 +163,24 @@ inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
 inline void cpuRelax() {
   asm volatile("pause" ::: "memory");
 }
+#elif defined __arm64__ || defined __aarch64__
+inline void cpuRelax() {
+  asm volatile("yield" ::: "memory");
+}
+#elif defined __powerpc__ || defined __POWERPC__
+#if defined __APPLE__
+inline void cpuRelax() {
+  asm volatile("or r27,r27,r27" ::: "memory");
+}
 #else
-// TODO: provide reasonable relax on non-x86
+inline void cpuRelax() {
+  asm volatile("or 27,27,27" ::: "memory");
+}
+#endif // APPLE
+#else
+// TODO: provide reasonable relax on other archs.
 inline void cpuRelax() {}
-#endif // x86-arch
+#endif // ARCH
 
 // When statically chunking a range, it is generally not possible to use a single chunk size plus
 // remainder and get a good load distribution.  By estimating too high, we can have idle threads. By
