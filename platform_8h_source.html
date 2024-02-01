@@ -251,32 +251,46 @@ $(document).ready(function(){initNavTree('platform_8h_source.html',''); initResi
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
 <div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;pause&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>}</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="comment">// TODO: provide reasonable relax on non-x86</span></div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {}</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="preprocessor">#endif </span><span class="comment">// x86-arch</span></div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span> </div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="comment">// When statically chunking a range, it is generally not possible to use a single chunk size plus</span></div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="comment">// remainder and get a good load distribution.  By estimating too high, we can have idle threads. By</span></div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span><span class="comment">// estimating too low, the remainder can be several times as large as the chunk for other threads.</span></div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span><span class="comment">// Instead, we compute the chunk size that is the ceil of the fractional chunk size.  That can be</span></div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span><span class="comment">// used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)</span></div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="comment">// values will be ceilChunkSize - 1.</span></div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span><span class="keyword">struct </span>StaticChunking {</div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>  ssize_t transitionTaskIndex;</div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span>  ssize_t ceilChunkSize;</div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>};</div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span> </div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="keyword">inline</span> StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {</div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span>  StaticChunking chunking;</div>
-<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span>  chunking.ceilChunkSize = (items + chunks - 1) / chunks;</div>
-<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span>  ssize_t numLeft = chunking.ceilChunkSize * chunks - items;</div>
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span>  chunking.transitionTaskIndex = chunks - numLeft;</div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span>  <span class="keywordflow">return</span> chunking;</div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>}</div>
-<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span> </div>
-<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span>} <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span><span class="preprocessor">#elif defined __arm64__ || defined __aarch64__</span></div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;yield&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>}</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span><span class="preprocessor">#elif defined __powerpc__ || defined __POWERPC__</span></div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="preprocessor">#if defined __APPLE__</span></div>
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or r27,r27,r27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>}</div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or 27,27,27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>}</div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span><span class="preprocessor">#endif </span><span class="comment">// APPLE</span></div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span><span class="comment">// TODO: provide reasonable relax on other archs.</span></div>
+<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {}</div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="preprocessor">#endif </span><span class="comment">// ARCH</span></div>
+<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span> </div>
+<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span><span class="comment">// When statically chunking a range, it is generally not possible to use a single chunk size plus</span></div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="comment">// remainder and get a good load distribution.  By estimating too high, we can have idle threads. By</span></div>
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span><span class="comment">// estimating too low, the remainder can be several times as large as the chunk for other threads.</span></div>
+<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span><span class="comment">// Instead, we compute the chunk size that is the ceil of the fractional chunk size.  That can be</span></div>
+<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span><span class="comment">// used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)</span></div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span><span class="comment">// values will be ceilChunkSize - 1.</span></div>
+<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span><span class="keyword">struct </span>StaticChunking {</div>
+<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>  ssize_t transitionTaskIndex;</div>
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>  ssize_t ceilChunkSize;</div>
+<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>};</div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span> </div>
+<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span><span class="keyword">inline</span> StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {</div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>  StaticChunking chunking;</div>
+<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>  chunking.ceilChunkSize = (items + chunks - 1) / chunks;</div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>  ssize_t numLeft = chunking.ceilChunkSize * chunks - items;</div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>  chunking.transitionTaskIndex = chunks - numLeft;</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>  <span class="keywordflow">return</span> chunking;</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>}</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span> </div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_cache_aligned_html"><div class="ttname"><a href="classdispenso_1_1_cache_aligned.html">dispenso::CacheAligned</a></div><div class="ttdef"><b>Definition:</b> <a href="platform_8h_source.html#l00102">platform.h:102</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
