@@ -39,6 +39,25 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 target_link_libraries(dispenso PUBLIC Threads::Threads)
 
+check_cxx_source_compiles("
+#include <atomic>
+#include <stdint.h>
+std::atomic<int8_t> a(0);
+std::atomic<int16_t> b(0);
+std::atomic<int32_t> c(0);
+std::atomic<int64_t> d(0);
+int main() {
+  ++a;
+  ++b;
+  ++c;
+  return ++d;
+}
+" DISPENSO_HAS_ATOMIC_WITHOUT_LIB)
+
+if (NOT DISPENSO_HAS_ATOMIC_WITHOUT_LIB)
+  target_link_libraries(dispenso PUBLIC atomic)
+endif()
+
 if(WIN32)
   target_link_libraries(dispenso PUBLIC Synchronization)
 endif()
