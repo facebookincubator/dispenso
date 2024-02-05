@@ -1,7 +1,7 @@
 var searchData=
 [
   ['acquire_0',['acquire',['../classdispenso_1_1_resource_pool.html#aa3dfd898745a3d729f6ab66311ffd443',1,'dispenso::ResourcePool']]],
-  ['addnode_1',['addNode',['../classdispenso_1_1_subgraph_t.html#a3f314f17214ede38225e89be5cdd79ab',1,'dispenso::SubgraphT::addNode()'],['../classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e',1,'dispenso::GraphT::addNode(T &amp;&amp;f)']]],
+  ['addnode_1',['addnode',['../classdispenso_1_1_subgraph_t.html#a3f314f17214ede38225e89be5cdd79ab',1,'dispenso::SubgraphT::addNode()'],['../classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e',1,'dispenso::GraphT::addNode(T &amp;&amp;f)']]],
   ['addsubgraph_2',['addSubgraph',['../classdispenso_1_1_graph_t.html#adf47c5ba380b61e20df7ec680a1cca43',1,'dispenso::GraphT']]],
   ['alloc_3',['alloc',['../classdispenso_1_1_pool_allocator_t.html#a04ec8c4a58977f8ca6011431e1860036',1,'dispenso::PoolAllocatorT']]],
   ['allocsmallbuffer_4',['allocSmallBuffer',['../small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a',1,'dispenso']]],
