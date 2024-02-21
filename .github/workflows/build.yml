@@ -1,0 +1,30 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-tests:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, macos-14, ubuntu-latest] #macos-14 is macSilicon
+    env:
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configuring
+        run: |
+          mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON  -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        working-directory: ./build
+        run: |
+          cmake --build . --parallel 4 --config Release
+      - name: Running Unit Tests
+        working-directory: ./build
+        run: |
+          ctest -LE flaky --build-config Release
