@@ -25,6 +25,10 @@ target_compile_options(dispenso PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
   )
 
+if(WIN32)
+  target_compile_definitions(dispenso PUBLIC NOMINMAX)
+endif()
+
 target_include_directories(dispenso
 PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>

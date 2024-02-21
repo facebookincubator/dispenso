@@ -33,7 +33,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   # Windows-specific
   if(WIN32)
-    add_compile_definitions(NOMINMAX)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
   endif()
 endif()
