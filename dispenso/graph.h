@@ -413,7 +413,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   SubgraphT() = delete;
   SubgraphT(const SubgraphT<N>&) = delete;
   SubgraphT<N>& operator=(const SubgraphT<N>&) = delete;
-  SubgraphT(SubgraphT<N>&& other)
+  SubgraphT(SubgraphT<N>&& other) noexcept
       : graph_(other.graph_),
         nodes_(std::move(other.nodes_)),
         allocator_(std::move(other.allocator_)) {}
@@ -537,7 +537,7 @@ class DISPENSO_DLL_ACCESS GraphT {
   /**
    * Move assignment operator
    **/
-  GraphT<N>& operator=(GraphT&& other);
+  GraphT<N>& operator=(GraphT&& other) noexcept;
   /**
    * Construct a <code>NodeType</code> with a valid functor. This node is created into subgraph 0.
    * This is not concurrency safe.

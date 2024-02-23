@@ -464,7 +464,11 @@ void parallel_for(
       alignas(kCacheLineSize) std::atomic<decltype(numChunks)> index;
       char buffer[kCacheLineSize - sizeof(index)];
     };
-    auto wrapper = std::make_shared<Atomic>();
+
+    void* ptr = detail::alignedMalloc(sizeof(Atomic), alignof(Atomic));
+    auto* atm = new (ptr) Atomic();
+
+    std::shared_ptr<Atomic> wrapper(atm, detail::AlignedFreeDeleter<Atomic>());
     auto worker = [start = range.start,
                    end = range.end,
                    wrapper = std::move(wrapper),

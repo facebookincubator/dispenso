@@ -153,6 +153,20 @@ inline void alignedFree(void* ptr) {
   ::free(reinterpret_cast<void*>(recovered));
 }
 
+template <typename T>
+struct AlignedFreeDeleter {
+  void operator()(T* ptr) {
+    ptr->~T();
+    detail::alignedFree(ptr);
+  }
+};
+template <>
+struct AlignedFreeDeleter<void> {
+  void operator()(void* ptr) {
+    detail::alignedFree(ptr);
+  }
+};
+
 inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
   constexpr uintptr_t kMask = kCacheLineSize - 1;
   val += kMask;

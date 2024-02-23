@@ -63,7 +63,7 @@ if (NOT DISPENSO_HAS_ATOMIC_WITHOUT_LIB)
 endif()
 
 if(WIN32)
-  target_link_libraries(dispenso PUBLIC Synchronization)
+  target_link_libraries(dispenso PUBLIC Synchronization Winmm)
 endif()
 
 if (NOT DISPENSO_STANDALONE)

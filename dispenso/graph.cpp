@@ -130,7 +130,11 @@ constexpr size_t kMaxCache = 8;
 // nodes worth of memory per node type.
 // TODO(bbudge): Make these caching values macro configurable for lightweight platforms.
 constexpr size_t kMaxChunkCapacity = 1 << 16;
-std::vector<std::unique_ptr<NoLockPoolAllocator>> g_sgcache[2];
+
+using AlignedNodePoolPtr =
+    std::unique_ptr<NoLockPoolAllocator, detail::AlignedFreeDeleter<NoLockPoolAllocator>>;
+
+std::vector<AlignedNodePoolPtr> g_sgcache[2];
 std::mutex g_sgcacheMtx;
 
 template <class T>
@@ -140,15 +144,18 @@ constexpr size_t kCacheIndex = size_t{std::is_same<T, BiPropNode>::value};
 
 template <class N>
 typename SubgraphT<N>::PoolPtr SubgraphT<N>::getAllocator() {
-  std::unique_ptr<NoLockPoolAllocator> ptr;
+  AlignedNodePoolPtr ptr;
 
   auto& cache = g_sgcache[kCacheIndex<N>];
 
   {
     std::lock_guard<std::mutex> lk(g_sgcacheMtx);
     if (cache.empty()) {
-      ptr = std::make_unique<NoLockPoolAllocator>(
-          sizeof(NodeType), 128 * sizeof(NodeType), ::malloc, ::free);
+      void* alloc =
+          detail::alignedMalloc(sizeof(NoLockPoolAllocator), alignof(NoLockPoolAllocator));
+      auto* pool = new (alloc)
+          NoLockPoolAllocator(sizeof(NodeType), 128 * sizeof(NodeType), ::malloc, ::free);
+      ptr.reset(pool);
     } else {
       ptr = std::move(cache.back());
       ptr->clear();
@@ -173,7 +180,7 @@ void SubgraphT<N>::releaseAllocator(NoLockPoolAllocator* ptr) {
       }
     }
   }
-  delete ptr;
+  detail::AlignedFreeDeleter<NoLockPoolAllocator>()(ptr);
 }
 
 template <class N>
@@ -184,7 +191,7 @@ GraphT<N>::GraphT(GraphT<N>&& other) : subgraphs_(std::move(other.subgraphs_)) {
 }
 
 template <class N>
-GraphT<N>& GraphT<N>::operator=(GraphT&& other) {
+GraphT<N>& GraphT<N>::operator=(GraphT&& other) noexcept {
   subgraphs_ = std::move(other.subgraphs_);
   for (SubgraphT<N>& subgraph : subgraphs_) {
     subgraph.graph_ = this;
