@@ -32,12 +32,23 @@ DISPENSO_DLL_ACCESS void deallocSmallBufferImpl(size_t ordinal, void* buf);
 
 DISPENSO_DLL_ACCESS size_t approxBytesAllocatedSmallBufferImpl(size_t ordinal);
 
+// This has the effect of selecting actual block sizes starting with 4 bytes.  Smaller requests
+// (e.g. 1 byte, 2 bytes) will still utilize 4-byte blocks.  Choice of 4 bytes as the smallest
+// mainly aligns to sizeof(ptr) on 32-bit platforms, where we'd expect most common use cases to be
+// no smaller than one pointer.  Retaining 4-byte buckets on 64-bit platforms doesn't cost much
+// (tiny startup/teardown cost, and trivial amount of memory) when not using 4-byte or smaller
+// allocations, and makes the code simpler.
+constexpr size_t getOrdinal(size_t blockSize) {
+  return std::max<ssize_t>(0, log2const(blockSize) - 2);
+}
+
 template <size_t kBlockSize>
 inline std::enable_if_t<(kBlockSize <= kMaxSmallBufferSize), char*> allocSmallOrLarge() {
 #if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)
   return reinterpret_cast<char*>(alignedMalloc(kBlockSize, kBlockSize));
 #else
-  return allocSmallBufferImpl(log2const(kBlockSize) - 3);
+  return allocSmallBufferImpl(getOrdinal(kBlockSize));
+  ;
 #endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
 }
 
@@ -51,7 +62,7 @@ inline std::enable_if_t<(kBlockSize <= kMaxSmallBufferSize), void> deallocSmallO
 #if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)
   alignedFree(buf);
 #else
-  deallocSmallBufferImpl(log2const(kBlockSize) - 3, buf);
+  deallocSmallBufferImpl(getOrdinal(kBlockSize), buf);
 #endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
 }
 
@@ -105,7 +116,7 @@ inline void deallocSmallBuffer(void* buf) {
  **/
 template <size_t kBlockSize>
 size_t approxBytesAllocatedSmallBuffer() {
-  return detail::approxBytesAllocatedSmallBufferImpl(detail::log2const(kBlockSize) - 3);
+  return detail::approxBytesAllocatedSmallBufferImpl(detail::getOrdinal(kBlockSize));
 }
 
 } // namespace dispenso

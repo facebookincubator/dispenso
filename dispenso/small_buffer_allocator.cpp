@@ -20,6 +20,7 @@ static std::atomic<int> g_smallBufferSchwarzCounter; // global is zero-init
   static SmallBufferGlobals& g_globals##N =                    \
       reinterpret_cast<SmallBufferGlobals&>(g_globalsBuffer##N)
 
+SMALL_BUFFER_GLOBALS_DECL(4);
 SMALL_BUFFER_GLOBALS_DECL(8);
 SMALL_BUFFER_GLOBALS_DECL(16);
 SMALL_BUFFER_GLOBALS_DECL(32);
@@ -33,6 +34,7 @@ SMALL_BUFFER_GLOBALS_DECL(256);
     return g_globals##N;                           \
   }
 
+SMALL_BUFFER_GLOBAL_FUNC_DEFS(4)
 SMALL_BUFFER_GLOBAL_FUNC_DEFS(8)
 SMALL_BUFFER_GLOBAL_FUNC_DEFS(16)
 SMALL_BUFFER_GLOBAL_FUNC_DEFS(32)
@@ -42,6 +44,7 @@ SMALL_BUFFER_GLOBAL_FUNC_DEFS(256)
 
 SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
   if (g_smallBufferSchwarzCounter.fetch_add(1, std::memory_order_acq_rel) == 0) {
+    ::new (&g_globals4) SmallBufferGlobals();
     ::new (&g_globals8) SmallBufferGlobals();
     ::new (&g_globals16) SmallBufferGlobals();
     ::new (&g_globals32) SmallBufferGlobals();
@@ -53,6 +56,7 @@ SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
 
 static void destroySmallBufferGlobals() {
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  g_globals4.~SmallBufferGlobals();
   g_globals8.~SmallBufferGlobals();
   g_globals16.~SmallBufferGlobals();
   g_globals32.~SmallBufferGlobals();
@@ -71,16 +75,18 @@ SchwarzSmallBufferInit::~SchwarzSmallBufferInit() {
 char* allocSmallBufferImpl(size_t ordinal) {
   switch (ordinal) {
     case 0:
-      return detail::SmallBufferAllocator<8>::alloc();
+      return detail::SmallBufferAllocator<4>::alloc();
     case 1:
-      return detail::SmallBufferAllocator<16>::alloc();
+      return detail::SmallBufferAllocator<8>::alloc();
     case 2:
-      return detail::SmallBufferAllocator<32>::alloc();
+      return detail::SmallBufferAllocator<16>::alloc();
     case 3:
-      return detail::SmallBufferAllocator<64>::alloc();
+      return detail::SmallBufferAllocator<32>::alloc();
     case 4:
-      return detail::SmallBufferAllocator<128>::alloc();
+      return detail::SmallBufferAllocator<64>::alloc();
     case 5:
+      return detail::SmallBufferAllocator<128>::alloc();
+    case 6:
       return detail::SmallBufferAllocator<256>::alloc();
     default:
       assert(false && "Invalid small buffer ordinal requested");
@@ -91,21 +97,24 @@ char* allocSmallBufferImpl(size_t ordinal) {
 void deallocSmallBufferImpl(size_t ordinal, void* buf) {
   switch (ordinal) {
     case 0:
-      detail::SmallBufferAllocator<8>::dealloc(reinterpret_cast<char*>(buf));
+      detail::SmallBufferAllocator<4>::dealloc(reinterpret_cast<char*>(buf));
       break;
     case 1:
-      detail::SmallBufferAllocator<16>::dealloc(reinterpret_cast<char*>(buf));
+      detail::SmallBufferAllocator<8>::dealloc(reinterpret_cast<char*>(buf));
       break;
     case 2:
-      detail::SmallBufferAllocator<32>::dealloc(reinterpret_cast<char*>(buf));
+      detail::SmallBufferAllocator<16>::dealloc(reinterpret_cast<char*>(buf));
       break;
     case 3:
-      detail::SmallBufferAllocator<64>::dealloc(reinterpret_cast<char*>(buf));
+      detail::SmallBufferAllocator<32>::dealloc(reinterpret_cast<char*>(buf));
       break;
     case 4:
-      detail::SmallBufferAllocator<128>::dealloc(reinterpret_cast<char*>(buf));
+      detail::SmallBufferAllocator<64>::dealloc(reinterpret_cast<char*>(buf));
       break;
     case 5:
+      detail::SmallBufferAllocator<128>::dealloc(reinterpret_cast<char*>(buf));
+      break;
+    case 6:
       detail::SmallBufferAllocator<256>::dealloc(reinterpret_cast<char*>(buf));
       break;
     default:
@@ -116,16 +125,18 @@ void deallocSmallBufferImpl(size_t ordinal, void* buf) {
 size_t approxBytesAllocatedSmallBufferImpl(size_t ordinal) {
   switch (ordinal) {
     case 0:
-      return detail::SmallBufferAllocator<8>::bytesAllocated();
+      return detail::SmallBufferAllocator<4>::bytesAllocated();
     case 1:
-      return detail::SmallBufferAllocator<16>::bytesAllocated();
+      return detail::SmallBufferAllocator<8>::bytesAllocated();
     case 2:
-      return detail::SmallBufferAllocator<32>::bytesAllocated();
+      return detail::SmallBufferAllocator<16>::bytesAllocated();
     case 3:
-      return detail::SmallBufferAllocator<64>::bytesAllocated();
+      return detail::SmallBufferAllocator<32>::bytesAllocated();
     case 4:
-      return detail::SmallBufferAllocator<128>::bytesAllocated();
+      return detail::SmallBufferAllocator<64>::bytesAllocated();
     case 5:
+      return detail::SmallBufferAllocator<128>::bytesAllocated();
+    case 6:
       return detail::SmallBufferAllocator<256>::bytesAllocated();
     default:
       assert(false && "Invalid small buffer ordinal requested");
@@ -152,6 +163,7 @@ SmallBufferAllocator<kChunkSize>::PerThreadQueuingData::~PerThreadQueuingData() 
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
 }
 
+template class SmallBufferAllocator<4>;
 template class SmallBufferAllocator<8>;
 template class SmallBufferAllocator<16>;
 template class SmallBufferAllocator<32>;
