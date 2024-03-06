@@ -104,7 +104,7 @@ class TimedTask {
       double period = 0.0,
       size_t timesToRun = 1,
       TimedTaskType type = TimedTaskType::kNormal)
-      : impl_(std::make_shared<detail::TimedTaskImpl>(
+      : impl_(detail::make_shared<detail::TimedTaskImpl>(
             timesToRun,
             nextRunAbs,
             period,

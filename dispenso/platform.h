@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
+#include <memory>
 #include <thread>
 #include <type_traits>
 
@@ -166,6 +167,13 @@ struct AlignedFreeDeleter<void> {
     detail::alignedFree(ptr);
   }
 };
+
+template <typename T, class... Args>
+std::shared_ptr<T> make_shared(Args&&... args) {
+  void* tv = alignedMalloc(sizeof(T), alignof(T));
+  T* t = new (tv) T(std::forward<Args>(args)...);
+  return std::shared_ptr<T>(t, AlignedFreeDeleter<T>());
+}
 
 inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
   constexpr uintptr_t kMask = kCacheLineSize - 1;

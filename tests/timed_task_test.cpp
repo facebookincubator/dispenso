@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#if defined(_WIN32) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS // We don't want warnings regarding the getenv use in this test.
+#endif
+
 #include <dispenso/completion_event.h>
 #include <dispenso/schedulable.h>
 #include <dispenso/task_set.h>
