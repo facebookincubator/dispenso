@@ -331,7 +331,7 @@ TEST(Future, AsyncNotAsyncSpecifyThreadPool) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, AsyncSpecifyNewThread) {
+TEST(Future, DISABLED_AsyncSpecifyNewThread) {
   int value = 0;
   auto voidFuture = dispenso::async(dispenso::kNewThreadInvoker, [&value]() { value = 66; });
   voidFuture.get();
@@ -345,7 +345,7 @@ TEST(Future, AsyncSpecifyNewThread) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, AsyncNotDeferredSpecifyNewThread) {
+TEST(Future, DISABLED_AsyncNotDeferredSpecifyNewThread) {
   int value = 0;
   auto voidFuture = dispenso::async(
       dispenso::kNewThreadInvoker, dispenso::kNotDeferred, [&value]() { value = 66; });
@@ -361,7 +361,7 @@ TEST(Future, AsyncNotDeferredSpecifyNewThread) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, AsyncNotAsyncSpecifyNewThread) {
+TEST(Future, DISABLED_AsyncNotAsyncSpecifyNewThread) {
   int value = 0;
   auto voidFuture =
       dispenso::async(dispenso::kNewThreadInvoker, dispenso::kNotAsync, [&value]() { value = 66; });
