@@ -22,8 +22,9 @@ endif()
 
 target_compile_options(dispenso PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+  $<$<CXX_COMPILER_ID:GNU>: -Wno-stringop-overflow>
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
-  )
+)
 
 if(WIN32)
   target_compile_definitions(dispenso PUBLIC NOMINMAX)
