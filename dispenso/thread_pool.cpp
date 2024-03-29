@@ -5,10 +5,30 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#if defined DISPENSO_DEBUG
+#include <iostream>
+#endif // DISPENSO_DEBUG
 #include <dispenso/detail/quanta.h>
 #include <dispenso/thread_pool.h>
 
 namespace dispenso {
+size_t getAdjustedThreadCount(size_t requested) {
+  static const size_t maxThreads = []() {
+    size_t maxT = std::numeric_limits<size_t>::max();
+    char* envThreads = std::getenv("DISPENSO_MAX_THREADS_PER_POOL");
+    if (envThreads) {
+      char* end = nullptr;
+      maxT = std::strtoul(envThreads, &end, 10);
+#if defined DISPENSO_DEBUG
+      std::cout << "DISPENSO_MAX_THREADS_PER_POOL = " << maxT << std::endl;
+#endif // DISPENSO_DEBUG
+    }
+    return maxT;
+  }();
+
+  return std::min(requested, maxThreads);
+}
+
 void ThreadPool::PerThreadData::setThread(std::thread&& t) {
   thread_ = std::move(t);
 }
@@ -34,13 +54,13 @@ inline bool ThreadPool::PerThreadData::running() {
 
 ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
     : poolLoadMultiplier_(poolLoadMultiplier),
-      poolLoadFactor_(static_cast<ssize_t>(n * poolLoadMultiplier)),
-      numThreads_(static_cast<ssize_t>(n)) {
+      poolLoadFactor_(static_cast<ssize_t>(getAdjustedThreadCount(n) * poolLoadMultiplier)),
+      numThreads_(static_cast<ssize_t>(getAdjustedThreadCount(n))) {
   detail::registerFineSchedulerQuanta();
 #if defined DISPENSO_DEBUG
   assert(poolLoadMultiplier > 0);
 #endif // DISPENSO_DEBUG
-  for (size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(numThreads_); ++i) {
     threads_.emplace_back();
     threads_.back().setThread(std::thread([this, &back = threads_.back()]() { threadLoop(back); }));
   }
@@ -125,6 +145,8 @@ void ThreadPool::threadLoop(PerThreadData& data) {
 }
 
 void ThreadPool::resizeLocked(ssize_t sn) {
+  sn = getAdjustedThreadCount(sn);
+
   assert(sn >= 0);
   size_t n = static_cast<size_t>(sn);
 
