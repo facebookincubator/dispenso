@@ -179,52 +179,120 @@ inline int getTestTid() {
   return tid;
 }
 
-TEST(GreedyFor, OptionsMaxThreads) {
-  int usedTids[9] = {0};
-
-  dispenso::ThreadPool pool(8);
+void testMaxThreads(
+    size_t poolSize,
+    uint32_t maxThreads,
+    bool testStaticChunking,
+    bool testWaitOption) {
+  size_t numAvailableThreads = poolSize + testWaitOption;
+  std::vector<int> threadLocalSums(numAvailableThreads, 0);
+  dispenso::ThreadPool pool(poolSize);
   dispenso::TaskSet tasks(pool);
 
   dispenso::ParForOptions options;
-  options.maxThreads = 4;
-  options.wait = false;
+  options.maxThreads = maxThreads;
+  options.wait = testWaitOption;
+  options.defaultChunking =
+      testStaticChunking ? dispenso::ParForChunking::kStatic : dispenso::ParForChunking::kAuto;
 
-  auto func = [&usedTids](int index) {
+  auto func = [&threadLocalSums](int index) {
+    assert(index > 0); // for correctness of numNonZero
     std::this_thread::yield();
-    usedTids[getTestTid()] += index;
+    threadLocalSums[getTestTid()] += index;
   };
 
-  dispenso::parallel_for(tasks, 0, 10000, func, options);
+  dispenso::parallel_for(tasks, 1, 10000, func, options);
 
-  // We didn't tell the parallel_for to wait, so we need to do it here to ensure the loop is
-  // complete.
-  tasks.wait();
+  if (!testWaitOption) {
+    // We didn't tell the parallel_for to wait, so we need to do it here to ensure the loop is
+    // complete.
+    tasks.wait();
+  }
+
   int total = 0;
   int numNonZero = 0;
 
-  for (int i = 0; i < 9; ++i) {
-    numNonZero += usedTids[i] > 0;
-    total += usedTids[i];
+  for (size_t i = 0; i < numAvailableThreads; ++i) {
+    numNonZero += threadLocalSums[i] > 0;
+    total += threadLocalSums[i];
   }
 
-  EXPECT_LE(numNonZero, 4);
+  // 0 indicates serial execution per API spec
+  size_t translatedMaxThreads = maxThreads == 0 ? 1 : maxThreads;
+  EXPECT_EQ(numNonZero, std::min((size_t)translatedMaxThreads, numAvailableThreads));
   EXPECT_EQ(total, 49995000);
+}
 
-  memset(usedTids, 0, sizeof(usedTids));
-  options.wait = true;
+TEST(GreedyFor, OptionsMaxThreadsBigPoolStaticChunkingBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 4, staticChunking, waitOption);
+}
 
-  dispenso::parallel_for(tasks, 0, 10000, func, options);
-  total = 0;
-  numNonZero = 0;
+TEST(GreedyFor, OptionsMaxThreadsBigPoolStaticChunkingNonBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 4, staticChunking, waitOption);
+}
 
-  for (int i = 0; i < 9; ++i) {
-    numNonZero += usedTids[i] > 0;
-    total += usedTids[i];
-  }
+TEST(GreedyFor, OptionsMaxThreadsBigPoolAutoChunkingBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 4, staticChunking, waitOption);
+}
 
-  // We can now expect the calling thread to also participate.
-  EXPECT_LE(numNonZero, 5);
-  EXPECT_EQ(total, 49995000);
+TEST(GreedyFor, OptionsMaxThreadsBigPoolAutoChunkingNonBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 4, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSmallPoolStaticChunkingBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = true;
+  testMaxThreads(4, 8, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSmallPoolStaticChunkingNonBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = false;
+  testMaxThreads(4, 8, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSmallPoolAutoChunkingBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = true;
+  testMaxThreads(4, 8, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSmallPoolAutoChunkingNonBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = false;
+  testMaxThreads(4, 8, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSerialStaticChunkingBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 0, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSerialStaticChunkingNonBlocking) {
+  constexpr bool staticChunking = true;
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 0, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSerialAutoChunkingBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 0, staticChunking, waitOption);
+}
+
+TEST(GreedyFor, OptionsMaxThreadsSerialAutoChunkingNonBlocking) {
+  constexpr bool staticChunking = false;
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 0, staticChunking, waitOption);
 }
 
 TEST(GreedyFor, NegativeRangeLength) {

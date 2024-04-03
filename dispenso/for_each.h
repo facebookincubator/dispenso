@@ -27,8 +27,8 @@ namespace dispenso {
 struct ForEachOptions {
   /**
    * The maximum number of threads to use.  This can be used to limit the number of threads below
-   * the number associated with the TaskSet's thread pool.  Setting maxThreads to zero will result
-   * in serial operation.
+   * the number associated with the TaskSet's thread pool to control the degree of concurrency.
+   * Setting maxThreads to zero or one will result in serial operation.
    **/
   uint32_t maxThreads = std::numeric_limits<uint32_t>::max();
   /**
@@ -68,7 +68,10 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
     return;
   }
 
-  ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads(), options.maxThreads) + options.wait;
+  // 0 indicates serial execution per API spec
+  uint32_t maxThreads = options.maxThreads == 0 ? 1 : options.maxThreads;
+
+  ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads() + options.wait, maxThreads);
   // Reduce threads used if they exceed work to be done.
   numThreads = std::min<ssize_t>(numThreads, n);
 

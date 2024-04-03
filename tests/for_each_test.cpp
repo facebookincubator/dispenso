@@ -7,6 +7,7 @@
 
 #include <deque>
 #include <list>
+#include <numeric>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -289,4 +290,84 @@ TEST(ForEach, Cascade) {
   for (int i = 0; i < 100; ++i) {
     EXPECT_EQ(values[i], -i);
   }
+}
+
+inline int getTestTid() {
+  static DISPENSO_THREAD_LOCAL int tid = -1;
+  static std::atomic<int> nextTid(0);
+  if (tid < 0) {
+    tid = nextTid.fetch_add(1, std::memory_order_relaxed);
+  }
+  return tid;
+}
+
+void testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testWaitOption) {
+  size_t numAvailableThreads = poolSize + testWaitOption;
+  std::vector<int> threadLocalSums(numAvailableThreads, 0);
+  dispenso::ThreadPool pool(poolSize);
+  dispenso::TaskSet tasks(pool);
+
+  dispenso::ForEachOptions options;
+  options.maxThreads = maxThreads;
+  options.wait = testWaitOption;
+
+  auto func = [&threadLocalSums](int index) {
+    assert(index > 0); // for correctness of numNonZero
+    std::this_thread::yield();
+    threadLocalSums[getTestTid()] += index;
+  };
+
+  constexpr size_t kLen = 9999;
+  std::vector<int> v(kLen);
+  std::iota(v.begin(), v.end(), 1);
+
+  dispenso::for_each_n(tasks, v.cbegin(), kLen, func, options);
+
+  if (!testWaitOption) {
+    // We didn't tell the parallel_for to wait, so we need to do it here to ensure the loop is
+    // complete.
+    tasks.wait();
+  }
+  int total = 0;
+  int numNonZero = 0;
+
+  for (size_t i = 0; i < numAvailableThreads; ++i) {
+    numNonZero += threadLocalSums[i] > 0;
+    total += threadLocalSums[i];
+  }
+
+  // 0 indicates serial execution per API spec
+  size_t translatedMaxThreads = maxThreads == 0 ? 1 : maxThreads;
+  EXPECT_EQ(numNonZero, std::min((size_t)translatedMaxThreads, numAvailableThreads));
+  EXPECT_EQ(total, 49995000);
+}
+
+TEST(ForEach, OptionsMaxThreadsBigPoolBlocking) {
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 4, waitOption);
+}
+
+TEST(ForEach, OptionsMaxThreadsBigPoolNonBlocking) {
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 4, waitOption);
+}
+
+TEST(ForEach, OptionsMaxThreadsSmallPoolBlocking) {
+  constexpr bool waitOption = true;
+  testMaxThreads(4, 8, waitOption);
+}
+
+TEST(ForEach, OptionsMaxThreadsSmallPoolNonBlocking) {
+  constexpr bool waitOption = false;
+  testMaxThreads(4, 8, waitOption);
+}
+
+TEST(ForEach, OptionsMaxThreadsSerialBlocking) {
+  constexpr bool waitOption = true;
+  testMaxThreads(8, 0, waitOption);
+}
+
+TEST(ForEach, OptionsMaxThreadsSerialNonBlocking) {
+  constexpr bool waitOption = false;
+  testMaxThreads(8, 0, waitOption);
 }

@@ -12,6 +12,7 @@
 #pragma once
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <thread>
@@ -217,6 +218,7 @@ struct StaticChunking {
 };
 
 inline StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {
+  assert(chunks > 0);
   StaticChunking chunking;
   chunking.ceilChunkSize = (items + chunks - 1) / chunks;
   ssize_t numLeft = chunking.ceilChunkSize * chunks - items;

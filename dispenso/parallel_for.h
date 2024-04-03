@@ -38,8 +38,8 @@ enum class ParForChunking { kStatic, kAuto };
 struct ParForOptions {
   /**
    * The maximum number of threads to use.  This can be used to limit the number of threads below
-   * the number associated with the TaskSet's thread pool.  Setting maxThreads to zero  will result
-   * in serial operation.
+   * the number associated with the TaskSet's thread pool to control the degree of concurrency.
+   * Setting maxThreads to zero or one will result in serial operation.
    **/
   uint32_t maxThreads = std::numeric_limits<uint32_t>::max();
   /**
@@ -141,7 +141,7 @@ struct ChunkedRange {
   std::tuple<size_type, size_type>
   calcChunkSize(OtherInt numLaunched, bool oneOnCaller, size_type minChunkSize) const {
     size_type workingThreads = static_cast<size_type>(numLaunched) + size_type{oneOnCaller};
-    assert(workingThreads > 1);
+    assert(workingThreads > 0);
 
     if (!chunk) {
       size_type dynFactor = std::min<size_type>(16, size() / workingThreads);
@@ -255,9 +255,9 @@ void parallel_for_staticImpl(
     bool reuseExistingState) {
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads(), maxThreads);
+  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads() + wait, maxThreads);
   // Reduce threads used if they exceed work to be done.
-  numThreads = std::min(numThreads, range.size()) + wait;
+  numThreads = std::min(numThreads, range.size());
 
   if (!reuseExistingState) {
     states.clear();
@@ -359,7 +359,10 @@ void parallel_for(
 
   // Ensure minItemsPerChunk is sane
   uint32_t minItemsPerChunk = std::max<uint32_t>(1, options.minItemsPerChunk);
-  size_type maxThreads = options.maxThreads;
+
+  // 0 indicates serial execution per API spec
+  size_type maxThreads = options.maxThreads == 0 ? 1 : options.maxThreads;
+
   bool isStatic = range.isStatic();
 
   const size_type N = taskSet.numPoolThreads();
@@ -408,7 +411,8 @@ void parallel_for(
     return;
   }
 
-  const size_type numToLaunch = std::min<size_type>(maxThreads, N);
+  // wanting maxThreads workers (potentially including the calling thread), capped by N
+  const size_type numToLaunch = std::min<size_type>(maxThreads - options.wait, N);
 
   if (!options.reuseExistingState) {
     states.clear();
