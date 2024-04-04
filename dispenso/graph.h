@@ -502,14 +502,14 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   static void releaseAllocator(NoLockPoolAllocator* ptr);
 
   GraphT<N>* graph_;
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
 #pragma warning(push)
 #pragma warning(disable : 4251)
 #endif
   std::vector<N*> nodes_;
 
   PoolPtr allocator_;
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
 #pragma warning(pop)
 #endif
 
@@ -664,12 +664,12 @@ class DISPENSO_DLL_ACCESS GraphT {
  private:
   static constexpr size_t kSubgraphSizeP2 = detail::nextPow2(sizeof(SubgraphType));
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
 #pragma warning(push)
 #pragma warning(disable : 4251)
 #endif
   std::deque<SubgraphT<N>> subgraphs_;
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
 #pragma warning(pop)
 #endif
 

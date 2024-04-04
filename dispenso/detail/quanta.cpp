@@ -5,12 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <timeapi.h>
+#endif
+
 #include <dispenso/detail/quanta.h>
 
 namespace dispenso {
 #ifdef _WIN32
-#include <Windows.h>
-#include <timeapi.h>
 
 namespace {
 struct OsQuantaSetter {
