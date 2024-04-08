@@ -547,14 +547,14 @@ $(document).ready(function(){initNavTree('graph_8h_source.html',''); initResizab
 <div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> releaseAllocator(NoLockPoolAllocator* ptr);</div>
 <div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span> </div>
 <div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>  GraphT&lt;N&gt;* graph_;</div>
-<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span><span class="preprocessor">#if defined(_WIN32)</span></div>
+<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span><span class="preprocessor">#if defined(_WIN32) &amp;&amp; !defined(__MINGW32__)</span></div>
 <div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span><span class="preprocessor">#pragma warning(push)</span></div>
 <div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span><span class="preprocessor">#pragma warning(disable : 4251)</span></div>
 <div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>  std::vector&lt;N*&gt; nodes_;</div>
 <div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span> </div>
 <div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>  PoolPtr allocator_;</div>
-<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span><span class="preprocessor">#if defined(_WIN32)</span></div>
+<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span><span class="preprocessor">#if defined(_WIN32) &amp;&amp; !defined(__MINGW32__)</span></div>
 <div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span><span class="preprocessor">#pragma warning(pop)</span></div>
 <div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span> </div>
@@ -668,12 +668,12 @@ $(document).ready(function(){initNavTree('graph_8h_source.html',''); initResizab
 <div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span> <span class="keyword">private</span>:</div>
 <div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kSubgraphSizeP2 = detail::nextPow2(<span class="keyword">sizeof</span>(SubgraphType));</div>
 <div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span> </div>
-<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span><span class="preprocessor">#if defined(_WIN32)</span></div>
+<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span><span class="preprocessor">#if defined(_WIN32) &amp;&amp; !defined(__MINGW32__)</span></div>
 <div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span><span class="preprocessor">#pragma warning(push)</span></div>
 <div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span><span class="preprocessor">#pragma warning(disable : 4251)</span></div>
 <div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>  std::deque&lt;SubgraphT&lt;N&gt;&gt; subgraphs_;</div>
-<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span><span class="preprocessor">#if defined(_WIN32)</span></div>
+<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span><span class="preprocessor">#if defined(_WIN32) &amp;&amp; !defined(__MINGW32__)</span></div>
 <div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span><span class="preprocessor">#pragma warning(pop)</span></div>
 <div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span> </div>
