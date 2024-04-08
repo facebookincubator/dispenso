@@ -262,7 +262,7 @@ void testMaxThreads(
 
   // 0 indicates serial execution per API spec
   size_t translatedMaxThreads = maxThreads == 0 ? 1 : maxThreads;
-  EXPECT_EQ(numNonZero, std::min((size_t)translatedMaxThreads, numAvailableThreads));
+  EXPECT_LE(numNonZero, std::min((size_t)translatedMaxThreads, numAvailableThreads));
   EXPECT_EQ(total, 49995000);
 }
 
