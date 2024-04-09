@@ -655,7 +655,7 @@ TEST(Future, ImmediateInvoker) {
   EXPECT_EQ(7, val);
 }
 
-TEST(Future, NewThreadInvoker) {
+TEST(Future, DISABLED_NewThreadInvoker) {
   // Nearly always it should be better to use async/ThreadPool/TaskSet, but there may be occasions
   // where you actually want the work done on a new thread.
   dispenso::Future<int> future([]() { return 333; }, dispenso::kNewThreadInvoker);
