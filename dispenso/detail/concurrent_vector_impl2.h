@@ -12,7 +12,7 @@ namespace cv {
 template <typename VecT, typename T>
 DISPENSO_INLINE ConVecIterBase<VecT, T>::ConVecIterBase(const VecT* vec, cv::BucketInfo info)
     : vb_(reinterpret_cast<uintptr_t>(vec) | info.bucket),
-      bucketStart_(vec->buffers_[info.bucket].load(std::memory_order_relaxed)),
+      bucketStart_(vec -> buffers_[info.bucket].load(std::memory_order_relaxed)),
       bucketPtr_(bucketStart_ + info.bucketIndex),
       bucketEnd_(bucketStart_ + info.bucketCapacity) {}
 

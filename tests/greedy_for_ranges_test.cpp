@@ -43,13 +43,11 @@ TEST(GreedyForRanges, ShouldNotInvokeIfEmptyRange) {
   dispenso::ParForOptions options;
   options.defaultChunking = dispenso::ParForChunking::kAuto;
 
-  dispenso::parallel_for(
-      0, 0, [myNullPtr](int i, int /*ie*/) { *myNullPtr = i; }, options);
+  dispenso::parallel_for(0, 0, [myNullPtr](int i, int /*ie*/) { *myNullPtr = i; }, options);
 
   options.defaultChunking = dispenso::ParForChunking::kStatic;
 
-  dispenso::parallel_for(
-      0, 0, [myNullPtr](int i, int /*ie*/) { *myNullPtr = i; }, options);
+  dispenso::parallel_for(0, 0, [myNullPtr](int i, int /*ie*/) { *myNullPtr = i; }, options);
 }
 
 template <typename StateContainer>
@@ -449,8 +447,7 @@ TEST(GreedyForRanges, SingleLoopWaitIfToldTo) {
       options);
 
   dispenso::ParForOptions waitOptions;
-  dispenso::parallel_for(
-      taskSet, 0, 1, [](int i) { EXPECT_EQ(i, 0); }, waitOptions);
+  dispenso::parallel_for(taskSet, 0, 1, [](int i) { EXPECT_EQ(i, 0); }, waitOptions);
 
   EXPECT_EQ(count.load(), 1000);
 }

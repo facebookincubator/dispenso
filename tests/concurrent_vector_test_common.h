@@ -1082,7 +1082,7 @@ std::string printVec(const std::vector<int>& vec) {
 
 #define EXPECT_VEC_SUM(vec, num)                                                        \
   do {                                                                                  \
-    long maxV = (num)-1;                                                                \
+    long maxV = (num) - 1;                                                              \
     long result = 0;                                                                    \
     for (auto& v : vec) {                                                               \
       result += *v;                                                                     \
@@ -1093,7 +1093,7 @@ std::string printVec(const std::vector<int>& vec) {
 
 #define EXPECT_VEC_SUM_MINUS(vec, num, minus)                   \
   do {                                                          \
-    long maxV = (num)-1;                                        \
+    long maxV = (num) - 1;                                      \
     long result = 0;                                            \
     for (auto& v : vec) {                                       \
       result += *v;                                             \

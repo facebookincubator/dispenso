@@ -28,8 +28,7 @@ void run(benchmark::State& state, Alloc alloc, Free dealloc) {
 
 template <size_t kSize>
 void BM_newdelete(benchmark::State& state) {
-  run(
-      state, []() { return new char[kSize]; }, [](char* buf) { delete[](buf); });
+  run(state, []() { return new char[kSize]; }, [](char* buf) { delete[] (buf); });
 }
 
 template <size_t kSize>

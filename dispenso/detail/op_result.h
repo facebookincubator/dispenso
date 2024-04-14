@@ -16,11 +16,11 @@ class OpResult {
   OpResult() : ptr_(nullptr) {}
 
   template <typename U>
-  OpResult(U&& u) : ptr_(new (buf_) T(std::forward<U>(u))) {}
+  OpResult(U&& u) : ptr_(new(buf_) T(std::forward<U>(u))) {}
 
-  OpResult(const OpResult<T>& oth) : ptr_(oth ? new (buf_) T(*oth.ptr_) : nullptr) {}
+  OpResult(const OpResult<T>& oth) : ptr_(oth ? new(buf_) T(*oth.ptr_) : nullptr) {}
 
-  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {
+  OpResult(OpResult<T>&& oth) : ptr_(oth ? new(buf_) T(std::move(*oth.ptr_)) : nullptr) {
     oth.ptr_ = nullptr;
   }
 

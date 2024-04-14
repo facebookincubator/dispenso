@@ -54,9 +54,8 @@ void graphsToDot(
   for (size_t i = 0; i < numSubgraphs; ++i) {
     const SubgraphType& s = graph.subgraph(i);
     if (i != 0) {
-      datfile << "  "
-              << "subgraph cluster_" << i << " { label = \"" << ::detail::getName(&s, i, nodeNames)
-              << "\"\n";
+      datfile << "  " << "subgraph cluster_" << i << " { label = \""
+              << ::detail::getName(&s, i, nodeNames) << "\"\n";
     }
     const size_t numNodes = s.numNodes();
     for (size_t j = 0; j < numNodes; ++j) {

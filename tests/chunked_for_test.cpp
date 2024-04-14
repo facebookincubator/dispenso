@@ -279,9 +279,7 @@ void minChunkSize(dispenso::ParForChunking choice, int start, int end, int minSi
 
   dispenso::parallel_for(
       dispenso::makeChunkedRange(start, end, choice),
-      [&ranges](int ystart, int yend) {
-        ranges.push_back({ystart, yend});
-      },
+      [&ranges](int ystart, int yend) { ranges.push_back({ystart, yend}); },
       options);
 
   EXPECT_GE(ranges.size(), 1);
