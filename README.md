@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/facebookincubator/dispenso.svg?style=shield)](https://app.circleci.com/pipelines/github/facebookincubator/dispenso)
+[![Build and test](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml/badge.svg)](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml)
 
 # Dispenso
 
@@ -21,7 +21,7 @@
 
 Latin: *To dispense, distribute, manage*
 
-Dispenso is a library for working with sets of tasks in parallel.  It provides mechanisms for thread pools, task sets, parallel for loops, futures, pipelines, and more.  Dispenso is a well-tested C++14 library designed to have minimal dependencies (some dependencies are required for the tests and benchmarks), and designed to be clean with compiler sanitizers (ASAN, TSAN).  Dispenso is currently being used in dozens of projects and hundreds of C++ files at Meta (formerly Facebook).  Dispenso also aims to avoid major disruption at every release.  Releases will be made such that major versions are created when a backward incompatibility is introduced, and minor versions are created when substantial features have been added or bugs have been fixed, and the aim would be to only very rarely bump major versions.  That should make the project suitable for use from `main` branch, or if you need a harder requirement, you can base code on a specific version.
+Dispenso is a library for working with sets of tasks in parallel.  It provides mechanisms for thread pools, task sets, parallel for loops, futures, pipelines, and more.  Dispenso is a well-tested C++14 library designed to have minimal dependencies (some dependencies are required for the tests and benchmarks), and designed to be clean with compiler sanitizers (ASAN, TSAN).  Dispenso is currently being used in hundreds of projects and hundreds of C++ files at Meta (formerly Facebook).  Dispenso also aims to avoid major disruption at every release.  Releases will be made such that major versions are created when a backward incompatibility is introduced, and minor versions are created when substantial features have been added or bugs have been fixed, and the aim would be to only very rarely bump major versions.  That should make the project suitable for use from `main` branch, or if you need a harder requirement, you can base code on a specific version.
 
 Dispenso has the following features
 * **`AsyncRequest`**: Asynchronous request/response facilities for lightweight constrained message passing
@@ -30,6 +30,7 @@ Dispenso has the following features
 * **`ConcurrentVector`**: A vector-like type with a superset of the TBB concurrent_vector API
 * **`for_each`**: Parallel version of `std::for_each` and `std::for_each_n`
 * **`Future`**: A futures implementation that strives for interface similarity with std::experimental::future, but with dispenso types as backing thread pools
+* **`Graph`**: Utilities for fast and lightweight execution of task graphs.  Task graphs may be reused to avoid setup costs, and subgraph execution is automated based on updated and downstream nodes.
 * **`OnceFunction`**: A lightweight function-like interface for `void()` functions that can only be called once
 * **`parallel_for`**: Parallel for loops over indices that can be blocking or non-blocking
 * **`pipeline`**: Parallel pipelining of workloads
@@ -257,7 +258,7 @@ After you have the deps you want, you can build and run:
 1. (e.g.) `bin/once_function_benchmark`
 
 ### Windows
-Not currently supported.
+Not currently supported through CMake.
 
 <div id='benchresults'/>
 
@@ -287,11 +288,12 @@ Some additional notes about the benchmarks: Your mileage may vary based on compi
 
 # Known issues
 
-None at present
+* Large subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
+* NewThreadInvoker can have a program shutdown race on Windows machines if the threads launched by it are not finished running by end of main().
 
 ## TODO
-* Expand CircleCI continuous integration testing from Linux to include Mac and Windows, and also to run on ARM.  Use TSAN and ASAN testing on available platforms.
-
+* Finish removing CircleCI continuous integration testing, and add badge for GitHub Actions-based CI.  Use TSAN and ASAN testing on available platforms.
+* Enable Windows benchmarks through CMake.
 
 
 <div id='license'/>
