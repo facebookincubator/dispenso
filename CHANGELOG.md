@@ -1,3 +1,24 @@
+1.3 (April 25, 2024)
+
+### Bug fixes, portability enhancements, and small functionality enhancements
+
+* Fixed several generic warnings (thanks michel-slm!)
+* cpuRelax added for PowerPC and ARM (thanks barracuda156!)
+* Added missing header (thanks ryandesign!)
+* Try to detect and add libatomic when required (thanks for discussions barracuda156!)
+* Enable small buffers from small buffer allocators to go down to 4 bytes (thanks for discussion David Caruso!).  This is handy for 32-bit builds where pointers are typically 4 bytes
+* Ensure that NOMINMAX is propagated for CMake Windows builds (thanks SeaOtocinclus!)
+* Fix some cases using std::make_shared for types requiring large alignment, which is a bug prior to C++17 (thanks for help finding these SeaOtocinclus!)
+* Set up CI on GitHub Actions, including builds for Mac and Windows in addition to Linux (thanks SeaOtocinclus!)
+* Add an envinronment variable `DISPENSO_MAX_THREADS_PER_POOL` to limit max number of threads available to any thread pool.  In the spirit of `OMP_NUM_THREADS`.  (thanks Yong-Chull Jang!)
+* Slight change of behavior w.r.t. use of `maxThreads` option in `ForEachOptions` and `ParForOptions` to limit concurrency the same way in both blocking and non-blocking `for_each` and `parallel_for` (thanks Arnie Yuan!)
+* Various fixes to enable CMake builds on various 32-bit platforms (thanks for discussions barracuda156!)
+* Updates to README
+
+Known Issues:
+* Large subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
+* NewThreadInvoker can have a program shutdown race on Windows platforms if the threads launched by it are not finished running by end of main()
+
 1.2 (December 27, 2023)
 
 ### Bug fixes and functionality enhancements
