@@ -12,10 +12,22 @@
 #include <dispenso/thread_pool.h>
 
 namespace dispenso {
+
 size_t getAdjustedThreadCount(size_t requested) {
   static const size_t maxThreads = []() {
     size_t maxT = std::numeric_limits<size_t>::max();
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#endif
+
     char* envThreads = std::getenv("DISPENSO_MAX_THREADS_PER_POOL");
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+#pragma warning(pop)
+#endif
+
     if (envThreads) {
       char* end = nullptr;
       maxT = std::strtoul(envThreads, &end, 10);
