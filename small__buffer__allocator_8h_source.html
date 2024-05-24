@@ -161,39 +161,42 @@ $(document).ready(function(){initNavTree('small__buffer__allocator_8h_source.htm
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  alignedFree(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">buf</a>);</div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>}</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span> </div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span><span class="keyword">static</span> <span class="keyword">struct </span>SchwarzSmallBufferInit {</div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>  DISPENSO_DLL_ACCESS SchwarzSmallBufferInit();</div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>  DISPENSO_DLL_ACCESS ~SchwarzSmallBufferInit();</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>} smallBufferInit;</div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>} <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span> </div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
-<div class="foldopen" id="foldopen00093" data-start="{" data-end="}">
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">   93</a></span><span class="keyword">inline</span> <span class="keywordtype">char</span>* <a class="code hl_function" href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">allocSmallBuffer</a>() {</div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>  <span class="keywordflow">return</span> detail::allocSmallOrLarge&lt;kBlockSize&gt;();</div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>}</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>DISPENSO_DISABLE_WARNING_PUSH</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS</div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span><span class="keyword">static</span> <span class="keyword">struct </span>SchwarzSmallBufferInit {</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>  DISPENSO_DLL_ACCESS SchwarzSmallBufferInit();</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>  DISPENSO_DLL_ACCESS ~SchwarzSmallBufferInit();</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>} smallBufferInit;</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>DISPENSO_DISABLE_WARNING_POP</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span> </div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span> </div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
+<div class="foldopen" id="foldopen00096" data-start="{" data-end="}">
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">   96</a></span><span class="keyword">inline</span> <span class="keywordtype">char</span>* <a class="code hl_function" href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">allocSmallBuffer</a>() {</div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>  <span class="keywordflow">return</span> detail::allocSmallOrLarge&lt;kBlockSize&gt;();</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>}</div>
 </div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
-<div class="foldopen" id="foldopen00106" data-start="{" data-end="}">
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">  106</a></span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">deallocSmallBuffer</a>(<span class="keywordtype">void</span>* <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">buf</a>) {</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  detail::deallocSmallOrLarge&lt;kBlockSize&gt;(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">buf</a>);</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>}</div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
+<div class="foldopen" id="foldopen00109" data-start="{" data-end="}">
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">  109</a></span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">deallocSmallBuffer</a>(<span class="keywordtype">void</span>* <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">buf</a>) {</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  detail::deallocSmallOrLarge&lt;kBlockSize&gt;(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">buf</a>);</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>}</div>
 </div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span> </div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
-<div class="foldopen" id="foldopen00118" data-start="{" data-end="}">
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">  118</a></span><span class="keywordtype">size_t</span> <a class="code hl_function" href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">approxBytesAllocatedSmallBuffer</a>() {</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  <span class="keywordflow">return</span> detail::approxBytesAllocatedSmallBufferImpl(detail::getOrdinal(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">kBlockSize</a>));</div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>}</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
+<div class="foldopen" id="foldopen00121" data-start="{" data-end="}">
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno"><a class="line" href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">  121</a></span><span class="keywordtype">size_t</span> <a class="code hl_function" href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">approxBytesAllocatedSmallBuffer</a>() {</div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>  <span class="keywordflow">return</span> detail::approxBytesAllocatedSmallBufferImpl(detail::getOrdinal(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">kBlockSize</a>));</div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>}</div>
 </div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span> </div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="apipeline_8h_html_ac10c8908b42e2d7fc3761b483a350967"><div class="ttname"><a href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">dispenso::OpResult</a></div><div class="ttdeci">detail::OpResult&lt; T &gt; OpResult</div><div class="ttdef"><b>Definition</b> <a href="pipeline_8h_source.html#l00029">pipeline.h:29</a></div></div>
-<div class="ttc" id="asmall__buffer__allocator_8h_html_a1ba6120f1467502c75d6e8bd3d8131ec"><div class="ttname"><a href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">dispenso::deallocSmallBuffer</a></div><div class="ttdeci">void deallocSmallBuffer(void *buf)</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00106">small_buffer_allocator.h:106</a></div></div>
+<div class="ttc" id="asmall__buffer__allocator_8h_html_a1ba6120f1467502c75d6e8bd3d8131ec"><div class="ttname"><a href="small__buffer__allocator_8h.html#a1ba6120f1467502c75d6e8bd3d8131ec">dispenso::deallocSmallBuffer</a></div><div class="ttdeci">void deallocSmallBuffer(void *buf)</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00109">small_buffer_allocator.h:109</a></div></div>
 <div class="ttc" id="asmall__buffer__allocator_8h_html_aa39ff033a552de8d0e275d0a9f775df1"><div class="ttname"><a href="small__buffer__allocator_8h.html#aa39ff033a552de8d0e275d0a9f775df1">dispenso::kMaxSmallBufferSize</a></div><div class="ttdeci">constexpr size_t kMaxSmallBufferSize</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00026">small_buffer_allocator.h:26</a></div></div>
-<div class="ttc" id="asmall__buffer__allocator_8h_html_ab83550597ed4347b3d89d15bb16cd49a"><div class="ttname"><a href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">dispenso::allocSmallBuffer</a></div><div class="ttdeci">char * allocSmallBuffer()</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00093">small_buffer_allocator.h:93</a></div></div>
-<div class="ttc" id="asmall__buffer__allocator_8h_html_ad883cfcdabda87d64afdab3d04f11a47"><div class="ttname"><a href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">dispenso::approxBytesAllocatedSmallBuffer</a></div><div class="ttdeci">size_t approxBytesAllocatedSmallBuffer()</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00118">small_buffer_allocator.h:118</a></div></div>
+<div class="ttc" id="asmall__buffer__allocator_8h_html_ab83550597ed4347b3d89d15bb16cd49a"><div class="ttname"><a href="small__buffer__allocator_8h.html#ab83550597ed4347b3d89d15bb16cd49a">dispenso::allocSmallBuffer</a></div><div class="ttdeci">char * allocSmallBuffer()</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00096">small_buffer_allocator.h:96</a></div></div>
+<div class="ttc" id="asmall__buffer__allocator_8h_html_ad883cfcdabda87d64afdab3d04f11a47"><div class="ttname"><a href="small__buffer__allocator_8h.html#ad883cfcdabda87d64afdab3d04f11a47">dispenso::approxBytesAllocatedSmallBuffer</a></div><div class="ttdeci">size_t approxBytesAllocatedSmallBuffer()</div><div class="ttdef"><b>Definition</b> <a href="small__buffer__allocator_8h_source.html#l00121">small_buffer_allocator.h:121</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

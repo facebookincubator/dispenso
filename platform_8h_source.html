@@ -173,152 +173,157 @@ $(document).ready(function(){initNavTree('platform_8h_source.html',''); initResi
 <div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)</span></div>
 <div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span><span class="preprocessor">#if !defined(__clang__)</span></div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS \</span></div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="preprocessor">  DISPENSO_DISABLE_WARNING(-Wgnu-zero-variadic-macro-arguments)</span></div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="preprocessor">#elif defined(_MSC_VER)</span></div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH __pragma(warning(push))</span></div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP __pragma(warning(pop))</span></div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING(warningNumber) __pragma(warning(disable : warningNumber))</span></div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="comment">// clang-format on</span></div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span> </div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="foldopen" id="foldopen00105" data-start="{" data-end="};">
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cache_aligned.html">  105</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a> {</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  <a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a>() = <span class="keywordflow">default</span>;</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>  <a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">t</a>) : t_(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">t</a>) {}</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>  <span class="keyword">operator</span> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>&amp;() {</div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    <span class="keywordflow">return</span> t_;</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  }</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>  <span class="keyword">operator</span> <span class="keyword">const</span> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>&amp;() <span class="keyword">const</span> {</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>    <span class="keywordflow">return</span> t_;</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>  }</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span> </div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>  <span class="keyword">alignas</span>(kCacheLineSize) <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a> t_;</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>};</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS</span></div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS \</span></div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span><span class="preprocessor">  DISPENSO_DISABLE_WARNING(-Wgnu-zero-variadic-macro-arguments)</span></div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS \</span></div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="preprocessor">  DISPENSO_DISABLE_WARNING(-Wglobal-constructors)</span></div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="preprocessor">#elif defined(_MSC_VER)</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH __pragma(warning(push))</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP __pragma(warning(pop))</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING(warningNumber) __pragma(warning(disable : warningNumber))</span></div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH</span></div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP</span></div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS</span></div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="comment">// clang-format on</span></div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span> </div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
+<div class="foldopen" id="foldopen00110" data-start="{" data-end="};">
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cache_aligned.html">  110</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a> {</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  <a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>  <a class="code hl_class" href="classdispenso_1_1_cache_aligned.html">CacheAligned</a>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">t</a>) : t_(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">t</a>) {}</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="keyword">operator</span> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>&amp;() {</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    <span class="keywordflow">return</span> t_;</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>  }</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span> </div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>  <span class="keyword">operator</span> <span class="keyword">const</span> <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>&amp;() <span class="keyword">const</span> {</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>    <span class="keywordflow">return</span> t_;</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>  }</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>  <span class="keyword">alignas</span>(kCacheLineSize) <a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a> t_;</div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>};</div>
 </div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span> </div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span><span class="keyword">namespace </span>detail {</div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span> </div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span><span class="keyword">struct </span>AlignedBuffer {</div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>  <span class="keyword">alignas</span>(<span class="keyword">alignof</span>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>)) <span class="keywordtype">char</span> b[<span class="keyword">sizeof</span>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>)];</div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span>};</div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span> </div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="keyword">namespace </span>detail {</div>
 <div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span> </div>
 <div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="keyword">struct </span>alignas(kCacheLineSize) AlignedAtomic : <span class="keyword">public</span> std::atomic&lt;T*&gt; {};</div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span> </div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span><span class="keyword">inline</span> <span class="keywordtype">void</span>* alignedMalloc(<span class="keywordtype">size_t</span> bytes, <span class="keywordtype">size_t</span> alignment) {</div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>  alignment = std::max(alignment, <span class="keyword">sizeof</span>(uintptr_t));</div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>  <span class="keywordtype">char</span>* ptr = <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(::malloc(bytes + alignment));</div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>  uintptr_t base = <span class="keyword">reinterpret_cast&lt;</span>uintptr_t<span class="keyword">&gt;</span>(ptr);</div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>  uintptr_t oldBase = base;</div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span>  uintptr_t mask = alignment - 1;</div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>  base += alignment;</div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>  base &amp;= ~mask;</div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span> </div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>  uintptr_t* recovery = <span class="keyword">reinterpret_cast&lt;</span>uintptr_t*<span class="keyword">&gt;</span>(base - <span class="keyword">sizeof</span>(uintptr_t));</div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>  *recovery = oldBase;</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">void</span>*<span class="keyword">&gt;</span>(base);</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>}</div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="keyword">struct </span>AlignedBuffer {</div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>  <span class="keyword">alignas</span>(<span class="keyword">alignof</span>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>)) <span class="keywordtype">char</span> b[<span class="keyword">sizeof</span>(<a class="code hl_typedef" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">T</a>)];</div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>};</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span> </div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="keyword">struct </span>alignas(kCacheLineSize) AlignedAtomic : <span class="keyword">public</span> std::atomic&lt;T*&gt; {};</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span> </div>
+<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="keyword">inline</span> <span class="keywordtype">void</span>* alignedMalloc(<span class="keywordtype">size_t</span> bytes, <span class="keywordtype">size_t</span> alignment) {</div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>  alignment = std::max(alignment, <span class="keyword">sizeof</span>(uintptr_t));</div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>  <span class="keywordtype">char</span>* ptr = <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(::malloc(bytes + alignment));</div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>  uintptr_t base = <span class="keyword">reinterpret_cast&lt;</span>uintptr_t<span class="keyword">&gt;</span>(ptr);</div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>  uintptr_t oldBase = base;</div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>  uintptr_t mask = alignment - 1;</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>  base += alignment;</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>  base &amp;= ~mask;</div>
 <div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span> </div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span><span class="keyword">inline</span> <span class="keywordtype">void</span>* alignedMalloc(<span class="keywordtype">size_t</span> bytes) {</div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>  <span class="keywordflow">return</span> alignedMalloc(bytes, kCacheLineSize);</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>}</div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span> </div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span><span class="keyword">inline</span> <span class="keywordtype">void</span> alignedFree(<span class="keywordtype">void</span>* ptr) {</div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>  <span class="keywordflow">if</span> (!ptr) {</div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>  }</div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>  <span class="keywordtype">char</span>* p = <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(ptr);</div>
-<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>  uintptr_t recovered = *<span class="keyword">reinterpret_cast&lt;</span>uintptr_t*<span class="keyword">&gt;</span>(p - <span class="keyword">sizeof</span>(uintptr_t));</div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>  ::free(<span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">void</span>*<span class="keyword">&gt;</span>(recovered));</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>}</div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span> </div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span><span class="keyword">struct </span>AlignedFreeDeleter {</div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  <span class="keywordtype">void</span> operator()(T* ptr) {</div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>    ptr-&gt;~T();</div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    detail::alignedFree(ptr);</div>
-<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>  }</div>
-<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>};</div>
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span><span class="keyword">template</span> &lt;&gt;</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span><span class="keyword">struct </span>AlignedFreeDeleter&lt;void&gt; {</div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>  <span class="keywordtype">void</span> operator()(<span class="keywordtype">void</span>* ptr) {</div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>    detail::alignedFree(ptr);</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>  }</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>};</div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span> </div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="keyword">class</span>... Args&gt;</div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>std::shared_ptr&lt;T&gt; make_shared(Args&amp;&amp;... args) {</div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>  <span class="keywordtype">void</span>* tv = alignedMalloc(<span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T));</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>  T* t = <span class="keyword">new</span> (tv) T(std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>  <span class="keywordflow">return</span> std::shared_ptr&lt;T&gt;(t, AlignedFreeDeleter&lt;T&gt;());</div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>}</div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span> </div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span><span class="keyword">inline</span> <span class="keyword">constexpr</span> uintptr_t alignToCacheLine(uintptr_t val) {</div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>  <span class="keyword">constexpr</span> uintptr_t kMask = kCacheLineSize - 1;</div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span>  val += kMask;</div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span>  val &amp;= ~kMask;</div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span>  <span class="keywordflow">return</span> val;</div>
-<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span>}</div>
-<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span> </div>
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="preprocessor">#if defined __x86_64__ || defined __i386__</span></div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;pause&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>  uintptr_t* recovery = <span class="keyword">reinterpret_cast&lt;</span>uintptr_t*<span class="keyword">&gt;</span>(base - <span class="keyword">sizeof</span>(uintptr_t));</div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>  *recovery = oldBase;</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">void</span>*<span class="keyword">&gt;</span>(base);</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>}</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span> </div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span><span class="keyword">inline</span> <span class="keywordtype">void</span>* alignedMalloc(<span class="keywordtype">size_t</span> bytes) {</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>  <span class="keywordflow">return</span> alignedMalloc(bytes, kCacheLineSize);</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>}</div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span> </div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span><span class="keyword">inline</span> <span class="keywordtype">void</span> alignedFree(<span class="keywordtype">void</span>* ptr) {</div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>  <span class="keywordflow">if</span> (!ptr) {</div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>  }</div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>  <span class="keywordtype">char</span>* p = <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(ptr);</div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  uintptr_t recovered = *<span class="keyword">reinterpret_cast&lt;</span>uintptr_t*<span class="keyword">&gt;</span>(p - <span class="keyword">sizeof</span>(uintptr_t));</div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  ::free(<span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">void</span>*<span class="keyword">&gt;</span>(recovered));</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>}</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span> </div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span><span class="keyword">struct </span>AlignedFreeDeleter {</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>  <span class="keywordtype">void</span> operator()(T* ptr) {</div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>    ptr-&gt;~T();</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>    detail::alignedFree(ptr);</div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>  }</div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>};</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span><span class="keyword">template</span> &lt;&gt;</div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="keyword">struct </span>AlignedFreeDeleter&lt;void&gt; {</div>
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>  <span class="keywordtype">void</span> operator()(<span class="keywordtype">void</span>* ptr) {</div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    detail::alignedFree(ptr);</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>  }</div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>};</div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span> </div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="keyword">class</span>... Args&gt;</div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>std::shared_ptr&lt;T&gt; make_shared(Args&amp;&amp;... args) {</div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span>  <span class="keywordtype">void</span>* tv = alignedMalloc(<span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T));</div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>  T* t = <span class="keyword">new</span> (tv) T(std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span>  <span class="keywordflow">return</span> std::shared_ptr&lt;T&gt;(t, AlignedFreeDeleter&lt;T&gt;());</div>
+<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span>}</div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span> </div>
+<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span><span class="keyword">inline</span> <span class="keyword">constexpr</span> uintptr_t alignToCacheLine(uintptr_t val) {</div>
+<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span>  <span class="keyword">constexpr</span> uintptr_t kMask = kCacheLineSize - 1;</div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span>  val += kMask;</div>
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span>  val &amp;= ~kMask;</div>
+<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>  <span class="keywordflow">return</span> val;</div>
 <div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span>}</div>
-<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span><span class="preprocessor">#elif defined __arm64__ || defined __aarch64__</span></div>
-<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
-<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;yield&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
-<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>}</div>
-<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span><span class="preprocessor">#elif defined __powerpc__ || defined __POWERPC__</span></div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span><span class="preprocessor">#if defined __APPLE__</span></div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span> </div>
+<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span><span class="preprocessor">#if defined __x86_64__ || defined __i386__</span></div>
+<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;pause&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>}</div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span><span class="preprocessor">#elif defined __arm64__ || defined __aarch64__</span></div>
 <div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or r27,r27,r27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;yield&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
 <div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>}</div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
-<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or 27,27,27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>}</div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span><span class="preprocessor">#endif </span><span class="comment">// APPLE</span></div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span><span class="preprocessor">#elif defined __powerpc__ || defined __POWERPC__</span></div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span><span class="preprocessor">#if defined __APPLE__</span></div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or r27,r27,r27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>}</div>
 <div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span><span class="comment">// TODO: provide reasonable relax on other archs.</span></div>
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {}</div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><span class="preprocessor">#endif </span><span class="comment">// ARCH</span></div>
-<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span> </div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span><span class="comment">// When statically chunking a range, it is generally not possible to use a single chunk size plus</span></div>
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span><span class="comment">// remainder and get a good load distribution.  By estimating too high, we can have idle threads. By</span></div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span><span class="comment">// estimating too low, the remainder can be several times as large as the chunk for other threads.</span></div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span><span class="comment">// Instead, we compute the chunk size that is the ceil of the fractional chunk size.  That can be</span></div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span><span class="comment">// used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)</span></div>
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span><span class="comment">// values will be ceilChunkSize - 1.</span></div>
-<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span><span class="keyword">struct </span>StaticChunking {</div>
-<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span>  ssize_t transitionTaskIndex;</div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span>  ssize_t ceilChunkSize;</div>
-<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span>};</div>
-<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span> </div>
-<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span><span class="keyword">inline</span> StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {</div>
-<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>  assert(chunks &gt; 0);</div>
-<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>  StaticChunking chunking;</div>
-<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>  chunking.ceilChunkSize = (items + chunks - 1) / chunks;</div>
-<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>  ssize_t numLeft = chunking.ceilChunkSize * chunks - items;</div>
-<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>  chunking.transitionTaskIndex = chunks - numLeft;</div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  <span class="keywordflow">return</span> chunking;</div>
-<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>}</div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span> </div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>} <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_cache_aligned_html"><div class="ttname"><a href="classdispenso_1_1_cache_aligned.html">dispenso::CacheAligned</a></div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00105">platform.h:105</a></div></div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>  <span class="keyword">asm</span> <span class="keyword">volatile</span>(<span class="stringliteral">&quot;or 27,27,27&quot;</span> ::: <span class="stringliteral">&quot;memory&quot;</span>);</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>}</div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span><span class="preprocessor">#endif </span><span class="comment">// APPLE</span></div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span><span class="comment">// TODO: provide reasonable relax on other archs.</span></div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span><span class="keyword">inline</span> <span class="keywordtype">void</span> cpuRelax() {}</div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span><span class="preprocessor">#endif </span><span class="comment">// ARCH</span></div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span> </div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span><span class="comment">// When statically chunking a range, it is generally not possible to use a single chunk size plus</span></div>
+<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span><span class="comment">// remainder and get a good load distribution.  By estimating too high, we can have idle threads. By</span></div>
+<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span><span class="comment">// estimating too low, the remainder can be several times as large as the chunk for other threads.</span></div>
+<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span><span class="comment">// Instead, we compute the chunk size that is the ceil of the fractional chunk size.  That can be</span></div>
+<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span><span class="comment">// used for the first transitionIndex values, while the remaining (chunks - transitionTaskIndex)</span></div>
+<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span><span class="comment">// values will be ceilChunkSize - 1.</span></div>
+<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span><span class="keyword">struct </span>StaticChunking {</div>
+<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>  ssize_t transitionTaskIndex;</div>
+<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>  ssize_t ceilChunkSize;</div>
+<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>};</div>
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span> </div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span><span class="keyword">inline</span> StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  assert(chunks &gt; 0);</div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  StaticChunking chunking;</div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  chunking.ceilChunkSize = (items + chunks - 1) / chunks;</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  ssize_t numLeft = chunking.ceilChunkSize * chunks - items;</div>
+<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>  chunking.transitionTaskIndex = chunks - numLeft;</div>
+<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  <span class="keywordflow">return</span> chunking;</div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>}</div>
+<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span> </div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="ttc" id="aclassdispenso_1_1_cache_aligned_html"><div class="ttname"><a href="classdispenso_1_1_cache_aligned.html">dispenso::CacheAligned</a></div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00110">platform.h:110</a></div></div>
 <div class="ttc" id="apipeline_8h_html_ac10c8908b42e2d7fc3761b483a350967"><div class="ttname"><a href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">dispenso::OpResult</a></div><div class="ttdeci">detail::OpResult&lt; T &gt; OpResult</div><div class="ttdef"><b>Definition</b> <a href="pipeline_8h_source.html#l00029">pipeline.h:29</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
