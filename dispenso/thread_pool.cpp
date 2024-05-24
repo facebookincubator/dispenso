@@ -13,6 +13,7 @@
 
 namespace dispenso {
 
+namespace {
 size_t getAdjustedThreadCount(size_t requested) {
   static const size_t maxThreads = []() {
     size_t maxT = std::numeric_limits<size_t>::max();
@@ -40,6 +41,7 @@ size_t getAdjustedThreadCount(size_t requested) {
 
   return std::min(requested, maxThreads);
 }
+} // namespace
 
 void ThreadPool::PerThreadData::setThread(std::thread&& t) {
   thread_ = std::move(t);
