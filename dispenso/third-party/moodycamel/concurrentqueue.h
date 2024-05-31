@@ -37,7 +37,10 @@
 // upon assigning any computed values)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
+
+#if defined(__clang__)
 #pragma GCC diagnostic ignored "-Wglobal-constructors"
+#endif //__clang__
 
 #ifdef MCDBGQ_USE_RELACY
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
