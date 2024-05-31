@@ -12,6 +12,8 @@
 
 #include <gtest/gtest.h>
 
+#include "test_tid.h"
+
 void simpleInner(int w, int y, const std::vector<int>& image, std::atomic<int64_t>& sum) {
   const int* row = image.data() + y * w;
   int64_t s = 0;
@@ -209,20 +211,12 @@ TEST(GreedyForRanges, CoordinatedConcurrentLoops) {
   EXPECT_EQ(sumB.load(std::memory_order_relaxed), w * h * 7);
 }
 
-inline int getTestTid() {
-  static DISPENSO_THREAD_LOCAL int tid = -1;
-  static std::atomic<int> nextTid(0);
-  if (tid < 0) {
-    tid = nextTid.fetch_add(1, std::memory_order_relaxed);
-  }
-  return tid;
-}
-
 void testMaxThreads(
     size_t poolSize,
     uint32_t maxThreads,
     bool testStaticChunking,
     bool testWaitOption) {
+  resetTestTid();
   size_t numAvailableThreads = poolSize + testWaitOption;
   std::vector<int> threadLocalSums(numAvailableThreads, 0);
   dispenso::ThreadPool pool(poolSize);

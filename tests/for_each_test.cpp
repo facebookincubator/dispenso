@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include "test_tid.h"
+
 template <typename Container>
 void forEachTestHelper() {
   constexpr size_t kNumVals = 1 << 15;
@@ -292,16 +294,8 @@ TEST(ForEach, Cascade) {
   }
 }
 
-inline int getTestTid() {
-  static DISPENSO_THREAD_LOCAL int tid = -1;
-  static std::atomic<int> nextTid(0);
-  if (tid < 0) {
-    tid = nextTid.fetch_add(1, std::memory_order_relaxed);
-  }
-  return tid;
-}
-
 void testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testWaitOption) {
+  resetTestTid();
   size_t numAvailableThreads = poolSize + testWaitOption;
   std::vector<int> threadLocalSums(numAvailableThreads, 0);
   dispenso::ThreadPool pool(poolSize);
@@ -311,13 +305,15 @@ void testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testWaitOption) {
   options.maxThreads = maxThreads;
   options.wait = testWaitOption;
 
+  constexpr size_t kLen = 9999;
+
   auto func = [&threadLocalSums](int index) {
     assert(index > 0); // for correctness of numNonZero
     std::this_thread::yield();
-    threadLocalSums[getTestTid()] += index;
+    int tid = getTestTid();
+    threadLocalSums[tid] += index;
   };
 
-  constexpr size_t kLen = 9999;
   std::vector<int> v(kLen);
   std::iota(v.begin(), v.end(), 1);
 
