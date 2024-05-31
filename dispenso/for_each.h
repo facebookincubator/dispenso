@@ -30,7 +30,7 @@ struct ForEachOptions {
    * the number associated with the TaskSet's thread pool to control the degree of concurrency.
    * Setting maxThreads to zero or one will result in serial operation.
    **/
-  uint32_t maxThreads = std::numeric_limits<uint32_t>::max();
+  uint32_t maxThreads = std::numeric_limits<int32_t>::max();
   /**
    * Specify whether the return of the for_each signifies the work is complete.  If the
    * for_each is initiated without providing a TaskSet, the for_each will always wait.
@@ -69,7 +69,7 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
   }
 
   // 0 indicates serial execution per API spec
-  uint32_t maxThreads = options.maxThreads == 0 ? 1 : options.maxThreads;
+  int32_t maxThreads = std::max<int32_t>(options.maxThreads, 1);
 
   ssize_t numThreads = std::min<ssize_t>(tasks.numPoolThreads() + options.wait, maxThreads);
   // Reduce threads used if they exceed work to be done.

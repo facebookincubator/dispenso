@@ -94,8 +94,13 @@ TEST(Priorty, PriorityGetsCycles) {
   dispenso::ParForOptions options;
   options.wait = false;
 
-  dispenso::ThreadPool pool(
-      std::max<dispenso::ssize_t>(10, 2 * std::thread::hardware_concurrency()));
+  int overloadConcurrency = 2 * std::thread::hardware_concurrency();
+
+  if (sizeof(void*) == 4) {
+    overloadConcurrency = std::min(overloadConcurrency, 62);
+  }
+
+  dispenso::ThreadPool pool(std::max<dispenso::ssize_t>(10, overloadConcurrency));
 
   std::vector<ThreadInfo> info(pool.numThreads());
 

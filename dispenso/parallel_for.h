@@ -41,7 +41,7 @@ struct ParForOptions {
    * the number associated with the TaskSet's thread pool to control the degree of concurrency.
    * Setting maxThreads to zero or one will result in serial operation.
    **/
-  uint32_t maxThreads = std::numeric_limits<uint32_t>::max();
+  uint32_t maxThreads = std::numeric_limits<int32_t>::max();
   /**
    * Specify whether the return of the parallel_for signifies the work is complete.  If the
    * parallel_for is initiated without providing a TaskSet, the parallel_for will always wait.
@@ -361,7 +361,7 @@ void parallel_for(
   uint32_t minItemsPerChunk = std::max<uint32_t>(1, options.minItemsPerChunk);
 
   // 0 indicates serial execution per API spec
-  size_type maxThreads = options.maxThreads == 0 ? 1 : options.maxThreads;
+  size_type maxThreads = std::max<int32_t>(options.maxThreads, 1);
 
   bool isStatic = range.isStatic();
 
