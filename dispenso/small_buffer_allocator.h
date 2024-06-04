@@ -71,14 +71,6 @@ inline std::enable_if_t<(kBlockSize > kMaxSmallBufferSize), void> deallocSmallOr
   alignedFree(buf);
 }
 
-DISPENSO_DISABLE_WARNING_PUSH
-DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS
-static struct SchwarzSmallBufferInit {
-  DISPENSO_DLL_ACCESS SchwarzSmallBufferInit();
-  DISPENSO_DLL_ACCESS ~SchwarzSmallBufferInit();
-} smallBufferInit;
-DISPENSO_DISABLE_WARNING_POP
-
 } // namespace detail
 
 /**

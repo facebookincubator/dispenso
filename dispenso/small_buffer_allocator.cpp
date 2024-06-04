@@ -12,64 +12,12 @@
 
 namespace dispenso {
 namespace detail {
-// It may be possible that some tsan impls try to do global ctors and dtors in parallel.
-static std::atomic<int> g_smallBufferSchwarzCounter; // global is zero-init
 
-#define SMALL_BUFFER_GLOBALS_DECL(N)                           \
-  static AlignedBuffer<SmallBufferGlobals> g_globalsBuffer##N; \
-  static SmallBufferGlobals& g_globals##N =                    \
-      reinterpret_cast<SmallBufferGlobals&>(g_globalsBuffer##N)
-
-SMALL_BUFFER_GLOBALS_DECL(4);
-SMALL_BUFFER_GLOBALS_DECL(8);
-SMALL_BUFFER_GLOBALS_DECL(16);
-SMALL_BUFFER_GLOBALS_DECL(32);
-SMALL_BUFFER_GLOBALS_DECL(64);
-SMALL_BUFFER_GLOBALS_DECL(128);
-SMALL_BUFFER_GLOBALS_DECL(256);
-
-#define SMALL_BUFFER_GLOBAL_FUNC_DEFS(N)           \
-  template <>                                      \
-  SmallBufferGlobals& getSmallBufferGlobals<N>() { \
-    return g_globals##N;                           \
-  }
-
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(4)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(8)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(16)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(32)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(64)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(128)
-SMALL_BUFFER_GLOBAL_FUNC_DEFS(256)
-
-SchwarzSmallBufferInit::SchwarzSmallBufferInit() {
-  if (g_smallBufferSchwarzCounter.fetch_add(1, std::memory_order_acq_rel) == 0) {
-    ::new (&g_globals4) SmallBufferGlobals();
-    ::new (&g_globals8) SmallBufferGlobals();
-    ::new (&g_globals16) SmallBufferGlobals();
-    ::new (&g_globals32) SmallBufferGlobals();
-    ::new (&g_globals64) SmallBufferGlobals();
-    ::new (&g_globals128) SmallBufferGlobals();
-    ::new (&g_globals256) SmallBufferGlobals();
-  }
-}
-
-static void destroySmallBufferGlobals() {
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-  g_globals4.~SmallBufferGlobals();
-  g_globals8.~SmallBufferGlobals();
-  g_globals16.~SmallBufferGlobals();
-  g_globals32.~SmallBufferGlobals();
-  g_globals64.~SmallBufferGlobals();
-  g_globals128.~SmallBufferGlobals();
-  g_globals256.~SmallBufferGlobals();
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-}
-
-SchwarzSmallBufferInit::~SchwarzSmallBufferInit() {
-  if (g_smallBufferSchwarzCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-    destroySmallBufferGlobals();
-  }
+template <size_t kChunkSize>
+SmallBufferGlobals& getSmallBufferGlobals() {
+  // controlled leak here
+  static SmallBufferGlobals* globals = new SmallBufferGlobals();
+  return *globals;
 }
 
 char* allocSmallBufferImpl(size_t ordinal) {
@@ -146,16 +94,7 @@ size_t approxBytesAllocatedSmallBufferImpl(size_t ordinal) {
 
 template <size_t kChunkSize>
 SmallBufferAllocator<kChunkSize>::PerThreadQueuingData::~PerThreadQueuingData() {
-  // Sadly, it is entirely possible that some threads shut down after exiting main, which could mean
-  // that the SmallBufferGlobals are no longer valid.  We need to "lock" on the schwarz counter to
-  // ensure it is safe to release these resources.
-  if (g_smallBufferSchwarzCounter.fetch_add(1, std::memory_order_acq_rel) > 0) {
-    enqueue_bulk(buffers_, count_);
-  }
-
-  if (g_smallBufferSchwarzCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-    destroySmallBufferGlobals();
-  }
+  enqueue_bulk(buffers_, count_);
 
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   ptoken().~ProducerToken();
