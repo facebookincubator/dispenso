@@ -7,26 +7,47 @@
 
 #include "task_set.h"
 
+#include <cstdio>
+
 namespace dispenso {
 
 namespace detail {
 // 64 depth is pretty ridiculous, but try not to step on anyone's feet.
-constexpr size_t kMaxTasksStackSize = 64;
+constexpr int32_t kMaxTasksStackSize = 64;
 
 DISPENSO_THREAD_LOCAL TaskSetBase* g_taskStack[kMaxTasksStackSize];
-DISPENSO_THREAD_LOCAL size_t g_taskStackSize = 0;
+DISPENSO_THREAD_LOCAL int32_t g_taskStackSize = 0;
 
 void pushThreadTaskSet(TaskSetBase* t) {
-  assert(g_taskStackSize < kMaxTasksStackSize - 1);
+#ifndef NDEBUG
+  if (g_taskStackSize < 0 || g_taskStackSize >= kMaxTasksStackSize) {
+    fprintf(stderr, "TaskSet parent stack index is invalid when pushing: %d\n", g_taskStackSize);
+    std::abort();
+  }
+#endif // NDEBUG
   g_taskStack[g_taskStackSize++] = t;
 }
 void popThreadTaskSet() {
+#ifndef NDEBUG
+  if (g_taskStackSize <= 0) {
+    fprintf(stderr, "TaskSet parent stack index is invalid when popping: %d\n", g_taskStackSize);
+    std::abort();
+  }
+#endif // NDEBUG
   --g_taskStackSize;
 }
 } // namespace detail
 
 TaskSetBase* parentTaskSet() {
   using namespace detail;
+
+#ifndef NDEBUG
+  if (g_taskStackSize < 0 || g_taskStackSize >= kMaxTasksStackSize) {
+    fprintf(stderr, "TaskSet parent stack index is invalid when accessing: %d\n", g_taskStackSize);
+    std::abort();
+  }
+#endif // NDEBUG
+
   return g_taskStackSize ? g_taskStack[g_taskStackSize - 1] : nullptr;
 }
 
