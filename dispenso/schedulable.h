@@ -78,45 +78,11 @@ class NewThreadInvoker {
    **/
   template <typename F>
   void schedule(F&& f, ForceQueuingTag) const {
-    auto* waiter = getWaiter();
-    waiter->add();
-    std::thread thread([f = std::move(f), waiter]() {
-      f();
-      waiter->remove();
-    });
+    std::thread thread([f = std::move(f)]() { f(); });
     thread.detach();
   }
 
  private:
-  // This is to protect against accessing stale memory after main exits.  This was encountered on
-  // occasion in conjunction with Futures in tests where the work was stolen locally long before the
-  // thread could be launched, and the process already is exiting when the thread is executing.
-  // Because it was after shutdown, backing memory for things could be no longer available.
-  struct ThreadWaiter {
-    int count_ = 0;
-    std::mutex mtx_;
-    std::condition_variable cond_;
-
-    void add() {
-      std::lock_guard<std::mutex> lk(mtx_);
-      ++count_;
-    }
-
-    void remove() {
-      std::lock_guard<std::mutex> lk(mtx_);
-      if (--count_ == 0) {
-        cond_.notify_one();
-      }
-    }
-
-    ~ThreadWaiter() {
-      std::unique_lock<std::mutex> lk(mtx_);
-      cond_.wait(lk, [this]() { return count_ == 0; });
-    }
-  };
-  DISPENSO_DLL_ACCESS static ThreadWaiter* getWaiter();
-
-  static void destroyThreadWaiter();
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;

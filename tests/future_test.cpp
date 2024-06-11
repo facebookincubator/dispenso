@@ -331,7 +331,7 @@ TEST(Future, AsyncNotAsyncSpecifyThreadPool) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, DISABLED_AsyncSpecifyNewThread) {
+TEST(Future, AsyncSpecifyNewThread) {
   int value = 0;
   auto voidFuture = dispenso::async(dispenso::kNewThreadInvoker, [&value]() { value = 66; });
   voidFuture.get();
@@ -345,7 +345,7 @@ TEST(Future, DISABLED_AsyncSpecifyNewThread) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, DISABLED_AsyncNotDeferredSpecifyNewThread) {
+TEST(Future, AsyncNotDeferredSpecifyNewThread) {
   int value = 0;
   auto voidFuture = dispenso::async(
       dispenso::kNewThreadInvoker, dispenso::kNotDeferred, [&value]() { value = 66; });
@@ -361,7 +361,7 @@ TEST(Future, DISABLED_AsyncNotDeferredSpecifyNewThread) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-TEST(Future, DISABLED_AsyncNotAsyncSpecifyNewThread) {
+TEST(Future, AsyncNotAsyncSpecifyNewThread) {
   int value = 0;
   auto voidFuture =
       dispenso::async(dispenso::kNewThreadInvoker, dispenso::kNotAsync, [&value]() { value = 66; });
@@ -655,7 +655,7 @@ TEST(Future, ImmediateInvoker) {
   EXPECT_EQ(7, val);
 }
 
-TEST(Future, DISABLED_NewThreadInvoker) {
+TEST(Future, NewThreadInvoker) {
   // Nearly always it should be better to use async/ThreadPool/TaskSet, but there may be occasions
   // where you actually want the work done on a new thread.
   dispenso::Future<int> future([]() { return 333; }, dispenso::kNewThreadInvoker);
