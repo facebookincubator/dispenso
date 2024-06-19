@@ -288,11 +288,9 @@ Some additional notes about the benchmarks: Your mileage may vary based on compi
 
 # Known issues
 
-* Large subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
-* NewThreadInvoker can have a program shutdown race on Windows machines if the threads launched by it are not finished running by end of main().
+* A subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
 
 ## TODO
-* Finish removing CircleCI continuous integration testing, and add badge for GitHub Actions-based CI.  Use TSAN and ASAN testing on available platforms.
 * Enable Windows benchmarks through CMake.
 
 
