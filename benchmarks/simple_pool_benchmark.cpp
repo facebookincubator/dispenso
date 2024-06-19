@@ -80,7 +80,7 @@ void BM_dispenso(benchmark::State& state) {
 void BM_folly(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
-  folly::CPUThreadPoolExecutor follyExec(num_threads, num_threads);
+  folly::CPUThreadPoolExecutor follyExec(num_threads);
 
   for (auto UNUSED_VAR : state) {
     folly::VirtualExecutor tasks(&follyExec);
@@ -98,7 +98,7 @@ void BM_folly2(benchmark::State& state) {
     state.SkipWithError("We run out of memory here with too many elements");
   }
 
-  folly::CPUThreadPoolExecutor follyExec(num_threads, num_threads);
+  folly::CPUThreadPoolExecutor follyExec(num_threads);
   for (auto UNUSED_VAR : state) {
     folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
       std::vector<folly::coro::Task<void>> tasks;
