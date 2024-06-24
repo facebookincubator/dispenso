@@ -1,3 +1,8 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 cmake_minimum_required(VERSION 3.14)
 
 ### TODO(bbudge): Set up testing with github actions
@@ -13,6 +18,7 @@ FetchContent_Declare(
 
 # For Windows, Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(GoogleTest)
 include(GoogleTest)
 
