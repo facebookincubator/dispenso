@@ -160,9 +160,10 @@ dispenso::parallel_for(
 <div id='installing'/>
 
 # Installing dispenso
-Binary builds of dispenso are currently available for some Linux distributions, and can be installed using their respective package managers. If your distribution or platform is not on the list, see [the next section](#building) for instructions to build it yourself.
+Binary builds of Dispenso are available for various Linux distributions through their native package managers, as well as for Windows, macOS, and Linux via the Conda package manager. If your distribution or platform is not on the list, see [the next section](#building) for instructions to build it yourself.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg)](https://repology.org/project/dispenso/versions)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/dispenso/badges/version.svg)](https://anaconda.org/conda-forge/dispenso)
 
 <div id='building'/>
 
