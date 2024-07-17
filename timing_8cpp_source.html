@@ -157,7 +157,7 @@ $(document).ready(function(){initNavTree('timing_8cpp_source.html',''); initResi
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="preprocessor">#if defined(DISPENSO_HAS_TIMESTAMP)</span></div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span> </div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span><span class="keyword">static</span> <span class="keywordtype">bool</span> snapFreq(<span class="keywordtype">double</span>&amp; firstApprox) {</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>  <span class="keywordflow">switch</span> ((<span class="keywordtype">int</span>)firstApprox) {</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>  <span class="keywordflow">switch</span> (<span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(firstApprox)) {</div>
 <div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>    <span class="keywordflow">case</span> 0:</div>
 <div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>      <span class="keywordflow">if</span> (std::abs(<span class="keywordtype">int</span>(firstApprox * 10.0)) &lt;= 1) {</div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        firstApprox = 0.0;</div>
@@ -207,13 +207,13 @@ $(document).ready(function(){initNavTree('timing_8cpp_source.html',''); initResi
 <div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>  <span class="comment">// Get first 3 digits</span></div>
 <div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  firstApprox *= 1e-7;</div>
 <div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span> </div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>  <span class="keywordtype">int</span> firstInt = (int)firstApprox;</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>  <span class="keywordtype">int</span> firstInt = <span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(firstApprox);</div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  firstApprox -= firstInt;</div>
 <div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span> </div>
 <div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  firstApprox *= 10.0;</div>
 <div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
 <div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="keywordflow">if</span> (!snapFreq(firstApprox)) {</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    <span class="keywordtype">int</span> secondInt = (int)firstApprox;</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    <span class="keywordtype">int</span> secondInt = <span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(firstApprox);</div>
 <div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>    firstApprox -= secondInt;</div>
 <div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>    firstApprox *= 10.0;</div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>    snapFreq(firstApprox);</div>
