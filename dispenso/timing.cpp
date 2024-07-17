@@ -56,7 +56,7 @@ uint64_t rdtscp(void) {
 #if defined(DISPENSO_HAS_TIMESTAMP)
 
 static bool snapFreq(double& firstApprox) {
-  switch ((int)firstApprox) {
+  switch (static_cast<int>(firstApprox)) {
     case 0:
       if (std::abs(int(firstApprox * 10.0)) <= 1) {
         firstApprox = 0.0;
@@ -106,13 +106,13 @@ static double fallbackTicksPerSecond() {
   // Get first 3 digits
   firstApprox *= 1e-7;
 
-  int firstInt = (int)firstApprox;
+  int firstInt = static_cast<int>(firstApprox);
   firstApprox -= firstInt;
 
   firstApprox *= 10.0;
 
   if (!snapFreq(firstApprox)) {
-    int secondInt = (int)firstApprox;
+    int secondInt = static_cast<int>(firstApprox);
     firstApprox -= secondInt;
     firstApprox *= 10.0;
     snapFreq(firstApprox);
