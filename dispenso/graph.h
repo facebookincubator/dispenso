@@ -236,7 +236,7 @@ class Node {
     if (funcBuffer_) {
       destroy_(funcBuffer_);
     }
-  };
+  }
   /**
    * Make this node depends on nodes. This is not concurrency safe.
    *

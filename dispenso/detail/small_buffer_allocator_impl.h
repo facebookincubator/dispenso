@@ -47,9 +47,9 @@ class SmallBufferAllocator {
   static constexpr size_t kLogFactor = log2const(kChunkSize | 1);
 
   // TODO(T88183021): Make these factors compile-time configurable.  For example, the current values
-  // can lead to megabytes of data being allocated, even if the alloctor is only used for one or two
-  // allocations.  Likely we can reduce these sizes by a decent factor without affecting benchmarks,
-  // and then reduce them even further as an option.
+  // can lead to megabytes of data being allocated, even if the allocator is only used for one or
+  // two allocations.  Likely we can reduce these sizes by a decent factor without affecting
+  // benchmarks, and then reduce them even further as an option.
   static constexpr size_t kMallocBytes = (1 << 12) * kLogFactor;
   static constexpr size_t kIdealTLCacheBytes = kMallocBytes / 4;
   static constexpr size_t kIdealNumTLBuffers = kIdealTLCacheBytes / kChunkSize;

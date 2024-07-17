@@ -48,7 +48,6 @@ inline std::enable_if_t<(kBlockSize <= kMaxSmallBufferSize), char*> allocSmallOr
   return reinterpret_cast<char*>(alignedMalloc(kBlockSize, kBlockSize));
 #else
   return allocSmallBufferImpl(getOrdinal(kBlockSize));
-  ;
 #endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
 }
 
