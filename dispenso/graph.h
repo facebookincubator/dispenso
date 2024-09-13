@@ -486,7 +486,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
 
   static constexpr size_t kNodeSizeP2 = detail::nextPow2(sizeof(NodeType));
 
-  explicit SubgraphT<N>(GraphT<N>* graph) : graph_(graph), nodes_(), allocator_(getAllocator()) {}
+  explicit SubgraphT(GraphT<N>* graph) : graph_(graph), nodes_(), allocator_(getAllocator()) {}
 
   inline void removeNodeFromBiPropSet(Node* /* node */) {}
   void removeNodeFromBiPropSet(BiPropNode* node) {
@@ -527,7 +527,7 @@ class DISPENSO_DLL_ACCESS GraphT {
   /**
    * Create empty graph.
    **/
-  GraphT<N>() {
+  GraphT() {
     subgraphs_.push_back(SubgraphType(this));
   }
   /**
