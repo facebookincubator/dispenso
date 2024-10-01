@@ -31,29 +31,32 @@
 
 namespace dispenso {
 
+#if !defined(DISPENSO_WAKEUP_ENABLE)
+#if defined(_WIN32) || defined(__linux__)
+#define DISPENSO_WAKEUP_ENABLE 1
+#else
+// TODO(bbudge):  For now, only enable Linux and Windows.  On Mac still need to figure out how to
+// wake more quickly (see e.g.
+// https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/scheduler/scheduler.html)
+#define DISPENSO_WAKEUP_ENABLE 0
+#endif // Linux or Windows
+#endif // DISPENSO_WAKEUP_ENABLE
+
 #if !defined(DISPENSO_POLL_PERIOD_US)
 #if defined(_WIN32)
 #define DISPENSO_POLL_PERIOD_US 1000
 #else
-#if !defined(DISPENSO_WAKEUP_ENABLE)
+#if !(DISPENSO_WAKEUP_ENABLE)
 #define DISPENSO_POLL_PERIOD_US 200
 #else
-#define DISPENSO_POLL_PERIOD_US 8000
+#define DISPENSO_POLL_PERIOD_US (1 << 15) // Determined empirically good on dual Xeon Linux
 #endif // DISPENSO_WAKEUP_ENABLE
 #endif // PLATFORM
 #endif // DISPENSO_POLL_PERIOD_US
 
 constexpr uint32_t kDefaultSleepLenUs = DISPENSO_POLL_PERIOD_US;
 
-#if defined(DISPENSO_WAKEUP_ENABLE)
 constexpr bool kDefaultWakeupEnable = DISPENSO_WAKEUP_ENABLE;
-#else
-#if defined(__WIN32)
-constexpr bool kDefaultWakeupEnable = true;
-#else
-constexpr bool kDefaultWakeupEnable = false;
-#endif // PLATFORM
-#endif // DISPENSO_WAKEUP_ENABLE
 
 /**
  * A simple tag specifier that can be fed to TaskSets and
