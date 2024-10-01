@@ -129,6 +129,8 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
+<tr class="memitem:ac7589d3d60e9ed569f7c9125ab9d1747" id="r_ac7589d3d60e9ed569f7c9125ab9d1747"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#ac7589d3d60e9ed569f7c9125ab9d1747">DISPENSO_WAKEUP_ENABLE</a>&#160;&#160;&#160;0</td></tr>
+<tr class="separator:ac7589d3d60e9ed569f7c9125ab9d1747"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0f5475854e706b2e7ca122a52f7a52e0" id="r_a0f5475854e706b2e7ca122a52f7a52e0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#a0f5475854e706b2e7ca122a52f7a52e0">DISPENSO_POLL_PERIOD_US</a>&#160;&#160;&#160;200</td></tr>
 <tr class="separator:a0f5475854e706b2e7ca122a52f7a52e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -143,7 +145,7 @@ Functions</h2></td></tr>
 Variables</h2></td></tr>
 <tr class="memitem:ae93906ad32c1e4bd6056e7e4053b425a" id="r_ae93906ad32c1e4bd6056e7e4053b425a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">constexpr</a> <a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#ae93906ad32c1e4bd6056e7e4053b425a">dispenso::kDefaultSleepLenUs</a> = DISPENSO_POLL_PERIOD_US</td></tr>
 <tr class="separator:ae93906ad32c1e4bd6056e7e4053b425a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c358e8e42a517fb1c8deea0fb69b9fc" id="r_a9c358e8e42a517fb1c8deea0fb69b9fc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">constexpr</a> <a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#a9c358e8e42a517fb1c8deea0fb69b9fc">dispenso::kDefaultWakeupEnable</a> = <a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">false</a></td></tr>
+<tr class="memitem:a9c358e8e42a517fb1c8deea0fb69b9fc" id="r_a9c358e8e42a517fb1c8deea0fb69b9fc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">constexpr</a> <a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="thread__pool_8h.html#a9c358e8e42a517fb1c8deea0fb69b9fc">dispenso::kDefaultWakeupEnable</a> = DISPENSO_WAKEUP_ENABLE</td></tr>
 <tr class="separator:a9c358e8e42a517fb1c8deea0fb69b9fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -163,7 +165,23 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00039">39</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00050">50</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+
+</div>
+</div>
+<a id="ac7589d3d60e9ed569f7c9125ab9d1747" name="ac7589d3d60e9ed569f7c9125ab9d1747"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac7589d3d60e9ed569f7c9125ab9d1747">&#9670;&#160;</a></span>DISPENSO_WAKEUP_ENABLE</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define DISPENSO_WAKEUP_ENABLE&#160;&#160;&#160;0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00041">41</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -237,7 +255,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00046">46</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00057">57</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -251,7 +269,7 @@ Variables</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr bool dispenso::kDefaultWakeupEnable = false</td>
+          <td class="memname">constexpr bool dispenso::kDefaultWakeupEnable = DISPENSO_WAKEUP_ENABLE</td>
         </tr>
       </table>
   </td>
@@ -261,7 +279,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00054">54</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00059">59</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
