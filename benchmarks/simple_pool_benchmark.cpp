@@ -17,11 +17,11 @@
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 #include <folly/VirtualExecutor.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
 #include "thread_benchmark_common.h"
