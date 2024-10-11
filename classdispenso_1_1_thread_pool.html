@@ -141,6 +141,8 @@ Friends</h2></td></tr>
 <tr class="separator:ae12e56c1c8c5a87ab7e47c98816dd8b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a92fc40642e875f71f86ca4fc15c2a62f" id="r_a92fc40642e875f71f86ca4fc15c2a62f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">class</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a92fc40642e875f71f86ca4fc15c2a62f">TaskSet</a></td></tr>
 <tr class="separator:a92fc40642e875f71f86ca4fc15c2a62f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9e3024341bbf07bce3dc506d3626743f" id="r_a9e3024341bbf07bce3dc506d3626743f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">class</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool.html#a9e3024341bbf07bce3dc506d3626743f">TaskSetBase</a></td></tr>
+<tr class="separator:a9e3024341bbf07bce3dc506d3626743f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The basic executor for dispenso. It provides typical thread pool functionality, plus allows work stealing by related types (e.g. <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a>, etc...), which prevents deadlock when waiting for pool-recursive tasks. </p>
@@ -181,7 +183,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00069">69</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00070">70</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -201,7 +203,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p>Destruct the pool. This destructor is blocking until all queued work is completed. It is illegal to call the destructor while any other thread makes calls to the pool (as is generally the case with C++ classes). </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00196">196</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00197">197</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -359,7 +361,7 @@ template&lt;<a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a3509
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00271">271</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00272">272</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -406,7 +408,7 @@ template&lt;<a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a3509
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00284">284</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00285">285</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -505,6 +507,30 @@ template&lt;<a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a3509
 </div><div class="memdoc">
 
 <p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00251">251</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+
+</div>
+</div>
+<a id="a9e3024341bbf07bce3dc506d3626743f" name="a9e3024341bbf07bce3dc506d3626743f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9e3024341bbf07bce3dc506d3626743f">&#9670;&#160;</a></span>TaskSetBase</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">friend</a> <a class="el" href="pipeline_8h.html#ac10c8908b42e2d7fc3761b483a350967">class</a> TaskSetBase</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00252">252</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
