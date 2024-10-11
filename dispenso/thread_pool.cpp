@@ -5,11 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <dispenso/detail/quanta.h>
+#include <dispenso/thread_pool.h>
+
 #if defined DISPENSO_DEBUG
 #include <iostream>
 #endif // DISPENSO_DEBUG
-#include <dispenso/detail/quanta.h>
-#include <dispenso/thread_pool.h>
 
 namespace dispenso {
 

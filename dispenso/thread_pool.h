@@ -249,6 +249,7 @@ class alignas(kCacheLineSize) ThreadPool {
 
   friend class ConcurrentTaskSet;
   friend class TaskSet;
+  friend class TaskSetBase;
 };
 
 /**
