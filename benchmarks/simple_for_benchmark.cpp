@@ -19,6 +19,8 @@
 #include "tbb/task_scheduler_init.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
+#include <taskflow/taskflow.hpp>
+
 #include "thread_benchmark_common.h"
 
 static uint32_t kSeed(8);
@@ -87,6 +89,25 @@ void BM_dispenso(benchmark::State& state) {
         num_elements,
         [&input, &output](size_t i) { output[i] = input[i] * input[i] - 3 * input[i]; },
         options);
+  }
+  checkResults(input, output);
+}
+
+void BM_taskflow(benchmark::State& state) {
+  const int num_threads = state.range(0);
+  const int num_elements = state.range(1);
+
+  std::vector<int> output(num_elements, 0);
+  auto& input = getInputs(num_elements);
+
+  tf::Executor executor(num_threads);
+  tf::Taskflow taskflow;
+
+  for (auto UNUSED_VAR : state) {
+    taskflow.for_each_index(0, num_elements, 1, [&input, &output](int i) {
+      output[i] = input[i] * input[i] - 3 * input[i];
+    });
+    executor.run(taskflow).wait();
   }
   checkResults(input, output);
 }
@@ -205,6 +226,7 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
+BENCHMARK(BM_taskflow)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_static_chunk)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_auto_chunk)->Apply(CustomArguments)->UseRealTime();
