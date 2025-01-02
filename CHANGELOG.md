@@ -1,3 +1,17 @@
+1.4 (January 2, 2025)
+
+### Efficiency improvements, bug and warning fixes
+* Added some benchmarks and comparison with TaskFlow (thanks andre-nguyen!)
+* Fixed compilation when compiling with DISPENSO_DEBUG (thanks EscapeZero!)
+* Improved efficiency on Linux for infrequent thread pool usage.  Reduces polling overhead by 10x by switching to event-based wakeup instead of spin polling.
+* Fix C++20 compilation issues (thanks aavbsouza!)
+* Fix several build warnings (thanks SeaOtocinclus!)
+* Add conda package badge, disable gtest install (thanks JeongSeok Lee!)
+* Solved rare post-main shutdown issues with NewThreadInvoker
+* Fixed test issues for 32-bit builds
+* Fixed broken test logic for test thread IDs
+* Fixed various build warnings
+
 1.3 (April 25, 2024)
 
 ### Bug fixes, portability enhancements, and small functionality enhancements
