@@ -5,22 +5,22 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <iostream>
+
 #include <dispenso/detail/quanta.h>
 #include <dispenso/timed_task.h>
 
-#include <iostream>
-
 namespace dispenso {
 
-TimedTaskScheduler::TimedTaskScheduler(ThreadPriority prio)
-    : thread_([this, prio]() {
-        detail::registerFineSchedulerQuanta();
-        if (!setCurrentThreadPriority(prio)) {
-          std::cerr << "Couldn't set thread priority" << std::endl;
-        }
-        timeQueueRunLoop();
-      }),
-      priority_(prio) {}
+TimedTaskScheduler::TimedTaskScheduler(ThreadPriority prio) : priority_(prio) {
+  thread_ = std::thread([this, prio]() {
+    detail::registerFineSchedulerQuanta();
+    if (!setCurrentThreadPriority(prio)) {
+      std::cerr << "Couldn't set thread priority" << std::endl;
+    }
+    timeQueueRunLoop();
+  });
+}
 TimedTaskScheduler::~TimedTaskScheduler() {
   {
     std::lock_guard<std::mutex> lk(queueMutex_);
