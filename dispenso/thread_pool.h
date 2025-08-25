@@ -21,7 +21,7 @@
 #include <mutex>
 #include <thread>
 
-#include <concurrentqueue.h>
+#include <moodycamel/concurrentqueue.h>
 
 #include <dispenso/detail/epoch_waiter.h>
 #include <dispenso/detail/per_thread_info.h>
