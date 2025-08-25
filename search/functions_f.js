@@ -7,5 +7,5 @@ var searchData=
   ['totalchunkcapacity_4',['totalChunkCapacity',['../classdispenso_1_1_pool_allocator_t.html#a811782e39e4b441b960bc35757af59c1',1,'dispenso::PoolAllocatorT']]],
   ['try_5fwait_5',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
   ['tryemplaceupdate_6',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
-  ['trywait_7',['trywait',['../classdispenso_1_1_task_set.html#a17cf46f5790f1a818ac404167a796bd5',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#a5338ddfb4e5d98f769386b7b35b3f7ad',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
+  ['trywait_7',['tryWait',['../classdispenso_1_1_task_set.html#a17cf46f5790f1a818ac404167a796bd5',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#a5338ddfb4e5d98f769386b7b35b3f7ad',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
 ];
