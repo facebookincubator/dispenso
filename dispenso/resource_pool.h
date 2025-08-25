@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include <blockingconcurrentqueue.h>
 #include <dispenso/platform.h>
 #include <dispenso/tsan_annotations.h>
+#include <moodycamel/blockingconcurrentqueue.h>
 
 namespace dispenso {
 

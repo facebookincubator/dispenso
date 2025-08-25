@@ -13,7 +13,7 @@
 #include <dispenso/platform.h>
 #include <dispenso/tsan_annotations.h>
 
-#include <concurrentqueue.h>
+#include <moodycamel/concurrentqueue.h>
 
 namespace dispenso {
 namespace detail {
