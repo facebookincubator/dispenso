@@ -55,6 +55,8 @@ uint64_t rdtscp(void) {
 
 #if defined(DISPENSO_HAS_TIMESTAMP)
 
+#if !defined(__aarch64__)
+
 static bool snapFreq(double& firstApprox) {
   switch (static_cast<int>(firstApprox)) {
     case 0:
@@ -126,8 +128,15 @@ static double fallbackTicksPerSecond() {
   firstApprox *= 1e7;
   return firstApprox;
 }
+#endif // !__aarch64__
 
-#if defined(__MACH__)
+#if defined(__aarch64__)
+static double ticksPerSecond() {
+  uint64_t val;
+  __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(val));
+  return static_cast<double>(val);
+}
+#elif defined(__MACH__)
 static double ticksPerSecond() {
   mach_timebase_info_data_t info;
   if (mach_timebase_info(&info) != KERN_SUCCESS) {
