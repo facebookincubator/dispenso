@@ -84,8 +84,9 @@ class ResourcePool {
   template <typename F>
   ResourcePool(size_t size, const F& init)
       : pool_(size),
-        backingResources_(reinterpret_cast<char*>(
-            detail::alignedMalloc(size * detail::alignToCacheLine(sizeof(T))))),
+        backingResources_(
+            reinterpret_cast<char*>(
+                detail::alignedMalloc(size * detail::alignToCacheLine(sizeof(T))))),
         size_(size) {
     char* buf = backingResources_;
 

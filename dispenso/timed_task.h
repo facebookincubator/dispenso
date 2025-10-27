@@ -104,13 +104,14 @@ class TimedTask {
       double period = 0.0,
       size_t timesToRun = 1,
       TimedTaskType type = TimedTaskType::kNormal)
-      : impl_(detail::make_shared<detail::TimedTaskImpl>(
-            timesToRun,
-            nextRunAbs,
-            period,
-            std::forward<F>(f),
-            sched,
-            type == TimedTaskType::kSteady)) {}
+      : impl_(
+            detail::make_shared<detail::TimedTaskImpl>(
+                timesToRun,
+                nextRunAbs,
+                period,
+                std::forward<F>(f),
+                sched,
+                type == TimedTaskType::kSteady)) {}
 
   std::shared_ptr<detail::TimedTaskImpl> impl_;
 

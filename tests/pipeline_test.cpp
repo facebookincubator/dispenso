@@ -116,14 +116,15 @@ TEST(Pipeline, SingleStageParallel) {
 
   constexpr int kMaxConcurrency = 4;
 
-  dispenso::pipeline(dispenso::stage(
-      [&counter]() {
-        if (counter.fetch_add(1, std::memory_order_acq_rel) < 10) {
-          return true;
-        }
-        return false;
-      },
-      kMaxConcurrency));
+  dispenso::pipeline(
+      dispenso::stage(
+          [&counter]() {
+            if (counter.fetch_add(1, std::memory_order_acq_rel) < 10) {
+              return true;
+            }
+            return false;
+          },
+          kMaxConcurrency));
 
   EXPECT_LE(counter.load(std::memory_order_acquire), 10 + kMaxConcurrency);
 }

@@ -37,8 +37,9 @@ uint32_t getInputs(int numElements) {
 }
 
 inline uint64_t calculate(uint64_t input, uint64_t index, size_t foo) {
-  return std::cos(std::log(
-      std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input))))));
+  return std::cos(
+      std::log(
+          std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input))))));
 }
 
 uint64_t calculateInnerSerial(uint64_t input, size_t foo, int numElements) {
@@ -246,8 +247,12 @@ void BM_async(benchmark::State& state) {
     std::vector<std::future<uint64_t>> futures;
 
     for (int i = 0; i < numElements; i += chunkSize) {
-      futures.push_back(std::async(
-          [numElements, input, foo, i, end = std::min<int>(numElements, i + chunkSize)]() mutable {
+      futures.push_back(
+          std::async([numElements,
+                      input,
+                      foo,
+                      i,
+                      end = std::min<int>(numElements, i + chunkSize)]() mutable {
             uint64_t lsum = 0;
             for (; i != end; ++i) {
               lsum += calculateInnerAsync(input, foo, numElements);

@@ -32,8 +32,9 @@ uint32_t getInputs(int num_elements) {
 }
 
 inline uint64_t calculate(uint64_t input, uint64_t index, size_t foo) {
-  return std::cos(std::log(
-      std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input))))));
+  return std::cos(
+      std::log(
+          std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input))))));
 }
 
 void checkResults(uint32_t input, uint64_t actual, int foo, size_t num_elements) {

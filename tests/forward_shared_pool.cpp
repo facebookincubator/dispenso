@@ -10,8 +10,8 @@
 #ifdef _WIN32
 __declspec(dllexport)
 #else
-__attribute__ ((visibility ("default")))
+__attribute__((visibility("default")))
 #endif
-    void* DISPENSO_EXPORT_NAME() {
+void* DISPENSO_EXPORT_NAME() {
   return &dispenso::globalThreadPool();
 }

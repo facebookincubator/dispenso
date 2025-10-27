@@ -187,8 +187,9 @@ class ConcurrentVector {
    * and increasing data coherency.
    **/
   ConcurrentVector(size_t startCapacity, ReserveTagS)
-      : firstBucketShift_(detail::log2(
-            detail::nextPow2(std::max(startCapacity, SizeTraits::kDefaultCapacity / 2)))),
+      : firstBucketShift_(
+            detail::log2(
+                detail::nextPow2(std::max(startCapacity, SizeTraits::kDefaultCapacity / 2)))),
         firstBucketLen_(size_type{1} << firstBucketShift_) {
     T* firstTwo = cv::alloc<T>(2 * firstBucketLen_);
     buffers_[0].store(firstTwo, std::memory_order_release);

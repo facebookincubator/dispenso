@@ -250,23 +250,24 @@ void BM_dispenso_mixed(benchmark::State& state) {
   auto doSchedule = [&](DispensoItem& ditem) {
     double period = 1e-3 * ditem.millis;
 
-    tasks.push_back(getScheduler().schedule(
-        dispenso::kImmediateInvoker,
-        [&] {
-          auto cur = ditem.count.fetch_add(1, std::memory_order_acq_rel);
-          if (cur < ditem.times.size()) {
-            ditem.times[cur] = dispenso::getTime();
-          }
-          if (cur + 1 == ditem.times.size()) {
-            ditem.fin.notify();
-            return false;
-          }
-          return true;
-        },
-        prevTime + period,
-        period,
-        ditem.times.size(),
-        type));
+    tasks.push_back(
+        getScheduler().schedule(
+            dispenso::kImmediateInvoker,
+            [&] {
+              auto cur = ditem.count.fetch_add(1, std::memory_order_acq_rel);
+              if (cur < ditem.times.size()) {
+                ditem.times[cur] = dispenso::getTime();
+              }
+              if (cur + 1 == ditem.times.size()) {
+                ditem.fin.notify();
+                return false;
+              }
+              return true;
+            },
+            prevTime + period,
+            period,
+            ditem.times.size(),
+            type));
   };
 
   for (size_t i = 0; i < 3; ++i) {

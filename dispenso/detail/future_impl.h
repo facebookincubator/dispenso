@@ -460,10 +460,11 @@ class FutureBase {
   }
   template <typename F, typename Schedulable>
   FutureBase(F&& f, Schedulable& schedulable, std::launch asyncPolicy, std::launch deferredPolicy)
-      : impl_(createFutureImpl<Result>(
-            std::forward<F>(f),
-            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-            nullptr)) {
+      : impl_(
+            createFutureImpl<Result>(
+                std::forward<F>(f),
+                (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+                nullptr)) {
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
       schedulable.schedule(OnceFunction(impl_, true), ForceQueuingTag());
     } else {
@@ -473,10 +474,11 @@ class FutureBase {
 
   template <typename F>
   FutureBase(F&& f, TaskSet& taskSet, std::launch asyncPolicy, std::launch deferredPolicy)
-      : impl_(createFutureImpl<Result>(
-            std::forward<F>(f),
-            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-            &taskSet.outstandingTaskCount_)) {
+      : impl_(
+            createFutureImpl<Result>(
+                std::forward<F>(f),
+                (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+                &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
       taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
@@ -487,10 +489,11 @@ class FutureBase {
 
   template <typename F>
   FutureBase(F&& f, ConcurrentTaskSet& taskSet, std::launch asyncPolicy, std::launch deferredPolicy)
-      : impl_(createFutureImpl<Result>(
-            std::forward<F>(f),
-            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-            &taskSet.outstandingTaskCount_)) {
+      : impl_(
+            createFutureImpl<Result>(
+                std::forward<F>(f),
+                (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+                &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
       taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
@@ -505,10 +508,11 @@ class FutureBase {
       TaskSetInterceptionInvoker<TaskSetType>& invoker,
       std::launch asyncPolicy,
       std::launch deferredPolicy)
-      : impl_(createFutureImpl<Result>(
-            std::forward<F>(f),
-            (deferredPolicy & std::launch::deferred) == std::launch::deferred,
-            &invoker.taskSet.outstandingTaskCount_)) {
+      : impl_(
+            createFutureImpl<Result>(
+                std::forward<F>(f),
+                (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+                &invoker.taskSet.outstandingTaskCount_)) {
     invoker.taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
       invoker.schedule(OnceFunction(impl_, true), ForceQueuingTag());
