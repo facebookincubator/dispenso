@@ -22,6 +22,7 @@ namespace dispenso {
 
 #define DISPENSO_MAJOR_VERSION 1
 #define DISPENSO_MINOR_VERSION 4
+#define DISPENSO_PATCH_VERSION 1
 
 #if defined(DISPENSO_SHARED_LIB)
 #if defined _WIN32

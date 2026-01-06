@@ -1,3 +1,10 @@
+1.4.1 (January 5, 2026)
+
+### Bug fixes and build improvements
+* Fixed clock frequency calculation for mac-arm platforms
+* Addressed potential race condition at TimedTaskScheduler construction
+* Adjusted build platforms for better compatibility
+
 1.4 (January 2, 2025)
 
 ### Efficiency improvements, bug and warning fixes
