@@ -6,7 +6,9 @@
  */
 
 /**
- * @file Utilities for delaying a task until a future time and periodic scheduling.
+ * @file timed_task.h
+ * @ingroup group_async
+ * Utilities for delaying a task until a future time and periodic scheduling.
  **/
 
 #pragma once

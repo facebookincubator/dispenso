@@ -7,6 +7,7 @@
 
 /**
  * @file async_request.h
+ * @ingroup group_async
  * A file providing AsyncRequest.  This is a bit like a lightweight channel for storing updates to
  * one object, mostly intended to be used as a single producer, single consumer update mechanism.
  **/

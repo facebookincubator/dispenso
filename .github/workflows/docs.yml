@@ -10,6 +10,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Set version from CHANGELOG
+      run: |
+        VERSION=$(grep -m1 '^[0-9]' CHANGELOG.md | sed 's/ .*//')
+        sed -i "s/^PROJECT_NUMBER.*/PROJECT_NUMBER         = $VERSION/" docs/Doxyfile
+
     - name: Doxygen Action
       uses: mattnotmitt/doxygen-action@v1
       with:

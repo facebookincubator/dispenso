@@ -1,0 +1,65 @@
+/**
+ * @defgroup group_core Core Components
+ * @brief Thread pools and task management fundamentals
+ *
+ * The core components provide the foundation for all parallel execution in dispenso.
+ * This includes the ThreadPool class which is the heart of dispenso, as well as
+ * TaskSet for managing groups of related tasks, and supporting types like
+ * OnceFunction and Schedulable.
+ */
+
+/**
+ * @defgroup group_parallel Parallel Loops
+ * @brief Parallel for loops and iteration
+ *
+ * Functions for performing parallel for loops and parallel iteration over ranges.
+ * These provide simple, high-level APIs for data-parallel operations.
+ */
+
+/**
+ * @defgroup group_async Async & Futures
+ * @brief Asynchronous execution and future results
+ *
+ * Futures, async requests, completion events, and timed tasks for asynchronous
+ * programming patterns.
+ */
+
+/**
+ * @defgroup group_graph Graphs & Pipelines
+ * @brief Task graph execution and pipeline processing
+ *
+ * Task graphs allow expressing complex dependencies between tasks, while pipelines
+ * provide a streaming model for processing data through multiple stages.
+ */
+
+/**
+ * @defgroup group_containers Concurrent Containers
+ * @brief Thread-safe data structures
+ *
+ * Thread-safe containers including concurrent vectors, object arenas, and
+ * resource pools for managing shared data in parallel programs.
+ */
+
+/**
+ * @defgroup group_sync Synchronization
+ * @brief Synchronization primitives
+ *
+ * Locks, latches, and other synchronization primitives for coordinating
+ * between threads.
+ */
+
+/**
+ * @defgroup group_alloc Allocators
+ * @brief Memory allocation utilities
+ *
+ * Pool allocators and small buffer allocators for efficient memory management
+ * in parallel programs.
+ */
+
+/**
+ * @defgroup group_util Utilities
+ * @brief Platform abstractions and helper utilities
+ *
+ * Platform-specific abstractions, timing utilities, thread identification,
+ * priority control, and thread sanitizer annotations.
+ */

@@ -7,6 +7,7 @@
 
 /**
  * @file future.h
+ * @ingroup group_async
  * A file providing Futures, as well as functionality for creating futures, and for how to invoke
  * Futures' closures.
  *

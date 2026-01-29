@@ -6,7 +6,9 @@
  */
 
 /**
- * @file Utilities for getting a unique thread identifier
+ * @file thread_id.h
+ * @ingroup group_util
+ * Utilities for getting a unique thread identifier.
  **/
 
 #pragma once

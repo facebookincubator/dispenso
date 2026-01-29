@@ -5,6 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @file rw_lock.h
+ * @ingroup group_sync
+ * A file providing RWLock, a reader/writer lock interface.
+ **/
+
 #include <dispenso/detail/rw_lock_impl.h>
 
 namespace dispenso {

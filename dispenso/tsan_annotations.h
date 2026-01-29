@@ -7,6 +7,7 @@
 
 /**
  * @file tsan_annotations.h
+ * @ingroup group_util
  * This file exposes a set of macros for ignoring tsan errors.  These should generally not
  * be used just to shut up TSAN, because most of the time, TSAN reports real bugs.  They should be
  * used only when there is a high level of certainty that TSAN is spitting out a false positive, as

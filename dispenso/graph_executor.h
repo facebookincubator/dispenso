@@ -5,6 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @file graph_executor.h
+ * @ingroup group_graph
+ * A file providing executors for running task graphs.
+ **/
+
 #pragma once
 #include <dispenso/concurrent_vector.h>
 #include <dispenso/detail/graph_executor_impl.h>

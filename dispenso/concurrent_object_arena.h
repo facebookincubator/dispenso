@@ -7,6 +7,7 @@
 
 /**
  * @file concurrent_object_arena.h
+ * @ingroup group_containers
  * A file providing concurrent object arena container.
  **/
 

@@ -7,6 +7,7 @@
 
 /**
  * @file pipeline.h
+ * @ingroup group_graph
  * A file providing utilities for parallel pipelining of work.
  **/
 

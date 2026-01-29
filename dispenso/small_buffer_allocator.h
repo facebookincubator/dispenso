@@ -7,6 +7,7 @@
 
 /**
  * @file small_buffer_allocator.h
+ * @ingroup group_alloc
  * A file providing SmallBufferAllocator.  This allocator can allocate and deallocate chunks of a
  * set size in a way that is efficient and scales quite well across many threads.
  **/
