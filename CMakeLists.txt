@@ -56,6 +56,7 @@ add_subdirectory(dispenso)
 
 set(DISPENSO_BUILD_TESTS OFF CACHE BOOL "Should tests be built?")
 set(DISPENSO_BUILD_BENCHMARKS OFF CACHE BOOL "Should benchmarks be built?")
+set(DISPENSO_BUILD_EXAMPLES OFF CACHE BOOL "Should examples be built?")
 
 if(DISPENSO_BUILD_TESTS)
   enable_testing()
@@ -66,4 +67,8 @@ if(DISPENSO_BUILD_BENCHMARKS)
   # Sadly any given release of folly seems to have some problem or another.  Leave disabled by default.
   set(BENCHMARK_WITHOUT_FOLLY ON CACHE BOOL "Should folly benchmarks be disabled?")
   add_subdirectory(benchmarks)
+endif()
+
+if(DISPENSO_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()
