@@ -13,5 +13,6 @@ var searchData=
   ['future_10',['Future',['../classdispenso_1_1_future.html',1,'dispenso::Future&lt; Result &gt;'],['../classdispenso_1_1_future.html#ab7cdf5be1df80fb28505a280206e8168',1,'dispenso::Future::Future() noexcept'],['../classdispenso_1_1_future.html#abec608bba0ffb5efe0911088af444b16',1,'dispenso::Future::Future(Future &amp;&amp;f) noexcept'],['../classdispenso_1_1_future.html#a897714e0541ae285d5fb24940f30c42c',1,'dispenso::Future::Future(const Future &amp;f) noexcept'],['../classdispenso_1_1_future.html#aefc734821391a9975fd07f4ee80c8ec1',1,'dispenso::Future::Future(F &amp;&amp;f, Schedulable &amp;schedulable, std::launch asyncPolicy=kNotAsync, std::launch deferredPolicy=std::launch::deferred)']]],
   ['future_2eh_11',['future.h',['../future_8h.html',1,'']]],
   ['future_3c_20result_20_26_20_3e_12',['Future&lt; Result &amp; &gt;',['../classdispenso_1_1_future_3_01_result_01_6_01_4.html',1,'dispenso']]],
-  ['future_3c_20void_20_3e_13',['Future&lt; void &gt;',['../classdispenso_1_1_future_3_01void_01_4.html',1,'dispenso']]]
+  ['future_3c_20void_20_3e_13',['Future&lt; void &gt;',['../classdispenso_1_1_future_3_01void_01_4.html',1,'dispenso']]],
+  ['futures_14',['Async &amp; Futures',['../group__group__async.html',1,'']]]
 ];

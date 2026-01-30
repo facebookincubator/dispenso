@@ -9,6 +9,7 @@ var searchData=
   ['shrink_5fto_5ffit_6',['shrink_to_fit',['../classdispenso_1_1_concurrent_vector.html#a63cf8f946e9f65f1a45c1149adb64dcc',1,'dispenso::ConcurrentVector']]],
   ['size_7',['size',['../classdispenso_1_1_concurrent_vector.html#af514d2896643697e010c0747dd1bdac3',1,'dispenso::ConcurrentVector']]],
   ['stage_8',['stage',['../pipeline_8h.html#a360af299cbfaa8e0069ec014f87d1ddb',1,'dispenso']]],
-  ['subgraph_9',['subgraph',['../classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18',1,'dispenso::GraphT::subgraph(size_t index) const'],['../classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96',1,'dispenso::GraphT::subgraph(size_t index)']]],
-  ['swap_10',['swap',['../classdispenso_1_1_concurrent_vector.html#ab4f8b73b07bf705b46994081f07b5617',1,'dispenso::ConcurrentVector']]]
+  ['staticchunksize_9',['staticChunkSize',['../util_8h.html#afeee067e0bcb4e306c1ed27fc95b5f21',1,'dispenso']]],
+  ['subgraph_10',['subgraph',['../classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18',1,'dispenso::GraphT::subgraph(size_t index) const'],['../classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96',1,'dispenso::GraphT::subgraph(size_t index)']]],
+  ['swap_11',['swap',['../classdispenso_1_1_concurrent_vector.html#ab4f8b73b07bf705b46994081f07b5617',1,'dispenso::ConcurrentVector']]]
 ];

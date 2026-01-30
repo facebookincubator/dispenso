@@ -1,3 +1,4 @@
+<!-- HTML header for generated pages -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
 <head>
@@ -9,7 +10,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<script type="text/javascript" src="clipboard.js"></script>
 <link href="navtree.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="navtreedata.js"></script>
 <script type="text/javascript" src="navtree.js"></script>
@@ -18,12 +18,9 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-  $(function() { init_search(); });
-/* @license-end */
-</script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -32,22 +29,10 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">dispenso
+   <div id="projectname">dispenso<span id="projectnumber">&#160;1.4.1</span>
    </div>
    <div id="projectbrief">A library for task parallelism</div>
   </td>
-    <td>        <div id="MSearchBox" class="MSearchBoxInactive">
-        <span class="left">
-          <span id="MSearchSelect"                onmouseover="return searchBox.OnSearchSelectShow()"                onmouseout="return searchBox.OnSearchSelectHide()">&#160;</span>
-          <input type="text" id="MSearchField" value="" placeholder="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)" 
-               onblur="searchBox.OnSearchFieldFocus(false)" 
-               onkeyup="searchBox.OnSearchFieldChange(event)"/>
-          </span><span class="right">
-            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.svg" alt=""/></a>
-          </span>
-        </div>
-</td>
  </tr>
  </tbody>
 </table>
@@ -64,6 +49,17 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 $(function() { codefold.init(0); });
 /* @license-end */
 </script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(function() {
+  initMenu('',true,false,'search.php','Search',true);
+  $(function() { init_search(); });
+});
+/* @license-end */
+</script>
+<div id="main-nav"></div>
 </div><!-- top -->
 <div id="side-nav" class="ui-resizable side-nav-resizable">
   <div id="nav-tree">
@@ -113,38 +109,40 @@ $(function(){initNavTree('files.html',''); initResizable(true); });
 <tr id="row_0_1_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="completion__event_8h_source.html"><span class="icondoc"></span></a><a class="el" href="completion__event_8h.html" target="_self">completion_event.h</a></td><td class="desc"></td></tr>
 <tr id="row_0_2_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="concurrent__object__arena_8h_source.html"><span class="icondoc"></span></a><a class="el" href="concurrent__object__arena_8h.html" target="_self">concurrent_object_arena.h</a></td><td class="desc"></td></tr>
 <tr id="row_0_3_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="concurrent__vector_8h_source.html"><span class="icondoc"></span></a><a class="el" href="concurrent__vector_8h.html" target="_self">concurrent_vector.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_4_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="for__each_8h_source.html"><span class="icondoc"></span></a><a class="el" href="for__each_8h.html" target="_self">for_each.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_5_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="future_8h_source.html"><span class="icondoc"></span></a><a class="el" href="future_8h.html" target="_self">future.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_6_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph_8cpp_source.html"><span class="icondoc"></span></a><b>graph.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_7_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph_8h_source.html"><span class="icondoc"></span></a><b>graph.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_8_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph__executor_8cpp_source.html"><span class="icondoc"></span></a><b>graph_executor.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_9_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph__executor_8h_source.html"><span class="icondoc"></span></a><b>graph_executor.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_10_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="latch_8h_source.html"><span class="icondoc"></span></a><a class="el" href="latch_8h.html" target="_self">latch.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_11_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="once__function_8h_source.html"><span class="icondoc"></span></a><a class="el" href="once__function_8h.html" target="_self">once_function.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_12_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="parallel__for_8h_source.html"><span class="icondoc"></span></a><a class="el" href="parallel__for_8h.html" target="_self">parallel_for.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_13_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pipeline_8h_source.html"><span class="icondoc"></span></a><a class="el" href="pipeline_8h.html" target="_self">pipeline.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_14_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="platform_8h_source.html"><span class="icondoc"></span></a><b>platform.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_15_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pool__allocator_8cpp_source.html"><span class="icondoc"></span></a><b>pool_allocator.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_16_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pool__allocator_8h_source.html"><span class="icondoc"></span></a><a class="el" href="pool__allocator_8h.html" target="_self">pool_allocator.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_17_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="priority_8cpp_source.html"><span class="icondoc"></span></a><b>priority.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_18_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="priority_8h_source.html"><span class="icondoc"></span></a><a class="el" href="priority_8h.html" target="_self">priority.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_19_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="resource__pool_8h_source.html"><span class="icondoc"></span></a><a class="el" href="resource__pool_8h.html" target="_self">resource_pool.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_20_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="rw__lock_8h_source.html"><span class="icondoc"></span></a><b>rw_lock.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_21_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="schedulable_8h_source.html"><span class="icondoc"></span></a><a class="el" href="schedulable_8h.html" target="_self">schedulable.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_22_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="small__buffer__allocator_8cpp_source.html"><span class="icondoc"></span></a><b>small_buffer_allocator.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_23_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="small__buffer__allocator_8h_source.html"><span class="icondoc"></span></a><a class="el" href="small__buffer__allocator_8h.html" target="_self">small_buffer_allocator.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_24_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="task__set_8cpp_source.html"><span class="icondoc"></span></a><b>task_set.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_25_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="task__set_8h_source.html"><span class="icondoc"></span></a><a class="el" href="task__set_8h.html" target="_self">task_set.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_26_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__id_8cpp_source.html"><span class="icondoc"></span></a><b>thread_id.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_27_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__id_8h_source.html"><span class="icondoc"></span></a><b>thread_id.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_28_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__pool_8cpp_source.html"><span class="icondoc"></span></a><b>thread_pool.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_29_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__pool_8h_source.html"><span class="icondoc"></span></a><a class="el" href="thread__pool_8h.html" target="_self">thread_pool.h</a></td><td class="desc"></td></tr>
-<tr id="row_0_30_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timed__task_8cpp_source.html"><span class="icondoc"></span></a><b>timed_task.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_31_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timed__task_8h_source.html"><span class="icondoc"></span></a><b>timed_task.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_32_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timing_8cpp_source.html"><span class="icondoc"></span></a><b>timing.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_33_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timing_8h_source.html"><span class="icondoc"></span></a><b>timing.h</b></td><td class="desc"></td></tr>
-<tr id="row_0_34_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="tsan__annotations_8cpp_source.html"><span class="icondoc"></span></a><b>tsan_annotations.cpp</b></td><td class="desc"></td></tr>
-<tr id="row_0_35_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="tsan__annotations_8h_source.html"><span class="icondoc"></span></a><a class="el" href="tsan__annotations_8h.html" target="_self">tsan_annotations.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_4_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="dispenso_8h_source.html"><span class="icondoc"></span></a><a class="el" href="dispenso_8h.html" target="_self">dispenso.h</a></td><td class="desc">Convenience header that includes all public dispenso headers </td></tr>
+<tr id="row_0_5_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="for__each_8h_source.html"><span class="icondoc"></span></a><a class="el" href="for__each_8h.html" target="_self">for_each.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_6_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="future_8h_source.html"><span class="icondoc"></span></a><a class="el" href="future_8h.html" target="_self">future.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_7_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph_8cpp_source.html"><span class="icondoc"></span></a><b>graph.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_8_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph_8h_source.html"><span class="icondoc"></span></a><a class="el" href="graph_8h.html" target="_self">graph.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_9_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph__executor_8cpp_source.html"><span class="icondoc"></span></a><b>graph_executor.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_10_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="graph__executor_8h_source.html"><span class="icondoc"></span></a><a class="el" href="graph__executor_8h.html" target="_self">graph_executor.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_11_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="latch_8h_source.html"><span class="icondoc"></span></a><a class="el" href="latch_8h.html" target="_self">latch.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_12_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="once__function_8h_source.html"><span class="icondoc"></span></a><a class="el" href="once__function_8h.html" target="_self">once_function.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_13_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="parallel__for_8h_source.html"><span class="icondoc"></span></a><a class="el" href="parallel__for_8h.html" target="_self">parallel_for.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_14_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pipeline_8h_source.html"><span class="icondoc"></span></a><a class="el" href="pipeline_8h.html" target="_self">pipeline.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_15_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="platform_8h_source.html"><span class="icondoc"></span></a><a class="el" href="platform_8h.html" target="_self">platform.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_16_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pool__allocator_8cpp_source.html"><span class="icondoc"></span></a><b>pool_allocator.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_17_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="pool__allocator_8h_source.html"><span class="icondoc"></span></a><a class="el" href="pool__allocator_8h.html" target="_self">pool_allocator.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_18_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="priority_8cpp_source.html"><span class="icondoc"></span></a><b>priority.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_19_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="priority_8h_source.html"><span class="icondoc"></span></a><a class="el" href="priority_8h.html" target="_self">priority.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_20_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="resource__pool_8h_source.html"><span class="icondoc"></span></a><a class="el" href="resource__pool_8h.html" target="_self">resource_pool.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_21_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="rw__lock_8h_source.html"><span class="icondoc"></span></a><a class="el" href="rw__lock_8h.html" target="_self">rw_lock.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_22_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="schedulable_8h_source.html"><span class="icondoc"></span></a><a class="el" href="schedulable_8h.html" target="_self">schedulable.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_23_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="small__buffer__allocator_8cpp_source.html"><span class="icondoc"></span></a><b>small_buffer_allocator.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_24_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="small__buffer__allocator_8h_source.html"><span class="icondoc"></span></a><a class="el" href="small__buffer__allocator_8h.html" target="_self">small_buffer_allocator.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_25_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="task__set_8cpp_source.html"><span class="icondoc"></span></a><b>task_set.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_26_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="task__set_8h_source.html"><span class="icondoc"></span></a><a class="el" href="task__set_8h.html" target="_self">task_set.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_27_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__id_8cpp_source.html"><span class="icondoc"></span></a><b>thread_id.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_28_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__id_8h_source.html"><span class="icondoc"></span></a><a class="el" href="thread__id_8h.html" target="_self">thread_id.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_29_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__pool_8cpp_source.html"><span class="icondoc"></span></a><b>thread_pool.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_30_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="thread__pool_8h_source.html"><span class="icondoc"></span></a><a class="el" href="thread__pool_8h.html" target="_self">thread_pool.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_31_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timed__task_8cpp_source.html"><span class="icondoc"></span></a><b>timed_task.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_32_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timed__task_8h_source.html"><span class="icondoc"></span></a><a class="el" href="timed__task_8h.html" target="_self">timed_task.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_33_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timing_8cpp_source.html"><span class="icondoc"></span></a><b>timing.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_34_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="timing_8h_source.html"><span class="icondoc"></span></a><a class="el" href="timing_8h.html" target="_self">timing.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_35_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="tsan__annotations_8cpp_source.html"><span class="icondoc"></span></a><b>tsan_annotations.cpp</b></td><td class="desc"></td></tr>
+<tr id="row_0_36_" class="odd"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="tsan__annotations_8h_source.html"><span class="icondoc"></span></a><a class="el" href="tsan__annotations_8h.html" target="_self">tsan_annotations.h</a></td><td class="desc"></td></tr>
+<tr id="row_0_37_" class="even"><td class="entry"><span style="width:32px;display:inline-block;">&#160;</span><a href="util_8h_source.html"><span class="icondoc"></span></a><a class="el" href="util_8h.html" target="_self">util.h</a></td><td class="desc"></td></tr>
 </table>
 </div><!-- directory -->
 </div><!-- contents -->

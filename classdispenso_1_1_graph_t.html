@@ -1,3 +1,4 @@
+<!-- HTML header for generated pages -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
 <head>
@@ -9,7 +10,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<script type="text/javascript" src="clipboard.js"></script>
 <link href="navtree.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="navtreedata.js"></script>
 <script type="text/javascript" src="navtree.js"></script>
@@ -18,12 +18,9 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-  $(function() { init_search(); });
-/* @license-end */
-</script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -32,22 +29,10 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">dispenso
+   <div id="projectname">dispenso<span id="projectnumber">&#160;1.4.1</span>
    </div>
    <div id="projectbrief">A library for task parallelism</div>
   </td>
-    <td>        <div id="MSearchBox" class="MSearchBoxInactive">
-        <span class="left">
-          <span id="MSearchSelect"                onmouseover="return searchBox.OnSearchSelectShow()"                onmouseout="return searchBox.OnSearchSelectHide()">&#160;</span>
-          <input type="text" id="MSearchField" value="" placeholder="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)" 
-               onblur="searchBox.OnSearchFieldFocus(false)" 
-               onkeyup="searchBox.OnSearchFieldChange(event)"/>
-          </span><span class="right">
-            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.svg" alt=""/></a>
-          </span>
-        </div>
-</td>
  </tr>
  </tbody>
 </table>
@@ -64,6 +49,17 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 $(function() { codefold.init(0); });
 /* @license-end */
 </script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(function() {
+  initMenu('',true,false,'search.php','Search',true);
+  $(function() { init_search(); });
+});
+/* @license-end */
+</script>
+<div id="main-nav"></div>
 </div><!-- top -->
 <div id="side-nav" class="ui-resizable side-nav-resizable">
   <div id="nav-tree">
@@ -175,8 +171,10 @@ Friends</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><div class="compoundTemplParams">template&lt;class N&gt;<br />
-class dispenso::GraphT&lt; N &gt;</div>
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00521">521</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+class dispenso::GraphT&lt; N &gt;</div><dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#_a0">graph_example.cpp</a>.</dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00527">527</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a1b2be4968c5f2fabc3ebd9c935f1f760" name="a1b2be4968c5f2fabc3ebd9c935f1f760"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1b2be4968c5f2fabc3ebd9c935f1f760">&#9670;&#160;</a></span>NodeType</h2>
@@ -192,7 +190,7 @@ template&lt;class N &gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00523">523</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00529">529</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -210,7 +208,7 @@ template&lt;class N &gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00524">524</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00530">530</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -241,7 +239,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Create empty graph. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00530">530</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00536">536</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -301,8 +299,10 @@ template&lt;class T &gt; </div>
   </table>
   </dd>
 </dl>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a2">graph_example.cpp</a>.</dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00548">548</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00554">554</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -323,6 +323,8 @@ template&lt;class N &gt; </div>
       </table>
 </div><div class="memdoc">
 <p>Create an empty subgraph. This is not concurrency safe. </p>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a7">graph_example.cpp</a>.</dd>
+</dl>
 
 <p class="definition">Definition at line <a class="el" href="graph_8cpp_source.html#l00203">203</a> of file <a class="el" href="graph_8cpp_source.html">graph.cpp</a>.</p>
 
@@ -354,7 +356,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Destroy all nodes and subgraphs. This is not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00651">651</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00657">657</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -384,7 +386,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Destroy all nodes. Keeps subgraphs. This is not concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00658">658</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00664">664</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -422,7 +424,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00641">641</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00647">647</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -460,7 +462,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00628">628</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00634">634</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -498,7 +500,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00616">616</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00622">622</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -536,7 +538,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00605">605</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00611">611</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -572,7 +574,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00570">570</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00576">576</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -608,7 +610,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00562">562</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00568">568</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -638,7 +640,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Return number of nodes in subgraph 0. Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00554">554</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00560">560</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -668,7 +670,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Return number of subgraphs in the graph including subgraph 0. Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00580">580</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00586">586</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -734,7 +736,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00596">596</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00602">602</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -770,7 +772,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00588">588</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00594">594</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -799,7 +801,7 @@ template&lt;class T &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00677">677</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00683">683</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>

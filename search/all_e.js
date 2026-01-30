@@ -13,5 +13,6 @@ var searchData=
   ['resourcepool_10',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso::ResourcePool&lt; T &gt;'],['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool::ResourcePool()']]],
   ['reuseexistingstate_11',['reuseExistingState',['../structdispenso_1_1_par_for_options.html#a84a0af7b2f1c7e7d9335173f91c1b075',1,'dispenso::ParForOptions']]],
   ['run_12',['run',['../classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256',1,'dispenso::Node']]],
-  ['rwlock_13',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
+  ['rw_5flock_2eh_13',['rw_lock.h',['../rw__lock_8h.html',1,'']]],
+  ['rwlock_14',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
 ];

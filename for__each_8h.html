@@ -1,3 +1,4 @@
+<!-- HTML header for generated pages -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
 <head>
@@ -9,7 +10,6 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
-<script type="text/javascript" src="clipboard.js"></script>
 <link href="navtree.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="navtreedata.js"></script>
 <script type="text/javascript" src="navtree.js"></script>
@@ -18,12 +18,9 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
-<script type="text/javascript">
-/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-  $(function() { init_search(); });
-/* @license-end */
-</script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -32,22 +29,10 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">dispenso
+   <div id="projectname">dispenso<span id="projectnumber">&#160;1.4.1</span>
    </div>
    <div id="projectbrief">A library for task parallelism</div>
   </td>
-    <td>        <div id="MSearchBox" class="MSearchBoxInactive">
-        <span class="left">
-          <span id="MSearchSelect"                onmouseover="return searchBox.OnSearchSelectShow()"                onmouseout="return searchBox.OnSearchSelectHide()">&#160;</span>
-          <input type="text" id="MSearchField" value="" placeholder="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)" 
-               onblur="searchBox.OnSearchFieldFocus(false)" 
-               onkeyup="searchBox.OnSearchFieldChange(event)"/>
-          </span><span class="right">
-            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.svg" alt=""/></a>
-          </span>
-        </div>
-</td>
  </tr>
  </tbody>
 </table>
@@ -64,6 +49,17 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 $(function() { codefold.init(0); });
 /* @license-end */
 </script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(function() {
+  initMenu('',true,false,'search.php','Search',true);
+  $(function() { init_search(); });
+});
+/* @license-end */
+</script>
+<div id="main-nav"></div>
 </div><!-- top -->
 <div id="side-nav" class="ui-resizable side-nav-resizable">
   <div id="nav-tree">
@@ -106,7 +102,7 @@ $(function(){initNavTree('for__each_8h.html',''); initResizable(true); });
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#func-members">Functions</a>  </div>
-  <div class="headertitle"><div class="title">for_each.h File Reference</div></div>
+  <div class="headertitle"><div class="title">for_each.h File Reference<div class="ingroups"><a class="el" href="group__group__parallel.html">Parallel Loops</a></div></div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;algorithm&gt;</code><br />
@@ -181,7 +177,7 @@ template&lt;typename Iter , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00180">180</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00181">181</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
 
 </div>
 </div>
@@ -231,8 +227,10 @@ template&lt;typename TaskSetT , typename Iter , typename F &gt; </div>
   </table>
   </dd>
 </dl>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="for_each_example_8cpp-example.html#a0">for_each_example.cpp</a>.</dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00164">164</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00165">165</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
 
 </div>
 </div>
@@ -277,7 +275,7 @@ template&lt;typename Iter , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00146">146</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00147">147</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
 
 </div>
 </div>
@@ -327,8 +325,10 @@ template&lt;typename TaskSetT , typename Iter , typename F &gt; </div>
   </table>
   </dd>
 </dl>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="for_each_example_8cpp-example.html#a1">for_each_example.cpp</a>.</dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00057">57</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="for__each_8h_source.html#l00058">58</a> of file <a class="el" href="for__each_8h_source.html">for_each.h</a>.</p>
 
 </div>
 </div>

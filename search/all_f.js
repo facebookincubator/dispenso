@@ -12,8 +12,12 @@ var searchData=
   ['size_9',['size',['../classdispenso_1_1_concurrent_vector.html#af514d2896643697e010c0747dd1bdac3',1,'dispenso::ConcurrentVector']]],
   ['small_5fbuffer_5fallocator_2eh_10',['small_buffer_allocator.h',['../small__buffer__allocator_8h.html',1,'']]],
   ['stage_11',['stage',['../pipeline_8h.html#a360af299cbfaa8e0069ec014f87d1ddb',1,'dispenso']]],
-  ['static_12',['Static',['../structdispenso_1_1_chunked_range_1_1_static.html',1,'dispenso::ChunkedRange']]],
-  ['subgraph_13',['subgraph',['../classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18',1,'dispenso::GraphT::subgraph(size_t index) const'],['../classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96',1,'dispenso::GraphT::subgraph(size_t index)']]],
-  ['subgrapht_14',['SubgraphT',['../classdispenso_1_1_subgraph_t.html',1,'dispenso']]],
-  ['swap_15',['swap',['../classdispenso_1_1_concurrent_vector.html#ab4f8b73b07bf705b46994081f07b5617',1,'dispenso::ConcurrentVector']]]
+  ['started_12',['Getting Started',['../getting_started.html',1,'']]],
+  ['static_13',['Static',['../structdispenso_1_1_chunked_range_1_1_static.html',1,'dispenso::ChunkedRange']]],
+  ['staticchunking_14',['StaticChunking',['../util_8h.html#ab2f5761fa05027e51d120a8903637329',1,'dispenso']]],
+  ['staticchunksize_15',['staticChunkSize',['../util_8h.html#afeee067e0bcb4e306c1ed27fc95b5f21',1,'dispenso']]],
+  ['subgraph_16',['subgraph',['../classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18',1,'dispenso::GraphT::subgraph(size_t index) const'],['../classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96',1,'dispenso::GraphT::subgraph(size_t index)']]],
+  ['subgrapht_17',['SubgraphT',['../classdispenso_1_1_subgraph_t.html',1,'dispenso']]],
+  ['swap_18',['swap',['../classdispenso_1_1_concurrent_vector.html#ab4f8b73b07bf705b46994081f07b5617',1,'dispenso::ConcurrentVector']]],
+  ['synchronization_19',['Synchronization',['../group__group__sync.html',1,'']]]
 ];
