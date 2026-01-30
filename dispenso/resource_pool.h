@@ -7,6 +7,7 @@
 
 /**
  * @file resource_pool.h
+ * @ingroup group_containers
  * A file providing ResourcePool.  This is syntactic sugar over what is essentially a set of
  * semaphore guarded resources.
  **/

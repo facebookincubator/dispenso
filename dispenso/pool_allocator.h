@@ -7,6 +7,7 @@
 
 /**
  * @file pool_allocator.h
+ * @ingroup group_alloc
  * A pool allocator to help reduce calls to the underlying allocation and deallocation functions
  * that can be provided custom backing allocation and deallocation functions, e.g. cudaMalloc,
  * cudaFree.

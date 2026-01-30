@@ -7,6 +7,7 @@
 
 /**
  * @file task_set.h
+ * @ingroup group_core
  * A file providing TaskSet and ConcurrentTaskSet.  These interfaces allow the user to
  * submit/schedule multiple closures and then wait on them.
  **/

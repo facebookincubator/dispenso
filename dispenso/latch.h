@@ -7,6 +7,7 @@
 
 /**
  * @file latch.h
+ * @ingroup group_sync
  * A file providing a Latch barrier type, which gives a way for threads to wait until all expected
  * threads have reached this point.  This is intended to match API and behavior of C++20 std::latch.
  **/

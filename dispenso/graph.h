@@ -5,6 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @file graph.h
+ * @ingroup group_graph
+ * A file providing task graph functionality for expressing complex task dependencies.
+ **/
+
 #pragma once
 
 #include <atomic>

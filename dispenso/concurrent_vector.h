@@ -7,6 +7,7 @@
 
 /**
  * @file concurrent_vector.h
+ * @ingroup group_containers
  * A file providing a concurrent vector implementation.  The basic implementation is similar to
  * common implementation of deques, with a two-level array structure.  For ConcurrentVector, this is
  * an array of buffers that grow by powers of two.  The interface is intended to be a reasonably

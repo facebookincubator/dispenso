@@ -7,6 +7,7 @@
 
 /**
  * @file parallel_for.h
+ * @ingroup group_parallel
  * Functions for performing parallel for loops.
  **/
 

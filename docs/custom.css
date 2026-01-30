@@ -1,0 +1,22 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/* Dispenso custom styling for doxygen-awesome theme */
+
+/* Dispenso green accent in dark mode */
+html.dark-mode {
+    --primary-color: #4caf50;
+    --primary-dark-color: #388e3c;
+    --primary-light-color: #81c784;
+}
+
+/* Dispenso green accent in light mode */
+html:not(.dark-mode) {
+    --primary-color: #2e7d32;
+    --primary-dark-color: #1b5e20;
+    --primary-light-color: #4caf50;
+}

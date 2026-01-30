@@ -5,12 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#pragma once
-
-#include <dispenso/platform.h>
-
 /**
  * @file priority.h
+ * @ingroup group_util
  *
  * Utilities for getting and setting thread priority.  This is an attempt to unify concepts for
  * thread priority usefully across multiple platforms.  For finer control, use platform specific
@@ -20,6 +17,10 @@
  * priority can have a strong negative impact on the responsivity of the machine.  Prefer to use
  * realtime priority only for short running tasks that need to be very responsively run.
  **/
+
+#pragma once
+
+#include <dispenso/platform.h>
 
 namespace dispenso {
 

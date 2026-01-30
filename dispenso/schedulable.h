@@ -7,6 +7,7 @@
 
 /**
  * @file schedulable.h
+ * @ingroup group_core
  * Classes providing simple schedulables that match scheduling interfaces of *TaskSet and ThreadPool
  *
  **/

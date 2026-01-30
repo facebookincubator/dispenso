@@ -7,6 +7,7 @@
 
 /**
  * @file completion_event.h
+ * @ingroup group_async
  * A file providing a CompletionEvent type, which gives a way to signal to waiting threads that some
  * event has been completed.
  **/

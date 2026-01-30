@@ -6,7 +6,9 @@
  */
 
 /**
- * @file platform constants and common utilities.
+ * @file platform.h
+ * @ingroup group_util
+ * Platform constants and common utilities.
  **/
 
 #pragma once

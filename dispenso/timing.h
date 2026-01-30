@@ -6,7 +6,9 @@
  */
 
 /**
- * @file Utilities for getting the current time.
+ * @file timing.h
+ * @ingroup group_util
+ * Utilities for getting the current time.
  **/
 
 #pragma once

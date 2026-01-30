@@ -7,6 +7,7 @@
 
 /**
  * @file once_function.h
+ * @ingroup group_core
  * A file providing OnceFunction, a class providing void() signature for closure to be called only
  * once.  It is built to be cheap to create and move.
  **/

@@ -7,6 +7,7 @@
 
 /**
  * @file thread_pool.h
+ * @ingroup group_core
  * A file providing ThreadPool.  This is the heart of dispenso.  All other scheduling paradigms,
  * including TaskSets, Futures, pipelines, and parallel loops, are built on top of ThreadPool.
  **/
