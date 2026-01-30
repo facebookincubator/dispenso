@@ -411,6 +411,254 @@ Each algorithm should have tests for:
 3. `partial_sort`
 4. `nth_element`
 
+## Sorting Implementation Details
+
+This section provides detailed design for parallel sorting algorithms.
+
+### Shared Infrastructure
+
+All sorting algorithms can share common building blocks:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Public APIs                             │
+├─────────────────────┬─────────────────┬─────────────────────┤
+│ dispenso::sort      │ stable_sort     │ radix_sort          │
+│ (comparison-based)  │ (stable)        │ (integer keys)      │
+└──────────┬──────────┴────────┬────────┴──────────┬──────────┘
+           │                   │                   │
+           ▼                   ▼                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Shared Infrastructure                      │
+├─────────────────────────────────────────────────────────────┤
+│ • Sorting networks for small arrays (N ≤ 32)                │
+│ • Insertion sort fallback (N ≤ ~16-32)                      │
+│ • Parallel partitioning                                      │
+│ • Task spawning via TaskSet                                  │
+│ • Threshold tuning (serial vs parallel cutoff)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Sorting Networks
+
+For small arrays (N ≤ 32), sorting networks provide optimal performance:
+
+- **Compile-time fixed structure** - No branches, predictable execution
+- **SIMD-friendly** - Can use min/max operations
+- **Near-optimal comparator count** - Dense coverage for N=2 to N=32
+- **Data-independent** - Same performance regardless of input order
+
+```cpp
+namespace dispenso::detail {
+
+/// Conditionally swap two elements
+template<typename T, typename Compare>
+DISPENSO_INLINE void compareSwap(T& a, T& b, Compare comp) {
+  // Branchless version for arithmetic types:
+  // auto should_swap = comp(b, a);
+  // auto tmp = should_swap ? a : b;  // min
+  // b = should_swap ? b : a;         // max
+  // a = tmp;
+
+  // Branch version (compiler may optimize):
+  if (comp(b, a)) {
+    using std::swap;
+    swap(a, b);
+  }
+}
+
+/// Sorting network for N=4 (5 comparators, depth 3)
+template<typename T, typename Compare>
+void sortingNetwork4(T* arr, Compare comp) {
+  compareSwap(arr[0], arr[1], comp);
+  compareSwap(arr[2], arr[3], comp);
+  compareSwap(arr[0], arr[2], comp);
+  compareSwap(arr[1], arr[3], comp);
+  compareSwap(arr[1], arr[2], comp);
+}
+
+/// Near-optimal networks for all sizes 2-32
+template<typename T, typename Compare>
+void sortingNetwork2(T* arr, Compare comp);
+template<typename T, typename Compare>
+void sortingNetwork3(T* arr, Compare comp);
+// ... networks for 4-32
+
+/// Dispatch to appropriate sorting network
+template<typename T, typename Compare>
+void smallSort(T* arr, size_t n, Compare comp) {
+  // Dispatch table or switch to networks for sizes 2-32
+  // All sizes covered by near-optimal networks
+  switch (n) {
+    case 0: case 1: return;
+    case 2: sortingNetwork2(arr, comp); return;
+    case 3: sortingNetwork3(arr, comp); return;
+    case 4: sortingNetwork4(arr, comp); return;
+    // ... etc through 32
+    default: assert(false && "Use parallel sort for n > 32");
+  }
+}
+
+/// For stable sort, insertion sort is better than trying to make networks stable
+template<typename T, typename Compare>
+void stableSmallSort(T* arr, size_t n, Compare comp) {
+  // Insertion sort is naturally stable and simpler than adding
+  // index tracking to networks
+  for (size_t i = 1; i < n; ++i) {
+    T tmp = std::move(arr[i]);
+    size_t j = i;
+    while (j > 0 && comp(tmp, arr[j - 1])) {
+      arr[j] = std::move(arr[j - 1]);
+      --j;
+    }
+    arr[j] = std::move(tmp);
+  }
+}
+
+}  // namespace dispenso::detail
+```
+
+**Why networks for unstable, insertion sort for stable:**
+
+| Property | Sorting Networks | Insertion Sort |
+|----------|-----------------|----------------|
+| Stable | No (adding stability adds overhead) | Yes (naturally) |
+| Branchless | Yes | No |
+| SIMD-friendly | Yes | Limited |
+| Data-dependent perf | No (fixed comparisons) | Yes (O(n) best, O(n²) worst) |
+| Best for | Unstable small sort | Stable small sort |
+
+### dispenso::sort (Parallel Quicksort)
+
+Primary comparison-based parallel sort.
+
+**Algorithm:**
+1. For small arrays (N ≤ threshold), use sorting network or insertion sort
+2. Choose pivot (median-of-3 or sampling for large arrays)
+3. Parallel partition around pivot
+4. Recursively sort partitions:
+   - Large partitions: spawn parallel tasks
+   - Small partitions: sort inline (serial)
+
+**Key parameters:**
+- `kSerialThreshold` - Below this, use serial sort (~10K-50K elements)
+- `kNetworkThreshold` - Below this, use sorting network (~32 elements)
+- `kSamplingThreshold` - Above this, use sampling for pivot selection
+
+```cpp
+template<typename RandomIt, typename Compare>
+void sort(ParallelPolicy policy, RandomIt first, RandomIt last, Compare comp) {
+  const auto n = std::distance(first, last);
+  if (n <= kSerialThreshold) {
+    std::sort(first, last, comp);  // or custom serial sort
+    return;
+  }
+
+  TaskSet tasks(policy.pool());
+  parallelQuicksort(tasks, first, last, comp, /*depth=*/0);
+  tasks.wait();
+}
+
+template<typename RandomIt, typename Compare>
+void parallelQuicksort(TaskSet& tasks, RandomIt first, RandomIt last,
+                       Compare comp, int depth) {
+  const auto n = std::distance(first, last);
+
+  // Base case: small arrays
+  if (n <= kNetworkThreshold) {
+    detail::smallSort(&*first, n, comp);
+    return;
+  }
+  if (n <= kSerialThreshold || depth > kMaxDepth) {
+    std::sort(first, last, comp);
+    return;
+  }
+
+  // Partition
+  auto pivot = selectPivot(first, last, comp);
+  auto mid = partition(first, last, pivot, comp);
+
+  // Recurse in parallel
+  tasks.schedule([&tasks, first, mid, comp, depth]() {
+    parallelQuicksort(tasks, first, mid, comp, depth + 1);
+  });
+  parallelQuicksort(tasks, mid, last, comp, depth + 1);
+}
+```
+
+### dispenso::stable_sort (Parallel Mergesort)
+
+Stable comparison-based parallel sort using mergesort.
+
+**Algorithm:**
+1. Divide array into chunks
+2. Sort chunks in parallel (can use quicksort for chunks)
+3. Parallel merge sorted chunks
+
+**Note:** Requires O(n) auxiliary memory.
+
+### MSD Radix Sort (Hybrid)
+
+For integer keys, MSD (Most Significant Digit) radix sort with hybrid fallback.
+
+**Algorithm:**
+1. Count elements per bucket based on current digit (parallel histogram)
+2. Compute prefix sums for bucket boundaries
+3. Distribute elements to buckets (parallel scatter)
+4. Recursively sort each bucket:
+   - Large buckets: parallel MSD radix on next digit
+   - Medium buckets: switch to comparison sort
+   - Small buckets: sorting network
+
+**Interface:**
+
+```cpp
+namespace dispenso {
+
+/// Sort integers using parallel MSD radix sort
+/// Requires auxiliary memory of size n
+template<typename RandomIt>
+void radix_sort(ParallelPolicy policy, RandomIt first, RandomIt last);
+
+/// Sort integers with custom key extraction
+template<typename RandomIt, typename KeyFn>
+void radix_sort(ParallelPolicy policy, RandomIt first, RandomIt last, KeyFn key);
+
+/// Sort with pre-allocated auxiliary buffer
+template<typename RandomIt, typename KeyFn>
+void radix_sort(ParallelPolicy policy, RandomIt first, RandomIt last,
+                KeyFn key, typename std::iterator_traits<RandomIt>::value_type* aux);
+
+}  // namespace dispenso
+```
+
+**Hybrid strategy:**
+- Start with 8-bit or 11-bit digits (256 or 2048 buckets)
+- Switch to comparison sort when bucket size < threshold (~256-1024)
+- Use sorting network for tiny buckets (< 32)
+
+**Performance characteristics:**
+- O(n * k) where k = number of digits
+- Excellent cache behavior with appropriate digit size
+- Outperforms comparison sort for large arrays of integers/floats
+
+### Performance Considerations
+
+**Threshold tuning:**
+- Thresholds are hardware-dependent (cache size, core count)
+- Consider auto-tuning or platform-specific defaults
+- Provide user override via ParallelOptions
+
+**Memory access:**
+- Partition in-place to minimize memory traffic
+- For stable_sort/radix_sort, pre-allocate auxiliary buffer
+- Consider NUMA awareness for very large arrays
+
+**Task granularity:**
+- Avoid spawning tasks for very small partitions
+- Limit recursion depth to prevent task explosion
+- Use work-stealing naturally via TaskSet
+
 ### Phase 5: Advanced
 
 1. `inclusive_scan` / `exclusive_scan`
