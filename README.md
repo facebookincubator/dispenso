@@ -3,31 +3,36 @@
 
 # Dispenso
 
-- [Introduction](#introduction)
-  - [Comparison of dispenso vs other libraries](#comparison)
-  - [When not to use dispenso](#nottouse)
-  - [Documentation and Examples](#examples)
-- [Installing dispenso](#installing)
-- [Building dispenso](#building)
-- [Testing dispenso](#testing)
-- [Benchmarking dispenso](#benchmarking)
-  - [Benchmark results](#benchresults)
+**A high-performance C++ thread pool and parallel algorithms library**
+
+Dispenso is a modern **C++ parallel computing library** that provides work-stealing thread pools, parallel for loops, futures, task graphs, and concurrent containers. It serves as a powerful **alternative to OpenMP and Intel TBB**, offering better nested parallelism, sanitizer-clean code, and explicit thread pool control.
+
+**Key advantages over OpenMP and TBB:**
+- **No thread explosion** with nested parallel loops - dispenso's work-stealing prevents deadlocks and oversubscription
+- **Clean with ASAN/TSAN** - fully sanitizer-compatible, unlike many TBB versions
+- **Futures support** - std::experimental::future-like API that TBB lacks
+- **Portable** - pure C++14 with no compiler-specific pragmas or extensions
+- **Battle-tested** - used in hundreds of projects at Meta (formerly Facebook)
+
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quickstart)
+- [Comparison vs Other Libraries](#comparison)
+- [When Not to Use Dispenso](#nottouse)
+- [Documentation and Examples](#examples)
+- [Installing](#installing)
+- [Building](#building)
+- [Testing](#testing)
+- [Benchmarking](#benchmarking)
 - [Known Issues](#knownissues)
 - [License](#license)
 
-<div id='introduction'/>
+<div id='features'/>
 
-# Introduction
+## Features
 
-Latin: *To dispense, distribute, manage*
-
-Dispenso is a library for working with sets of tasks in parallel. It provides mechanisms for thread pools, task sets, parallel for loops, futures, pipelines, and more.
-
-Dispenso is a well-tested C++14 library designed to have minimal dependencies (some dependencies are required for the tests and benchmarks) and to be clean with compiler sanitizers (ASAN, TSAN). It is currently being used in hundreds of projects and hundreds of C++ files at Meta (formerly Facebook).
-
-Dispenso aims to avoid major disruption at every release. Major versions are created when a backward incompatibility is introduced, and minor versions are created when substantial features have been added or bugs have been fixed. The aim is to only very rarely bump major versions, making the project suitable for use from the `main` branch. If you need a stricter requirement, you can base your code on a specific version.
-
-Dispenso has the following features:
+Dispenso provides a comprehensive set of parallel programming primitives:
 * **`AsyncRequest`**: Asynchronous request/response facilities for lightweight constrained message passing
 * **`CompletionEvent`**: A notifiable event type with wait and timed wait
 * **`ConcurrentObjectArena`**: An object arena for fast allocation of objects of the same type
@@ -45,9 +50,41 @@ Dispenso has the following features:
 * **`TaskSet`**: Sets of tasks that can be waited on together
 * **`ThreadPool`**: The backing thread pool type used by many other dispenso features
 
+<div id='quickstart'/>
+
+## Quick Start
+
+**Parallel for loop** - the most common use case:
+
+```cpp
+#include <dispenso/parallel_for.h>
+
+// Sequential
+for (size_t i = 0; i < N; ++i) {
+    process(data[i]);
+}
+
+// Parallel with dispenso - just wrap it!
+dispenso::parallel_for(0, N, [&](size_t i) {
+    process(data[i]);
+});
+```
+
+**Install via your favorite package manager:**
+
+```bash
+# Conda
+conda install -c conda-forge dispenso
+
+# Fedora/RHEL
+sudo dnf install dispenso-devel
+
+# Or build from source (see below)
+```
+
 <div id='comparison'/>
 
-## Comparison of dispenso vs other libraries
+## Comparison vs Other Libraries
 ### TBB (Intel Threading Building Blocks)
 TBB has significant overlap with dispenso, though TBB has more functionality, and is likely to continue having more utilities for some time. We chose to build and use dispenso for a few primary reasons:
 1. TBB is built on older C++ standards, and doesn't deal well with compiler sanitizers
@@ -74,7 +111,7 @@ We haven't done a strong comparison vs these other mechanisms. GCD is an Apple t
 
 <div id='nottouse'/>
 
-## When (currently) *not* to use dispenso
+## When Not to Use Dispenso
 Dispenso isn't really designed for high-latency task offload, it works best for compute-bound tasks.  Using the thread pool for networking, disk, or in cases with frequent TLB misses (really any scenario with kernel context switches) may result in less than ideal performance.
 
 In these kernel context switch scenarios, `dispenso::Future` can be used with `dispenso::NewThreadInvoker`, which should be roughly equivalent with std::future performance.
@@ -187,7 +224,7 @@ dispenso::parallel_for(
 
 <div id='installing'/>
 
-# Installing dispenso
+## Installing
 Binary builds of Dispenso are available for various Linux distributions through their native package managers, as well as for Windows, macOS, and Linux via the Conda package manager. If your distribution or platform is not on the list, see [the next section](#building) for instructions to build it yourself.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg)](https://repology.org/project/dispenso/versions)
@@ -195,9 +232,9 @@ Binary builds of Dispenso are available for various Linux distributions through 
 
 <div id='building'/>
 
-# Building dispenso
+## Building
 
-## Install CMake
+### Install CMake
 Internally to Meta, we use the Buck build system, but as that relies on a monorepo for relevant dependencies, we do not (yet) ship our BUCK build files.  To enable easy use outside of Meta monorepos, we ship a CMake build.  Improvements to the CMake build and build files for additional build systems are welcome, as are instructions for building on other platforms, including BSD variants, Windows+Clang, etc.
 
 <!--- Note that we should probably expand this section into its own page if we add new build systems) --->
@@ -211,20 +248,20 @@ Internally to Meta, we use the Buck build system, but as that relies on a monore
 ### Windows
 Install CMake from <https://cmake.org/download/>
 
-## Build dispenso
+### Build Dispenso
 
-### Linux and macOS
+#### Linux and macOS
 1. `mkdir build && cd build`
 1. `cmake PATH_TO_DISPENSO_ROOT`
 1. `make -j`
 
-### Windows
+#### Windows
 Install Build Tools for Visual Studio. All commands should be run from the Developer Command Prompt.
 1. `mkdir build && cd build`
 1. `cmake PATH_TO_DISPENSO_ROOT`
 1. `cmake --build . --config Release`
 
-## Install dispenso
+### Install Dispenso
 
 Once built, the library can be installed by building the "install" target.
 Typically on Linux and macOS, this is done with
@@ -235,7 +272,7 @@ On Windows (and works on any platform), instead do
 
 `cmake --build . --target install`
 
-## Use an installed dispenso
+### Use an Installed Dispenso
 
 Once installed, a downstream CMake project can be pointed to it by using
 `CMAKE_PREFIX_PATH` or `Dispenso_DIR`, either as an environment variable or
@@ -252,18 +289,19 @@ properties to the `myDispensoApp` target (your library or application).
 
 <div id='testing'/>
 
-# Building and running dispenso tests
+## Testing
+
 To keep dependencies to an absolute minimum, we do not build tests or benchmarks by default, but only the core library. Building tests requires [GoogleTest](https://github.com/google/googletest).
 
-## Build and run dispenso tests
+### Build and Run Tests
 
-### Linux and macOS
+#### Linux and macOS
 1. `mkdir build && cd build`
 1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release`
 1. `make -j`
 1. `ctest`
 
-### Windows
+#### Windows
 All commands should be run from the Developer Command Prompt.
 1. `mkdir build && cd build`
 1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON`
@@ -272,7 +310,7 @@ All commands should be run from the Developer Command Prompt.
 
 <div id='benchmarking'/>
 
-# Building and running dispenso benchmarks
+## Benchmarking
 Dispenso has several benchmarks, and some of these can benchmark against OpenMP, TBB, and/or folly variants.  If benchmarks are turned on via `-DDISPENSO_BUILD_BENCHMARKS=ON`, the build will attempt to find these libraries, and if found, will enable those variants in the benchmarks.  It is important to note that none of these dependencies are dependencies of the dispenso library, but only the benchmark binaries.
 
 The folly variant is turned off by default, because unfortunately it appears to be common to find build issues in many folly releases; note however that the folly code does run and provide benchmark data on our internal Meta platform.
@@ -280,13 +318,14 @@ The folly variant is turned off by default, because unfortunately it appears to 
 OpenMP should already be available on most platforms that support it (it must be partially built into the compiler after all), but TBB can be had by e.g. `sudo dnf install tbb-devel`.
 
 After you have the deps you want, you can build and run:
-### Linux and macOS
+
+#### Linux and macOS
 1. `mkdir build && cd build`
 1. `cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release`
 1. `make -j`
 1. (e.g.) `bin/once_function_benchmark`
 
-### Windows
+#### Windows
 Not currently supported through CMake.
 
 <div id='benchresults'/>
@@ -315,7 +354,7 @@ Some additional notes about the benchmarks: Your mileage may vary based on compi
 
 <div id='knownissues'/>
 
-# Known issues
+## Known Issues
 
 * A subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
 
@@ -324,6 +363,6 @@ Some additional notes about the benchmarks: Your mileage may vary based on compi
 
 <div id='license'/>
 
-# License
+## License
 
 The library is released under the MIT license, but also relies on the (excellent) moodycamel concurrentqueue library, which is released under the Simplified BSD and Zlib licenses.  See the top of the source at `dispenso/third-party/moodycamel/*.h` for details.
