@@ -15,6 +15,11 @@ dispenso::parallel_for(0, 1000, [](size_t i) {
 });
 ```
 
+## Getting Started
+
+New to dispenso? Start with the @ref getting_started "Getting Started Guide" for
+step-by-step tutorials and working examples.
+
 ## API Modules
 
 - @ref group_core "Core Components" - Thread pools and task sets
