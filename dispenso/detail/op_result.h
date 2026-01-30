@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <type_traits>
+#include <utility>
+
 namespace dispenso {
 namespace detail {
 
@@ -15,7 +18,10 @@ class OpResult {
  public:
   OpResult() : ptr_(nullptr) {}
 
-  template <typename U>
+  template <
+      typename U,
+      typename = typename std::enable_if<
+          !std::is_same<typename std::decay<U>::type, OpResult<T>>::value>::type>
   OpResult(U&& u) : ptr_(new (buf_) T(std::forward<U>(u))) {}
 
   OpResult(const OpResult<T>& oth) : ptr_(oth ? new (buf_) T(*oth.ptr_) : nullptr) {}
