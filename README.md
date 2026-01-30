@@ -1,4 +1,5 @@
 [![Build and test](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml/badge.svg)](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://facebookincubator.github.io/dispenso)
 
 # Dispenso
 
