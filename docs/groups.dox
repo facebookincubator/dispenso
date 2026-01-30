@@ -6,6 +6,23 @@
  * This includes the ThreadPool class which is the heart of dispenso, as well as
  * TaskSet for managing groups of related tasks, and supporting types like
  * OnceFunction and Schedulable.
+ *
+ * ### Example: Using ThreadPool and TaskSet
+ * @code
+ * #include <dispenso/thread_pool.h>
+ * #include <dispenso/task_set.h>
+ *
+ * // Use the global thread pool
+ * dispenso::TaskSet tasks(dispenso::globalThreadPool());
+ *
+ * // Schedule multiple tasks
+ * tasks.schedule([]() { /* task 1 */ });
+ * tasks.schedule([]() { /* task 2 */ });
+ * tasks.schedule([]() { /* task 3 */ });
+ *
+ * // Wait for all tasks to complete
+ * tasks.wait();
+ * @endcode
  */
 
 /**
@@ -14,6 +31,29 @@
  *
  * Functions for performing parallel for loops and parallel iteration over ranges.
  * These provide simple, high-level APIs for data-parallel operations.
+ *
+ * ### Example: Basic parallel_for
+ * @code
+ * #include <dispenso/parallel_for.h>
+ *
+ * std::vector<float> data(1000);
+ *
+ * // Process elements in parallel
+ * dispenso::parallel_for(0, data.size(), [&](size_t i) {
+ *     data[i] = std::sin(static_cast<float>(i));
+ * });
+ * @endcode
+ *
+ * ### Example: Parallel for_each
+ * @code
+ * #include <dispenso/for_each.h>
+ *
+ * std::vector<int> values = {1, 2, 3, 4, 5};
+ *
+ * dispenso::for_each(values.begin(), values.end(), [](int& v) {
+ *     v *= 2;  // Double each value in parallel
+ * });
+ * @endcode
  */
 
 /**
@@ -22,6 +62,35 @@
  *
  * Futures, async requests, completion events, and timed tasks for asynchronous
  * programming patterns.
+ *
+ * ### Example: Using Futures
+ * @code
+ * #include <dispenso/future.h>
+ *
+ * // Create a future that computes a value asynchronously
+ * dispenso::Future<int> future(
+ *     []() { return 42; },
+ *     dispenso::globalThreadPool()
+ * );
+ *
+ * // Do other work...
+ *
+ * // Get the result (blocks if not ready)
+ * int result = future.get();
+ * @endcode
+ *
+ * ### Example: CompletionEvent for signaling
+ * @code
+ * #include <dispenso/completion_event.h>
+ *
+ * dispenso::CompletionEvent event;
+ *
+ * // In producer thread:
+ * event.notify();
+ *
+ * // In consumer thread:
+ * event.wait();  // Blocks until notify() is called
+ * @endcode
  */
 
 /**
@@ -30,6 +99,46 @@
  *
  * Task graphs allow expressing complex dependencies between tasks, while pipelines
  * provide a streaming model for processing data through multiple stages.
+ *
+ * ### Example: Task Graph with Dependencies
+ * @code
+ * #include <dispenso/graph.h>
+ * #include <dispenso/graph_executor.h>
+ *
+ * dispenso::Graph graph;
+ *
+ * // Create nodes
+ * auto& nodeA = graph.addNode([]() { /* compute A */ });
+ * auto& nodeB = graph.addNode([]() { /* compute B */ });
+ * auto& nodeC = graph.addNode([]() { /* uses A and B */ });
+ *
+ * // C depends on A and B completing first
+ * nodeC.dependsOn(nodeA, nodeB);
+ *
+ * // Execute the graph
+ * dispenso::TaskSet tasks(dispenso::globalThreadPool());
+ * dispenso::ParallelForExecutor executor;
+ * executor(tasks, graph);
+ * @endcode
+ *
+ * ### Example: Pipeline Processing
+ * @code
+ * #include <dispenso/pipeline.h>
+ *
+ * int itemIndex = 0;
+ *
+ * dispenso::pipeline(
+ *     // Generator stage: produces items
+ *     [&]() -> dispenso::OpResult<int> {
+ *         if (itemIndex < 100) return itemIndex++;
+ *         return {};  // Empty result signals completion
+ *     },
+ *     // Transform stage: process in parallel
+ *     dispenso::stage([](int x) { return x * 2; }, 4),
+ *     // Sink stage: consume results
+ *     [](int result) { /* use result */ }
+ * );
+ * @endcode
  */
 
 /**
@@ -38,6 +147,34 @@
  *
  * Thread-safe containers including concurrent vectors, object arenas, and
  * resource pools for managing shared data in parallel programs.
+ *
+ * ### Example: ConcurrentVector
+ * @code
+ * #include <dispenso/concurrent_vector.h>
+ * #include <dispenso/parallel_for.h>
+ *
+ * dispenso::ConcurrentVector<int> results;
+ *
+ * dispenso::parallel_for(0, 1000, [&](size_t i) {
+ *     // Safe to call from multiple threads simultaneously
+ *     results.push_back(static_cast<int>(i * i));
+ * });
+ * @endcode
+ *
+ * ### Example: ResourcePool
+ * @code
+ * #include <dispenso/resource_pool.h>
+ *
+ * // Pool of 4 reusable connections
+ * dispenso::ResourcePool<Connection> pool(4, []() {
+ *     return Connection();
+ * });
+ *
+ * {
+ *     auto conn = pool.acquire();  // Blocks if none available
+ *     conn->doWork();
+ * }  // Connection automatically returned to pool
+ * @endcode
  */
 
 /**
@@ -46,6 +183,40 @@
  *
  * Locks, latches, and other synchronization primitives for coordinating
  * between threads.
+ *
+ * ### Example: Latch for Thread Coordination
+ * @code
+ * #include <dispenso/latch.h>
+ * #include <dispenso/parallel_for.h>
+ *
+ * dispenso::Latch latch(4);  // Wait for 4 threads
+ *
+ * dispenso::parallel_for(0, 4, [&](size_t) {
+ *     // Do initialization work...
+ *     latch.arrive_and_wait();  // Synchronize before continuing
+ *     // All threads proceed together from here
+ * });
+ * @endcode
+ *
+ * ### Example: RWLock for Reader/Writer Access
+ * @code
+ * #include <dispenso/rw_lock.h>
+ *
+ * dispenso::RWLock lock;
+ * std::vector<int> sharedData;
+ *
+ * // Reader (multiple allowed concurrently)
+ * {
+ *     std::shared_lock<dispenso::RWLock> guard(lock);
+ *     int value = sharedData[0];
+ * }
+ *
+ * // Writer (exclusive access)
+ * {
+ *     std::unique_lock<dispenso::RWLock> guard(lock);
+ *     sharedData.push_back(42);
+ * }
+ * @endcode
  */
 
 /**
@@ -54,6 +225,35 @@
  *
  * Pool allocators and small buffer allocators for efficient memory management
  * in parallel programs.
+ *
+ * ### Example: SmallBufferAllocator
+ * @code
+ * #include <dispenso/small_buffer_allocator.h>
+ *
+ * // Allocator for 64-byte buffers
+ * dispenso::SmallBufferAllocator<64> allocator;
+ *
+ * // Allocate and deallocate efficiently
+ * char* buffer = allocator.alloc();
+ * // ... use buffer ...
+ * allocator.dealloc(buffer);
+ * @endcode
+ *
+ * ### Example: PoolAllocator with Custom Backing
+ * @code
+ * #include <dispenso/pool_allocator.h>
+ *
+ * dispenso::PoolAllocator allocator(
+ *     1024,        // chunk size
+ *     1024 * 1024, // slab size
+ *     [](size_t n) { return malloc(n); },
+ *     [](void* p) { free(p); }
+ * );
+ *
+ * char* chunk = allocator.alloc();
+ * // ... use chunk ...
+ * allocator.dealloc(chunk);
+ * @endcode
  */
 
 /**
@@ -62,4 +262,24 @@
  *
  * Platform-specific abstractions, timing utilities, thread identification,
  * priority control, and thread sanitizer annotations.
+ *
+ * ### Example: Timing
+ * @code
+ * #include <dispenso/timing.h>
+ *
+ * double start = dispenso::getTime();
+ * // ... do work ...
+ * double elapsed = dispenso::getTime() - start;
+ * @endcode
+ *
+ * ### Example: Thread Priority
+ * @code
+ * #include <dispenso/priority.h>
+ *
+ * // Set current thread to high priority
+ * dispenso::setCurrentThreadPriority(dispenso::ThreadPriority::kHigh);
+ *
+ * // Get current priority
+ * auto priority = dispenso::getCurrentThreadPriority();
+ * @endcode
  */
