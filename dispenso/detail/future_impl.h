@@ -225,7 +225,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
     ThenChain* scheduleDestroyAndGetNext() {
       invoke(impl, schedulable);
-      constexpr size_t kImplSize = nextPow2(sizeof(this));
+      constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(this)));
       auto* ret = this->next;
       deallocSmallBuffer<kImplSize>(this);
       return ret;
@@ -275,7 +275,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
       return;
     }
 
-    constexpr size_t kImplSize = nextPow2(sizeof(ThenChain));
+    constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(ThenChain)));
     auto* buffer = allocSmallBuffer<kImplSize>();
     ThenChain* link = reinterpret_cast<ThenChain*>(buffer);
     link->impl = impl;
@@ -391,7 +391,7 @@ template <typename Result, typename F>
 inline FutureImplBase<Result>*
 createFutureImpl(F&& f, bool allowInline, std::atomic<ssize_t>* taskSetCounter) {
   using FNoRef = typename std::remove_reference<F>::type;
-  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, FNoRef, Result>));
+  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(FutureImplSmall<16, FNoRef, Result>)));
   using SmallT = FutureImplSmall<kImplSize, FNoRef, Result>;
 
   FutureImplBase<Result>* ret = new (allocSmallBuffer<kImplSize>()) SmallT(std::forward<F>(f));
@@ -403,7 +403,7 @@ createFutureImpl(F&& f, bool allowInline, std::atomic<ssize_t>* taskSetCounter) 
 
 template <typename Result, typename T>
 inline FutureImplBase<Result>* createValueFutureImplReady(T&& t) {
-  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, Result>));
+  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(FutureImplSmall<16, void, Result>)));
   using SmallT = FutureImplSmall<kImplSize, void, Result>;
 
   FutureImplBase<Result>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
@@ -415,7 +415,7 @@ inline FutureImplBase<Result>* createValueFutureImplReady(T&& t) {
 
 template <typename X>
 inline FutureImplBase<X&>* createRefFutureImplReady(std::reference_wrapper<X> x) {
-  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, X&>));
+  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(FutureImplSmall<16, void, X&>)));
   using SmallT = FutureImplSmall<kImplSize, void, X&>;
   FutureImplBase<X&>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
   ret->setAsResult(&x.get());
@@ -424,7 +424,7 @@ inline FutureImplBase<X&>* createRefFutureImplReady(std::reference_wrapper<X> x)
 }
 
 inline FutureImplBase<void>* createVoidFutureImplReady() {
-  constexpr size_t kImplSize = nextPow2(sizeof(FutureImplSmall<16, void, void>));
+  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(FutureImplSmall<16, void, void>)));
   using SmallT = FutureImplSmall<kImplSize, void, void>;
   FutureImplBase<void>* ret = new (allocSmallBuffer<kImplSize>()) SmallT();
   ret->setReady();
