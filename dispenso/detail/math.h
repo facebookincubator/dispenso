@@ -49,9 +49,22 @@ constexpr inline uint32_t log2const(uint64_t v) {
 inline uint32_t log2(uint64_t v) {
   return static_cast<uint32_t>(63 - __builtin_clzll(v));
 }
+#elif defined(_WIN64)
+inline uint32_t log2(uint64_t v) {
+  unsigned long index;
+  _BitScanReverse64(&index, v);
+  return static_cast<uint32_t>(index);
+}
 #elif defined(_WIN32)
 inline uint32_t log2(uint64_t v) {
-  return static_cast<uint32_t>(63 - __lzcnt64(v));
+  unsigned long index;
+  uint32_t hi = static_cast<uint32_t>(v >> 32);
+  if (hi != 0) {
+    _BitScanReverse(&index, hi);
+    return static_cast<uint32_t>(index + 32);
+  }
+  _BitScanReverse(&index, static_cast<uint32_t>(v));
+  return static_cast<uint32_t>(index);
 }
 #else
 inline uint32_t log2(uint64_t v) {

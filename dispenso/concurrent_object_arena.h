@@ -43,7 +43,7 @@ namespace dispenso {
  * arrays, with additional bookkeeping. The size of arrays is always power of
  * two (to optimize indexed access)
  * <pre>
- *  buffers  |<────     bufferSize      ───>|
+ *  buffers  |&lt;────     bufferSize      ────&gt;|
  *    ┌─┐    ┌──────────────────────────────┐
  *    │*├───>│                              │
  *    ├─┤    ├──────────────────────────────┤
@@ -153,7 +153,7 @@ struct ConcurrentObjectArena {
    * This function is thread safe and never invalidates pointers or
    * references to the rest of the elements. It is lock-free if new elements
    * can be placed in current buffer. It locks if it allocates a new buffer.
-   * @param delta New size of the container will be <code>delta<\code> elements bigger.
+   * @param delta New size of the container will be <code>delta</code> elements bigger.
    * @return index of the first element of the allocated group.
    **/
   Index grow_by(const Index delta) {

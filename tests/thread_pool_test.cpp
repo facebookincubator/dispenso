@@ -362,3 +362,162 @@ TEST_P(ThreadPoolTest, SimpleWorkZeroLatencyPoll) {
     ++i;
   }
 }
+
+// Tests for spin-poll with sleep mode (non-signaling wake)
+// This mode was the previous default before signaling wake became default
+
+TEST(ThreadPool, SpinPollWithSleep) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 1000;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  {
+    dispenso::ThreadPool pool(4);
+    // Enable spin-poll with sleep mode (non-signaling)
+    pool.setSignalingWake(false, 100us);
+
+    int i = 0;
+    for (int& o : outputs) {
+      pool.schedule([i, &o]() { o = i * i; });
+      ++i;
+    }
+  }
+
+  int i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
+TEST(ThreadPool, SpinPollWithSleepForceQueue) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 1000;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  {
+    dispenso::ThreadPool pool(4);
+    pool.setSignalingWake(false, 200us);
+
+    int i = 0;
+    for (int& o : outputs) {
+      pool.schedule([i, &o]() { o = i * i; }, dispenso::ForceQueuingTag());
+      ++i;
+    }
+  }
+
+  int i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
+TEST(ThreadPool, SpinPollWithSleepResizeConcurrent) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 10000;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  {
+    dispenso::ThreadPool pool(8);
+    pool.setSignalingWake(false, 50us);
+
+    std::thread resizer([&pool]() {
+      for (int j = 0; j < 20; ++j) {
+        pool.resize(4);
+        std::this_thread::sleep_for(1ms);
+        pool.resize(8);
+        std::this_thread::sleep_for(1ms);
+      }
+    });
+
+    int i = 0;
+    for (int& o : outputs) {
+      pool.schedule([i, &o]() { o = i * i; });
+      ++i;
+    }
+
+    resizer.join();
+  }
+
+  int i = 0;
+  for (int o : outputs) {
+    EXPECT_EQ(o, i * i);
+    ++i;
+  }
+}
+
+TEST(ThreadPool, TransitionBetweenModes) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 500;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  dispenso::ThreadPool pool(4);
+
+  // Start in signaling wake mode (default)
+  int i = 0;
+  for (; i < kWorkItems / 3; ++i) {
+    pool.schedule([i, &outputs]() { outputs[static_cast<size_t>(i)] = i * 2; });
+  }
+
+  // Switch to spin-poll with sleep
+  pool.setSignalingWake(false, 100us);
+  for (; i < 2 * kWorkItems / 3; ++i) {
+    pool.schedule([i, &outputs]() { outputs[static_cast<size_t>(i)] = i * 2; });
+  }
+
+  // Switch back to signaling wake
+  pool.setSignalingWake(true, 100us);
+  for (; i < kWorkItems; ++i) {
+    pool.schedule([i, &outputs]() { outputs[static_cast<size_t>(i)] = i * 2; });
+  }
+
+  // Wait for completion by destroying pool
+  pool.resize(0);
+
+  for (i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[static_cast<size_t>(i)], i * 2);
+  }
+}
+
+TEST(ThreadPool, SpinPollWithDifferentSleepDurations) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 200;
+
+  for (auto sleepDur : {10us, 50us, 100us, 500us, 1000us}) {
+    std::vector<int> outputs(kWorkItems, 0);
+
+    {
+      dispenso::ThreadPool pool(4);
+      pool.setSignalingWake(false, sleepDur);
+
+      for (int i = 0; i < kWorkItems; ++i) {
+        pool.schedule([i, &outputs]() { outputs[static_cast<size_t>(i)] = i + 1; });
+      }
+    }
+
+    for (int i = 0; i < kWorkItems; ++i) {
+      EXPECT_EQ(outputs[static_cast<size_t>(i)], i + 1)
+          << "Failed with sleep duration " << sleepDur.count() << "us";
+    }
+  }
+}
+
+TEST(ThreadPool, SingleThreadSpinPoll) {
+  using namespace std::chrono_literals;
+  constexpr int kWorkItems = 100;
+  std::vector<int> outputs(kWorkItems, 0);
+
+  {
+    dispenso::ThreadPool pool(1);
+    pool.setSignalingWake(false, 100us);
+
+    for (int i = 0; i < kWorkItems; ++i) {
+      pool.schedule([i, &outputs]() { outputs[static_cast<size_t>(i)] = i * 3; });
+    }
+  }
+
+  for (int i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[static_cast<size_t>(i)], i * 3);
+  }
+}

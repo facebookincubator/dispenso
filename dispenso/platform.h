@@ -26,6 +26,34 @@ namespace dispenso {
 #define DISPENSO_MINOR_VERSION 4
 #define DISPENSO_PATCH_VERSION 1
 
+// C++20 concepts support detection
+#if __cplusplus >= 202002L && defined(__cpp_concepts) && __cpp_concepts >= 201907L
+#define DISPENSO_HAS_CONCEPTS 1
+#include <concepts>
+#else
+#define DISPENSO_HAS_CONCEPTS 0
+#endif
+
+/**
+ * @def DISPENSO_REQUIRES
+ * @brief Macro for conditionally applying C++20 concept constraints.
+ *
+ * On C++20 with concepts support, this expands to a requires clause.
+ * On C++14/17, this expands to nothing, maintaining backward compatibility.
+ *
+ * Example usage:
+ * @code
+ * template <typename F>
+ * DISPENSO_REQUIRES(std::invocable<F>)
+ * void schedule(F&& f);
+ * @endcode
+ **/
+#if DISPENSO_HAS_CONCEPTS
+#define DISPENSO_REQUIRES(...) requires(__VA_ARGS__)
+#else
+#define DISPENSO_REQUIRES(...)
+#endif
+
 #if defined(DISPENSO_SHARED_LIB)
 #if defined _WIN32
 
@@ -109,10 +137,18 @@ constexpr size_t kCacheLineSize = 64;
 #endif
 // clang-format on
 
+/**
+ * A wrapper that aligns the contained value to cache line boundaries.
+ *
+ * Useful for avoiding false sharing in concurrent data structures.
+ *
+ * @tparam T The type to wrap with cache line alignment.
+ */
 template <typename T>
 class CacheAligned {
  public:
   CacheAligned() = default;
+  /** Construct from a value. @param t The value to wrap. */
   CacheAligned(T t) : t_(t) {}
   operator T&() {
     return t_;

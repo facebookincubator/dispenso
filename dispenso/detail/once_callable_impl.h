@@ -42,7 +42,7 @@ template <typename F>
 inline OnceCallable* createOnceCallable(F&& f) {
   using FNoRef = typename std::remove_reference<F>::type;
 
-  constexpr size_t kImplSize = nextPow2(sizeof(OnceCallableImpl<16, FNoRef>));
+  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(OnceCallableImpl<16, FNoRef>)));
 
   return new (allocSmallBuffer<kImplSize>())
       OnceCallableImpl<kImplSize, FNoRef>(std::forward<F>(f));

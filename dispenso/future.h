@@ -82,6 +82,7 @@ class Future : detail::FutureBase<Result> {
    * @param f The future to move from.
    **/
   Future(Future&& f) noexcept : Base(std::move(f)) {}
+  /** @copydoc Future(Future&&) */
   Future(Base&& f) noexcept : Base(std::move(f)) {}
 
   /**
@@ -91,6 +92,7 @@ class Future : detail::FutureBase<Result> {
    * the future's backing state.
    **/
   Future(const Future& f) noexcept : Base(f) {}
+  /** @copydoc Future(const Future&) */
   Future(const Base& f) noexcept : Base(f) {}
 
   /**
@@ -156,7 +158,7 @@ class Future : detail::FutureBase<Result> {
    * Is the Future ready?
    *
    * @return <code>true</code> if the value associated with this Future has already be computed, and
-   * <code>get</code> can return the value immediately.  Returns <false> if the functor is logically
+   * <code>get</code> can return the value immediately.  Returns <code>false</code> if the functor is logically
    * queued, or is in progress.
    **/
   bool is_ready() const {
@@ -222,7 +224,7 @@ class Future : detail::FutureBase<Result> {
   }
 
   /**
-   * Schedule a functor to be invoked upon reaching <code>is_ready<code> status, and return
+   * Schedule a functor to be invoked upon reaching <code>is_ready</code> status, and return
    * a future that will hold the result of the functor.
    *
    * @param f The functor to be executed whose result will be available in the returned
@@ -265,16 +267,25 @@ class Future : detail::FutureBase<Result> {
   friend class Future;
 };
 
+/**
+ * @copydoc Future
+ */
 template <typename Result>
 class Future<Result&> : detail::FutureBase<Result&> {
   using Base = detail::FutureBase<Result&>;
 
  public:
+  /** Default constructor. */
   Future() noexcept : Base() {}
+  /** Move constructor. */
   Future(Future&& f) noexcept : Base(std::move(f)) {}
+  /** @copydoc Future(Future&&) */
   Future(Base&& f) noexcept : Base(std::move(f)) {}
+  /** Copy constructor. */
   Future(const Future& f) noexcept : Base(f) {}
+  /** @copydoc Future(const Future&) */
   Future(const Base& f) noexcept : Base(f) {}
+  /** Construct with callable and schedulable. @see Future<Result>::Future(F&&, Schedulable&, std::launch, std::launch) */
   template <typename F, typename Schedulable>
   Future(
       F&& f,
@@ -340,17 +351,27 @@ class Future<Result&> : detail::FutureBase<Result&> {
   friend class Future;
 };
 
+/**
+ * @copydoc Future
+ */
 template <>
 class Future<void> : detail::FutureBase<void> {
   using Base = detail::FutureBase<void>;
 
  public:
+  /** Default constructor. */
   Future() noexcept : Base() {}
+  /** Move constructor. */
   Future(Future&& f) noexcept : Base(std::move(f)) {}
+  /** @copydoc Future(Future&&) */
   Future(Base&& f) noexcept : Base(std::move(f)) {}
+  /** Copy constructor. */
   Future(const Future& f) noexcept : Base(f) {}
+  /** @copydoc Future(const Future&) */
   Future(const Base& f) noexcept : Base(f) {}
+  /** Construct with callable and schedulable. @see Future<Result>::Future(F&&, Schedulable&, std::launch, std::launch) */
   template <typename F, typename Schedulable>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   Future(
       F&& f,
       Schedulable& schedulable,
@@ -630,7 +651,7 @@ auto when_all(Futures&&... futures) -> Future<std::tuple<std::decay_t<Futures>..
  * Take a collection of futures, and return a future which will be ready when all input futures are
  * ready.
  *
- * @param tastSet A task set to register with such that after this call,
+ * @param taskSet A task set to register with such that after this call,
  * <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code>
  * @param first An iterator to the start of the future collection.
  * @param last An iterator to the end of the future collection.
@@ -642,6 +663,7 @@ auto when_all(Futures&&... futures) -> Future<std::tuple<std::decay_t<Futures>..
 template <class InputIt>
 Future<std::vector<typename std::iterator_traits<InputIt>::value_type>>
 when_all(TaskSet& taskSet, InputIt first, InputIt last);
+/** @overload */
 template <class InputIt>
 Future<std::vector<typename std::iterator_traits<InputIt>::value_type>>
 when_all(ConcurrentTaskSet& taskSet, InputIt first, InputIt last);
@@ -650,7 +672,7 @@ when_all(ConcurrentTaskSet& taskSet, InputIt first, InputIt last);
  * Take a specific set of futures, and return a future which will be ready when all input futures
  *are ready.
  *
- * @param tastSet A task set to register with such that after this call,
+ * @param taskSet A task set to register with such that after this call,
  * <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code>
  * @param futures A parameter pack of futures.
  *
@@ -662,6 +684,7 @@ template <class... Futures>
 auto when_all(TaskSet& taskSet, Futures&&... futures)
     -> Future<std::tuple<std::decay_t<Futures>...>>;
 
+/** @overload */
 template <class... Futures>
 auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
     -> Future<std::tuple<std::decay_t<Futures>...>>;
