@@ -43,12 +43,11 @@ file(GLOB TEST_FILES CONFIGURE_DEPENDS "*test.cpp")
 LIST(REMOVE_ITEM TEST_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/shared_pool_test.cpp)
 
-# Filter out these tests specifically because they are inherently flaky because they rely on OS behaviors that are not
-# guaranteed, and only really useful for manual runs when making changes to the related functionality.  Note that
-# possibly an even better test for both priority and timed_task behavior is to use the timed_task_benchmark.
+# Filter out priority_test specifically because it is inherently flaky - it relies on OS scheduling
+# behaviors that are not guaranteed, and is only really useful for manual runs when making changes
+# to the related functionality.
 LIST(REMOVE_ITEM TEST_FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp)
 
 foreach(TEST_FILE ${TEST_FILES})
   set(TEST_NAME)
@@ -56,7 +55,7 @@ foreach(TEST_FILE ${TEST_FILES})
   package_add_test(${TEST_NAME} unittest ${TEST_FILE})
 endforeach()
 
-SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp)
 
 foreach(TEST_FILE ${FLAKY_TEST_FILES})
   set(TEST_NAME)
