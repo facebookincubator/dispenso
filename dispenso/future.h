@@ -351,6 +351,7 @@ class Future<void> : detail::FutureBase<void> {
   Future(const Future& f) noexcept : Base(f) {}
   Future(const Base& f) noexcept : Base(f) {}
   template <typename F, typename Schedulable>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   Future(
       F&& f,
       Schedulable& schedulable,

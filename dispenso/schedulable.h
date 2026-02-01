@@ -35,6 +35,7 @@ class ImmediateInvoker {
    * std::function or similarly type-erased objects will also work.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f) const {
     f();
   }
@@ -45,6 +46,7 @@ class ImmediateInvoker {
    *
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag) const {
     f();
   }
@@ -67,6 +69,7 @@ class NewThreadInvoker {
    * std::function or similarly type-erased objects will also work.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f) const {
     schedule(std::forward<F>(f), ForceQueuingTag());
   }
@@ -78,6 +81,7 @@ class NewThreadInvoker {
    * std::function or similarly type-erased objects will also work.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag) const {
     std::thread thread([f = std::move(f)]() { f(); });
     thread.detach();
