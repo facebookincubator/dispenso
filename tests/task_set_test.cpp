@@ -554,3 +554,158 @@ TEST(TaskSet, ExceptionCancels) {
 }
 
 #endif // __cpp_exceptions
+
+TEST(TaskSet, EmptyTaskSet) {
+  // Test that an empty TaskSet can be waited on without issues
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+
+  // wait() on empty TaskSet should return immediately with no cancellation
+  EXPECT_FALSE(tasks.wait());
+
+  // Should be able to reuse after empty wait
+  std::atomic<int> counter{0};
+  tasks.schedule([&counter]() { counter.fetch_add(1); });
+  EXPECT_FALSE(tasks.wait());
+  EXPECT_EQ(counter.load(), 1);
+}
+
+TEST(TaskSet, TryWaitOnEmpty) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+
+  // tryWait on empty TaskSet should return true immediately
+  EXPECT_TRUE(tasks.tryWait(0));
+  EXPECT_TRUE(tasks.tryWait(1));
+  EXPECT_TRUE(tasks.tryWait(100));
+}
+
+TEST(TaskSet, CanceledStateBeforeCancellation) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+
+  // Before any cancellation, canceled() should return false
+  EXPECT_FALSE(tasks.canceled());
+
+  std::atomic<bool> sawNotCanceled{false};
+  tasks.schedule([&sawNotCanceled]() {
+    if (dispenso::parentTaskSet() && !dispenso::parentTaskSet()->canceled()) {
+      sawNotCanceled.store(true);
+    }
+  });
+
+  tasks.wait();
+  EXPECT_TRUE(sawNotCanceled.load());
+  EXPECT_FALSE(tasks.canceled());
+}
+
+TEST(TaskSet, SingleTask) {
+  dispenso::ThreadPool pool(4);
+  dispenso::TaskSet tasks(pool);
+
+  int result = 0;
+  tasks.schedule([&result]() { result = 42; });
+  tasks.wait();
+
+  EXPECT_EQ(result, 42);
+}
+
+TEST(TaskSet, GlobalThreadPool) {
+  // Explicitly test with globalThreadPool()
+  dispenso::TaskSet tasks(dispenso::globalThreadPool());
+
+  std::atomic<int> sum{0};
+  for (int i = 0; i < 100; ++i) {
+    tasks.schedule([&sum, i]() { sum.fetch_add(i); });
+  }
+  tasks.wait();
+
+  // Sum of 0..99 = 4950
+  EXPECT_EQ(sum.load(), 4950);
+}
+
+TEST(ConcurrentTaskSet, EmptyTaskSet) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  // wait() on empty ConcurrentTaskSet should return immediately
+  EXPECT_FALSE(tasks.wait());
+}
+
+TEST(ConcurrentTaskSet, TryWaitOnEmpty) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  EXPECT_TRUE(tasks.tryWait(0));
+  EXPECT_TRUE(tasks.tryWait(1));
+}
+
+TEST(ConcurrentTaskSet, ConcurrentScheduling) {
+  // Test that multiple threads can schedule to a ConcurrentTaskSet simultaneously
+  dispenso::ThreadPool pool(8);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  std::atomic<int> counter{0};
+  constexpr int kTasksPerThread = 100;
+  constexpr int kNumSchedulers = 4;
+
+  // Create threads that will concurrently schedule tasks
+  std::vector<std::thread> schedulers;
+  for (int t = 0; t < kNumSchedulers; ++t) {
+    schedulers.emplace_back([&tasks, &counter]() {
+      for (int i = 0; i < kTasksPerThread; ++i) {
+        tasks.schedule([&counter]() { counter.fetch_add(1); });
+      }
+    });
+  }
+
+  // Wait for all schedulers to finish
+  for (auto& t : schedulers) {
+    t.join();
+  }
+
+  // Wait for all tasks to complete
+  tasks.wait();
+
+  EXPECT_EQ(counter.load(), kTasksPerThread * kNumSchedulers);
+}
+
+TEST(TaskSet, LargeBatchOfTasks) {
+  dispenso::ThreadPool pool(8);
+  dispenso::TaskSet tasks(pool);
+
+  constexpr int kNumTasks = 10000;
+  std::vector<int> results(kNumTasks, 0);
+
+  for (int i = 0; i < kNumTasks; ++i) {
+    tasks.schedule([&results, i]() { results[static_cast<size_t>(i)] = i * i; });
+  }
+
+  tasks.wait();
+
+  for (int i = 0; i < kNumTasks; ++i) {
+    EXPECT_EQ(results[static_cast<size_t>(i)], i * i);
+  }
+}
+
+TEST(ConcurrentTaskSet, CanceledState) {
+  dispenso::ThreadPool pool(4);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  EXPECT_FALSE(tasks.canceled());
+
+  tasks.schedule(
+      []() {
+        while (!dispenso::parentTaskSet()->canceled()) {
+          std::this_thread::yield();
+        }
+      },
+      dispenso::ForceQueuingTag());
+
+  // Give the task time to start
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  tasks.cancel();
+  EXPECT_TRUE(tasks.canceled());
+  EXPECT_TRUE(tasks.wait());
+}
