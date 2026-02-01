@@ -40,7 +40,8 @@ class TaskSet : public TaskSetBase {
   /**
    * Construct a TaskSet with the given backing pool.
    *
-   * @param pool The backing pool for this TaskSet
+   * @param p The backing pool for this TaskSet
+   * @param registerForParentCancel Whether to register for parent cancellation cascade.
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
@@ -51,7 +52,9 @@ class TaskSet : public TaskSetBase {
       : TaskSetBase(p, registerForParentCancel, stealingLoadMultiplier),
         token_(makeToken(p.work_)) {}
 
+  /** Construct a TaskSet with default options. @param p The backing pool. */
   TaskSet(ThreadPool& p) : TaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
+  /** Construct a TaskSet with custom load multiplier. @param p The backing pool. @param stealingLoadMultiplier The over-load factor. */
   TaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
       : TaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier) {}
 
@@ -90,6 +93,7 @@ class TaskSet : public TaskSetBase {
    * @param f A functor matching signature <code>void()</code>.  Best performance will come from
    * passing lambdas, other concrete functors, or <code>OnceFunction</code>, but
    * <code>std::function</code> or similarly type-erased objects will also work.
+   * @param fq Tag to force queuing instead of potential inline execution.
    *
    * @note If <code>f</code> can throw exceptions, then exceptions will be caught on the running
    * thread and best-effort propagated to the <code>ConcurrentTaskSet</code>, where the first one
@@ -179,6 +183,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * Construct a ConcurrentTaskSet with the given backing pool.
    *
    * @param pool The backing pool for this ConcurrentTaskSet
+   * @param registerForParentCancel Whether to register for parent cancellation cascade.
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
    **/
@@ -188,8 +193,10 @@ class ConcurrentTaskSet : public TaskSetBase {
       ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier)
       : TaskSetBase(pool, registerForParentCancel, stealingLoadMultiplier) {}
 
+  /** Construct a ConcurrentTaskSet with default options. @param p The backing pool. */
   ConcurrentTaskSet(ThreadPool& p)
       : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
+  /** Construct a ConcurrentTaskSet with custom load multiplier. @param p The backing pool. @param stealingLoadMultiplier The over-load factor. */
   ConcurrentTaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
       : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier) {}
 
@@ -231,6 +238,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param f A functor matching signature <code>void()</code>.  Best performance will come from
    * passing lambdas, other concrete functors, or <code>OnceFunction</code>, but
    * <code>std::function</code> or similarly type-erased objects will also work.
+   * @param fq Tag to force queuing instead of potential inline execution.
    *
    * @note If <code>f</code> can throw exceptions, then exceptions will be caught on the running
    * thread and best-effort propagated to the <code>ConcurrentTaskSet</code>, where the first one

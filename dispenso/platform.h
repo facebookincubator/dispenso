@@ -137,10 +137,18 @@ constexpr size_t kCacheLineSize = 64;
 #endif
 // clang-format on
 
+/**
+ * A wrapper that aligns the contained value to cache line boundaries.
+ *
+ * Useful for avoiding false sharing in concurrent data structures.
+ *
+ * @tparam T The type to wrap with cache line alignment.
+ */
 template <typename T>
 class CacheAligned {
  public:
   CacheAligned() = default;
+  /** Construct from a value. @param t The value to wrap. */
   CacheAligned(T t) : t_(t) {}
   operator T&() {
     return t_;

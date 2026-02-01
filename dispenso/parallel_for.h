@@ -651,6 +651,16 @@ void parallel_for(
       options);
 }
 
+/**
+ * Execute loop over the range in parallel using the provided task set.
+ *
+ * @param taskSet The task set to use for scheduling parallel work.
+ * @param start The start of the loop extents.
+ * @param end The end of the loop extents.
+ * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(size_t begin, size_t end)</code>.
+ * @param options See ParForOptions for details.
+ **/
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -744,6 +754,18 @@ void parallel_for(
       options);
 }
 
+/**
+ * Execute loop over the range in parallel using the provided task set, with per-thread state.
+ *
+ * @param taskSet The task set to use for scheduling parallel work.
+ * @param states A container of per-thread state objects.
+ * @param defaultState A functor to generate default state for new threads.
+ * @param start The start of the loop extents.
+ * @param end The end of the loop extents.
+ * @param f The functor to execute in parallel.  Must have a signature like
+ * <code>void(State& state, size_t begin, size_t end)</code>.
+ * @param options See ParForOptions for details.
+ **/
 template <
     typename TaskSetT,
     typename IntegerA,
