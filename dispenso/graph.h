@@ -493,7 +493,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   using DeallocFunc = void (*)(NoLockPoolAllocator*);
   using PoolPtr = std::unique_ptr<NoLockPoolAllocator, DeallocFunc>;
 
-  static constexpr size_t kNodeSizeP2 = detail::nextPow2(sizeof(NodeType));
+  static constexpr size_t kNodeSizeP2 = static_cast<size_t>(detail::nextPow2(sizeof(NodeType)));
 
   explicit SubgraphT(GraphT<N>* graph) : graph_(graph), nodes_(), allocator_(getAllocator()) {}
 
@@ -672,7 +672,8 @@ class DISPENSO_DLL_ACCESS GraphT {
   }
 
  private:
-  static constexpr size_t kSubgraphSizeP2 = detail::nextPow2(sizeof(SubgraphType));
+  static constexpr size_t kSubgraphSizeP2 =
+      static_cast<size_t>(detail::nextPow2(sizeof(SubgraphType)));
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #pragma warning(push)
