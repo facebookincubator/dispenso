@@ -183,7 +183,7 @@ Key points:
 
 ## Next Steps
 
-- Browse the @ref modules "API Reference" for complete documentation
+- Browse the [API Reference](modules.html) for complete documentation
 - Check out the [tests](https://github.com/facebookincubator/dispenso/tree/main/tests)
   for more usage examples
 - See the [benchmarks](https://github.com/facebookincubator/dispenso/tree/main/benchmarks)

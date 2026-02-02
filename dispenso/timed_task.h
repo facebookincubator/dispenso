@@ -42,6 +42,7 @@ enum class TimedTaskType {
 class TimedTask {
  public:
   TimedTask(const TimedTask&) = delete;
+  /** Move constructor. */
   TimedTask(TimedTask&& other) : impl_(std::move(other.impl_)) {}
 
   TimedTask& operator=(const TimedTask&) = delete;
