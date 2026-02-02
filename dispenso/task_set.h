@@ -72,6 +72,7 @@ class TaskSet : public TaskSetBase {
    * in <code>wait</code>.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f) {
     if (DISPENSO_EXPECT(canceled(), false)) {
       return;
@@ -95,6 +96,7 @@ class TaskSet : public TaskSetBase {
    * from the set is rethrown in <code>wait</code>.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag fq) {
     pool_.schedule(token_, packageTask(std::forward<F>(f)), fq);
   }
@@ -211,6 +213,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * in <code>wait</code>.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, bool skipRecheck = false) {
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_ &&
         DISPENSO_EXPECT(!canceled(), true)) {
@@ -234,6 +237,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * from the set is rethrown in <code>wait</code>.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag fq) {
     pool_.schedule(packageTask(std::forward<F>(f)), fq);
   }
