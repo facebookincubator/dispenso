@@ -17,8 +17,23 @@
 #include <utility>
 
 #include <dispenso/detail/once_callable_impl.h>
+#include <dispenso/platform.h>
 
 namespace dispenso {
+
+#if DISPENSO_HAS_CONCEPTS
+/**
+ * @concept OnceCallableFunc
+ * @brief A callable suitable for wrapping in OnceFunction or scheduling as a task.
+ *
+ * The callable must be invocable with no arguments. The return value (if any) is discarded.
+ * This is the fundamental requirement for functors passed to OnceFunction,
+ * ThreadPool::schedule, TaskSet::schedule, and similar scheduling interfaces.
+ **/
+template <typename F>
+concept OnceCallableFunc = std::invocable<F>;
+#endif // DISPENSO_HAS_CONCEPTS
+
 namespace detail {
 template <typename Result>
 class FutureBase;
@@ -55,6 +70,7 @@ class OnceFunction {
    * overhead for double type erasure.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   OnceFunction(F&& f) : onceCallable_(detail::createOnceCallable(std::forward<F>(f))) {}
 
   OnceFunction(const OnceFunction& other) = delete;
