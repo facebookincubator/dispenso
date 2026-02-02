@@ -6,25 +6,199 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  CTEST_OUTPUT_ON_FAILURE: 1
+
 jobs:
-  build-tests:
-    name: Build on ${{ matrix.os }}
+  #############################################################################
+  # Core platform builds - strategic sampling of OS/compiler/standard/library
+  #############################################################################
+  build-matrix:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest] 
-    env:
-      CTEST_OUTPUT_ON_FAILURE: 1
+        include:
+          # Linux - GCC baseline
+          - name: Linux GCC C++14
+            os: ubuntu-latest
+            cmake_args: -DCMAKE_CXX_STANDARD=14
+          # Linux - Clang with C++20 concepts
+          - name: Linux Clang C++20
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            cmake_args: -DCMAKE_CXX_STANDARD=20
+          # macOS - C++20 with static library
+          - name: macOS C++20 static
+            os: macos-latest
+            cmake_args: -DCMAKE_CXX_STANDARD=20 -DDISPENSO_SHARED_LIB=OFF
+          # Windows - MSVC baseline
+          - name: Windows MSVC C++14
+            os: windows-latest
+            cmake_args: -DCMAKE_CXX_STANDARD=14
+          # Windows - MSVC C++20 with static library
+          - name: Windows MSVC C++20 static
+            os: windows-latest
+            cmake_args: -DCMAKE_CXX_STANDARD=20 -DDISPENSO_SHARED_LIB=OFF
     steps:
-      - uses: actions/checkout@v2
-      - name: Configuring
+      - uses: actions/checkout@v4
+      - name: Configure
         run: |
-          mkdir build && cd build && cmake .. -DDISPENSO_BUILD_TESTS=ON  -DCMAKE_BUILD_TYPE=Release
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
       - name: Build
         working-directory: ./build
-        run: |
-          cmake --build . --parallel 4 --config Release
-      - name: Running Unit Tests
+        run: cmake --build . --parallel 4 --config Release
+      - name: Test
         working-directory: ./build
+        run: ctest -LE flaky --build-config Release
+
+  #############################################################################
+  # Architecture-specific builds
+  #############################################################################
+  build-linux-x86:
+    name: Linux x86 (32-bit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install 32-bit support
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
+      - name: Configure
         run: |
-          ctest -LE flaky --build-config Release
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-m32" -DCMAKE_C_FLAGS="-m32"
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
+  build-linux-arm64:
+    name: Linux ARM64
+    runs-on: ubuntu-24.04-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
+  build-windows-x86:
+    name: Windows x86 (32-bit)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -A Win32 -DDISPENSO_BUILD_TESTS=ON
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4 --config Release
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky --build-config Release
+
+  #############################################################################
+  # Sanitizer builds - critical for concurrency library
+  #############################################################################
+  sanitizers:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # TSan requires clang - GCC 13's TSan has spurious warnings about atomic_thread_fence
+          - name: Thread Sanitizer
+            cmake_args: -DTHREAD_SANITIZER=ON
+            cc: clang
+            cxx: clang++
+          - name: Address Sanitizer
+            cmake_args: -DADDRESS_SANITIZER=ON
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug ${{ matrix.cmake_args }}
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
+  #############################################################################
+  # Documentation build
+  #############################################################################
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+      - name: Build documentation
+        working-directory: ./docs
+        run: doxygen Doxyfile
+      - name: Check for warnings
+        working-directory: ./docs
+        run: |
+          if [ -s doxygen_warnings.log ]; then
+            echo "Doxygen warnings found:"
+            cat doxygen_warnings.log
+            exit 1
+          fi
+          echo "No Doxygen warnings."
+
+  #############################################################################
+  # Code coverage
+  #############################################################################
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Configure with coverage
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic" \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+      - name: Generate coverage report
+        run: |
+          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,gcov,negative
+          lcov --remove coverage.info '/usr/*' '*/build/_deps/*' '*/tests/*' --output-file coverage.info --ignore-errors unused
+          lcov --list coverage.info
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          fail_ci_if_error: false
+          verbose: true
