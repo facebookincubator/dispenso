@@ -107,3 +107,168 @@ TEST(ConcurrentObjectArena, ObjectsConstuction) {
     EXPECT_EQ(moveArena.getBuffer(i), bufferPtrs[i]);
   }
 }
+
+TEST(ConcurrentObjectArena, BufferSizeRounding) {
+  // Test that non-power-of-2 buffer sizes are rounded up
+  // minBuffSize = 10 should round up to 16 (next power of 2)
+  dispenso::ConcurrentObjectArena<int> arena(10);
+
+  arena.grow_by(20);
+
+  // Capacity should be a multiple of 16 (the rounded buffer size)
+  EXPECT_EQ(arena.capacity() % 16, 0u);
+
+  // Buffer size should be 16
+  EXPECT_EQ(arena.capacity() / arena.numBuffers(), 16u);
+}
+
+TEST(ConcurrentObjectArena, ExactPowerOfTwoBufferSize) {
+  // Test that exact power-of-2 buffer sizes are preserved
+  dispenso::ConcurrentObjectArena<int> arena(32);
+
+  arena.grow_by(100);
+
+  // Buffer size should be exactly 32
+  EXPECT_EQ(arena.capacity() / arena.numBuffers(), 32u);
+}
+
+TEST(ConcurrentObjectArena, MoveAssignment) {
+  dispenso::ConcurrentObjectArena<int> arena1(16);
+  dispenso::ConcurrentObjectArena<int> arena2(8);
+
+  arena1.grow_by(50);
+  for (size_t i = 0; i < 50; ++i) {
+    arena1[i] = static_cast<int>(i * 2);
+  }
+
+  arena2.grow_by(10);
+  for (size_t i = 0; i < 10; ++i) {
+    arena2[i] = static_cast<int>(i * 3);
+  }
+
+  size_t arena1Size = arena1.size();
+  size_t arena1NumBuffers = arena1.numBuffers();
+  size_t arena2Size = arena2.size();
+
+  // Move assign arena1 to arena2 (uses swap internally)
+  arena2 = std::move(arena1);
+
+  // arena2 should now have arena1's contents
+  EXPECT_EQ(arena2.size(), arena1Size);
+  EXPECT_EQ(arena2.numBuffers(), arena1NumBuffers);
+  for (size_t i = 0; i < arena1Size; ++i) {
+    EXPECT_EQ(arena2[i], static_cast<int>(i * 2));
+  }
+
+  // arena1 now has arena2's old contents (swap behavior)
+  EXPECT_EQ(arena1.size(), arena2Size);
+}
+
+TEST(ConcurrentObjectArena, SwapFunction) {
+  dispenso::ConcurrentObjectArena<int> arena1(16);
+  dispenso::ConcurrentObjectArena<int> arena2(32);
+
+  arena1.grow_by(20);
+  for (size_t i = 0; i < 20; ++i) {
+    arena1[i] = 100;
+  }
+
+  arena2.grow_by(40);
+  for (size_t i = 0; i < 40; ++i) {
+    arena2[i] = 200;
+  }
+
+  size_t size1 = arena1.size();
+  size_t size2 = arena2.size();
+
+  swap(arena1, arena2);
+
+  EXPECT_EQ(arena1.size(), size2);
+  EXPECT_EQ(arena2.size(), size1);
+
+  for (size_t i = 0; i < arena1.size(); ++i) {
+    EXPECT_EQ(arena1[i], 200);
+  }
+  for (size_t i = 0; i < arena2.size(); ++i) {
+    EXPECT_EQ(arena2[i], 100);
+  }
+}
+
+TEST(ConcurrentObjectArena, ConstAccess) {
+  dispenso::ConcurrentObjectArena<int> arena(16);
+  arena.grow_by(10);
+  for (size_t i = 0; i < 10; ++i) {
+    arena[i] = static_cast<int>(i);
+  }
+
+  const dispenso::ConcurrentObjectArena<int>& constArena = arena;
+
+  // Test const operator[]
+  for (size_t i = 0; i < 10; ++i) {
+    EXPECT_EQ(constArena[i], static_cast<int>(i));
+  }
+
+  // Test const getBuffer
+  const int* buf = constArena.getBuffer(0);
+  EXPECT_NE(buf, nullptr);
+
+  // Test const size, capacity, numBuffers
+  EXPECT_EQ(constArena.size(), 10u);
+  EXPECT_GE(constArena.capacity(), 10u);
+  EXPECT_GE(constArena.numBuffers(), 1u);
+
+  // Test const getBufferSize
+  EXPECT_GT(constArena.getBufferSize(0), 0u);
+}
+
+TEST(ConcurrentObjectArena, DifferentIndexType) {
+  // Test with uint32_t as Index type
+  dispenso::ConcurrentObjectArena<int, uint32_t> arena(16);
+
+  arena.grow_by(100);
+  for (uint32_t i = 0; i < 100; ++i) {
+    arena[i] = static_cast<int>(i * 5);
+  }
+
+  for (uint32_t i = 0; i < 100; ++i) {
+    EXPECT_EQ(arena[i], static_cast<int>(i * 5));
+  }
+
+  EXPECT_EQ(arena.size(), 100u);
+}
+
+TEST(ConcurrentObjectArena, CustomAlignment) {
+  // Test with custom alignment
+  constexpr size_t kAlignment = 128;
+  dispenso::ConcurrentObjectArena<int, size_t, kAlignment> arena(16);
+
+  arena.grow_by(10);
+
+  // Verify buffer pointer alignment
+  const int* buf = arena.getBuffer(0);
+  EXPECT_EQ(reinterpret_cast<uintptr_t>(buf) % kAlignment, 0u);
+}
+
+TEST(ConcurrentObjectArena, GrowByZero) {
+  dispenso::ConcurrentObjectArena<int> arena(16);
+
+  size_t initialSize = arena.size();
+  arena.grow_by(0);
+  EXPECT_EQ(arena.size(), initialSize);
+}
+
+TEST(ConcurrentObjectArena, SingleElementGrowth) {
+  dispenso::ConcurrentObjectArena<int> arena(16);
+
+  // Grow by 1 repeatedly
+  for (int i = 0; i < 50; ++i) {
+    size_t idx = arena.grow_by(1);
+    arena[idx] = i;
+  }
+
+  EXPECT_EQ(arena.size(), 50u);
+
+  for (int i = 0; i < 50; ++i) {
+    EXPECT_EQ(arena[static_cast<size_t>(i)], i);
+  }
+}
