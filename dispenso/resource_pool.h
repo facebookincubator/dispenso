@@ -30,6 +30,7 @@ class ResourcePool;
 template <typename T>
 class Resource {
  public:
+  /** Move constructor. */
   Resource(Resource&& other) : resource_(other.resource_), pool_(other.pool_) {
     other.resource_ = nullptr;
   }

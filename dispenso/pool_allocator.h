@@ -92,7 +92,9 @@ class PoolAllocatorT {
   std::vector<char*> chunks_;
 };
 
+/** Thread-safe pool allocator with internal locking. */
 using PoolAllocator = PoolAllocatorT<true>;
+/** Pool allocator without locking, for single-threaded use or external synchronization. */
 using NoLockPoolAllocator = PoolAllocatorT<false>;
 
 } // namespace dispenso
