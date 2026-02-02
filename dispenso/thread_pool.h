@@ -141,6 +141,7 @@ class alignas(kCacheLineSize) ThreadPool {
    * std::function or similarly type-erased objects will also work.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f);
 
   /**
@@ -152,6 +153,7 @@ class alignas(kCacheLineSize) ThreadPool {
    * std::function or similarly type-erased objects will also work.
    **/
   template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag);
 
   /**
@@ -270,6 +272,7 @@ DISPENSO_DLL_ACCESS void resizeGlobalThreadPool(size_t numThreads);
 // ----------------------------- Implementation details -------------------------------------
 
 template <typename F>
+DISPENSO_REQUIRES(OnceCallableFunc<F>)
 inline void ThreadPool::schedule(F&& f) {
   ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
   ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
@@ -283,6 +286,7 @@ inline void ThreadPool::schedule(F&& f) {
 }
 
 template <typename F>
+DISPENSO_REQUIRES(OnceCallableFunc<F>)
 inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
   if (auto* token =
           static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this))) {

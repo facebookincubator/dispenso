@@ -22,6 +22,17 @@
 
 namespace dispenso {
 
+#if DISPENSO_HAS_CONCEPTS
+/**
+ * @concept ForEachFunc
+ * @brief A callable suitable for for_each operations.
+ *
+ * The callable must be invocable with a reference to the iterator's value type.
+ **/
+template <typename F, typename Iter>
+concept ForEachFunc = std::invocable<F, decltype(*std::declval<Iter>())>;
+#endif // DISPENSO_HAS_CONCEPTS
+
 /**
  * A set of options to control for_each
  **/
@@ -55,6 +66,7 @@ struct ForEachOptions {
  * @param options See ForEachOptions for details.
  **/
 template <typename TaskSetT, typename Iter, typename F>
+DISPENSO_REQUIRES(ForEachFunc<F, Iter>)
 void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions options = {}) {
   // TODO(bbudge): With options.maxThreads, we might want to allow a small fanout factor in
   // recursive case?
@@ -144,6 +156,7 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
  * always wait, and therefore options.wait is ignored.
  **/
 template <typename Iter, typename F>
+DISPENSO_REQUIRES(ForEachFunc<F, Iter>)
 void for_each_n(Iter start, size_t n, F&& f, ForEachOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
@@ -162,6 +175,7 @@ void for_each_n(Iter start, size_t n, F&& f, ForEachOptions options = {}) {
  * @param options See ForEachOptions for details.
  **/
 template <typename TaskSetT, typename Iter, typename F>
+DISPENSO_REQUIRES(ForEachFunc<F, Iter>)
 void for_each(TaskSetT& tasks, Iter start, Iter end, F&& f, ForEachOptions options = {}) {
   for_each_n(tasks, start, std::distance(start, end), std::forward<F>(f), options);
 }
@@ -178,6 +192,7 @@ void for_each(TaskSetT& tasks, Iter start, Iter end, F&& f, ForEachOptions optio
  * always wait, and therefore options.wait is ignored.
  **/
 template <typename Iter, typename F>
+DISPENSO_REQUIRES(ForEachFunc<F, Iter>)
 void for_each(Iter start, Iter end, F&& f, ForEachOptions options = {}) {
   for_each_n(start, std::distance(start, end), std::forward<F>(f), options);
 }
