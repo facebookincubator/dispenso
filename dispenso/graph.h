@@ -20,9 +20,11 @@
 #include <type_traits>
 #include <vector>
 
+#include <dispenso/once_function.h>
 #include <dispenso/platform.h>
 #include <dispenso/pool_allocator.h>
 #include <dispenso/small_buffer_allocator.h>
+
 /*
 Terminology
 --------------------------------------------------------------------------------
@@ -431,6 +433,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
    * @return reference to the created node.
    **/
   template <class T>
+  DISPENSO_REQUIRES(OnceCallableFunc<T>)
   N& addNode(T&& f) {
     nodes_.push_back(new (allocator_->alloc()) NodeType(std::forward<T>(f)));
     return *nodes_.back();
@@ -551,6 +554,7 @@ class DISPENSO_DLL_ACCESS GraphT {
    * @param f A functor with signature void().
    **/
   template <class T>
+  DISPENSO_REQUIRES(OnceCallableFunc<T>)
   N& addNode(T&& f) {
     return subgraphs_[0].addNode(std::forward<T>(f));
   }
