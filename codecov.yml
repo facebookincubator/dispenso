@@ -1,0 +1,31 @@
+# Codecov configuration for dispenso
+# See https://docs.codecov.com/docs/codecovyml-reference
+
+coverage:
+  # Overall project coverage settings
+  status:
+    project:
+      default:
+        # Require at least 90% overall coverage
+        target: 90%
+    patch:
+      default:
+        # New code should have at least 80% coverage
+        target: 80%
+        # This is informational, not blocking
+        informational: true
+
+  # Round coverage to 1 decimal place
+  precision: 1
+
+# Ignore third-party code and test files
+ignore:
+  - "dispenso/third-party/**"
+  - "tests/**"
+  - "benchmarks/**"
+
+# Comment settings for PRs
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true
