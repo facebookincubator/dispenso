@@ -1,5 +1,6 @@
 [![Build and test](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml/badge.svg)](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://facebookincubator.github.io/dispenso)
+[![codecov](https://codecov.io/gh/facebookincubator/dispenso/branch/main/graph/badge.svg)](https://codecov.io/gh/facebookincubator/dispenso)
 
 # Dispenso
 
