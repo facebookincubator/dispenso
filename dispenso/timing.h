@@ -17,6 +17,13 @@
 
 namespace dispenso {
 
+/**
+ * Get elapsed time in seconds since program start.
+ *
+ * Uses high-resolution timing when available (e.g., RDTSC on x86).
+ *
+ * @return Elapsed time in seconds as a double.
+ */
 DISPENSO_DLL_ACCESS double getTime();
 
 } // namespace dispenso

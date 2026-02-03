@@ -231,6 +231,7 @@ class Node {
   Node() = delete;
   Node(const Node&) = delete;
   Node& operator=(const Node&) = delete;
+  /** Move constructor. */
   Node(Node&& other) noexcept
       : numIncompletePredecessors_(other.numIncompletePredecessors_.load()),
         numPredecessors_(other.numPredecessors_),
@@ -324,6 +325,7 @@ class Node {
   }
 
  protected:
+  /** Construct a Node with a functor. @param f The functor to execute when the node runs. */
   template <class F, class X = std::enable_if_t<!std::is_base_of<Node, F>::value, void>>
   Node(F&& f) : numIncompletePredecessors_(0) {
     using FNoRef = typename std::remove_reference<F>::type;
@@ -368,6 +370,7 @@ class BiPropNode : public Node {
   BiPropNode() = delete;
   BiPropNode(const BiPropNode&) = delete;
   BiPropNode& operator=(const BiPropNode&) = delete;
+  /** Move constructor. */
   BiPropNode(BiPropNode&& other) noexcept
       : Node(std::move(other)), biPropSet_(std::move(other.biPropSet_)) {}
   /**
@@ -414,6 +417,11 @@ class BiPropNode : public Node {
 template <class N>
 class GraphT;
 
+/**
+ * A subgraph within a Graph, containing a collection of nodes that can be executed together.
+ *
+ * @tparam N The node type (Node or BiPropNode).
+ */
 template <class N>
 class DISPENSO_DLL_ACCESS SubgraphT {
  public:
@@ -421,6 +429,7 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   SubgraphT() = delete;
   SubgraphT(const SubgraphT<N>&) = delete;
   SubgraphT<N>& operator=(const SubgraphT<N>&) = delete;
+  /** Move constructor. */
   SubgraphT(SubgraphT<N>&& other) noexcept
       : graph_(other.graph_),
         nodes_(std::move(other.nodes_)),
@@ -526,6 +535,15 @@ class DISPENSO_DLL_ACCESS SubgraphT {
   friend class GraphT;
 };
 
+/**
+ * A directed acyclic graph (DAG) for expressing task dependencies.
+ *
+ * GraphT manages a collection of subgraphs, each containing nodes that represent work to be done.
+ * Nodes can have dependencies on other nodes, and the graph executor ensures nodes run only after
+ * their dependencies complete.
+ *
+ * @tparam N The node type (Node or BiPropNode).
+ */
 template <class N>
 class DISPENSO_DLL_ACCESS GraphT {
  public:
@@ -688,9 +706,13 @@ class DISPENSO_DLL_ACCESS GraphT {
   friend class SubgraphT;
 };
 
+/** A DAG for task scheduling with simple dependency tracking. */
 using Graph = GraphT<Node>;
+/** A DAG for task scheduling with bidirectional dependency propagation. */
 using BiPropGraph = GraphT<BiPropNode>;
 
+/** A subgraph within a Graph. */
 using Subgraph = SubgraphT<Node>;
+/** A subgraph within a BiPropGraph. */
 using BiPropSubgraph = SubgraphT<BiPropNode>;
 } // namespace dispenso

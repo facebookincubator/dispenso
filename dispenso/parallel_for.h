@@ -651,6 +651,7 @@ void parallel_for(
       options);
 }
 
+/** @overload */
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -744,6 +745,7 @@ void parallel_for(
       options);
 }
 
+/** @overload */
 template <
     typename TaskSetT,
     typename IntegerA,
