@@ -116,11 +116,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa8ab16da904e7afbc06a270e6efc7793"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5dbcec6915db0ff2080c49022c08ceda" id="r_a5dbcec6915db0ff2080c49022c08ceda"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5dbcec6915db0ff2080c49022c08ceda">TimedTask</a> (<a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;&amp;other)</td></tr>
 <tr class="separator:a5dbcec6915db0ff2080c49022c08ceda"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb39deb82be74dc00ea243dae9a98445" id="r_afb39deb82be74dc00ea243dae9a98445"><td class="memItemLeft" align="right" valign="top"><a id="afb39deb82be74dc00ea243dae9a98445" name="afb39deb82be74dc00ea243dae9a98445"></a>
-<a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator=</b> (const <a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;)=delete</td></tr>
-<tr class="separator:afb39deb82be74dc00ea243dae9a98445"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a75c81e4e6a0ac5257db6c8fb01da8137" id="r_a75c81e4e6a0ac5257db6c8fb01da8137"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a75c81e4e6a0ac5257db6c8fb01da8137">operator=</a> (<a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;&amp;other)</td></tr>
-<tr class="separator:a75c81e4e6a0ac5257db6c8fb01da8137"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab1b96df83cc9c7b1a1bc2ea542dbe9d2" id="r_ab1b96df83cc9c7b1a1bc2ea542dbe9d2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab1b96df83cc9c7b1a1bc2ea542dbe9d2">cancel</a> ()</td></tr>
 <tr class="separator:ab1b96df83cc9c7b1a1bc2ea542dbe9d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a310952e54d6daf1add1cbbe4c690c8f9" id="r_a310952e54d6daf1add1cbbe4c690c8f9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a310952e54d6daf1add1cbbe4c690c8f9">detach</a> ()</td></tr>
@@ -162,8 +157,9 @@ Friends</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Move constructor. </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00045">45</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00046">46</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -191,7 +187,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p>Destroy the timed task. If <a class="el" href="#a310952e54d6daf1add1cbbe4c690c8f9">detach()</a> has not been called, this will cancel further calls to the underlying scheduled function, and will wait if necessary until the function is no longer in progress. This is to naturally protect resources that may be used by the function. If <a class="el" href="#a310952e54d6daf1add1cbbe4c690c8f9">detach()</a> was called, the destructor will not block. </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00087">87</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00088">88</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -221,7 +217,7 @@ Friends</h2></td></tr>
 <p>See how many calls there have been to the underlying function have completed thus far.</p>
 <dl class="section return"><dt>Returns</dt><dd>the count of calls made this far to the underlying function. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00076">76</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00077">77</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -249,7 +245,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p>Cancel the task. No further runs to the underlying function will occur (though any calls in progress will complete). </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00057">57</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00058">58</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -277,34 +273,7 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 <p>Detach this task so that it cannot block in destruction, and destruction does not cancel further runs to the underlying function. This is only to be used in cases where the underlying schedulable and any function resources are expected to outlive any other copy of the task. </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00067">67</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
-
-</div>
-</div>
-<a id="a75c81e4e6a0ac5257db6c8fb01da8137" name="a75c81e4e6a0ac5257db6c8fb01da8137"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a75c81e4e6a0ac5257db6c8fb01da8137">&#9670;&#160;</a></span>operator=()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp; dispenso::TimedTask::operator= </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classdispenso_1_1_timed_task.html">TimedTask</a> &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>other</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00048">48</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00068">68</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -329,7 +298,7 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00120">120</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00121">121</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>

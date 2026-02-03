@@ -173,16 +173,14 @@ Functions</h2></td></tr>
 <tr class="memitem:a35bb015d86adb74f6866838450d2d5b0" id="r_a35bb015d86adb74f6866838450d2d5b0"><td class="memTemplParams" colspan="2">template&lt;class InputIt &gt; </td></tr>
 <tr class="memitem:a35bb015d86adb74f6866838450d2d5b0"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::vector&lt; typename std::iterator_traits&lt; InputIt &gt;::value_type &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a35bb015d86adb74f6866838450d2d5b0">dispenso::when_all</a> (<a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> &amp;taskSet, InputIt first, InputIt last)</td></tr>
 <tr class="separator:a35bb015d86adb74f6866838450d2d5b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a631635d0ec0cb1238cf39c07534d4100" id="r_a631635d0ec0cb1238cf39c07534d4100"><td class="memTemplParams" colspan="2"><a id="a631635d0ec0cb1238cf39c07534d4100" name="a631635d0ec0cb1238cf39c07534d4100"></a>
-template&lt;class InputIt &gt; </td></tr>
-<tr class="memitem:a631635d0ec0cb1238cf39c07534d4100"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::vector&lt; typename std::iterator_traits&lt; InputIt &gt;::value_type &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>dispenso::when_all</b> (<a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;taskSet, InputIt first, InputIt last)</td></tr>
+<tr class="memitem:a631635d0ec0cb1238cf39c07534d4100" id="r_a631635d0ec0cb1238cf39c07534d4100"><td class="memTemplParams" colspan="2">template&lt;class InputIt &gt; </td></tr>
+<tr class="memitem:a631635d0ec0cb1238cf39c07534d4100"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::vector&lt; typename std::iterator_traits&lt; InputIt &gt;::value_type &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a631635d0ec0cb1238cf39c07534d4100">dispenso::when_all</a> (<a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;taskSet, InputIt first, InputIt last)</td></tr>
 <tr class="separator:a631635d0ec0cb1238cf39c07534d4100"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a288cfa6cecc896633af51a109c31c184" id="r_a288cfa6cecc896633af51a109c31c184"><td class="memTemplParams" colspan="2">template&lt;class... Futures&gt; </td></tr>
 <tr class="memitem:a288cfa6cecc896633af51a109c31c184"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a288cfa6cecc896633af51a109c31c184">dispenso::when_all</a> (<a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> &amp;taskSet, Futures &amp;&amp;... futures) -&gt; <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::tuple&lt; std::decay_t&lt; Futures &gt;... &gt; &gt;</td></tr>
 <tr class="separator:a288cfa6cecc896633af51a109c31c184"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a674cefd55fc65ac0fed54441031d515e" id="r_a674cefd55fc65ac0fed54441031d515e"><td class="memTemplParams" colspan="2"><a id="a674cefd55fc65ac0fed54441031d515e" name="a674cefd55fc65ac0fed54441031d515e"></a>
-template&lt;class... Futures&gt; </td></tr>
-<tr class="memitem:a674cefd55fc65ac0fed54441031d515e"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><b>dispenso::when_all</b> (<a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;taskSet, Futures &amp;&amp;... futures) -&gt; <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::tuple&lt; std::decay_t&lt; Futures &gt;... &gt; &gt;</td></tr>
+<tr class="memitem:a674cefd55fc65ac0fed54441031d515e" id="r_a674cefd55fc65ac0fed54441031d515e"><td class="memTemplParams" colspan="2">template&lt;class... Futures&gt; </td></tr>
+<tr class="memitem:a674cefd55fc65ac0fed54441031d515e"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a674cefd55fc65ac0fed54441031d515e">dispenso::when_all</a> (<a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;taskSet, Futures &amp;&amp;... futures) -&gt; <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::tuple&lt; std::decay_t&lt; Futures &gt;... &gt; &gt;</td></tr>
 <tr class="separator:a674cefd55fc65ac0fed54441031d515e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
@@ -241,7 +239,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00534">534</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00557">557</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -294,7 +292,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00521">521</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00544">544</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -335,7 +333,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00442">442</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00465">465</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -382,7 +380,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00565">565</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00588">588</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -435,7 +433,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00552">552</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00575">575</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -484,7 +482,7 @@ template&lt;class F , class... Args&gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a1">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00430">430</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00453">453</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -531,7 +529,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00503">503</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00526">526</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -584,7 +582,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00490">490</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00513">513</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -631,7 +629,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00472">472</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00495">495</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -684,7 +682,7 @@ template&lt;class F , class... Args&gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00459">459</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00482">482</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -714,7 +712,7 @@ template&lt;class F , class... Args&gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a3">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00596">596</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00619">619</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -750,7 +748,7 @@ template&lt;typename X &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00588">588</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00611">611</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -786,12 +784,65 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00577">577</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00600">600</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+
+</div>
+</div>
+<a id="a674cefd55fc65ac0fed54441031d515e" name="a674cefd55fc65ac0fed54441031d515e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a674cefd55fc65ac0fed54441031d515e">&#9670;&#160;</a></span>when_all() <span class="overload">[1/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class... Futures&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">auto dispenso::when_all </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>taskSet</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Futures &amp;&amp;...</td>          <td class="paramname"><span class="paramname"><em>futures</em></span>&#160;) -&gt;  <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; std::tuple&lt; std::decay_t&lt; Futures &gt;... &gt; &gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+
+</div>
+</div>
+<a id="a631635d0ec0cb1238cf39c07534d4100" name="a631635d0ec0cb1238cf39c07534d4100"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a631635d0ec0cb1238cf39c07534d4100">&#9670;&#160;</a></span>when_all() <span class="overload">[2/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class InputIt &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">Future&lt; std::vector&lt; typename std::iterator_traits&lt; InputIt &gt;::value_type &gt; &gt; dispenso::when_all </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>taskSet</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">InputIt</td>          <td class="paramname"><span class="paramname"><em>first</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">InputIt</td>          <td class="paramname"><span class="paramname"><em>last</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
 
 </div>
 </div>
 <a id="a435459bf87d4642d43757f48e01fac10" name="a435459bf87d4642d43757f48e01fac10"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a435459bf87d4642d43757f48e01fac10">&#9670;&#160;</a></span>when_all() <span class="overload">[1/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a435459bf87d4642d43757f48e01fac10">&#9670;&#160;</a></span>when_all() <span class="overload">[3/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -818,7 +869,7 @@ template&lt;class... Futures&gt; </div>
 </div>
 </div>
 <a id="a7910e3bd46b9cf1c12fe246ef65053f1" name="a7910e3bd46b9cf1c12fe246ef65053f1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7910e3bd46b9cf1c12fe246ef65053f1">&#9670;&#160;</a></span>when_all() <span class="overload">[2/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a7910e3bd46b9cf1c12fe246ef65053f1">&#9670;&#160;</a></span>when_all() <span class="overload">[4/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -852,7 +903,7 @@ template&lt;class InputIt &gt; </div>
 </div>
 </div>
 <a id="a288cfa6cecc896633af51a109c31c184" name="a288cfa6cecc896633af51a109c31c184"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a288cfa6cecc896633af51a109c31c184">&#9670;&#160;</a></span>when_all() <span class="overload">[3/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a288cfa6cecc896633af51a109c31c184">&#9670;&#160;</a></span>when_all() <span class="overload">[5/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -874,7 +925,7 @@ template&lt;class... Futures&gt; </div>
 <p>Take a specific set of futures, and return a future which will be ready when all input futures are ready.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">tastSet</td><td>A task set to register with such that after this call, <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code> </td></tr>
+    <tr><td class="paramname">taskSet</td><td>A task set to register with such that after this call, <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code> </td></tr>
     <tr><td class="paramname">futures</td><td>A parameter pack of futures.</td></tr>
   </table>
   </dd>
@@ -884,7 +935,7 @@ template&lt;class... Futures&gt; </div>
 </div>
 </div>
 <a id="a35bb015d86adb74f6866838450d2d5b0" name="a35bb015d86adb74f6866838450d2d5b0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a35bb015d86adb74f6866838450d2d5b0">&#9670;&#160;</a></span>when_all() <span class="overload">[4/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a35bb015d86adb74f6866838450d2d5b0">&#9670;&#160;</a></span>when_all() <span class="overload">[6/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -911,7 +962,7 @@ template&lt;class InputIt &gt; </div>
 <p>Take a collection of futures, and return a future which will be ready when all input futures are ready.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">tastSet</td><td>A task set to register with such that after this call, <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code> </td></tr>
+    <tr><td class="paramname">taskSet</td><td>A task set to register with such that after this call, <code>taskSet::wait()</code> implies that the resultant future <code>is_ready()</code> </td></tr>
     <tr><td class="paramname">first</td><td>An iterator to the start of the future collection. </td></tr>
     <tr><td class="paramname">last</td><td>An iterator to the end of the future collection.</td></tr>
   </table>

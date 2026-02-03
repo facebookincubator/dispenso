@@ -102,8 +102,6 @@ $(function(){initNavTree('classdispenso_1_1_node.html',''); initResizable(true);
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
-<a href="#pro-attribs">Protected Attributes</a> &#124;
-<a href="#pro-static-attribs">Static Protected Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="classdispenso_1_1_node-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">dispenso::Node Class Reference</div></div>
@@ -119,9 +117,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ad57a6a87a23128a825f7dcb9a314901d" id="r_ad57a6a87a23128a825f7dcb9a314901d"><td class="memItemLeft" align="right" valign="top"><a id="ad57a6a87a23128a825f7dcb9a314901d" name="ad57a6a87a23128a825f7dcb9a314901d"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Node</b> (const <a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;)=delete</td></tr>
 <tr class="separator:ad57a6a87a23128a825f7dcb9a314901d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9967bc6f88085c51b870078e552defb" id="r_ab9967bc6f88085c51b870078e552defb"><td class="memItemLeft" align="right" valign="top"><a id="ab9967bc6f88085c51b870078e552defb" name="ab9967bc6f88085c51b870078e552defb"></a>
-<a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator=</b> (const <a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;)=delete</td></tr>
-<tr class="separator:ab9967bc6f88085c51b870078e552defb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af2591c722b64e2ba75f86eb752c512b3" id="r_af2591c722b64e2ba75f86eb752c512b3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af2591c722b64e2ba75f86eb752c512b3">Node</a> (<a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;&amp;other) noexcept</td></tr>
 <tr class="separator:af2591c722b64e2ba75f86eb752c512b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abfb52f4bd018eee8791499a9bd160c8a" id="r_abfb52f4bd018eee8791499a9bd160c8a"><td class="memTemplParams" colspan="2">template&lt;typename... Ns&gt; </td></tr>
@@ -149,28 +144,15 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a6bd182ac99540c7b2c5d923262f75de7" id="r_a6bd182ac99540c7b2c5d923262f75de7"><td class="memTemplParams" colspan="2">template&lt;class F , class X  = std::enable_if_t&lt;!std::is_base_of&lt;Node, F&gt;::value, void&gt;&gt; </td></tr>
 <tr class="memitem:a6bd182ac99540c7b2c5d923262f75de7"><td class="memTemplItemLeft" align="right" valign="top">&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a6bd182ac99540c7b2c5d923262f75de7">Node</a> (F &amp;&amp;f)</td></tr>
 <tr class="separator:a6bd182ac99540c7b2c5d923262f75de7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a22161da856adcfc0afc5d873dead8b1e" id="r_a22161da856adcfc0afc5d873dead8b1e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a22161da856adcfc0afc5d873dead8b1e">dependsOnOneNode</a> (<a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;node)</td></tr>
-<tr class="separator:a22161da856adcfc0afc5d873dead8b1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
-Protected Attributes</h2></td></tr>
-<tr class="memitem:ab26310466b8e316b8aa49d3f3824c373" id="r_ab26310466b8e316b8aa49d3f3824c373"><td class="memItemLeft" align="right" valign="top">std::atomic&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab26310466b8e316b8aa49d3f3824c373">numIncompletePredecessors_</a></td></tr>
-<tr class="separator:ab26310466b8e316b8aa49d3f3824c373"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab5fc8dc9d2848ba8936856c0dbd2aa93" id="r_ab5fc8dc9d2848ba8936856c0dbd2aa93"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab5fc8dc9d2848ba8936856c0dbd2aa93">numPredecessors_</a> = 0</td></tr>
-<tr class="separator:ab5fc8dc9d2848ba8936856c0dbd2aa93"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-static-attribs" name="pro-static-attribs"></a>
-Static Protected Attributes</h2></td></tr>
-<tr class="memitem:a39f7109e412058ea995059240a8f5c42" id="r_a39f7109e412058ea995059240a8f5c42"><td class="memItemLeft" align="right" valign="top">static constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a39f7109e412058ea995059240a8f5c42">kCompleted</a> = std::numeric_limits&lt;size_t&gt;::max()</td></tr>
-<tr class="separator:a39f7109e412058ea995059240a8f5c42"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
 <tr class="memitem:a0432fc6facf69eaa06f43c2a76e0e29d" id="r_a0432fc6facf69eaa06f43c2a76e0e29d"><td class="memTemplParams" colspan="2">template&lt;class N &gt; </td></tr>
 <tr class="memitem:a0432fc6facf69eaa06f43c2a76e0e29d"><td class="memTemplItemLeft" align="right" valign="top">class&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a0432fc6facf69eaa06f43c2a76e0e29d">SubgraphT</a></td></tr>
 <tr class="separator:a0432fc6facf69eaa06f43c2a76e0e29d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af07eb176eea2931ad95c100e4303eb01" id="r_af07eb176eea2931ad95c100e4303eb01"><td class="memTemplParams" colspan="2">template&lt;typename G &gt; </td></tr>
-<tr class="memitem:af07eb176eea2931ad95c100e4303eb01"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#af07eb176eea2931ad95c100e4303eb01">setAllNodesIncomplete</a> (const G &amp;graph)</td></tr>
+<tr class="memitem:af07eb176eea2931ad95c100e4303eb01" id="r_af07eb176eea2931ad95c100e4303eb01"><td class="memTemplParams" colspan="2"><a id="af07eb176eea2931ad95c100e4303eb01" name="af07eb176eea2931ad95c100e4303eb01"></a>
+template&lt;typename G &gt; </td></tr>
+<tr class="memitem:af07eb176eea2931ad95c100e4303eb01"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><b>setAllNodesIncomplete</b> (const G &amp;graph)</td></tr>
 <tr class="separator:af07eb176eea2931ad95c100e4303eb01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -178,7 +160,7 @@ Friends</h2></td></tr>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#_a1">graph_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00227">227</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00229">229</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="af2591c722b64e2ba75f86eb752c512b3" name="af2591c722b64e2ba75f86eb752c512b3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af2591c722b64e2ba75f86eb752c512b3">&#9670;&#160;</a></span>Node() <span class="overload">[1/2]</span></h2>
@@ -202,8 +184,9 @@ Friends</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Move constructor. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00232">232</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00235">235</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -230,7 +213,7 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00241">241</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00244">244</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -258,8 +241,14 @@ template&lt;class F , class X  = std::enable_if_t&lt;!std::is_base_of&lt;Node, F
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Construct a <a class="el" href="classdispenso_1_1_node.html">Node</a> with a functor.</p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">f</td><td>The functor to execute when the node runs. </td></tr>
+  </table>
+  </dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00326">326</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00330">330</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -298,34 +287,7 @@ template&lt;typename... Ns&gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a3">graph_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00252">252</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
-
-</div>
-</div>
-<a id="a22161da856adcfc0afc5d873dead8b1e" name="a22161da856adcfc0afc5d873dead8b1e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a22161da856adcfc0afc5d873dead8b1e">&#9670;&#160;</a></span>dependsOnOneNode()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void dispenso::Node::dependsOnOneNode </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classdispenso_1_1_node.html">Node</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>node</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00336">336</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00255">255</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -361,7 +323,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00280">280</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00283">283</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -397,7 +359,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00269">269</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00272">272</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -425,7 +387,7 @@ template&lt;class F &gt; </div>
 </div><div class="memdoc">
 <p>Return true if node is completed. New node always incomplete. If node was invoked it become completed. this state can be changed by calling <code><a class="el" href="#a3a9c840c8df858d1b9e0e1c8aacf3ce4">setIncomplete()</a></code> Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00297">297</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00300">300</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -453,7 +415,7 @@ template&lt;class F &gt; </div>
 </div><div class="memdoc">
 <p>Return the number of nodes this node depends on. Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00288">288</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00291">291</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -481,7 +443,7 @@ template&lt;class F &gt; </div>
 </div><div class="memdoc">
 <p>Invoke the type-erased functor. Change competed state of the node to "Incomplete". Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00259">259</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00262">262</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -509,7 +471,7 @@ template&lt;class F &gt; </div>
 </div><div class="memdoc">
 <p>Mark node completed. Concurrency safe. This methods should never be called concurrent to when the graph execution is happening </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00320">320</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00323">323</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -537,43 +499,14 @@ template&lt;class F &gt; </div>
 </div><div class="memdoc">
 <p>Mark node incomplete. (that allows reevaluate this node again). Concurrency safe. This methods should never be called concurrent to when the graph execution is happening</p>
 <dl class="section return"><dt>Returns</dt><dd>true if state was changed. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a9">graph_example.cpp</a>.</dd>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a10">graph_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00307">307</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00310">310</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Friends And Related Symbol Documentation</h2>
-<a id="af07eb176eea2931ad95c100e4303eb01" name="af07eb176eea2931ad95c100e4303eb01"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af07eb176eea2931ad95c100e4303eb01">&#9670;&#160;</a></span>setAllNodesIncomplete</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename G &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void setAllNodesIncomplete </td>
-          <td>(</td>
-          <td class="paramtype">const G &amp;</td>          <td class="paramname"><span class="paramname"><em>graph</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="graph__executor_8cpp_source.html#l00093">93</a> of file <a class="el" href="graph__executor_8cpp_source.html">graph_executor.cpp</a>.</p>
-
-</div>
-</div>
 <a id="a0432fc6facf69eaa06f43c2a76e0e29d" name="a0432fc6facf69eaa06f43c2a76e0e29d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0432fc6facf69eaa06f43c2a76e0e29d">&#9670;&#160;</a></span>SubgraphT</h2>
 
@@ -596,80 +529,7 @@ template&lt;class N &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00355">355</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
-
-</div>
-</div>
-<h2 class="groupheader">Member Data Documentation</h2>
-<a id="a39f7109e412058ea995059240a8f5c42" name="a39f7109e412058ea995059240a8f5c42"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a39f7109e412058ea995059240a8f5c42">&#9670;&#160;</a></span>kCompleted</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">size_t dispenso::Node::kCompleted = std::numeric_limits&lt;size_t&gt;::max()</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span><span class="mlabel">constexpr</span><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00341">341</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
-
-</div>
-</div>
-<a id="ab26310466b8e316b8aa49d3f3824c373" name="ab26310466b8e316b8aa49d3f3824c373"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab26310466b8e316b8aa49d3f3824c373">&#9670;&#160;</a></span>numIncompletePredecessors_</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::atomic&lt;size_t&gt; dispenso::Node::numIncompletePredecessors_</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00342">342</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
-
-</div>
-</div>
-<a id="ab5fc8dc9d2848ba8936856c0dbd2aa93" name="ab5fc8dc9d2848ba8936856c0dbd2aa93"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab5fc8dc9d2848ba8936856c0dbd2aa93">&#9670;&#160;</a></span>numPredecessors_</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">size_t dispenso::Node::numPredecessors_ = 0</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00343">343</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00359">359</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>

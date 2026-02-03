@@ -8,11 +8,12 @@ var searchData=
   ['reservetags_5',['ReserveTagS',['../structdispenso_1_1_reserve_tag_s.html',1,'dispenso']]],
   ['reset_6',['reset',['../classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8',1,'dispenso::CompletionEvent']]],
   ['resize_7',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc',1,'dispenso::ThreadPool::resize()']]],
-  ['resource_8',['Resource',['../classdispenso_1_1_resource.html',1,'dispenso']]],
-  ['resource_5fpool_2eh_9',['resource_pool.h',['../resource__pool_8h.html',1,'']]],
-  ['resourcepool_10',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso::ResourcePool&lt; T &gt;'],['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool::ResourcePool()']]],
-  ['reuseexistingstate_11',['reuseExistingState',['../structdispenso_1_1_par_for_options.html#a84a0af7b2f1c7e7d9335173f91c1b075',1,'dispenso::ParForOptions']]],
-  ['run_12',['run',['../classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256',1,'dispenso::Node']]],
-  ['rw_5flock_2eh_13',['rw_lock.h',['../rw__lock_8h.html',1,'']]],
-  ['rwlock_14',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
+  ['resizeglobalthreadpool_8',['resizeGlobalThreadPool',['../thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b',1,'dispenso']]],
+  ['resource_9',['Resource',['../classdispenso_1_1_resource.html',1,'dispenso::Resource&lt; T &gt;'],['../classdispenso_1_1_resource.html#a1f9f21d091e8497f407e3c2a25e91bc4',1,'dispenso::Resource::Resource()']]],
+  ['resource_5fpool_2eh_10',['resource_pool.h',['../resource__pool_8h.html',1,'']]],
+  ['resourcepool_11',['ResourcePool',['../classdispenso_1_1_resource_pool.html',1,'dispenso::ResourcePool&lt; T &gt;'],['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool::ResourcePool()']]],
+  ['reuseexistingstate_12',['reuseExistingState',['../structdispenso_1_1_par_for_options.html#a84a0af7b2f1c7e7d9335173f91c1b075',1,'dispenso::ParForOptions']]],
+  ['run_13',['run',['../classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256',1,'dispenso::Node']]],
+  ['rw_5flock_2eh_14',['rw_lock.h',['../rw__lock_8h.html',1,'']]],
+  ['rwlock_15',['RWLock',['../classdispenso_1_1_r_w_lock.html',1,'dispenso']]]
 ];

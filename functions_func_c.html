@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.12.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>dispenso: /github/workspace/dispenso/thread_id.cpp Source File</title>
+<title>dispenso: Class Members - Functions</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -73,7 +73,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(function(){initNavTree('thread__id_8cpp_source.html',''); initResizable(true); });
+$(function(){initNavTree('functions_func_c.html',''); initResizable(true); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -98,40 +98,30 @@ $(function(){initNavTree('thread__id_8cpp_source.html',''); initResizable(true);
 </div>
 </div>
 
-<div class="header">
-  <div class="headertitle"><div class="title">thread_id.cpp</div></div>
-</div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="comment">/*</span></div>
-<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="comment"> * Copyright (c) Meta Platforms, Inc. and affiliates.</span></div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="comment"> *</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="comment"> * This source code is licensed under the MIT license found in the</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="comment"> * LICENSE file in the root directory of this source tree.</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="comment"> */</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span> </div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#include &lt;<a class="code" href="thread__id_8h.html">dispenso/thread_id.h</a>&gt;</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="keyword">namespace </span>dispenso {</div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span> </div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>std::atomic&lt;uint64_t&gt; nextThread{0};</div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="keyword">constexpr</span> uint64_t kInvalidThread = std::numeric_limits&lt;uint64_t&gt;::max();</div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span>DISPENSO_THREAD_LOCAL uint64_t currentThread = kInvalidThread;</div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>uint64_t threadId() {</div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>  <span class="keywordflow">if</span> (currentThread == kInvalidThread) {</div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>    currentThread = nextThread.fetch_add(uint64_t{1}, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>  }</div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>  <span class="keywordflow">return</span> currentThread;</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>}</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="athread__id_8h_html"><div class="ttname"><a href="thread__id_8h.html">thread_id.h</a></div></div>
-</div><!-- fragment --></div><!-- contents -->
+<div class="textblock">Here is a list of all documented functions with links to the class documentation for each member:</div>
+
+<h3><a id="index_c" name="index_c"></a>- c -</h3><ul>
+<li>CacheAligned()&#160;:&#160;<a class="el" href="classdispenso_1_1_cache_aligned.html#abe86e14c071a766198c7befe596f055a">dispenso::CacheAligned&lt; T &gt;</a></li>
+<li>calls()&#160;:&#160;<a class="el" href="classdispenso_1_1_timed_task.html#a6fc6b76861616c1d0670051eed5a5732">dispenso::TimedTask</a></li>
+<li>cancel()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">dispenso::ConcurrentTaskSet</a>, <a class="el" href="classdispenso_1_1_task_set.html#adaf78b774cf53f55332f6708f988fc02">dispenso::TaskSet</a>, <a class="el" href="classdispenso_1_1_timed_task.html#ab1b96df83cc9c7b1a1bc2ea542dbe9d2">dispenso::TimedTask</a></li>
+<li>canceled()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">dispenso::ConcurrentTaskSet</a>, <a class="el" href="classdispenso_1_1_task_set.html#aaa78e80f5277f1d3ed7132a41a87e913">dispenso::TaskSet</a></li>
+<li>capacity()&#160;:&#160;<a class="el" href="structdispenso_1_1_concurrent_object_arena.html#a7fc57d61dec8f61aa526deb1461a1557">dispenso::ConcurrentObjectArena&lt; T, Index, alignment &gt;</a>, <a class="el" href="classdispenso_1_1_concurrent_vector.html#a7fea9c2da117a8faa91c59856adf86ad">dispenso::ConcurrentVector&lt; T, Traits, SizeTraits &gt;</a></li>
+<li>cbegin()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_vector.html#a8157ca262ec71edddb03db8ad05f2b52">dispenso::ConcurrentVector&lt; T, Traits, SizeTraits &gt;</a></li>
+<li>cend()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_vector.html#a699a704e271c79bf9a3d537b4a090607">dispenso::ConcurrentVector&lt; T, Traits, SizeTraits &gt;</a></li>
+<li>clear()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_vector.html#ae3f8595a52183e3a145cf8f4213250b1">dispenso::ConcurrentVector&lt; T, Traits, SizeTraits &gt;</a>, <a class="el" href="classdispenso_1_1_graph_t.html#a23d36763edcc0162257ee176355ee1da">dispenso::GraphT&lt; N &gt;</a>, <a class="el" href="classdispenso_1_1_pool_allocator_t.html#ac933f368108448400731469a2c921f02">dispenso::PoolAllocatorT&lt; kThreadSafe &gt;</a>, <a class="el" href="classdispenso_1_1_subgraph_t.html#a2e39c55d6e04462971f93f349c5be3fe">dispenso::SubgraphT&lt; N &gt;</a></li>
+<li>clearSubgraphs()&#160;:&#160;<a class="el" href="classdispenso_1_1_graph_t.html#ad9f8a493f281d8a17ef0db8d6211ff0d">dispenso::GraphT&lt; N &gt;</a></li>
+<li>completed()&#160;:&#160;<a class="el" href="classdispenso_1_1_completion_event.html#aadf4486fc37923878b4d732f0a7f47f4">dispenso::CompletionEvent</a></li>
+<li>ConcurrentObjectArena()&#160;:&#160;<a class="el" href="structdispenso_1_1_concurrent_object_arena.html#ac2e855dc6e3e325e4b9dff88de2ad597">dispenso::ConcurrentObjectArena&lt; T, Index, alignment &gt;</a></li>
+<li>ConcurrentTaskSet()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_task_set.html#a5e48f4df33cd5cf87b3973ffb9153f16">dispenso::ConcurrentTaskSet</a></li>
+<li>ConcurrentVector()&#160;:&#160;<a class="el" href="classdispenso_1_1_concurrent_vector.html#a479d98beb884647f48dcd11226b9db80">dispenso::ConcurrentVector&lt; T, Traits, SizeTraits &gt;</a></li>
+<li>count_down()&#160;:&#160;<a class="el" href="classdispenso_1_1_latch.html#a32b1cd1f97ba95656204c9ba90de41fb">dispenso::Latch</a></li>
+</ul>
+</div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="dir_ff109a5d4b8a833924ba8452f0ad7d5d.html">dispenso</a></li><li class="navelem"><b>thread_id.cpp</b></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.12.0 </li>
   </ul>
 </div>

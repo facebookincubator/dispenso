@@ -110,8 +110,8 @@ $(function(){initNavTree('classdispenso_1_1_timed_task_scheduler.html',''); init
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:afda120b230ff030f8f9af68c6f7899bc" id="r_afda120b230ff030f8f9af68c6f7899bc"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#afda120b230ff030f8f9af68c6f7899bc">TimedTaskScheduler</a> (<a class="el" href="priority_8h.html#ad04637f316fbde5fba47d984c3700bb7">ThreadPriority</a> priority=ThreadPriority::kNormal)</td></tr>
-<tr class="separator:afda120b230ff030f8f9af68c6f7899bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acd3d15aa1ccd2557071a9e95502b4384" id="r_acd3d15aa1ccd2557071a9e95502b4384"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd3d15aa1ccd2557071a9e95502b4384">TimedTaskScheduler</a> (<a class="el" href="priority_8h.html#ad04637f316fbde5fba47d984c3700bb7">ThreadPriority</a> priority=ThreadPriority::kNormal)</td></tr>
+<tr class="separator:acd3d15aa1ccd2557071a9e95502b4384"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66c87c2ba3bdc099ffcb1d8a8e136628" id="r_a66c87c2ba3bdc099ffcb1d8a8e136628"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a66c87c2ba3bdc099ffcb1d8a8e136628">setPriority</a> (<a class="el" href="priority_8h.html#ad04637f316fbde5fba47d984c3700bb7">ThreadPriority</a> priority)</td></tr>
 <tr class="separator:a66c87c2ba3bdc099ffcb1d8a8e136628"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd26c0aa37ae53e38867381cf02e5622" id="r_acd26c0aa37ae53e38867381cf02e5622"><td class="memTemplParams" colspan="2">template&lt;typename Schedulable , typename F &gt; </td></tr>
@@ -133,10 +133,10 @@ Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A timed-task scheduler running on a single thread. This allows multiple schedulers if necessary, if e.g. you wish to schedule against InlineInvoker backing schedulable and you're running a lot of relatively quick timed tasks.Most people should just use the global timed task scheduler. </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00129">129</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00130">130</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="afda120b230ff030f8f9af68c6f7899bc" name="afda120b230ff030f8f9af68c6f7899bc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afda120b230ff030f8f9af68c6f7899bc">&#9670;&#160;</a></span>TimedTaskScheduler()</h2>
+<a id="acd3d15aa1ccd2557071a9e95502b4384" name="acd3d15aa1ccd2557071a9e95502b4384"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acd3d15aa1ccd2557071a9e95502b4384">&#9670;&#160;</a></span>TimedTaskScheduler()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -145,7 +145,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">dispenso::TimedTaskScheduler::TimedTaskScheduler </td>
+          <td class="memname">DISPENSO_DLL_ACCESS dispenso::TimedTaskScheduler::TimedTaskScheduler </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="priority_8h.html#ad04637f316fbde5fba47d984c3700bb7">ThreadPriority</a></td>          <td class="paramname"><span class="paramname"><em>priority</em></span><span class="paramdefsep"> = </span><span class="paramdefval">ThreadPriority::kNormal</span></td><td>)</td>
           <td></td>
@@ -165,27 +165,6 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Priorities above kNormal should be used sparingly, and only short-running tasks should be run inline to avoid bad OS responsivity. When using a <a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> Schedulable, tasks can be long running. </dd></dl>
-
-<p class="definition">Definition at line <a class="el" href="timed__task_8cpp_source.html#l00015">15</a> of file <a class="el" href="timed__task_8cpp_source.html">timed_task.cpp</a>.</p>
-
-</div>
-</div>
-<a id="ab7cfe4984bb9d0dfeb62086fabb3f7ea" name="ab7cfe4984bb9d0dfeb62086fabb3f7ea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab7cfe4984bb9d0dfeb62086fabb3f7ea">&#9670;&#160;</a></span>~TimedTaskScheduler()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">dispenso::TimedTaskScheduler::~TimedTaskScheduler </td>
-          <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="timed__task_8cpp_source.html#l00024">24</a> of file <a class="el" href="timed__task_8cpp_source.html">timed_task.cpp</a>.</p>
 
 </div>
 </div>
@@ -233,7 +212,7 @@ template&lt;typename Schedulable , typename Rep , typename Period , typename F &
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00189">189</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00190">190</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -298,7 +277,7 @@ template&lt;typename Schedulable , typename Rep , typename Period , typename F &
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00225">225</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00226">226</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -345,7 +324,7 @@ template&lt;typename Schedulable , typename Clock , typename Duration , typename
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00204">204</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00205">205</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -410,7 +389,7 @@ template&lt;typename Schedulable , typename Rep , typename Period , typename Clo
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00257">257</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00258">258</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -467,7 +446,7 @@ template&lt;typename Schedulable , typename F &gt; </div>
   <table class="params">
     <tr><td class="paramname">sched</td><td>A backing schedulable, such as <a class="el" href="classdispenso_1_1_immediate_invoker.html">ImmediateInvoker</a>, <a class="el" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a>, <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, or <a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a> to run the function in when it is scheduled. </td></tr>
     <tr><td class="paramname">func</td><td>A bool() function to run when scheduled. The function may return true to indicate it should continue to be scheduled, or false to cancel. </td></tr>
-    <tr><td class="paramname">nextRunAbs</td><td>The absolute time to run the function. Time scale is expected to match getTime() for absolute times. </td></tr>
+    <tr><td class="paramname">nextRunAbs</td><td>The absolute time to run the function. Time scale is expected to match <a class="el" href="timing_8h.html#a06bed7a74aaff4b86c632286ae735e96">getTime()</a> for absolute times. </td></tr>
     <tr><td class="paramname">period</td><td>The period in seconds. </td></tr>
     <tr><td class="paramname">timesToRun</td><td>The number of times to run the function. After that number, the function will not be called again. </td></tr>
     <tr><td class="paramname">type</td><td>The type of periodicity (if any). </td></tr>
@@ -475,7 +454,7 @@ template&lt;typename Schedulable , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00166">166</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00167">167</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
@@ -503,13 +482,12 @@ template&lt;typename Schedulable , typename F &gt; </div>
 </div><div class="memdoc">
 <p>Set the priority for the backing thread. See note for constructor. </p>
 
-<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00146">146</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="timed__task_8h_source.html#l00147">147</a> of file <a class="el" href="timed__task_8h_source.html">timed_task.h</a>.</p>
 
 </div>
 </div>
-<hr/>The documentation for this class was generated from the following files:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>/github/workspace/dispenso/<a class="el" href="timed__task_8h_source.html">timed_task.h</a></li>
-<li>/github/workspace/dispenso/<a class="el" href="timed__task_8cpp_source.html">timed_task.cpp</a></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

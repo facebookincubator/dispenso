@@ -105,20 +105,26 @@ $(function(){initNavTree('classdispenso_1_1_cache_aligned.html',''); initResizab
   <div class="headertitle"><div class="title">dispenso::CacheAligned&lt; T &gt; Class Template Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p><code>#include &lt;<a class="el" href="platform_8h_source.html">platform.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:abe86e14c071a766198c7befe596f055a" id="r_abe86e14c071a766198c7befe596f055a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abe86e14c071a766198c7befe596f055a">CacheAligned</a> (T t)</td></tr>
 <tr class="separator:abe86e14c071a766198c7befe596f055a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a069da1d6c14bced23c6ce02e559ad846" id="r_a069da1d6c14bced23c6ce02e559ad846"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a069da1d6c14bced23c6ce02e559ad846">operator T&amp;</a> ()</td></tr>
-<tr class="separator:a069da1d6c14bced23c6ce02e559ad846"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9eb5e1e7ce4c0b8f9fae3656eb59fe6e" id="r_a9eb5e1e7ce4c0b8f9fae3656eb59fe6e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9eb5e1e7ce4c0b8f9fae3656eb59fe6e">operator const T &amp;</a> () const</td></tr>
-<tr class="separator:a9eb5e1e7ce4c0b8f9fae3656eb59fe6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><div class="compoundTemplParams">template&lt;typename T&gt;<br />
-class dispenso::CacheAligned&lt; T &gt;</div>
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00113">113</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
+class dispenso::CacheAligned&lt; T &gt;</div><p>A wrapper that aligns the contained value to cache line boundaries.</p>
+<p>Useful for avoiding false sharing in concurrent data structures.</p>
+<dl class="tparams"><dt>Template Parameters</dt><dd>
+  <table class="tparams">
+    <tr><td class="paramname">T</td><td>The type to wrap with cache line alignment. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00148">148</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="abe86e14c071a766198c7befe596f055a" name="abe86e14c071a766198c7befe596f055a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#abe86e14c071a766198c7befe596f055a">&#9670;&#160;</a></span>CacheAligned()</h2>
@@ -144,67 +150,14 @@ template&lt;typename T &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Construct from a value.</p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">t</td><td>The value to wrap. </td></tr>
+  </table>
+  </dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00116">116</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
-
-</div>
-</div>
-<h2 class="groupheader">Member Function Documentation</h2>
-<a id="a9eb5e1e7ce4c0b8f9fae3656eb59fe6e" name="a9eb5e1e7ce4c0b8f9fae3656eb59fe6e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9eb5e1e7ce4c0b8f9fae3656eb59fe6e">&#9670;&#160;</a></span>operator const T &amp;()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_cache_aligned.html">dispenso::CacheAligned</a>&lt; T &gt;::operator const T &amp; </td>
-          <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00121">121</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
-
-</div>
-</div>
-<a id="a069da1d6c14bced23c6ce02e559ad846" name="a069da1d6c14bced23c6ce02e559ad846"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a069da1d6c14bced23c6ce02e559ad846">&#9670;&#160;</a></span>operator T&amp;()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_cache_aligned.html">dispenso::CacheAligned</a>&lt; T &gt;::operator T&amp; </td>
-          <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00117">117</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00152">152</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
 
 </div>
 </div>

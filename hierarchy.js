@@ -1,9 +1,7 @@
 var hierarchy =
 [
     [ "dispenso::AsyncRequest< T >", "classdispenso_1_1_async_request.html", null ],
-    [ "dispenso::ChunkedRange< IntegerT >::Auto", "structdispenso_1_1_chunked_range_1_1_auto.html", null ],
     [ "dispenso::CacheAligned< T >", "classdispenso_1_1_cache_aligned.html", null ],
-    [ "dispenso::ChunkedRange< IntegerT >", "structdispenso_1_1_chunked_range.html", null ],
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
@@ -16,7 +14,6 @@ var hierarchy =
       [ "dispenso::ParallelForExecutor", "classdispenso_1_1_parallel_for_executor.html", null ],
       [ "dispenso::SingleThreadExecutor", "classdispenso_1_1_single_thread_executor.html", null ]
     ] ],
-    [ "dispenso::ForceQueuingTag", "structdispenso_1_1_force_queuing_tag.html", null ],
     [ "dispenso::ForEachOptions", "structdispenso_1_1_for_each_options.html", null ],
     [ "dispenso::detail::FutureBase< Result >", null, [
       [ "dispenso::Future< Result >", "classdispenso_1_1_future.html", null ]
@@ -44,7 +41,6 @@ var hierarchy =
       [ "dispenso::RWLock", "classdispenso_1_1_r_w_lock.html", null ],
       [ "dispenso::UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ],
-    [ "dispenso::ChunkedRange< IntegerT >::Static", "structdispenso_1_1_chunked_range_1_1_static.html", null ],
     [ "dispenso::SubgraphT< N >", "classdispenso_1_1_subgraph_t.html", null ],
     [ "TaskSetBase", null, [
       [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],

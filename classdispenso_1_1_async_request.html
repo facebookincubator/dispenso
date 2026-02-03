@@ -100,7 +100,6 @@ $(function(){initNavTree('classdispenso_1_1_async_request.html',''); initResizab
 
 <div class="header">
   <div class="summary">
-<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classdispenso_1_1_async_request-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">dispenso::AsyncRequest&lt; T &gt; Class Template Reference</div></div>
@@ -109,11 +108,6 @@ $(function(){initNavTree('classdispenso_1_1_async_request.html',''); initResizab
 
 <p><code>#include &lt;<a class="el" href="async__request_8h_source.html">async_request.h</a>&gt;</code></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
-Public Types</h2></td></tr>
-<tr class="memitem:ae768a5f50a40302b5eb7d2ac6112eadc" id="r_ae768a5f50a40302b5eb7d2ac6112eadc"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae768a5f50a40302b5eb7d2ac6112eadc">OpResult</a> = detail::OpResult&lt;T&gt;</td></tr>
-<tr class="separator:ae768a5f50a40302b5eb7d2ac6112eadc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a1f346ca044a0b7668785b2105627cf3a" id="r_a1f346ca044a0b7668785b2105627cf3a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1f346ca044a0b7668785b2105627cf3a">requestUpdate</a> ()</td></tr>
@@ -132,26 +126,7 @@ class dispenso::AsyncRequest&lt; T &gt;</div><p>A type for making async requests
 <p>Typically the consumer will request an update of the value from thread 0, and the producer will look whether an update was requested from thread 1. Once the producer determines an update was requested (<a class="el" href="#a730fe3b28a3dd39854f92534dab533f6">updateRequested()</a> returns true), it calls <a class="el" href="#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d">tryEmplaceUpdate()</a> to update the underlying data. Then when the consumer on thread 0 next calls <a class="el" href="#a99d3081993b6f3efdf4c378fae2323fb">getUpdate()</a>, an optional wrapper to the updated data is returned, and the <a class="el" href="classdispenso_1_1_async_request.html">AsyncRequest</a> object is reset (it no longer has valid data, and no update will have yet been requested for the next update). </p>
 
 <p class="definition">Definition at line <a class="el" href="async__request_8h_source.html#l00039">39</a> of file <a class="el" href="async__request_8h_source.html">async_request.h</a>.</p>
-</div><h2 class="groupheader">Member Typedef Documentation</h2>
-<a id="ae768a5f50a40302b5eb7d2ac6112eadc" name="ae768a5f50a40302b5eb7d2ac6112eadc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae768a5f50a40302b5eb7d2ac6112eadc">&#9670;&#160;</a></span>OpResult</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-      <table class="memname">
-        <tr>
-          <td class="memname">using <a class="el" href="classdispenso_1_1_async_request.html">dispenso::AsyncRequest</a>&lt; T &gt;::OpResult = detail::OpResult&lt;T&gt;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="async__request_8h_source.html#l00045">45</a> of file <a class="el" href="async__request_8h_source.html">async_request.h</a>.</p>
-
-</div>
-</div>
-<h2 class="groupheader">Member Function Documentation</h2>
+</div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a99d3081993b6f3efdf4c378fae2323fb" name="a99d3081993b6f3efdf4c378fae2323fb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a99d3081993b6f3efdf4c378fae2323fb">&#9670;&#160;</a></span>getUpdate()</h2>
 

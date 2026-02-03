@@ -14,7 +14,6 @@ var classdispenso_1_1_graph_t =
     [ "node", "classdispenso_1_1_graph_t.html#ad85a02fa2e34f7beb7a3bfafd94123b1", null ],
     [ "numNodes", "classdispenso_1_1_graph_t.html#ae92cbfe6f02b870cf5e466872f069c56", null ],
     [ "numSubgraphs", "classdispenso_1_1_graph_t.html#a5c307fa77893c5d9c2ea0e5527825821", null ],
-    [ "operator=", "classdispenso_1_1_graph_t.html#a3f8ad677d7f50d36712ac37ba26c3c3c", null ],
     [ "subgraph", "classdispenso_1_1_graph_t.html#ad9107a74e37fd08b2af9661853e9af96", null ],
     [ "subgraph", "classdispenso_1_1_graph_t.html#aa2abb5bedfbf60d41b7fd99d371fdb18", null ]
 ];

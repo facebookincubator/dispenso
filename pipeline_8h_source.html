@@ -118,7 +118,7 @@ $(function(){initNavTree('pipeline_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="keyword">namespace </span>dispenso {</div>
 <div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span> </div>
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno"><a class="line" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">   30</a></span><span class="keyword">using </span><a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">OpResult</a> = detail::OpResult&lt;T&gt;;</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="keyword">using </span>OpResult = detail::OpResult&lt;T&gt;;</div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
 <div class="line"><a id="l00036" name="l00036"></a><span class="lineno"><a class="line" href="pipeline_8h.html#aa1d380eb639cdbd92330b96253a68e4a">   36</a></span><span class="keyword">constexpr</span> ssize_t <a class="code hl_variable" href="pipeline_8h.html#aa1d380eb639cdbd92330b96253a68e4a">kStageNoLimit</a> = std::numeric_limits&lt;ssize_t&gt;::max();</div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
@@ -142,17 +142,17 @@ $(function(){initNavTree('pipeline_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span>... Stages&gt;</div>
 <div class="foldopen" id="foldopen00109" data-start="{" data-end="}">
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno"><a class="line" href="pipeline_8h.html#a9a0289cbbb678c03532bdf458da1401b">  109</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="pipeline_8h.html#a5438114dce2544c8cdab8100309478ab">pipeline</a>(Stages&amp;&amp;... sIn) {</div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  <a class="code hl_function" href="pipeline_8h.html#a5438114dce2544c8cdab8100309478ab">pipeline</a>(globalThreadPool(), std::forward&lt;Stages&gt;(sIn)...);</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  <a class="code hl_function" href="pipeline_8h.html#a5438114dce2544c8cdab8100309478ab">pipeline</a>(<a class="code hl_function" href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">globalThreadPool</a>(), std::forward&lt;Stages&gt;(sIn)...);</div>
 <div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>}</div>
 </div>
 <div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
 <div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00174">task_set.h:174</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00181">task_set.h:181</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00074">thread_pool.h:74</a></div></div>
 <div class="ttc" id="apipeline_8h_html_a360af299cbfaa8e0069ec014f87d1ddb"><div class="ttname"><a href="pipeline_8h.html#a360af299cbfaa8e0069ec014f87d1ddb">dispenso::stage</a></div><div class="ttdeci">auto stage(F &amp;&amp;f, ssize_t limit)</div><div class="ttdef"><b>Definition</b> <a href="#l00049">pipeline.h:49</a></div></div>
 <div class="ttc" id="apipeline_8h_html_a5438114dce2544c8cdab8100309478ab"><div class="ttname"><a href="pipeline_8h.html#a5438114dce2544c8cdab8100309478ab">dispenso::pipeline</a></div><div class="ttdeci">void pipeline(ThreadPool &amp;pool, Stages &amp;&amp;... sIn)</div><div class="ttdef"><b>Definition</b> <a href="#l00078">pipeline.h:78</a></div></div>
 <div class="ttc" id="apipeline_8h_html_aa1d380eb639cdbd92330b96253a68e4a"><div class="ttname"><a href="pipeline_8h.html#aa1d380eb639cdbd92330b96253a68e4a">dispenso::kStageNoLimit</a></div><div class="ttdeci">constexpr ssize_t kStageNoLimit</div><div class="ttdef"><b>Definition</b> <a href="#l00036">pipeline.h:36</a></div></div>
-<div class="ttc" id="apipeline_8h_html_ad59b35109942aaa4651f9a8a7ecf8d2a"><div class="ttname"><a href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult</a></div><div class="ttdeci">detail::OpResult&lt; T &gt; OpResult</div><div class="ttdoc">Optional-like storage with in-place construction (C++14 compatible).</div><div class="ttdef"><b>Definition</b> <a href="#l00030">pipeline.h:30</a></div></div>
+<div class="ttc" id="athread__pool_8h_html_a482a36a8ab5d9a9c8667474bf0ec92d8"><div class="ttname"><a href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">dispenso::globalThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ThreadPool &amp; globalThreadPool()</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

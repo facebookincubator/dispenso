@@ -1,13 +1,20 @@
 var searchData=
 [
   ['get_0',['get',['../classdispenso_1_1_future.html#a6048c658bf896ca65535dd7ffa6623a5',1,'dispenso::Future::get()'],['../classdispenso_1_1_future_3_01_result_01_6_01_4.html#a60a140754635c9b407b86fd30c600dd8',1,'dispenso::Future&lt; Result &amp; &gt;::get()'],['../classdispenso_1_1_future_3_01void_01_4.html#add2a777fcf6ea2633d06f1adf9a3f98c',1,'dispenso::Future&lt; void &gt;::get()'],['../classdispenso_1_1_resource.html#a61190270b880598f6f816905299fb858',1,'dispenso::Resource::get()']]],
-  ['getting_20started_1',['Getting Started',['../getting_started.html',1,'']]],
-  ['getupdate_2',['getUpdate',['../classdispenso_1_1_async_request.html#a99d3081993b6f3efdf4c378fae2323fb',1,'dispenso::AsyncRequest']]],
-  ['graph_2eh_3',['graph.h',['../graph_8h.html',1,'']]],
-  ['graph_5fexecutor_2eh_4',['graph_executor.h',['../graph__executor_8h.html',1,'']]],
-  ['graphs_20pipelines_5',['Graphs &amp; Pipelines',['../group__group__graph.html',1,'']]],
-  ['grapht_6',['GraphT',['../classdispenso_1_1_graph_t.html',1,'dispenso::GraphT&lt; N &gt;'],['../classdispenso_1_1_graph_t.html#a7e18b24fe123bfac828e3b996c774cd7',1,'dispenso::GraphT::GraphT()'],['../classdispenso_1_1_graph_t.html#aa66b84b339d030b305b58f676094d121',1,'dispenso::GraphT::GraphT(GraphT&lt; N &gt; &amp;&amp;other)']]],
-  ['grow_5fby_7',['grow_by',['../classdispenso_1_1_concurrent_vector.html#af7455450ca665a04591431ba831ece95',1,'dispenso::ConcurrentVector::grow_by(size_type delta, const T &amp;t)'],['../classdispenso_1_1_concurrent_vector.html#aabb95c84cf1534e5842496985184c6f1',1,'dispenso::ConcurrentVector::grow_by(size_type delta)'],['../classdispenso_1_1_concurrent_vector.html#a046c838ea5ee3e06d4430cc870de3cb2',1,'dispenso::ConcurrentVector::grow_by(It start, It end)'],['../classdispenso_1_1_concurrent_vector.html#a9616062910e7aa0bf78b7e45072cc7bf',1,'dispenso::ConcurrentVector::grow_by(std::initializer_list&lt; T &gt; initList)']]],
-  ['grow_5fby_5fgenerator_8',['grow_by_generator',['../classdispenso_1_1_concurrent_vector.html#ab5e4132784987855acd48a36fd837cab',1,'dispenso::ConcurrentVector']]],
-  ['grow_5fto_5fat_5fleast_9',['grow_to_at_least',['../classdispenso_1_1_concurrent_vector.html#a4cfe6a4a16a38876e37db42f8082cb20',1,'dispenso::ConcurrentVector::grow_to_at_least(size_type n)'],['../classdispenso_1_1_concurrent_vector.html#a69618af01fa0886fece8e14bcdef854d',1,'dispenso::ConcurrentVector::grow_to_at_least(size_type n, const T &amp;t)']]]
+  ['getbuffer_1',['getBuffer',['../structdispenso_1_1_concurrent_object_arena.html#a1341948a871059f6434f12c8ac60cba9',1,'dispenso::ConcurrentObjectArena::getBuffer(const Index index) const'],['../structdispenso_1_1_concurrent_object_arena.html#a939d4457963bc55b0d97d737660cc7c7',1,'dispenso::ConcurrentObjectArena::getBuffer(const Index index)']]],
+  ['getbuffersize_2',['getBufferSize',['../structdispenso_1_1_concurrent_object_arena.html#a0b3c0d01ef46d0321367c5c980e6e380',1,'dispenso::ConcurrentObjectArena']]],
+  ['getcurrentthreadpriority_3',['getCurrentThreadPriority',['../priority_8h.html#a4a77a651c542ffb0f5ce6d8c3076e8ae',1,'dispenso']]],
+  ['gettime_4',['getTime',['../timing_8h.html#a06bed7a74aaff4b86c632286ae735e96',1,'dispenso']]],
+  ['getting_20started_5',['Getting Started',['../getting_started.html',1,'']]],
+  ['getupdate_6',['getUpdate',['../classdispenso_1_1_async_request.html#a99d3081993b6f3efdf4c378fae2323fb',1,'dispenso::AsyncRequest']]],
+  ['globalthreadpool_7',['globalThreadPool',['../thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8',1,'dispenso']]],
+  ['globaltimedtaskscheduler_8',['globalTimedTaskScheduler',['../timed__task_8h.html#ab7341581aa34ed37a8dae3fbeddb50b1',1,'dispenso']]],
+  ['graph_9',['Graph',['../graph_8h.html#a9cdbb57df03c642e422e71145b0fb769',1,'dispenso']]],
+  ['graph_2eh_10',['graph.h',['../graph_8h.html',1,'']]],
+  ['graph_5fexecutor_2eh_11',['graph_executor.h',['../graph__executor_8h.html',1,'']]],
+  ['graphs_20pipelines_12',['Graphs &amp; Pipelines',['../group__group__graph.html',1,'']]],
+  ['grapht_13',['GraphT',['../classdispenso_1_1_graph_t.html',1,'dispenso::GraphT&lt; N &gt;'],['../classdispenso_1_1_graph_t.html#a7e18b24fe123bfac828e3b996c774cd7',1,'dispenso::GraphT::GraphT()'],['../classdispenso_1_1_graph_t.html#aa66b84b339d030b305b58f676094d121',1,'dispenso::GraphT::GraphT(GraphT&lt; N &gt; &amp;&amp;other)']]],
+  ['grow_5fby_14',['grow_by',['../structdispenso_1_1_concurrent_object_arena.html#abad17b8b5027d102da30fcf5195fa50f',1,'dispenso::ConcurrentObjectArena::grow_by()'],['../classdispenso_1_1_concurrent_vector.html#af7455450ca665a04591431ba831ece95',1,'dispenso::ConcurrentVector::grow_by(size_type delta, const T &amp;t)'],['../classdispenso_1_1_concurrent_vector.html#aabb95c84cf1534e5842496985184c6f1',1,'dispenso::ConcurrentVector::grow_by(size_type delta)'],['../classdispenso_1_1_concurrent_vector.html#a046c838ea5ee3e06d4430cc870de3cb2',1,'dispenso::ConcurrentVector::grow_by(It start, It end)'],['../classdispenso_1_1_concurrent_vector.html#a9616062910e7aa0bf78b7e45072cc7bf',1,'dispenso::ConcurrentVector::grow_by(std::initializer_list&lt; T &gt; initList)']]],
+  ['grow_5fby_5fgenerator_15',['grow_by_generator',['../classdispenso_1_1_concurrent_vector.html#ab5e4132784987855acd48a36fd837cab',1,'dispenso::ConcurrentVector']]],
+  ['grow_5fto_5fat_5fleast_16',['grow_to_at_least',['../classdispenso_1_1_concurrent_vector.html#a4cfe6a4a16a38876e37db42f8082cb20',1,'dispenso::ConcurrentVector::grow_to_at_least(size_type n)'],['../classdispenso_1_1_concurrent_vector.html#a69618af01fa0886fece8e14bcdef854d',1,'dispenso::ConcurrentVector::grow_to_at_least(size_type n, const T &amp;t)']]]
 ];

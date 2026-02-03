@@ -110,7 +110,7 @@ $(function(){initNavTree('timing_8h.html',''); initResizable(true); });
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a06bed7a74aaff4b86c632286ae735e96" id="r_a06bed7a74aaff4b86c632286ae735e96"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="timing_8cpp.html#a06bed7a74aaff4b86c632286ae735e96">dispenso::getTime</a> ()</td></tr>
+<tr class="memitem:a06bed7a74aaff4b86c632286ae735e96" id="r_a06bed7a74aaff4b86c632286ae735e96"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a06bed7a74aaff4b86c632286ae735e96">dispenso::getTime</a> ()</td></tr>
 <tr class="separator:a06bed7a74aaff4b86c632286ae735e96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -132,8 +132,9 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="timing_8cpp_source.html#l00161">161</a> of file <a class="el" href="timing_8cpp_source.html">timing.cpp</a>.</p>
+<p>Get elapsed time in seconds since program start.</p>
+<p>Uses high-resolution timing when available (e.g., RDTSC on x86).</p>
+<dl class="section return"><dt>Returns</dt><dd>Elapsed time in seconds as a double. </dd></dl>
 
 </div>
 </div>

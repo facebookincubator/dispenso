@@ -6,6 +6,8 @@ var searchData=
   ['reserve_3',['reserve',['../classdispenso_1_1_concurrent_vector.html#a29fe4428dde508f95b2f57efc5184978',1,'dispenso::ConcurrentVector']]],
   ['reset_4',['reset',['../classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8',1,'dispenso::CompletionEvent']]],
   ['resize_5',['resize',['../classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f',1,'dispenso::ConcurrentVector::resize(difference_type len)'],['../classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9',1,'dispenso::ConcurrentVector::resize(difference_type len, const T &amp;value)'],['../classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc',1,'dispenso::ThreadPool::resize()']]],
-  ['resourcepool_6',['ResourcePool',['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool']]],
-  ['run_7',['run',['../classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256',1,'dispenso::Node']]]
+  ['resizeglobalthreadpool_6',['resizeGlobalThreadPool',['../thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b',1,'dispenso']]],
+  ['resource_7',['Resource',['../classdispenso_1_1_resource.html#a1f9f21d091e8497f407e3c2a25e91bc4',1,'dispenso::Resource']]],
+  ['resourcepool_8',['ResourcePool',['../classdispenso_1_1_resource_pool.html#ab9dcc875768717ba203674da5b648e26',1,'dispenso::ResourcePool']]],
+  ['run_9',['run',['../classdispenso_1_1_node.html#af73f196ba6ccba6081ac5ef46b61c256',1,'dispenso::Node']]]
 ];

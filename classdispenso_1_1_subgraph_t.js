@@ -1,5 +1,6 @@
 var classdispenso_1_1_subgraph_t =
 [
+    [ "SubgraphT", "classdispenso_1_1_subgraph_t.html#af21f0274974b1085f74b75ff388306a4", null ],
     [ "addNode", "classdispenso_1_1_subgraph_t.html#a3f314f17214ede38225e89be5cdd79ab", null ],
     [ "clear", "classdispenso_1_1_subgraph_t.html#a2e39c55d6e04462971f93f349c5be3fe", null ],
     [ "forEachNode", "classdispenso_1_1_subgraph_t.html#aebf804ac07d655602684ec8b1238b97c", null ],

@@ -1,5 +1,7 @@
 var classdispenso_1_1_node =
 [
+    [ "Node", "classdispenso_1_1_node.html#af2591c722b64e2ba75f86eb752c512b3", null ],
+    [ "Node", "classdispenso_1_1_node.html#a6bd182ac99540c7b2c5d923262f75de7", null ],
     [ "dependsOn", "classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a", null ],
     [ "forEachDependent", "classdispenso_1_1_node.html#ab2e3aef325d6395d35d35ebb04d45773", null ],
     [ "forEachDependent", "classdispenso_1_1_node.html#aae47de98edecefb02d31366f8ed508f3", null ],

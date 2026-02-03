@@ -135,7 +135,7 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line"> </div>
 <div class="line">    <a id="a0" name="a0"></a>dispenso::pipeline(</div>
 <div class="line">        <span class="comment">// Stage 1: Generator - produces values</span></div>
-<div class="line">        [&amp;counter]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (counter &gt;= 10) {</div>
 <div class="line">            <span class="keywordflow">return</span> {}; <span class="comment">// Empty result signals end of input</span></div>
 <div class="line">          }</div>
@@ -161,7 +161,7 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line"> </div>
 <div class="line">    dispenso::pipeline(</div>
 <div class="line">        <span class="comment">// Generator (serial)</span></div>
-<div class="line">        [&amp;counter]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (counter &gt;= 100) {</div>
 <div class="line">            <span class="keywordflow">return</span> {};</div>
 <div class="line">          }</div>
@@ -193,14 +193,14 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line"> </div>
 <div class="line">    dispenso::pipeline(</div>
 <div class="line">        <span class="comment">// Generator</span></div>
-<div class="line">        [&amp;counter]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (counter &gt;= 20) {</div>
 <div class="line">            <span class="keywordflow">return</span> {};</div>
 <div class="line">          }</div>
 <div class="line">          <span class="keywordflow">return</span> counter++;</div>
 <div class="line">        },</div>
 <div class="line">        <span class="comment">// Filter: only pass through even numbers</span></div>
-<div class="line">        [](<span class="keywordtype">int</span> value) -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [](<span class="keywordtype">int</span> value) -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (value % 2 == 0) {</div>
 <div class="line">            <span class="keywordflow">return</span> value;</div>
 <div class="line">          }</div>
@@ -224,7 +224,7 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line"> </div>
 <div class="line">    dispenso::pipeline(</div>
 <div class="line">        <span class="comment">// Generate integers</span></div>
-<div class="line">        [&amp;counter]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (counter &gt;= 5) {</div>
 <div class="line">            <span class="keywordflow">return</span> {};</div>
 <div class="line">          }</div>
@@ -257,7 +257,7 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line">    dispenso::pipeline(</div>
 <div class="line">        customPool,</div>
 <div class="line">        <span class="comment">// Generator</span></div>
-<div class="line">        [&amp;counter]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">        [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">          <span class="keywordflow">if</span> (counter &gt;= 10) {</div>
 <div class="line">            <span class="keywordflow">return</span> {};</div>
 <div class="line">          }</div>
@@ -298,7 +298,6 @@ $(function(){initNavTree('pipeline_example_8cpp-example.html',''); initResizable
 <div class="line">}</div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00074">thread_pool.h:74</a></div></div>
 <div class="ttc" id="apipeline_8h_html"><div class="ttname"><a href="pipeline_8h.html">pipeline.h</a></div></div>
-<div class="ttc" id="apipeline_8h_html_ad59b35109942aaa4651f9a8a7ecf8d2a"><div class="ttname"><a href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult</a></div><div class="ttdeci">detail::OpResult&lt; T &gt; OpResult</div><div class="ttdoc">Optional-like storage with in-place construction (C++14 compatible).</div><div class="ttdef"><b>Definition</b> <a href="pipeline_8h_source.html#l00030">pipeline.h:30</a></div></div>
 </div><!-- fragment --> </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

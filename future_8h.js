@@ -16,6 +16,8 @@ var future_8h =
     [ "make_ready_future", "future_8h.html#a22971609aae02fd9436ad8a8d0f0b36c", null ],
     [ "make_ready_future", "future_8h.html#a092e7c85f707d0bd054b3dc4a92d2ff4", null ],
     [ "make_ready_future", "future_8h.html#a76b9f7ac83b05ef4121ea164c3b8127c", null ],
+    [ "when_all", "future_8h.html#a674cefd55fc65ac0fed54441031d515e", null ],
+    [ "when_all", "future_8h.html#a631635d0ec0cb1238cf39c07534d4100", null ],
     [ "when_all", "future_8h.html#a435459bf87d4642d43757f48e01fac10", null ],
     [ "when_all", "future_8h.html#a7910e3bd46b9cf1c12fe246ef65053f1", null ],
     [ "when_all", "future_8h.html#a288cfa6cecc896633af51a109c31c184", null ],

@@ -110,9 +110,6 @@ $(function(){initNavTree('structdispenso_1_1_default_concurrent_vector_size_trai
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:a0cf0d77e28e3bf4536f2be4a4c84977c" id="r_a0cf0d77e28e3bf4536f2be4a4c84977c"><td class="memItemLeft" align="right" valign="top">static constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0cf0d77e28e3bf4536f2be4a4c84977c">kDefaultCapacity</a> = (sizeof(T) &gt;= 256) ? 2 : 512 / sizeof(T)</td></tr>
-<tr class="memdesc:a0cf0d77e28e3bf4536f2be4a4c84977c"><td class="mdescLeft">&#160;</td><td class="mdescRight">This is the starting user-expected capacity in number of elements (algorithm may provide more based on kReallocStrategy)  <br /></td></tr>
-<tr class="separator:a0cf0d77e28e3bf4536f2be4a4c84977c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a20c558ad1856b97184329c2adb19f1ba" id="r_a20c558ad1856b97184329c2adb19f1ba"><td class="memItemLeft" align="right" valign="top">static constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a20c558ad1856b97184329c2adb19f1ba">kMaxVectorSize</a></td></tr>
 <tr class="memdesc:a20c558ad1856b97184329c2adb19f1ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">The maximum possible size for the vector.  <br /></td></tr>
 <tr class="separator:a20c558ad1856b97184329c2adb19f1ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -123,34 +120,6 @@ struct dispenso::DefaultConcurrentVectorSizeTraits&lt; T &gt;</div><p>The defaul
 
 <p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00091">91</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
-<a id="a0cf0d77e28e3bf4536f2be4a4c84977c" name="a0cf0d77e28e3bf4536f2be4a4c84977c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0cf0d77e28e3bf4536f2be4a4c84977c">&#9670;&#160;</a></span>kDefaultCapacity</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">size_t <a class="el" href="structdispenso_1_1_default_concurrent_vector_size_traits.html">dispenso::DefaultConcurrentVectorSizeTraits</a>&lt; T &gt;::kDefaultCapacity = (sizeof(T) &gt;= 256) ? 2 : 512 / sizeof(T)</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>This is the starting user-expected capacity in number of elements (algorithm may provide more based on kReallocStrategy) </p>
-
-<p class="definition">Definition at line <a class="el" href="concurrent__vector_8h_source.html#l00096">96</a> of file <a class="el" href="concurrent__vector_8h_source.html">concurrent_vector.h</a>.</p>
-
-</div>
-</div>
 <a id="a20c558ad1856b97184329c2adb19f1ba" name="a20c558ad1856b97184329c2adb19f1ba"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a20c558ad1856b97184329c2adb19f1ba">&#9670;&#160;</a></span>kMaxVectorSize</h2>
 

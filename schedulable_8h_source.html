@@ -120,54 +120,55 @@ $(function(){initNavTree('schedulable_8h_source.html',''); initResizable(true); 
 <div class="line"><a id="l00028" name="l00028"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html">   28</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_immediate_invoker.html">ImmediateInvoker</a> {</div>
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> <span class="keyword">public</span>:</div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="foldopen" id="foldopen00038" data-start="{" data-end="}">
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">   38</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>    f();</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>  }</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00039" data-start="{" data-end="}">
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">   39</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>    f();</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>  }</div>
 </div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="foldopen" id="foldopen00048" data-start="{" data-end="}">
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">   48</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">schedule</a>(F&amp;&amp; f, <a class="code hl_struct" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>    f();</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>  }</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span> </div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00050" data-start="{" data-end="}">
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">   50</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    f();</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>  }</div>
 </div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>};</div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>};</div>
 </div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="keyword">constexpr</span> ImmediateInvoker kImmediateInvoker;</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="foldopen" id="foldopen00060" data-start="{" data-end="};">
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html">   60</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a> {</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="foldopen" id="foldopen00070" data-start="{" data-end="}">
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">   70</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>    <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(std::forward&lt;F&gt;(f), <a class="code hl_struct" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>());</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  }</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="keyword">constexpr</span> ImmediateInvoker kImmediateInvoker;</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span> </div>
+<div class="foldopen" id="foldopen00062" data-start="{" data-end="};">
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html">   62</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a> {</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00073" data-start="{" data-end="}">
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">   73</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>    <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>  }</div>
 </div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="foldopen" id="foldopen00081" data-start="{" data-end="}">
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">   81</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">schedule</a>(F&amp;&amp; f, <a class="code hl_struct" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    std::thread thread([f = std::move(f)]() { f(); });</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    thread.detach();</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>  }</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00085" data-start="{" data-end="}">
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">   85</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    std::thread thread([f = std::move(f)]() { f(); });</div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    thread.detach();</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>  }</div>
 </div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span> </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>};</div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span> </div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>};</div>
 </div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span> </div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> </div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span> </div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span> </div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00028">schedulable.h:28</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00038">schedulable.h:38</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a598694c79562918e3c67d2cd23a36529"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f, ForceQueuingTag) const</div><div class="ttdef"><b>Definition</b> <a href="#l00048">schedulable.h:48</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html">dispenso::NewThreadInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00060">schedulable.h:60</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html_a3f688605cef1aa19b219fd4e502f4231"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">dispenso::NewThreadInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f, ForceQueuingTag) const</div><div class="ttdef"><b>Definition</b> <a href="#l00081">schedulable.h:81</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html_a460beb76088b55f1f463f601e2f45e23"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">dispenso::NewThreadInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00070">schedulable.h:70</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_force_queuing_tag_html"><div class="ttname"><a href="structdispenso_1_1_force_queuing_tag.html">dispenso::ForceQueuingTag</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00067">thread_pool.h:67</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00039">schedulable.h:39</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html">dispenso::NewThreadInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00062">schedulable.h:62</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html_a460beb76088b55f1f463f601e2f45e23"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">dispenso::NewThreadInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00073">schedulable.h:73</a></div></div>
 <div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

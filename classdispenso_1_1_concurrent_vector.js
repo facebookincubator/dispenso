@@ -44,10 +44,6 @@ var classdispenso_1_1_concurrent_vector =
     [ "insert", "classdispenso_1_1_concurrent_vector.html#aa966dfd4cfc2eb282fa3529489e284d0", null ],
     [ "insert", "classdispenso_1_1_concurrent_vector.html#a2e726ae0678c0f247a299054dea90dc5", null ],
     [ "max_size", "classdispenso_1_1_concurrent_vector.html#a7058def69cec716e34f003e771d09fb6", null ],
-    [ "operator=", "classdispenso_1_1_concurrent_vector.html#afc766f7da0deb0c77f611ba324ce976b", null ],
-    [ "operator=", "classdispenso_1_1_concurrent_vector.html#a021734d1e47a1255d587560eb6f6a7d4", null ],
-    [ "operator[]", "classdispenso_1_1_concurrent_vector.html#a66087d9d686018b632a72ab7fdb55427", null ],
-    [ "operator[]", "classdispenso_1_1_concurrent_vector.html#a4c300683d52980b266cca4f4dd19983d", null ],
     [ "pop_back", "classdispenso_1_1_concurrent_vector.html#a6df17279a0127ce60af3abb56121678b", null ],
     [ "push_back", "classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff", null ],
     [ "push_back", "classdispenso_1_1_concurrent_vector.html#a1306ac315f6e7062a6b1ee39e2978b22", null ],
@@ -59,6 +55,5 @@ var classdispenso_1_1_concurrent_vector =
     [ "resize", "classdispenso_1_1_concurrent_vector.html#a28db52732aab174085c25e32d2a8111f", null ],
     [ "resize", "classdispenso_1_1_concurrent_vector.html#a7065d60b5b6da11948b3906630ec7ad9", null ],
     [ "shrink_to_fit", "classdispenso_1_1_concurrent_vector.html#a63cf8f946e9f65f1a45c1149adb64dcc", null ],
-    [ "size", "classdispenso_1_1_concurrent_vector.html#af514d2896643697e010c0747dd1bdac3", null ],
-    [ "swap", "classdispenso_1_1_concurrent_vector.html#ab4f8b73b07bf705b46994081f07b5617", null ]
+    [ "size", "classdispenso_1_1_concurrent_vector.html#af514d2896643697e010c0747dd1bdac3", null ]
 ];

@@ -101,7 +101,6 @@ $(function(){initNavTree('classdispenso_1_1_thread_pool.html',''); initResizable
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
-<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="classdispenso_1_1_thread_pool-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">dispenso::ThreadPool Class Reference</div></div>
@@ -112,8 +111,8 @@ $(function(){initNavTree('classdispenso_1_1_thread_pool.html',''); initResizable
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2442016e8a4924ca665d3993c1879b4d" id="r_a2442016e8a4924ca665d3993c1879b4d"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2442016e8a4924ca665d3993c1879b4d">ThreadPool</a> (size_t n, size_t poolLoadMultiplier=32)</td></tr>
-<tr class="separator:a2442016e8a4924ca665d3993c1879b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff84991b150f3e27711d277bcbc9f6f3" id="r_aff84991b150f3e27711d277bcbc9f6f3"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aff84991b150f3e27711d277bcbc9f6f3">ThreadPool</a> (size_t n, size_t poolLoadMultiplier=32)</td></tr>
+<tr class="separator:aff84991b150f3e27711d277bcbc9f6f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1496e66b4081c1f35ab2ff70536148ac" id="r_a1496e66b4081c1f35ab2ff70536148ac"><td class="memTemplParams" colspan="2">template&lt;class Rep , class Period &gt; </td></tr>
 <tr class="memitem:a1496e66b4081c1f35ab2ff70536148ac"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a1496e66b4081c1f35ab2ff70536148ac">setSignalingWake</a> (bool enable, const std::chrono::duration&lt; Rep, Period &gt; &amp;sleepDuration=std::chrono::microseconds(kDefaultSleepLenUs))</td></tr>
 <tr class="separator:a1496e66b4081c1f35ab2ff70536148ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -125,17 +124,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a656639db1edaa1293a7dfec9629c0289"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a656639db1edaa1293a7dfec9629c0289">schedule</a> (F &amp;&amp;f)</td></tr>
 <tr class="separator:a656639db1edaa1293a7dfec9629c0289"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a56a9388c1cfc7903b612b57c7c4f40c9" id="r_a56a9388c1cfc7903b612b57c7c4f40c9"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
-<tr class="memitem:a56a9388c1cfc7903b612b57c7c4f40c9"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a56a9388c1cfc7903b612b57c7c4f40c9">schedule</a> (F &amp;&amp;f, <a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>)</td></tr>
+<tr class="memitem:a56a9388c1cfc7903b612b57c7c4f40c9"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a56a9388c1cfc7903b612b57c7c4f40c9">schedule</a> (F &amp;&amp;f, ForceQueuingTag)</td></tr>
 <tr class="separator:a56a9388c1cfc7903b612b57c7c4f40c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd886dd712424330935b64959e8188af" id="r_acd886dd712424330935b64959e8188af"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd886dd712424330935b64959e8188af">~ThreadPool</a> ()</td></tr>
-<tr class="separator:acd886dd712424330935b64959e8188af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
-Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a267594d95ec2a23b9e5cbd3685e0ea85" id="r_a267594d95ec2a23b9e5cbd3685e0ea85"><td class="memItemLeft" align="right" valign="top">static void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a267594d95ec2a23b9e5cbd3685e0ea85">operator new</a> (size_t sz)</td></tr>
-<tr class="separator:a267594d95ec2a23b9e5cbd3685e0ea85"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a33493dd6c5ef378a74a823801526171e" id="r_a33493dd6c5ef378a74a823801526171e"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a33493dd6c5ef378a74a823801526171e">operator delete</a> (void *ptr)</td></tr>
-<tr class="separator:a33493dd6c5ef378a74a823801526171e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a44c17acaa3e40881b0ab2260849a7f7f" id="r_a44c17acaa3e40881b0ab2260849a7f7f"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a44c17acaa3e40881b0ab2260849a7f7f">~ThreadPool</a> ()</td></tr>
+<tr class="separator:a44c17acaa3e40881b0ab2260849a7f7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -143,24 +135,22 @@ Friends</h2></td></tr>
 <tr class="separator:ae12e56c1c8c5a87ab7e47c98816dd8b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a92fc40642e875f71f86ca4fc15c2a62f" id="r_a92fc40642e875f71f86ca4fc15c2a62f"><td class="memItemLeft" align="right" valign="top">class&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a92fc40642e875f71f86ca4fc15c2a62f">TaskSet</a></td></tr>
 <tr class="separator:a92fc40642e875f71f86ca4fc15c2a62f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9e3024341bbf07bce3dc506d3626743f" id="r_a9e3024341bbf07bce3dc506d3626743f"><td class="memItemLeft" align="right" valign="top">class&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9e3024341bbf07bce3dc506d3626743f">TaskSetBase</a></td></tr>
-<tr class="separator:a9e3024341bbf07bce3dc506d3626743f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The basic executor for dispenso. It provides typical thread pool functionality, plus allows work stealing by related types (e.g. <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a>, etc...), which prevents deadlock when waiting for pool-recursive tasks. </p>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#_a8">future_example.cpp</a>, <a class="el" href="pipeline_example_8cpp-example.html#_a2">pipeline_example.cpp</a>, and <a class="el" href="task_set_example_8cpp-example.html#_a6">task_set_example.cpp</a>.</dd>
+<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#_a8">future_example.cpp</a>, <a class="el" href="pipeline_example_8cpp-example.html#_a2">pipeline_example.cpp</a>, and <a class="el" href="task_set_example_8cpp-example.html#_a7">task_set_example.cpp</a>.</dd>
 </dl>
 
 <p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00074">74</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="a2442016e8a4924ca665d3993c1879b4d" name="a2442016e8a4924ca665d3993c1879b4d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2442016e8a4924ca665d3993c1879b4d">&#9670;&#160;</a></span>ThreadPool()</h2>
+<a id="aff84991b150f3e27711d277bcbc9f6f3" name="aff84991b150f3e27711d277bcbc9f6f3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aff84991b150f3e27711d277bcbc9f6f3">&#9670;&#160;</a></span>ThreadPool()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">dispenso::ThreadPool::ThreadPool </td>
+          <td class="memname">DISPENSO_DLL_ACCESS dispenso::ThreadPool::ThreadPool </td>
           <td>(</td>
           <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>n</em></span>, </td>
         </tr>
@@ -180,18 +170,16 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00070">70</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
-
 </div>
 </div>
-<a id="acd886dd712424330935b64959e8188af" name="acd886dd712424330935b64959e8188af"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acd886dd712424330935b64959e8188af">&#9670;&#160;</a></span>~ThreadPool()</h2>
+<a id="a44c17acaa3e40881b0ab2260849a7f7f" name="a44c17acaa3e40881b0ab2260849a7f7f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a44c17acaa3e40881b0ab2260849a7f7f">&#9670;&#160;</a></span>~ThreadPool()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">dispenso::ThreadPool::~ThreadPool </td>
+          <td class="memname">DISPENSO_DLL_ACCESS dispenso::ThreadPool::~ThreadPool </td>
           <td>(</td>
           <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
           <td></td>
@@ -199,8 +187,6 @@ Friends</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Destruct the pool. This destructor is blocking until all queued work is completed. It is illegal to call the destructor while any other thread makes calls to the pool (as is generally the case with C++ classes). </p>
-
-<p class="definition">Definition at line <a class="el" href="thread__pool_8cpp_source.html#l00197">197</a> of file <a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a>.</p>
 
 </div>
 </div>
@@ -231,60 +217,6 @@ Friends</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>The current number of threads backing the pool. </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00131">131</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
-
-</div>
-</div>
-<a id="a33493dd6c5ef378a74a823801526171e" name="a33493dd6c5ef378a74a823801526171e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a33493dd6c5ef378a74a823801526171e">&#9670;&#160;</a></span>operator delete()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">static void dispenso::ThreadPool::operator delete </td>
-          <td>(</td>
-          <td class="paramtype">void *</td>          <td class="paramname"><span class="paramname"><em>ptr</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00224">224</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
-
-</div>
-</div>
-<a id="a267594d95ec2a23b9e5cbd3685e0ea85" name="a267594d95ec2a23b9e5cbd3685e0ea85"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a267594d95ec2a23b9e5cbd3685e0ea85">&#9670;&#160;</a></span>operator new()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">static void * dispenso::ThreadPool::operator new </td>
-          <td>(</td>
-          <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>sz</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00221">221</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -354,7 +286,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00273">273</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00276">276</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -377,7 +309,7 @@ template&lt;typename F &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a></td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;)</td>
+          <td class="paramtype">ForceQueuingTag</td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;)</td>
         </tr>
       </table>
   </td>
@@ -394,7 +326,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00286">286</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00290">290</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -461,7 +393,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00251">251</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00253">253</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -485,37 +417,12 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00252">252</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00254">254</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
-<a id="a9e3024341bbf07bce3dc506d3626743f" name="a9e3024341bbf07bce3dc506d3626743f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9e3024341bbf07bce3dc506d3626743f">&#9670;&#160;</a></span>TaskSetBase</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">friend class TaskSetBase</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00253">253</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
-
-</div>
-</div>
-<hr/>The documentation for this class was generated from the following files:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>/github/workspace/dispenso/<a class="el" href="thread__pool_8h_source.html">thread_pool.h</a></li>
-<li>/github/workspace/dispenso/<a class="el" href="thread__pool_8cpp_source.html">thread_pool.cpp</a></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

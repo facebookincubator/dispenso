@@ -138,8 +138,8 @@ Files</h2></td></tr>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a> tasks(dispenso::globalThreadPool());</div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_parallel_for_executor.html">dispenso::ParallelForExecutor</a> executor;</div>
 <div class="line">executor(tasks, graph);</div>
-<div class="ttc" id="aclassdispenso_1_1_graph_t_html"><div class="ttname"><a href="classdispenso_1_1_graph_t.html">dispenso::GraphT</a></div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00527">graph.h:527</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_graph_t_html_a13d24b1056de5324500d20702661fa7e"><div class="ttname"><a href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">dispenso::GraphT::addNode</a></div><div class="ttdeci">N &amp; addNode(T &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00554">graph.h:554</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_graph_t_html"><div class="ttname"><a href="classdispenso_1_1_graph_t.html">dispenso::GraphT</a></div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00548">graph.h:548</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_graph_t_html_a13d24b1056de5324500d20702661fa7e"><div class="ttname"><a href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">dispenso::GraphT::addNode</a></div><div class="ttdeci">N &amp; addNode(T &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00576">graph.h:576</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_parallel_for_executor_html"><div class="ttname"><a href="classdispenso_1_1_parallel_for_executor.html">dispenso::ParallelForExecutor</a></div><div class="ttdef"><b>Definition</b> <a href="graph__executor_8h_source.html#l00043">graph_executor.h:43</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_task_set_html"><div class="ttname"><a href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00038">task_set.h:38</a></div></div>
 <div class="ttc" id="agraph_8h_html"><div class="ttname"><a href="graph_8h.html">graph.h</a></div></div>
@@ -151,7 +151,7 @@ Files</h2></td></tr>
 <div class="line"> </div>
 <div class="line">dispenso::pipeline(</div>
 <div class="line">    <span class="comment">// Generator stage: produces items</span></div>
-<div class="line">    [&amp;]() -&gt; <a class="code hl_typedef" href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult&lt;int&gt;</a> {</div>
+<div class="line">    [&amp;]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
 <div class="line">        <span class="keywordflow">if</span> (itemIndex &lt; 100) <span class="keywordflow">return</span> itemIndex++;</div>
 <div class="line">        <span class="keywordflow">return</span> {};  <span class="comment">// Empty result signals completion</span></div>
 <div class="line">    },</div>
@@ -162,7 +162,6 @@ Files</h2></td></tr>
 <div class="line">);</div>
 <div class="ttc" id="apipeline_8h_html"><div class="ttname"><a href="pipeline_8h.html">pipeline.h</a></div></div>
 <div class="ttc" id="apipeline_8h_html_a360af299cbfaa8e0069ec014f87d1ddb"><div class="ttname"><a href="pipeline_8h.html#a360af299cbfaa8e0069ec014f87d1ddb">dispenso::stage</a></div><div class="ttdeci">auto stage(F &amp;&amp;f, ssize_t limit)</div><div class="ttdef"><b>Definition</b> <a href="pipeline_8h_source.html#l00049">pipeline.h:49</a></div></div>
-<div class="ttc" id="apipeline_8h_html_ad59b35109942aaa4651f9a8a7ecf8d2a"><div class="ttname"><a href="pipeline_8h.html#ad59b35109942aaa4651f9a8a7ecf8d2a">dispenso::OpResult</a></div><div class="ttdeci">detail::OpResult&lt; T &gt; OpResult</div><div class="ttdoc">Optional-like storage with in-place construction (C++14 compatible).</div><div class="ttdef"><b>Definition</b> <a href="pipeline_8h_source.html#l00030">pipeline.h:30</a></div></div>
 </div><!-- fragment --> </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

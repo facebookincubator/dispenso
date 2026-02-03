@@ -126,10 +126,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aefc734821391a9975fd07f4ee80c8ec1" id="r_aefc734821391a9975fd07f4ee80c8ec1"><td class="memTemplParams" colspan="2">template&lt;typename F , typename Schedulable &gt; </td></tr>
 <tr class="memitem:aefc734821391a9975fd07f4ee80c8ec1"><td class="memTemplItemLeft" align="right" valign="top">&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#aefc734821391a9975fd07f4ee80c8ec1">Future</a> (F &amp;&amp;f, Schedulable &amp;schedulable, std::launch asyncPolicy=<a class="el" href="future_8h.html#a8421f24280762e7f0fc576158306ebac">kNotAsync</a>, std::launch deferredPolicy=std::launch::deferred)</td></tr>
 <tr class="separator:aefc734821391a9975fd07f4ee80c8ec1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab2b43ba57babead39a28b854a9a3c70d" id="r_ab2b43ba57babead39a28b854a9a3c70d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab2b43ba57babead39a28b854a9a3c70d">operator=</a> (<a class="el" href="classdispenso_1_1_future.html">Future</a> &amp;&amp;f) noexcept</td></tr>
-<tr class="separator:ab2b43ba57babead39a28b854a9a3c70d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8c55b9b2e0c4e4e51b90b01e6c07540" id="r_ac8c55b9b2e0c4e4e51b90b01e6c07540"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac8c55b9b2e0c4e4e51b90b01e6c07540">operator=</a> (const <a class="el" href="classdispenso_1_1_future.html">Future</a> &amp;f)</td></tr>
-<tr class="separator:ac8c55b9b2e0c4e4e51b90b01e6c07540"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a14d27f2276dedd9e4e6d17b6fcfdb74f" id="r_a14d27f2276dedd9e4e6d17b6fcfdb74f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a14d27f2276dedd9e4e6d17b6fcfdb74f">~Future</a> ()=default</td></tr>
 <tr class="separator:a14d27f2276dedd9e4e6d17b6fcfdb74f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad784baf84f9c498d58185d44442855da" id="r_ad784baf84f9c498d58185d44442855da"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad784baf84f9c498d58185d44442855da">valid</a> () const noexcept</td></tr>
@@ -144,16 +140,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a35007e2927c1277d4d612fae6498cb5a" id="r_a35007e2927c1277d4d612fae6498cb5a"><td class="memTemplParams" colspan="2">template&lt;class Clock , class Duration &gt; </td></tr>
 <tr class="memitem:a35007e2927c1277d4d612fae6498cb5a"><td class="memTemplItemLeft" align="right" valign="top">std::future_status&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a35007e2927c1277d4d612fae6498cb5a">wait_until</a> (const std::chrono::time_point&lt; Clock, Duration &gt; &amp;timeoutTime) const</td></tr>
 <tr class="separator:a35007e2927c1277d4d612fae6498cb5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70f16dcfba469fa96b4f46f3d112041a" id="r_a70f16dcfba469fa96b4f46f3d112041a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a70f16dcfba469fa96b4f46f3d112041a">share</a> ()</td></tr>
-<tr class="separator:a70f16dcfba469fa96b4f46f3d112041a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6048c658bf896ca65535dd7ffa6623a5" id="r_a6048c658bf896ca65535dd7ffa6623a5"><td class="memItemLeft" align="right" valign="top">const Result &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6048c658bf896ca65535dd7ffa6623a5">get</a> () const</td></tr>
 <tr class="separator:a6048c658bf896ca65535dd7ffa6623a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aac1d6623d69295fc0a2d72fac46aebaf" id="r_aac1d6623d69295fc0a2d72fac46aebaf"><td class="memTemplParams" colspan="2">template&lt;typename F , typename Schedulable &gt; </td></tr>
-<tr class="memitem:aac1d6623d69295fc0a2d72fac46aebaf"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; detail::ResultOf&lt; F, <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;&amp; &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#aac1d6623d69295fc0a2d72fac46aebaf">then</a> (F &amp;&amp;f, Schedulable &amp;sched, std::launch asyncPolicy=<a class="el" href="future_8h.html#a8421f24280762e7f0fc576158306ebac">kNotAsync</a>, std::launch deferredPolicy=std::launch::deferred)</td></tr>
-<tr class="separator:aac1d6623d69295fc0a2d72fac46aebaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5cbb842e13bf64c9f9b74c5710b66b12" id="r_a5cbb842e13bf64c9f9b74c5710b66b12"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
-<tr class="memitem:a5cbb842e13bf64c9f9b74c5710b66b12"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; detail::ResultOf&lt; F, <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;&amp; &gt; &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a5cbb842e13bf64c9f9b74c5710b66b12">then</a> (F &amp;&amp;f)</td></tr>
-<tr class="separator:a5cbb842e13bf64c9f9b74c5710b66b12"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -266,7 +254,16 @@ template&lt;typename Result &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00085">85</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p></p>
+<p>Move constructor</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">f</td><td>The future to move from.    </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00086">86</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -302,7 +299,7 @@ template&lt;typename Result &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00093">93</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00094">94</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -331,7 +328,16 @@ template&lt;typename Result &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00094">94</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p></p>
+<p>Copy construct a <a class="el" href="classdispenso_1_1_future.html">Future</a>.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">f</td><td>The existing future to reference. This essentially increments the reference count on the future's backing state.    </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00096">96</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -379,14 +385,14 @@ template&lt;typename F , typename Schedulable &gt; </div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">f</td><td>a functor with signature <code>Result(void)</code> to be invoked in order for <code>get</code> to return a valid value. </td></tr>
-    <tr><td class="paramname">schedulable</td><td>A <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code>, <code><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a></code>, or similar type that has function <code>schedule</code> that takes a functor with signature <code>void()</code> and <code><a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a></code>. </td></tr>
+    <tr><td class="paramname">schedulable</td><td>A <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code>, <code><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a></code>, or similar type that has function <code>schedule</code> that takes a functor with signature <code>void()</code> and <code>ForceQueuingTag</code>. </td></tr>
     <tr><td class="paramname">asyncPolicy</td><td>If <code>std::launch::async</code>, the functor will be scheduled through to the underlying thread pool work queue. </td></tr>
     <tr><td class="paramname">deferredPolicy</td><td>If <code>std::launch::deferred</code>, <code>wait_for</code> and <code>wait_until</code> may invoke the functor from their calling thread. </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00111">111</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00113">113</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -448,7 +454,7 @@ template&lt;typename Result &gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a2">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00219">219</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00221">221</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -477,201 +483,11 @@ template&lt;typename Result &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>Is the <a class="el" href="classdispenso_1_1_future.html">Future</a> ready?</p>
-<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the value associated with this <a class="el" href="classdispenso_1_1_future.html">Future</a> has already be computed, and <code>get</code> can return the value immediately. Returns &lt;false&gt; if the functor is logically queued, or is in progress. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the value associated with this <a class="el" href="classdispenso_1_1_future.html">Future</a> has already be computed, and <code>get</code> can return the value immediately. Returns <code>false</code> if the functor is logically queued, or is in progress. </dd></dl>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a4">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00162">162</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="ac8c55b9b2e0c4e4e51b90b01e6c07540" name="ac8c55b9b2e0c4e4e51b90b01e6c07540"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac8c55b9b2e0c4e4e51b90b01e6c07540">&#9670;&#160;</a></span>operator=() <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename Result &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_future.html">Future</a> &amp; <a class="el" href="classdispenso_1_1_future.html">dispenso::Future</a>&lt; Result &gt;::operator= </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>f</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Copy a <a class="el" href="classdispenso_1_1_future.html">Future</a>, which increments the underlying state reference count.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">f</td><td>The <a class="el" href="classdispenso_1_1_future.html">Future</a> whose backing state will be referenced by this <a class="el" href="classdispenso_1_1_future.html">Future</a>. </td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00132">132</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="ab2b43ba57babead39a28b854a9a3c70d" name="ab2b43ba57babead39a28b854a9a3c70d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab2b43ba57babead39a28b854a9a3c70d">&#9670;&#160;</a></span>operator=() <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename Result &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_future.html">Future</a> &amp; <a class="el" href="classdispenso_1_1_future.html">dispenso::Future</a>&lt; Result &gt;::operator= </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>f</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">noexcept</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Move a <a class="el" href="classdispenso_1_1_future.html">Future</a></p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">f</td><td>The <a class="el" href="classdispenso_1_1_future.html">Future</a> whose backing state will be transferred to this <a class="el" href="classdispenso_1_1_future.html">Future</a>. </td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00123">123</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="a70f16dcfba469fa96b4f46f3d112041a" name="a70f16dcfba469fa96b4f46f3d112041a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a70f16dcfba469fa96b4f46f3d112041a">&#9670;&#160;</a></span>share()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename Result &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_future.html">Future</a> <a class="el" href="classdispenso_1_1_future.html">dispenso::Future</a>&lt; Result &gt;::share </td>
-          <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Provide a shared future. <code>share</code> is here only to provide compatible api with <code>std::experimental::future</code>, but <a class="el" href="classdispenso_1_1_future.html">Future</a> already works like std::shared_future. </p>
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00210">210</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="a5cbb842e13bf64c9f9b74c5710b66b12" name="a5cbb842e13bf64c9f9b74c5710b66b12"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5cbb842e13bf64c9f9b74c5710b66b12">&#9670;&#160;</a></span>then() <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename Result &gt; </div>
-<div class="memtemplate">
-template&lt;typename F &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; detail::ResultOf&lt; F, <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;&amp; &gt; &gt; <a class="el" href="classdispenso_1_1_future.html">dispenso::Future</a>&lt; Result &gt;::then </td>
-          <td>(</td>
-          <td class="paramtype">F &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>f</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00251">251</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
-
-</div>
-</div>
-<a id="aac1d6623d69295fc0a2d72fac46aebaf" name="aac1d6623d69295fc0a2d72fac46aebaf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aac1d6623d69295fc0a2d72fac46aebaf">&#9670;&#160;</a></span>then() <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename Result &gt; </div>
-<div class="memtemplate">
-template&lt;typename F , typename Schedulable &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; detail::ResultOf&lt; F, <a class="el" href="classdispenso_1_1_future.html">Future</a>&lt; Result &gt; &amp;&amp; &gt; &gt; <a class="el" href="classdispenso_1_1_future.html">dispenso::Future</a>&lt; Result &gt;::then </td>
-          <td>(</td>
-          <td class="paramtype">F &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>f</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Schedulable &amp;</td>          <td class="paramname"><span class="paramname"><em>sched</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::launch</td>          <td class="paramname"><span class="paramname"><em>asyncPolicy</em></span><span class="paramdefsep"> = </span><span class="paramdefval"><a class="el" href="future_8h.html#a8421f24280762e7f0fc576158306ebac">kNotAsync</a></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::launch</td>          <td class="paramname"><span class="paramname"><em>deferredPolicy</em></span><span class="paramdefsep"> = </span><span class="paramdefval">std::launch::deferred</span>&#160;)</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Schedule a functor to be invoked upon reaching <code>is_ready<code> status, and return a future that will hold the result of the functor.</code></code></p>
-<p><code><code></p><dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">f</td><td>The functor to be executed whose result will be available in the returned <code><a class="el" href="classdispenso_1_1_future.html">Future</a></code>. This should have signature <code>Unpecified(Future&lt;Result&gt;&amp;&amp;)</code>. </td></tr>
-    <tr><td class="paramname">sched</td><td>The Schedulable in which to run the functor. </td></tr>
-    <tr><td class="paramname">asyncPolicy</td><td>if <code>std::launch::async</code> then the functor will attempt to be queued on the backing work queue of the Schedulable (if any). </td></tr>
-    <tr><td class="paramname">deferredPolicy</td><td>if <code>std::launch::deferred</code>, <code>wait_for</code> and <code>wait_until</code> of the returned future will be allowed to invoke the functor, otherwise not.</td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>A future containing the result of the functor. </dd></dl>
-<p></code></code></p>
-
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00240">240</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00164">164</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -702,7 +518,7 @@ template&lt;typename Result &gt; </div>
 <p>Is this <a class="el" href="classdispenso_1_1_future.html">Future</a> valid?</p>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if the <a class="el" href="classdispenso_1_1_future.html">Future</a> was constructed with a functor/schedulable, with result value, or indirectly from a <a class="el" href="classdispenso_1_1_future.html">Future</a> that was constructed one of those ways. <code>false</code> if the <a class="el" href="classdispenso_1_1_future.html">Future</a> was constructed via the default constructor, or indrectly from a <a class="el" href="classdispenso_1_1_future.html">Future</a> that was constructed that way. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00151">151</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00153">153</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -735,7 +551,7 @@ template&lt;typename Result &gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a6">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00171">171</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00173">173</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -777,7 +593,7 @@ template&lt;class Rep , class Period &gt; </div>
 <dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a5">future_example.cpp</a>.</dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00187">187</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00189">189</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -817,7 +633,7 @@ template&lt;class Clock , class Duration &gt; </div>
 <dl class="section return"><dt>Returns</dt><dd><code>std::future_status::ready</code> if <code>get</code> can return immediately, <code>std::future_status::timeout</code> if the function timed out while waiting.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>This function may invoke the functor if it is still logically queued, and <code>std::launch::deferred</code> was specified at construction. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00202">202</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00204">204</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -846,7 +662,7 @@ template&lt;typename R &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00265">265</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00267">267</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>
@@ -884,7 +700,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00577">577</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00600">600</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
 </div>
 </div>

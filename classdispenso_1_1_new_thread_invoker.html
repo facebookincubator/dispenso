@@ -114,13 +114,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a460beb76088b55f1f463f601e2f45e23"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a460beb76088b55f1f463f601e2f45e23">schedule</a> (F &amp;&amp;f) const</td></tr>
 <tr class="separator:a460beb76088b55f1f463f601e2f45e23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f688605cef1aa19b219fd4e502f4231" id="r_a3f688605cef1aa19b219fd4e502f4231"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
-<tr class="memitem:a3f688605cef1aa19b219fd4e502f4231"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a3f688605cef1aa19b219fd4e502f4231">schedule</a> (F &amp;&amp;f, <a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a>) const</td></tr>
+<tr class="memitem:a3f688605cef1aa19b219fd4e502f4231"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a3f688605cef1aa19b219fd4e502f4231">schedule</a> (F &amp;&amp;f, ForceQueuingTag) const</td></tr>
 <tr class="separator:a3f688605cef1aa19b219fd4e502f4231"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A class fullfilling the Schedulable concept that always invokes on a new thread. This can be used in place of <code><a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a></code> or <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> with <code><a class="el" href="classdispenso_1_1_future.html">Future</a></code>s at construction or through <code>then</code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00060">60</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00062">62</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a460beb76088b55f1f463f601e2f45e23" name="a460beb76088b55f1f463f601e2f45e23"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a460beb76088b55f1f463f601e2f45e23">&#9670;&#160;</a></span>schedule() <span class="overload">[1/2]</span></h2>
@@ -154,7 +154,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00070">70</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00073">73</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
 
 </div>
 </div>
@@ -177,7 +177,7 @@ template&lt;typename F &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structdispenso_1_1_force_queuing_tag.html">ForceQueuingTag</a></td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;) const</td>
+          <td class="paramtype">ForceQueuingTag</td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;) const</td>
         </tr>
       </table>
   </td>
@@ -194,7 +194,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00081">81</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00085">85</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
 
 </div>
 </div>
