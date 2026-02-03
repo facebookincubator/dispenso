@@ -129,7 +129,7 @@ TEST(SmallBufferAllocator, ThreadedAllocDealloc) {
   constexpr size_t kNumThreads = 8;
   constexpr size_t kNumAllocsPerThread = 500;
 
-  auto threadFunc = [](size_t threadId) {
+  auto threadFunc = [&](size_t threadId) {
     for (size_t i = 0; i < kNumAllocsPerThread; ++i) {
       // Rotate through different sizes
       switch ((threadId + i) % 5) {
