@@ -23,6 +23,44 @@
 
 namespace dispenso {
 
+#if DISPENSO_HAS_CONCEPTS
+/**
+ * @concept ParallelForRangeFunc
+ * @brief A callable suitable for chunked parallel_for with (begin, end) signature.
+ *
+ * The callable must be invocable with two integer arguments representing the chunk range.
+ **/
+template <typename F, typename IntegerT>
+concept ParallelForRangeFunc = std::invocable<F, IntegerT, IntegerT>;
+
+/**
+ * @concept ParallelForIndexFunc
+ * @brief A callable suitable for element-wise parallel_for with single index signature.
+ *
+ * The callable must be invocable with a single integer argument representing the element index.
+ **/
+template <typename F, typename IntegerT>
+concept ParallelForIndexFunc = std::invocable<F, IntegerT>;
+
+/**
+ * @concept ParallelForStateRangeFunc
+ * @brief A callable suitable for stateful chunked parallel_for.
+ *
+ * The callable must be invocable with (State&, begin, end) arguments.
+ **/
+template <typename F, typename StateRef, typename IntegerT>
+concept ParallelForStateRangeFunc = std::invocable<F, StateRef, IntegerT, IntegerT>;
+
+/**
+ * @concept ParallelForStateIndexFunc
+ * @brief A callable suitable for stateful element-wise parallel_for.
+ *
+ * The callable must be invocable with (State&, index) arguments.
+ **/
+template <typename F, typename StateRef, typename IntegerT>
+concept ParallelForStateIndexFunc = std::invocable<F, StateRef, IntegerT>;
+#endif // DISPENSO_HAS_CONCEPTS
+
 /**
  * Chunking strategy.  Typically if the cost of each loop iteration is roughly constant, kStatic
  * load balancing is preferred.  Additionally, when making a non-waiting parallel_for call in
@@ -513,6 +551,7 @@ void parallel_for(
  * @param options See ParForOptions for details.
  **/
 template <typename TaskSetT, typename IntegerT, typename F>
+DISPENSO_REQUIRES(ParallelForRangeFunc<F, IntegerT>)
 void parallel_for(
     TaskSetT& taskSet,
     const ChunkedRange<IntegerT>& range,
@@ -538,6 +577,7 @@ void parallel_for(
  *to true.
  **/
 template <typename IntegerT, typename F>
+DISPENSO_REQUIRES(ParallelForRangeFunc<F, IntegerT>)
 void parallel_for(const ChunkedRange<IntegerT>& range, F&& f, ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
