@@ -40,7 +40,7 @@ DISPENSO_DLL_ACCESS size_t approxBytesAllocatedSmallBufferImpl(size_t ordinal);
 // (tiny startup/teardown cost, and trivial amount of memory) when not using 4-byte or smaller
 // allocations, and makes the code simpler.
 constexpr size_t getOrdinal(size_t blockSize) {
-  return std::max<ssize_t>(0, log2const(blockSize) - 2);
+  return static_cast<size_t>(std::max<ssize_t>(0, static_cast<ssize_t>(log2const(blockSize)) - 2));
 }
 
 template <size_t kBlockSize>

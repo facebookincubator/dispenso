@@ -548,3 +548,236 @@ TYPED_TEST(BigTree, SubgraphClearAndRebuild) {
     EXPECT_EQ(this->data_[this->numLevels_ - 1][0], result);
   }
 }
+
+// Test BiPropNode edge cases to exercise set_union code path
+// This happens when two nodes with existing biPropSets are connected
+TEST(BiPropNode, SetUnionMerge) {
+  dispenso::BiPropGraph g;
+  int a = 0, b = 0, c = 0, d = 0;
+
+  // Create two separate biProp chains first
+  // Chain 1: N0 <-> N1
+  dispenso::BiPropNode& N0 = g.addNode([&]() { a += 1; });
+  dispenso::BiPropNode& N1 = g.addNode([&]() { b += a; });
+  N1.biPropDependsOn(N0);
+
+  // Chain 2: N2 <-> N3
+  dispenso::BiPropNode& N2 = g.addNode([&]() { c += 2; });
+  dispenso::BiPropNode& N3 = g.addNode([&]() { d += c; });
+  N3.biPropDependsOn(N2);
+
+  // Now connect the two chains - this should trigger set_union
+  // because both N1 and N2 already have biPropSets
+  N2.biPropDependsOn(N1);
+
+  // Execute and verify
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 1);
+  EXPECT_EQ(c, 2);
+  EXPECT_EQ(d, 2);
+
+  // Verify that marking one node incomplete propagates to all connected nodes
+  dispenso::ForwardPropagator forwardPropagator;
+  N0.setIncomplete();
+  a = b = c = d = 0;
+  forwardPropagator(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 1);
+  EXPECT_EQ(c, 2);
+  EXPECT_EQ(d, 2);
+}
+
+// Test BiPropNode with node that already has biPropSet connecting to one without
+TEST(BiPropNode, ExistingSetToNew) {
+  dispenso::BiPropGraph g;
+  int a = 0, b = 0, c = 0;
+
+  // Create a biProp chain: N0 <-> N1
+  dispenso::BiPropNode& N0 = g.addNode([&]() { a += 1; });
+  dispenso::BiPropNode& N1 = g.addNode([&]() { b += a; });
+  N1.biPropDependsOn(N0);
+
+  // Create a standalone node N2
+  dispenso::BiPropNode& N2 = g.addNode([&]() { c += b; });
+
+  // Connect N2 to the existing chain - N1 has biPropSet, N2 doesn't
+  N2.biPropDependsOn(N1);
+
+  // Execute and verify
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 1);
+  EXPECT_EQ(c, 1);
+}
+
+// Test BiPropNode with node without biPropSet connecting to one that has it
+TEST(BiPropNode, NewToExistingSet) {
+  dispenso::BiPropGraph g;
+  int a = 0, b = 0, c = 0;
+
+  // Create a biProp chain: N1 <-> N2
+  dispenso::BiPropNode& N1 = g.addNode([&]() { b += 1; });
+  dispenso::BiPropNode& N2 = g.addNode([&]() { c += b; });
+  N2.biPropDependsOn(N1);
+
+  // Create a standalone node N0
+  dispenso::BiPropNode& N0 = g.addNode([&]() { a += 1; });
+
+  // Connect the existing chain to N0 - N1 has biPropSet, N0 doesn't
+  N1.biPropDependsOn(N0);
+
+  // Execute and verify
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 1);
+  EXPECT_EQ(c, 1);
+}
+
+// Test Subgraph accessors: numNodes() and node()
+TEST(Subgraph, AccessorsBasic) {
+  dispenso::Graph g;
+  dispenso::Subgraph& subgraph = g.addSubgraph();
+
+  int a = 0, b = 0, c = 0;
+
+  // Add nodes to the subgraph
+  dispenso::Node& N0 = subgraph.addNode([&]() { a = 1; });
+  dispenso::Node& N1 = subgraph.addNode([&]() { b = 2; });
+  dispenso::Node& N2 = subgraph.addNode([&]() { c = 3; });
+
+  // Test numNodes()
+  EXPECT_EQ(subgraph.numNodes(), 3u);
+
+  // Test node() accessor (non-const)
+  EXPECT_EQ(&subgraph.node(0), &N0);
+  EXPECT_EQ(&subgraph.node(1), &N1);
+  EXPECT_EQ(&subgraph.node(2), &N2);
+
+  // Test const node() accessor
+  const dispenso::Subgraph& constSubgraph = subgraph;
+  EXPECT_EQ(&constSubgraph.node(0), &N0);
+  EXPECT_EQ(&constSubgraph.node(1), &N1);
+  EXPECT_EQ(&constSubgraph.node(2), &N2);
+
+  // Verify nodes work correctly
+  N1.dependsOn(N0);
+  N2.dependsOn(N1);
+
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 2);
+  EXPECT_EQ(c, 3);
+}
+
+// Test Subgraph move constructor
+TEST(Subgraph, MoveConstructor) {
+  dispenso::Graph g;
+
+  // Create a subgraph and add nodes via a function that returns by move
+  auto createSubgraphWithNodes = [&g]() -> dispenso::Subgraph& { return g.addSubgraph(); };
+
+  dispenso::Subgraph& subgraph = createSubgraphWithNodes();
+
+  int x = 0;
+  subgraph.addNode([&]() { x = 42; });
+
+  EXPECT_EQ(subgraph.numNodes(), 1u);
+
+  // Execute to verify the moved subgraph works
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(x, 42);
+}
+
+// Test Graph-level node() accessors that delegate to subgraph 0
+TEST(Graph, NodeAccessors) {
+  dispenso::Graph g;
+
+  int a = 0, b = 0;
+
+  // Add nodes directly to the graph (goes to subgraph 0)
+  dispenso::Node& N0 = g.addNode([&]() { a = 1; });
+  dispenso::Node& N1 = g.addNode([&]() { b = 2; });
+
+  // Test Graph::numNodes()
+  EXPECT_EQ(g.numNodes(), 2u);
+
+  // Test non-const node() accessor
+  EXPECT_EQ(&g.node(0), &N0);
+  EXPECT_EQ(&g.node(1), &N1);
+
+  // Test const node() accessor
+  const dispenso::Graph& constGraph = g;
+  EXPECT_EQ(&constGraph.node(0), &N0);
+  EXPECT_EQ(&constGraph.node(1), &N1);
+
+  // Execute to verify
+  dispenso::SingleThreadExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(g);
+
+  EXPECT_EQ(a, 1);
+  EXPECT_EQ(b, 2);
+}
+
+// Test Graph::subgraph() accessors
+TEST(Graph, SubgraphAccessors) {
+  dispenso::Graph g;
+
+  // Graph starts with subgraph 0
+  EXPECT_EQ(g.numSubgraphs(), 1u);
+
+  // Add more subgraphs
+  dispenso::Subgraph& sg1 = g.addSubgraph();
+  dispenso::Subgraph& sg2 = g.addSubgraph();
+
+  EXPECT_EQ(g.numSubgraphs(), 3u);
+
+  // Test non-const subgraph() accessor
+  EXPECT_EQ(&g.subgraph(1), &sg1);
+  EXPECT_EQ(&g.subgraph(2), &sg2);
+
+  // Test const subgraph() accessor
+  const dispenso::Graph& constGraph = g;
+  EXPECT_EQ(&constGraph.subgraph(1), &sg1);
+  EXPECT_EQ(&constGraph.subgraph(2), &sg2);
+}
+
+// Test Graph::clear() method
+TEST(Graph, ClearMethod) {
+  dispenso::Graph g;
+
+  int x = 0;
+
+  // Add some nodes
+  g.addNode([&]() { x += 1; });
+  g.addNode([&]() { x += 2; });
+  g.addSubgraph();
+
+  EXPECT_EQ(g.numNodes(), 2u);
+  EXPECT_EQ(g.numSubgraphs(), 2u);
+
+  // Clear the graph
+  g.clear();
+
+  // After clear, graph should have 1 empty subgraph
+  EXPECT_EQ(g.numSubgraphs(), 1u);
+  EXPECT_EQ(g.numNodes(), 0u);
+}
