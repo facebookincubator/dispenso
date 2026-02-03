@@ -151,3 +151,178 @@ TEST(PoolAllocator, Arena) {
     EXPECT_TRUE(std::all_of(c, c + 64, [](char v) { return v == 0x11; }));
   }
 }
+
+TEST(NoLockPoolAllocator, SimpleMallocFree) {
+  // Test the non-thread-safe version
+  dispenso::NoLockPoolAllocator allocator(64, 256, ::malloc, ::free);
+
+  char* buf = allocator.alloc();
+  *buf = 'a';
+  allocator.dealloc(buf);
+}
+
+TEST(NoLockPoolAllocator, MultipleAllocDealloc) {
+  dispenso::NoLockPoolAllocator allocator(32, 128, ::malloc, ::free);
+
+  // Allocate several chunks
+  std::vector<char*> bufs;
+  for (int i = 0; i < 10; ++i) {
+    char* buf = allocator.alloc();
+    std::fill_n(buf, 32, static_cast<char>(i));
+    bufs.push_back(buf);
+  }
+
+  // Verify contents
+  for (int i = 0; i < 10; ++i) {
+    EXPECT_TRUE(
+        std::all_of(bufs[static_cast<size_t>(i)], bufs[static_cast<size_t>(i)] + 32, [i](char v) {
+          return v == static_cast<char>(i);
+        }));
+  }
+
+  // Dealloc all
+  for (char* buf : bufs) {
+    allocator.dealloc(buf);
+  }
+}
+
+TEST(PoolAllocator, TotalChunkCapacity) {
+  size_t allocCount = 0;
+  auto allocFunc = [&allocCount](size_t len) -> void* {
+    ++allocCount;
+    return ::malloc(len);
+  };
+
+  dispenso::PoolAllocator allocator(64, 256, allocFunc, ::free);
+
+  // Initially no backing allocations
+  EXPECT_EQ(allocator.totalChunkCapacity(), 0u);
+
+  // First alloc triggers a backing allocation
+  char* buf1 = allocator.alloc();
+  EXPECT_EQ(allocCount, 1u);
+  EXPECT_EQ(allocator.totalChunkCapacity(), 4u); // 256 / 64 = 4 chunks
+
+  // Allocate remaining chunks in first slab
+  char* buf2 = allocator.alloc();
+  char* buf3 = allocator.alloc();
+  char* buf4 = allocator.alloc();
+  EXPECT_EQ(allocCount, 1u); // Still just 1 backing allocation
+  EXPECT_EQ(allocator.totalChunkCapacity(), 4u);
+
+  // Next alloc triggers another backing allocation
+  char* buf5 = allocator.alloc();
+  EXPECT_EQ(allocCount, 2u);
+  EXPECT_EQ(allocator.totalChunkCapacity(), 8u); // 2 slabs * 4 chunks
+
+  allocator.dealloc(buf1);
+  allocator.dealloc(buf2);
+  allocator.dealloc(buf3);
+  allocator.dealloc(buf4);
+  allocator.dealloc(buf5);
+}
+
+TEST(PoolAllocator, SingleChunkPerSlab) {
+  // Edge case: chunkSize equals allocSize, so only 1 chunk per slab
+  size_t allocCount = 0;
+  auto allocFunc = [&allocCount](size_t len) -> void* {
+    ++allocCount;
+    return ::malloc(len);
+  };
+
+  dispenso::PoolAllocator allocator(128, 128, allocFunc, ::free);
+
+  EXPECT_EQ(allocator.totalChunkCapacity(), 0u);
+
+  char* buf1 = allocator.alloc();
+  EXPECT_EQ(allocCount, 1u);
+  EXPECT_EQ(allocator.totalChunkCapacity(), 1u);
+
+  char* buf2 = allocator.alloc();
+  EXPECT_EQ(allocCount, 2u);
+  EXPECT_EQ(allocator.totalChunkCapacity(), 2u);
+
+  allocator.dealloc(buf1);
+  allocator.dealloc(buf2);
+}
+
+TEST(PoolAllocator, ClearEmptyAllocator) {
+  // Edge case: calling clear() when nothing has been allocated
+  dispenso::PoolAllocator allocator(64, 256, ::malloc, ::free);
+
+  // Should not crash
+  allocator.clear();
+  allocator.clear();
+
+  // Can still allocate after clear
+  char* buf = allocator.alloc();
+  *buf = 'x';
+  EXPECT_EQ(*buf, 'x');
+  allocator.dealloc(buf);
+}
+
+TEST(PoolAllocator, MultipleClearCycles) {
+  size_t allocCount = 0;
+  size_t deallocCount = 0;
+
+  auto allocFunc = [&allocCount](size_t len) -> void* {
+    ++allocCount;
+    return ::malloc(len);
+  };
+
+  auto deallocFunc = [&deallocCount](void* ptr) {
+    ++deallocCount;
+    ::free(ptr);
+  };
+
+  {
+    dispenso::PoolAllocator allocator(64, 256, allocFunc, deallocFunc);
+
+    // First cycle
+    std::vector<char*> bufs;
+    for (int i = 0; i < 20; ++i) {
+      bufs.push_back(allocator.alloc());
+    }
+    size_t firstCycleAllocs = allocCount;
+    EXPECT_GT(firstCycleAllocs, 0u);
+
+    allocator.clear();
+    EXPECT_EQ(deallocCount, 0u); // clear() doesn't deallocate
+
+    // Second cycle - should reuse backing allocations
+    bufs.clear();
+    for (int i = 0; i < 10; ++i) {
+      bufs.push_back(allocator.alloc());
+    }
+    EXPECT_EQ(allocCount, firstCycleAllocs); // No new backing allocations
+
+    allocator.clear();
+
+    // Third cycle
+    bufs.clear();
+    for (int i = 0; i < 5; ++i) {
+      bufs.push_back(allocator.alloc());
+    }
+    EXPECT_EQ(allocCount, firstCycleAllocs); // Still no new backing allocations
+  }
+
+  // Destructor deallocates all backing allocations
+  EXPECT_EQ(deallocCount, allocCount);
+}
+
+TEST(PoolAllocator, ReuseAfterDealloc) {
+  // Verify that deallocated chunks are reused
+  dispenso::PoolAllocator allocator(64, 256, ::malloc, ::free);
+
+  char* buf1 = allocator.alloc();
+  std::fill_n(buf1, 64, 'A');
+
+  allocator.dealloc(buf1);
+
+  // Next alloc should return the same chunk (LIFO behavior)
+  char* buf2 = allocator.alloc();
+  EXPECT_EQ(buf1, buf2);
+
+  // Contents may have been overwritten, but that's expected
+  allocator.dealloc(buf2);
+}
