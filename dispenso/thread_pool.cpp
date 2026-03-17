@@ -113,7 +113,9 @@ void ThreadPool::threadLoop(PerThreadData& data) {
           idle = false;
           idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
         }
+        activeWorkers_.fetch_add(1, std::memory_order_relaxed);
         executeNext(std::move(next));
+        activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
         failCount = 0;
       }
 

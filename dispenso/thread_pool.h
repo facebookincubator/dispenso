@@ -208,10 +208,12 @@ class alignas(kCacheLineSize) ThreadPool {
 
   void conditionallyWake() {
     if (enableEpochWaiter_.load(std::memory_order_acquire)) {
-      // A rare race to overwake is preferable to a race that underwakes.
       auto queuedWork = queuedWork_.fetch_add(1, std::memory_order_acq_rel) + 1;
+      auto active = activeWorkers_.load(std::memory_order_acquire);
       auto idle = idleButAwake_.load(std::memory_order_acquire);
-      if (idle < queuedWork) {
+      // Wake if total available capacity (active + idle spinning + 1 for caller) can't cover
+      // queued work. The +1 accounts for the calling thread which may process work inline.
+      if (active + idle + 1 < queuedWork) {
         wake();
       }
     }
@@ -232,13 +234,17 @@ class alignas(kCacheLineSize) ThreadPool {
   mutable std::mutex threadsMutex_;
   std::deque<PerThreadData> threads_;
   size_t poolLoadMultiplier_;
-  std::atomic<ssize_t> poolLoadFactor_;
+
+  // These atomics are read frequently in the hot schedule() path, so they need
+  // cache-line alignment to avoid false sharing with the mutex/deque above.
+  alignas(kCacheLineSize) std::atomic<ssize_t> poolLoadFactor_;
   std::atomic<ssize_t> numThreads_;
 
   moodycamel::ConcurrentQueue<OnceFunction> work_;
 
   alignas(kCacheLineSize) std::atomic<ssize_t> queuedWork_{0};
   alignas(kCacheLineSize) std::atomic<ssize_t> idleButAwake_{0};
+  alignas(kCacheLineSize) std::atomic<ssize_t> activeWorkers_{0};
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
 
@@ -343,7 +349,14 @@ inline bool ThreadPool::tryExecuteNext() {
   bool dequeued = work_.try_dequeue(next);
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   if (dequeued) {
+    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
+      queuedWork_.fetch_sub(1, std::memory_order_relaxed);
+      activeWorkers_.fetch_add(1, std::memory_order_relaxed);
+    }
     executeNext(std::move(next));
+    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
+      activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
+    }
     return true;
   }
   return false;
@@ -352,7 +365,14 @@ inline bool ThreadPool::tryExecuteNext() {
 inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token) {
   OnceFunction next;
   if (work_.try_dequeue_from_producer(token, next)) {
+    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
+      queuedWork_.fetch_sub(1, std::memory_order_relaxed);
+      activeWorkers_.fetch_add(1, std::memory_order_relaxed);
+    }
     executeNext(std::move(next));
+    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
+      activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
+    }
     return true;
   }
   return false;
