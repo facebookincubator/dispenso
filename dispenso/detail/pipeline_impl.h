@@ -20,6 +20,10 @@
 namespace dispenso {
 namespace detail {
 
+// Maximum depth for inline pipeline continuation before forcing a schedule through
+// the thread pool. Prevents unbounded stack growth when the pool inlines execution.
+static constexpr int kMaxPipelineInlineDepth = 32;
+
 class LimitGatedScheduler {
  public:
   LimitGatedScheduler(ConcurrentTaskSet& tasks, ssize_t res)
@@ -39,7 +43,10 @@ class LimitGatedScheduler {
   class Impl {
    public:
     Impl(ConcurrentTaskSet& tasks, ssize_t res)
-        : tasks_(tasks), resources_(res), unlimited_(res == std::numeric_limits<ssize_t>::max()) {}
+        : tasks_(tasks),
+          resources_(res),
+          unlimited_(res == std::numeric_limits<ssize_t>::max()),
+          serial_(res == 1) {}
 
     template <typename F>
     void schedule(F&& fPipe) {
@@ -61,7 +68,22 @@ class LimitGatedScheduler {
           bool deqd = queue_.try_dequeue(func);
           DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
           if (deqd) {
-            tasks_.schedule(std::move(func));
+            // For serial stages (limit=1), execute continuation inline to reduce
+            // thread pool scheduling overhead. This is safe because we're already
+            // on a worker thread and only one item can be in the stage at a time.
+            // Depth-limit to prevent unbounded stack growth when the pool inlines.
+            if (serial_) {
+              static DISPENSO_THREAD_LOCAL int depth = 0;
+              if (depth < kMaxPipelineInlineDepth) {
+                ++depth;
+                func();
+                --depth;
+              } else {
+                tasks_.schedule(std::move(func), ForceQueuingTag());
+              }
+            } else {
+              tasks_.schedule(std::move(func));
+            }
           } else {
             resources_.fetch_add(1, std::memory_order_acq_rel);
           }
@@ -141,6 +163,7 @@ class LimitGatedScheduler {
     // Note: In benchmarks, this doesn't seem to help very much (~1%), but using it should lower
     // resource requirements because the queue_ never needs to instantiate memory.
     const bool unlimited_;
+    const bool serial_;
   };
 
   struct Deleter {

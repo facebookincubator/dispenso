@@ -394,3 +394,16 @@ TEST(Pipeline, ZeroSizeThreadPool) {
 
   EXPECT_EQ(45, g_sum.load(std::memory_order_acquire));
 }
+
+TEST(Pipeline, SerialStageStackBound) {
+  constexpr int kNumItems = 100000;
+  dispenso::ThreadPool pool(4);
+  std::atomic<int> processed{0};
+  dispenso::pipeline(
+      pool,
+      [n = 0]() mutable -> dispenso::OpResult<int> {
+        return n < kNumItems ? dispenso::OpResult<int>(n++) : dispenso::OpResult<int>();
+      },
+      [&](int) { processed.fetch_add(1, std::memory_order_relaxed); });
+  EXPECT_EQ(processed.load(), kNumItems);
+}
