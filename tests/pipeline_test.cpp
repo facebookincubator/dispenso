@@ -322,7 +322,7 @@ TEST(Pipeline, MultiStageCarryPointersMultiFilterUnlimitedParallel) {
 
 static size_t g_count = 0;
 
-TestOptional<size_t> funkGen() {
+static TestOptional<size_t> funkGen() {
   if (g_count < 10) {
     return g_count++;
   }
@@ -330,7 +330,7 @@ TestOptional<size_t> funkGen() {
 }
 
 static std::atomic<size_t> g_sum(0);
-void funkSink(size_t in) {
+static void funkSink(size_t in) {
   g_sum.fetch_add(in, std::memory_order_acq_rel);
 }
 

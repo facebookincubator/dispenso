@@ -488,7 +488,7 @@ struct Node {
   std::unique_ptr<Node> left, right;
 };
 
-void validateTree(Node* node, int val, int depth) {
+static void validateTree(Node* node, int val, int depth) {
   if (!node) {
     return;
   }
@@ -499,7 +499,7 @@ void validateTree(Node* node, int val, int depth) {
   validateTree(node->right.get(), val + depth, depth + 1);
 }
 
-void buildTree(Node* node, int depth) {
+static void buildTree(Node* node, int depth) {
   if (depth == 16) {
     return;
   }
@@ -837,7 +837,9 @@ inline std::unique_ptr<Node> nodeMove(const std::unique_ptr<Node>& current) {
   return std::move(const_cast<std::unique_ptr<Node>&>(current));
 }
 
-dispenso::Future<std::unique_ptr<Node>> makeTree(uint32_t depth, std::atomic<uint32_t>& cur) {
+static dispenso::Future<std::unique_ptr<Node>> makeTree(
+    uint32_t depth,
+    std::atomic<uint32_t>& cur) {
   --depth;
   auto node = std::make_unique<Node>();
   node->value = static_cast<int>(cur.fetch_add(1, std::memory_order_relaxed));
@@ -859,7 +861,7 @@ dispenso::Future<std::unique_ptr<Node>> makeTree(uint32_t depth, std::atomic<uin
   });
 }
 
-void fillVector(std::unique_ptr<Node>& node, std::vector<uint32_t>& values) {
+static void fillVector(std::unique_ptr<Node>& node, std::vector<uint32_t>& values) {
   if (!node) {
     return;
   }
@@ -889,7 +891,9 @@ TEST(Future, WhenAllTreeBuild) {
   }
 }
 
-dispenso::Future<std::unique_ptr<Node>> makeTreeIters(uint32_t depth, std::atomic<uint32_t>& cur) {
+static dispenso::Future<std::unique_ptr<Node>> makeTreeIters(
+    uint32_t depth,
+    std::atomic<uint32_t>& cur) {
   --depth;
   auto node = std::make_unique<Node>();
   node->value = static_cast<int>(cur.fetch_add(1, std::memory_order_relaxed));

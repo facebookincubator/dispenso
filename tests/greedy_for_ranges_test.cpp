@@ -14,7 +14,7 @@
 
 #include "test_tid.h"
 
-void simpleInner(int w, int y, const std::vector<int>& image, std::atomic<int64_t>& sum) {
+static void simpleInner(int w, int y, const std::vector<int>& image, std::atomic<int64_t>& sum) {
   const int* row = image.data() + y * w;
   int64_t s = 0;
   for (int i = 0; i < w; ++i) {
@@ -159,7 +159,7 @@ TEST(GreedyForRanges, CoordinatedLoops) {
   EXPECT_EQ(sumB.load(std::memory_order_relaxed), w * h * 7);
 }
 
-void concurrentLoop(
+static void concurrentLoop(
     dispenso::ConcurrentTaskSet& taskSet,
     int w,
     int h,
@@ -211,11 +211,8 @@ TEST(GreedyForRanges, CoordinatedConcurrentLoops) {
   EXPECT_EQ(sumB.load(std::memory_order_relaxed), w * h * 7);
 }
 
-void testMaxThreads(
-    size_t poolSize,
-    uint32_t maxThreads,
-    bool testStaticChunking,
-    bool testWaitOption) {
+static void
+testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testStaticChunking, bool testWaitOption) {
   resetTestTid();
   size_t numAvailableThreads = poolSize + testWaitOption;
   std::vector<int> threadLocalSums(numAvailableThreads, 0);

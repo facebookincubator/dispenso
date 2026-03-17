@@ -269,7 +269,7 @@ TEST(ChunkedFor, LoopSmallRangeWithStateWithExternalWait) {
   EXPECT_EQ(total, (1 << 16) - 1);
 }
 
-void minChunkSize(dispenso::ParForChunking choice, int start, int end, int minSize) {
+static void minChunkSize(dispenso::ParForChunking choice, int start, int end, int minSize) {
   dispenso::ConcurrentVector<std::pair<int, int>> ranges;
 
   dispenso::ThreadPool pool(16);

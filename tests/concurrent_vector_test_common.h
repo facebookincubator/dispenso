@@ -1058,7 +1058,7 @@ std::string printVec(const V& vec) {
   return ret;
 }
 
-std::string printVec(const dispenso::ConcurrentVector<int>& vec) {
+inline std::string printVec(const dispenso::ConcurrentVector<int>& vec) {
   if (vec.size() > 20) {
     return "too long to print";
   }
@@ -1069,7 +1069,7 @@ std::string printVec(const dispenso::ConcurrentVector<int>& vec) {
   return ret;
 }
 
-std::string printVec(const std::vector<int>& vec) {
+inline std::string printVec(const std::vector<int>& vec) {
   if (vec.size() > 20) {
     return "too long to print";
   }

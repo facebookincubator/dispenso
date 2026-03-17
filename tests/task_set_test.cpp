@@ -197,7 +197,7 @@ TEST(ConcurrentTaskSetTest, ParamConstruction) {
   dispenso::ConcurrentTaskSet taskSetD(pool, dispenso::ParentCascadeCancel::kOff, 4);
 }
 
-void recursiveFunc(dispenso::ThreadPool& pool, int num) {
+static void recursiveFunc(dispenso::ThreadPool& pool, int num) {
   if (num <= 0)
     return;
   std::atomic<int> value(0);
@@ -222,7 +222,7 @@ struct Node {
   std::unique_ptr<Node> left, right;
 };
 
-void buildTree(dispenso::ConcurrentTaskSet& tasks, std::unique_ptr<Node>& node, int depth) {
+static void buildTree(dispenso::ConcurrentTaskSet& tasks, std::unique_ptr<Node>& node, int depth) {
   if (depth) {
     node = std::make_unique<Node>();
     node->val = depth;
@@ -231,7 +231,7 @@ void buildTree(dispenso::ConcurrentTaskSet& tasks, std::unique_ptr<Node>& node, 
   }
 }
 
-void verifyTree(const std::unique_ptr<Node>& node, int depthRemaining) {
+static void verifyTree(const std::unique_ptr<Node>& node, int depthRemaining) {
   if (depthRemaining) {
     ASSERT_EQ(node->val, depthRemaining);
     verifyTree(node->left, depthRemaining - 1);

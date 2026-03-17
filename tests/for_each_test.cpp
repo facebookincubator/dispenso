@@ -294,7 +294,7 @@ TEST(ForEach, Cascade) {
   }
 }
 
-void testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testWaitOption) {
+static void testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testWaitOption) {
   resetTestTid();
   size_t numAvailableThreads = poolSize + testWaitOption;
   std::vector<int> threadLocalSums(numAvailableThreads, 0);
