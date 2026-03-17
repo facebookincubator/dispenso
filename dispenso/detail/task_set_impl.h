@@ -89,7 +89,14 @@ class TaskSetBase {
   auto packageTask(F&& f) {
     outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     return [this, f = std::move(f)]() mutable {
-      detail::pushThreadTaskSet(this);
+      // Skip push/pop if this TaskSet is already the current parent on this
+      // thread. This happens with ConcurrentTaskSet self-recursion (scheduling
+      // tasks from within tasks on the same set), which is normal and expected.
+      // Only actual nesting of *different* TaskSets needs stack tracking.
+      bool pushed = (parentTaskSet() != this);
+      if (pushed) {
+        detail::pushThreadTaskSet(this);
+      }
       if (!canceled_.load(std::memory_order_acquire)) {
 #if defined(__cpp_exceptions)
         try {
@@ -101,7 +108,9 @@ class TaskSetBase {
         f();
 #endif // __cpp_exceptions
       }
-      detail::popThreadTaskSet();
+      if (pushed) {
+        detail::popThreadTaskSet();
+      }
       outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
     };
   }

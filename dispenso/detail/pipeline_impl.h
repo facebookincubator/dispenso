@@ -86,6 +86,10 @@ class LimitGatedScheduler {
 
     void wait() {
       if (!unlimited_) {
+        // LIMITED path: drain the local queue into the ConcurrentTaskSet, then
+        // return. We do NOT need to spin on outstanding_ here because the
+        // generator's wait() calls ConcurrentTaskSet::wait() after all stage
+        // wait() calls complete, which ensures every scheduled task finishes.
         OnceFunction func;
         while (true) {
           DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
@@ -100,10 +104,30 @@ class LimitGatedScheduler {
           }
           tasks_.schedule(std::move(func));
         }
+        return;
       }
 
+      // Unified drain + wait loop. We must keep checking the local queue
+      // because items can arrive after an earlier drain pass — this happens
+      // when a completion callback's try_dequeue races with a concurrent
+      // enqueue: the callback sees an empty queue and releases the resource
+      // instead of chaining, leaving the item orphaned in the queue.
+      // Re-checking on every iteration ensures we eventually dispatch it.
       while (outstanding_.load(std::memory_order_acquire)) {
-        if (!tasks_.tryExecuteNext()) {
+        OnceFunction func;
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool deqd = queue_.try_dequeue(func);
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        if (deqd) {
+          // Wait for resource to become available
+          while (resources_.fetch_sub(1, std::memory_order_acq_rel) <= 0) {
+            resources_.fetch_add(1, std::memory_order_acq_rel);
+            if (!tasks_.tryExecuteNext()) {
+              std::this_thread::yield();
+            }
+          }
+          tasks_.schedule(std::move(func));
+        } else if (!tasks_.tryExecuteNext()) {
           std::this_thread::yield();
         }
       }
