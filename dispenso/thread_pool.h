@@ -33,14 +33,11 @@
 namespace dispenso {
 
 #if !defined(DISPENSO_WAKEUP_ENABLE)
-#if defined(_WIN32) || defined(__linux__)
+#if defined(_WIN32) || defined(__linux__) || defined(__MACH__)
 #define DISPENSO_WAKEUP_ENABLE 1
 #else
-// TODO(bbudge):  For now, only enable Linux and Windows.  On Mac still need to figure out how to
-// wake more quickly (see e.g.
-// https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/scheduler/scheduler.html)
 #define DISPENSO_WAKEUP_ENABLE 0
-#endif // Linux or Windows
+#endif // platform
 #endif // DISPENSO_WAKEUP_ENABLE
 
 #if !defined(DISPENSO_POLL_PERIOD_US)
@@ -213,8 +210,12 @@ class alignas(kCacheLineSize) ThreadPool {
       auto idle = idleButAwake_.load(std::memory_order_acquire);
       // Wake if total available capacity (active + idle spinning + 1 for caller) can't cover
       // queued work. The +1 accounts for the calling thread which may process work inline.
+      // Only issue the wake syscall if there are actually sleeping threads.
       if (active + idle + 1 < queuedWork) {
-        wake();
+        ssize_t sleeping = numThreads_.load(std::memory_order_relaxed) - active - idle;
+        if (sleeping > 0) {
+          wake();
+        }
       }
     }
   }

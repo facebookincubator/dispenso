@@ -73,6 +73,9 @@ class CompletionEventImpl {
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
       if (futex(&ftx_, FUTEX_WAIT_PRIVATE, current, &ts, nullptr, 0) && errno == ETIMEDOUT) {
+        // Intentionally not re-checking status: returning false on timeout is consistent with
+        // std::condition_variable::wait_for semantics. The benign race where notify arrives
+        // concurrently with timeout is handled by the caller retrying if needed.
         return false;
       }
     }
@@ -104,47 +107,52 @@ class CompletionEventImpl {
   };
 };
 
-#elif 0 && defined(__MACH__)
+#elif defined(__MACH__) && defined(DISPENSO_HAS_OS_SYNC)
 
+// Uses a 64-bit combined {status, waiterCount} to eliminate the Dekker race between notify() and
+// wait(). notify() atomically sets status while observing waiterCount via CAS; wait() atomically
+// increments waiterCount while observing status via CAS. The 8-byte futex compare detects changes
+// to either field. intrusiveStatus() returns a reference to the status portion (lower 32 bits on
+// little-endian) for direct CAS/fetch_sub by FutureImplBase and Latch.
 class CompletionEventImpl {
  public:
-  CompletionEventImpl(int initStatus) : status_(initStatus) {
-    semaphore_create(mach_task_self(), &sem_, SYNC_POLICY_FIFO, 0);
-  }
-
-  ~CompletionEventImpl() {
-    semaphore_destroy(mach_task_self(), sem_);
-  }
+  CompletionEventImpl(int initStatus)
+      : combined_(static_cast<uint64_t>(static_cast<uint32_t>(initStatus))) {}
 
   void notify(int completedStatus) {
-    status_.store(completedStatus, std::memory_order_release);
-    semaphore_signal_all(sem_);
+    uint64_t old = combined_.load(std::memory_order_relaxed);
+    uint64_t newVal;
+    do {
+      newVal = (old & kWaiterMask) | static_cast<uint32_t>(completedStatus);
+    } while (!combined_.compare_exchange_weak(
+        old, newVal, std::memory_order_release, std::memory_order_relaxed));
+    if (old & kWaiterMask) {
+      mac_futex_wake_all(&combined_, sizeof(uint64_t));
+    }
   }
 
   void tryNotify() {
-    semaphore_signal_all(sem_);
+    if (combined_.load(std::memory_order_acquire) & kWaiterMask) {
+      mac_futex_wake_all(&combined_, sizeof(uint64_t));
+    }
   }
 
   void wait(int completedStatus) const {
-    mach_timespec_t ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = 2000000; // 2 ms
-    while (status_.load(std::memory_order_acquire) != completedStatus) {
-      // Here we use timedwait with medium-long wait time. This is because it is possible that we
-      // can have the following sequence:
-      // 1. We check the status_ condition for this loop
-      // 2. notify() sets status_ to true
-      // 3. notify() calls semaphore_signal_all
-      // 4. We enter semaphore_wait here.  This would result in never being woken.
-
-      // Although the sequencing above is unlikely, it is possible.  By chosing semaphore_timedwait
-      // instead of semaphore_wait, we will ensure that we can always complete the wait.
-      semaphore_timedwait(sem_, ts);
+    uint64_t val = combined_.load(std::memory_order_acquire);
+    while (static_cast<int>(val) != completedStatus) {
+      uint64_t newVal = val + kOneWaiter;
+      if (!combined_.compare_exchange_weak(
+              val, newVal, std::memory_order_acq_rel, std::memory_order_acquire)) {
+        continue;
+      }
+      mac_futex_wait(&combined_, newVal, sizeof(uint64_t));
+      combined_.fetch_sub(kOneWaiter, std::memory_order_acq_rel);
+      val = combined_.load(std::memory_order_acquire);
     }
   }
 
   bool waitFor(int completedStatus, const std::chrono::duration<double>& relTime) const {
-    if (status_.load(std::memory_order_acquire) == completedStatus) {
+    if (static_cast<int>(combined_.load(std::memory_order_acquire)) == completedStatus) {
       return true;
     }
 
@@ -153,17 +161,26 @@ class CompletionEventImpl {
       return false;
     }
 
-    mach_timespec_t ts;
-    ts.tv_sec = static_cast<uint32_t>(relSeconds);
-    relSeconds -= ts.tv_sec;
-    ts.tv_nsec = static_cast<clock_res_t>(1e9 * relSeconds);
+    uint64_t relTimeUs = static_cast<uint64_t>(relSeconds * 1e6);
 
     // TODO: determine if we should worry about reducing timeout time subsequent times through the
     // loop in the case of spurious wake.
-    while (status_.load(std::memory_order_acquire) != completedStatus) {
-      if (semaphore_timedwait(sem_, ts) == KERN_OPERATION_TIMED_OUT) {
-        return status_.load(std::memory_order_acquire) == completedStatus;
+    uint64_t val = combined_.load(std::memory_order_acquire);
+    while (static_cast<int>(val) != completedStatus) {
+      uint64_t newVal = val + kOneWaiter;
+      if (!combined_.compare_exchange_weak(
+              val, newVal, std::memory_order_acq_rel, std::memory_order_acquire)) {
+        continue;
       }
+      int ret = mac_futex_wait_for(&combined_, newVal, sizeof(uint64_t), relTimeUs);
+      combined_.fetch_sub(kOneWaiter, std::memory_order_acq_rel);
+      if (ret && errno == ETIMEDOUT) {
+        // Intentionally not re-checking status: returning false on timeout is consistent with
+        // std::condition_variable::wait_for semantics. The benign race where notify arrives
+        // concurrently with timeout is handled by the caller retrying if needed.
+        return false;
+      }
+      val = combined_.load(std::memory_order_acquire);
     }
     return true;
   }
@@ -171,7 +188,7 @@ class CompletionEventImpl {
   template <class Clock, class Duration>
   bool waitUntil(int completedStatus, const std::chrono::time_point<Clock, Duration>& absTime)
       const {
-    if (status_.load(std::memory_order_acquire) == completedStatus) {
+    if (static_cast<int>(combined_.load(std::memory_order_acquire)) == completedStatus) {
       return true;
     }
 
@@ -179,17 +196,23 @@ class CompletionEventImpl {
   }
 
   std::atomic<int>& intrusiveStatus() {
-    return status_;
+    return parts_[0];
   }
 
   const std::atomic<int>& intrusiveStatus() const {
-    return status_;
+    return parts_[0];
   }
 
  private:
-  semaphore_t sem_;
-  std::atomic<int> status_;
+  static constexpr uint64_t kOneWaiter = 1ULL << 32;
+  static constexpr uint64_t kWaiterMask = ~0xFFFFFFFFULL;
+
+  union {
+    mutable std::atomic<uint64_t> combined_;
+    mutable std::atomic<int> parts_[2]; // [0] = status (little-endian)
+  };
 };
+
 #elif defined(_WIN32)
 
 class CompletionEventImpl {
@@ -230,6 +253,9 @@ class CompletionEventImpl {
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
       if (!WaitOnAddress(&status_, &current, sizeof(int), msWait) &&
           GetLastError() == kErrorTimeoutWin) {
+        // Intentionally not re-checking status: returning false on timeout is consistent with
+        // std::condition_variable::wait_for semantics. The benign race where notify arrives
+        // concurrently with timeout is handled by the caller retrying if needed.
         return false;
       }
     }

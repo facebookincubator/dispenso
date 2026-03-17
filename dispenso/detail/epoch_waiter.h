@@ -30,6 +30,12 @@ class EpochWaiter {
     futex(&ftx_, FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(), nullptr, nullptr, 0);
   }
 
+  void bumpAndWakeN(int n, int totalWaiters) {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    (void)totalWaiters;
+    futex(&ftx_, FUTEX_WAKE_PRIVATE, n, nullptr, nullptr, 0);
+  }
+
   uint32_t wait(uint32_t expectedEpoch) const {
     uint32_t current;
     // allow spurious wakeups
@@ -75,60 +81,34 @@ class EpochWaiter {
 
 class EpochWaiter {
  public:
-  EpochWaiter() : epoch_(0) {
-    semaphore_create(mach_task_self(), &sem_, SYNC_POLICY_FIFO, 0);
-  }
-
-  ~EpochWaiter() {
-    semaphore_destroy(mach_task_self(), sem_);
-  }
+  EpochWaiter() : epoch_(0) {}
 
   void bumpAndWake() {
-    epoch_.fetch_add(1, std::memory_order_release);
-    semaphore_signal(sem_);
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    mac_futex_wake_one(&epoch_, sizeof(uint32_t));
   }
 
   void bumpAndWakeAll() {
-    epoch_.fetch_add(1, std::memory_order_release);
-    semaphore_signal_all(sem_);
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    mac_futex_wake_all(&epoch_, sizeof(uint32_t));
+  }
+
+  void bumpAndWakeN(int n, int totalWaiters) {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    if (n >= totalWaiters) {
+      mac_futex_wake_all(&epoch_, sizeof(uint32_t));
+    } else {
+      for (int i = 0; i < n; ++i) {
+        mac_futex_wake_one(&epoch_, sizeof(uint32_t));
+      }
+    }
   }
 
   uint32_t wait(uint32_t expectedEpoch) const {
-    mach_timespec_t ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = 2000000; // 2 ms
     uint32_t current;
     // Allow spurious wake
     if ((current = epoch_.load(std::memory_order_acquire)) == expectedEpoch) {
-      // Here we use timedwait with medium-long wait time. This is because it is possible that we
-      // can have the following sequence:
-      // 1. We check the status_ condition for this loop
-      // 2. notify() sets status_ to true
-      // 3. notify() calls semaphore_signal_all
-      // 4. We enter semaphore_wait here.  This would result in never being woken.
-
-      // Although the sequencing above is unlikely, it is possible.  By chosing semaphore_timedwait
-      // instead of semaphore_wait, we will ensure that we can always complete the wait.
-      semaphore_timedwait(sem_, ts);
-    } else {
-      return current;
-    }
-    return epoch_.load(std::memory_order_acquire);
-  }
-
-  uint32_t waitFor(uint32_t expectedEpoch, uint64_t relTimeUs) const {
-    uint32_t current;
-    if ((current = epoch_.load(std::memory_order_acquire)) != expectedEpoch) {
-      return current;
-    }
-
-    mach_timespec_t ts;
-    ts.tv_sec = static_cast<uint32_t>(relTimeUs / 1000000);
-    ts.tv_nsec = static_cast<clock_res_t>((relTimeUs - (ts.tv_sec * 1000000)) * 1000);
-
-    // Allow spurious wake
-    if ((current = epoch_.load(std::memory_order_acquire)) == expectedEpoch) {
-      semaphore_timedwait(sem_, ts);
+      mac_futex_wait(&epoch_, expectedEpoch, sizeof(uint32_t));
     } else {
       return current;
     }
@@ -139,9 +119,23 @@ class EpochWaiter {
     return epoch_.load(std::memory_order_acquire);
   }
 
+  uint32_t waitFor(uint32_t expectedEpoch, uint64_t relTimeUs) const {
+    uint32_t current;
+    if ((current = epoch_.load(std::memory_order_acquire)) != expectedEpoch) {
+      return current;
+    }
+
+    // Allow spurious wake
+    if ((current = epoch_.load(std::memory_order_acquire)) == expectedEpoch) {
+      mac_futex_wait_for(&epoch_, current, sizeof(uint32_t), relTimeUs);
+    } else {
+      return current;
+    }
+    return epoch_.load(std::memory_order_acquire);
+  }
+
  private:
-  semaphore_t sem_;
-  std::atomic<uint32_t> epoch_;
+  mutable std::atomic<uint32_t> epoch_;
 };
 
 #elif defined(_WIN32)
@@ -158,6 +152,17 @@ class EpochWaiter {
   void bumpAndWakeAll() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
     WakeByAddressAll(&epoch_);
+  }
+
+  void bumpAndWakeN(int n, int totalWaiters) {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    if (n >= totalWaiters) {
+      WakeByAddressAll(&epoch_);
+    } else {
+      for (int i = 0; i < n; ++i) {
+        WakeByAddressSingle(&epoch_);
+      }
+    }
   }
 
   uint32_t wait(uint32_t expectedEpoch) const {
@@ -210,6 +215,17 @@ class EpochWaiter {
   void bumpAndWakeAll() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
     cv_.notify_all();
+  }
+
+  void bumpAndWakeN(int n, int totalWaiters) {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+    if (n >= totalWaiters) {
+      cv_.notify_all();
+    } else {
+      for (int i = 0; i < n; ++i) {
+        cv_.notify_one();
+      }
+    }
   }
 
   uint32_t wait(uint32_t expectedEpoch) const {
