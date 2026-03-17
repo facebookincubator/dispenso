@@ -9,17 +9,28 @@ cmake_minimum_required(VERSION 3.14)
 # Ideally these tests are all run in (Release, Debug) X (N/A, TSAN, ASAN, -fno-exceptions)
 ###
 
-include(FetchContent)
-FetchContent_Declare(
-  GoogleTest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG        release-1.12.1
-)
-
-# For Windows, Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(GoogleTest)
+# Try system-installed GTest first, fall back to FetchContent from GitHub.
+find_package(GTest QUIET)
+if(GTest_FOUND)
+  message(STATUS "Found system GoogleTest")
+  # System GTest provides namespaced targets (GTest::gmock_main); create
+  # non-namespaced aliases so existing target_link_libraries calls work.
+  if(NOT TARGET gmock_main AND TARGET GTest::gmock_main)
+    add_library(gmock_main ALIAS GTest::gmock_main)
+  endif()
+else()
+  message(STATUS "System GoogleTest not found, fetching from GitHub...")
+  include(FetchContent)
+  FetchContent_Declare(
+    GoogleTest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        release-1.12.1
+  )
+  # For Windows, Prevent overriding the parent project's compiler/linker settings
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(GoogleTest)
+endif()
 include(GoogleTest)
 
 macro(package_add_test TEST_NAME LABEL TEST_FILE)

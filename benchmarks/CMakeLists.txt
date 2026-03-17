@@ -6,36 +6,67 @@
 cmake_minimum_required(VERSION 3.12)
 
 
-include(FetchContent)
+# Try to find Taskflow: system install, DISPENSO_DEPS_DIR, ~/dispenso_deps, then FetchContent.
+find_package(Taskflow QUIET)
+if(NOT Taskflow_FOUND)
+  # Check well-known local directories for a Taskflow source tree.
+  # Searches for both "taskflow" and versioned names like "taskflow-3.11.0".
+  if(DEFINED DISPENSO_DEPS_DIR)
+    file(GLOB _taskflow_dep_candidates "${DISPENSO_DEPS_DIR}/taskflow*")
+    list(APPEND _taskflow_search_dirs ${_taskflow_dep_candidates})
+  endif()
+  file(GLOB _taskflow_home_candidates "$ENV{HOME}/dispenso_deps/taskflow*")
+  list(APPEND _taskflow_search_dirs ${_taskflow_home_candidates})
 
-if(CMAKE_CXX_STANDARD LESS 17)
-  message(STATUS, "Using older taskflow due to c++14 support")
-FetchContent_Declare(
-  taskflow
-  GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-  GIT_TAG        v2.7.0
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  )
+  set(_taskflow_local_dir "")
+  foreach(_dir ${_taskflow_search_dirs})
+    if(EXISTS "${_dir}/taskflow/taskflow.hpp")
+      set(_taskflow_local_dir "${_dir}")
+      break()
+    endif()
+  endforeach()
+
+  if(_taskflow_local_dir)
+    message(STATUS "Found local Taskflow at ${_taskflow_local_dir}")
+    add_library(taskflow INTERFACE)
+    target_include_directories(taskflow INTERFACE "${_taskflow_local_dir}")
+  else()
+    message(STATUS "Taskflow not found locally, fetching from GitHub...")
+    include(FetchContent)
+    if(CMAKE_CXX_STANDARD LESS 17)
+      message(STATUS "Using older taskflow due to c++14 support")
+      FetchContent_Declare(
+        taskflow
+        GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+        GIT_TAG        v2.7.0
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+      )
+    else()
+      message(STATUS "Using up-to-date taskflow")
+      FetchContent_Declare(
+        taskflow
+        GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+        GIT_TAG        v3.6.0
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+      )
+    endif()
+    FetchContent_GetProperties(taskflow)
+    if(NOT taskflow_POPULATED)
+      FetchContent_Populate(taskflow)
+    endif()
+    FetchContent_MakeAvailable(taskflow)
+    add_library(taskflow INTERFACE)
+    target_include_directories(taskflow INTERFACE ${taskflow_SOURCE_DIR})
+  endif()
 else()
-  message(STATUS, "Using up-to-date taskflow")
-FetchContent_Declare(
-  taskflow
-  GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-  GIT_TAG        v3.6.0
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  )
+  message(STATUS "Found system Taskflow")
+  if(NOT TARGET taskflow)
+    add_library(taskflow INTERFACE)
+    target_link_libraries(taskflow INTERFACE Taskflow::Taskflow)
+  endif()
 endif()
-FetchContent_GetProperties(taskflow)
-if(NOT taskflow_POPULATED)
-  FetchContent_Populate(taskflow)
-endif()
-
-FetchContent_MakeAvailable(taskflow)
-
-add_library(taskflow INTERFACE)
-target_include_directories(taskflow INTERFACE ${taskflow_SOURCE_DIR})
 
 find_package(benchmark REQUIRED)
 if (NOT WIN32)
