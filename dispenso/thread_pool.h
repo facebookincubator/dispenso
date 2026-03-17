@@ -178,6 +178,7 @@ class alignas(kCacheLineSize) ThreadPool {
 
   DISPENSO_DLL_ACCESS uint32_t wait(uint32_t priorEpoch);
   DISPENSO_DLL_ACCESS void wake();
+  DISPENSO_DLL_ACCESS void wakeN(ssize_t n);
 
   void setSignalingWake(bool enable, uint32_t sleepDurationUs) {
     std::lock_guard<std::mutex> lk(threadsMutex_);
@@ -203,17 +204,21 @@ class alignas(kCacheLineSize) ThreadPool {
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
 
+  // The non-atomic read of two separate atomics (numSleeping_ and workRemaining_) can
+  // race, potentially causing a missed wake in rare cases. This is benign: the epoch
+  // waiter's sleep timeout (sleepLengthUs_) provides a safety net, so a missed wake only
+  // delays wakeup by up to that duration, never causes a hang. Subsequent schedule()
+  // calls will trigger wakes.
   void conditionallyWake() {
     if (enableEpochWaiter_.load(std::memory_order_acquire)) {
-      auto queuedWork = queuedWork_.fetch_add(1, std::memory_order_acq_rel) + 1;
-      auto active = activeWorkers_.load(std::memory_order_acquire);
-      auto idle = idleButAwake_.load(std::memory_order_acquire);
-      // Wake if total available capacity (active + idle spinning + 1 for caller) can't cover
-      // queued work. The +1 accounts for the calling thread which may process work inline.
-      // Only issue the wake syscall if there are actually sleeping threads.
-      if (active + idle + 1 < queuedWork) {
-        ssize_t sleeping = numThreads_.load(std::memory_order_relaxed) - active - idle;
-        if (sleeping > 0) {
+      ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
+      if (sleeping > 0) {
+        // Only wake if there's more pending work than awake threads can handle.
+        // Don't count the caller — it may be a pool thread that will continue
+        // dequeuing its own work, not processing what it just submitted.
+        ssize_t awake = numThreads_.load(std::memory_order_relaxed) - sleeping;
+        ssize_t pending = workRemaining_.load(std::memory_order_relaxed);
+        if (pending > awake) {
           wake();
         }
       }
@@ -232,6 +237,12 @@ class alignas(kCacheLineSize) ThreadPool {
 #endif // __cplusplus
 
  private:
+  // Number of tasks each thread accumulates before flushing workRemaining_.
+  // This batching reduces atomic contention in threadLoop, but inflates
+  // workRemaining_ by up to kWorkBatchSize * numThreads, so poolLoadFactor_
+  // must be reduced accordingly for accurate load-shedding in schedule().
+  static constexpr int kWorkBatchSize = 8;
+
   mutable std::mutex threadsMutex_;
   std::deque<PerThreadData> threads_;
   size_t poolLoadMultiplier_;
@@ -243,9 +254,7 @@ class alignas(kCacheLineSize) ThreadPool {
 
   moodycamel::ConcurrentQueue<OnceFunction> work_;
 
-  alignas(kCacheLineSize) std::atomic<ssize_t> queuedWork_{0};
-  alignas(kCacheLineSize) std::atomic<ssize_t> idleButAwake_{0};
-  alignas(kCacheLineSize) std::atomic<ssize_t> activeWorkers_{0};
+  alignas(kCacheLineSize) std::atomic<ssize_t> numSleeping_{0};
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
 
@@ -350,14 +359,7 @@ inline bool ThreadPool::tryExecuteNext() {
   bool dequeued = work_.try_dequeue(next);
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
   if (dequeued) {
-    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
-      queuedWork_.fetch_sub(1, std::memory_order_relaxed);
-      activeWorkers_.fetch_add(1, std::memory_order_relaxed);
-    }
     executeNext(std::move(next));
-    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
-      activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
-    }
     return true;
   }
   return false;
@@ -366,14 +368,7 @@ inline bool ThreadPool::tryExecuteNext() {
 inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token) {
   OnceFunction next;
   if (work_.try_dequeue_from_producer(token, next)) {
-    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
-      queuedWork_.fetch_sub(1, std::memory_order_relaxed);
-      activeWorkers_.fetch_add(1, std::memory_order_relaxed);
-    }
     executeNext(std::move(next));
-    if (enableEpochWaiter_.load(std::memory_order_relaxed)) {
-      activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
-    }
     return true;
   }
   return false;

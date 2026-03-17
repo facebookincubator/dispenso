@@ -84,8 +84,8 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 ThreadPool::PerThreadData::~PerThreadData() {}
 
 void ThreadPool::threadLoop(PerThreadData& data) {
-  constexpr int kBackoffYield = 50;
-  constexpr int kBackoffSleep = kBackoffYield + 5;
+  static constexpr int kBackoffYield = 50;
+  static constexpr int kBackoffSleep = kBackoffYield + 5;
 
   moodycamel::ConsumerToken ctoken(work_);
   moodycamel::ProducerToken ptoken(work_);
@@ -97,10 +97,8 @@ void ThreadPool::threadLoop(PerThreadData& data) {
   uint32_t epoch = epochWaiter_.current();
 
   if (enableEpochWaiter_) {
-    bool idle = true;
-    idleButAwake_.fetch_add(1, std::memory_order_acq_rel);
-
     while (data.running()) {
+      int localWorkDone = 0;
       while (true) {
         DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
         bool got = work_.try_dequeue(ctoken, next);
@@ -108,34 +106,31 @@ void ThreadPool::threadLoop(PerThreadData& data) {
         if (!got) {
           break;
         }
-        queuedWork_.fetch_sub(1, std::memory_order_acq_rel);
-        if (idle) {
-          idle = false;
-          idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
+        OnceFunction task(std::move(next));
+        task();
+        ++localWorkDone;
+        if (localWorkDone >= kWorkBatchSize) {
+          workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+          localWorkDone = 0;
         }
-        activeWorkers_.fetch_add(1, std::memory_order_relaxed);
-        executeNext(std::move(next));
-        activeWorkers_.fetch_sub(1, std::memory_order_relaxed);
         failCount = 0;
       }
-
-      if (!idle) {
-        idle = true;
-        idleButAwake_.fetch_add(1, std::memory_order_acq_rel);
+      if (localWorkDone > 0) {
+        workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
       }
 
       ++failCount;
 
       detail::cpuRelax();
       if (failCount > kBackoffSleep) {
-        idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
+        numSleeping_.fetch_add(1, std::memory_order_acq_rel);
         epoch = wait(epoch);
-        idleButAwake_.fetch_add(1, std::memory_order_acq_rel);
+        numSleeping_.fetch_sub(1, std::memory_order_acq_rel);
+        failCount = 0;
       } else if (failCount > kBackoffYield) {
         std::this_thread::yield();
       }
     }
-    idleButAwake_.fetch_sub(1, std::memory_order_acq_rel);
   } else {
     while (data.running()) {
       while (true) {
@@ -232,6 +227,20 @@ ThreadPool& globalThreadPool() {
 
 void resizeGlobalThreadPool(size_t numThreads) {
   globalThreadPool().resize(static_cast<ssize_t>(numThreads));
+}
+
+void ThreadPool::wakeN(ssize_t n) {
+  ssize_t sleeping = numSleeping_.load(std::memory_order_relaxed);
+  // Use wakeAll when waking >= 1/kWakeAllMultiplier of sleeping threads.
+  // On Mac/Windows, bumpAndWakeN loops individual wake syscalls,
+  // so wakeAll is cheaper when waking many threads.
+  // Multiply form avoids integer division. Using unsigned for well-defined overflow.
+  constexpr unsigned kWakeAllMultiplier = 2;
+  if (static_cast<unsigned>(n) * kWakeAllMultiplier >= static_cast<unsigned>(sleeping)) {
+    epochWaiter_.bumpAndWakeAll();
+  } else {
+    epochWaiter_.bumpAndWakeN(static_cast<int>(n), static_cast<int>(sleeping));
+  }
 }
 
 } // namespace dispenso
