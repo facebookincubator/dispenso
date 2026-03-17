@@ -236,15 +236,55 @@ makeChunkedRange(IntegerA start, IntegerB end, IntegerC chunkSize) {
 namespace detail {
 
 struct NoOpIter {
+  using difference_type = std::ptrdiff_t;
+  using value_type = int;
+  using pointer = int*;
+  using reference = int&;
+  using iterator_category = std::random_access_iterator_tag;
+
   int& operator*() const {
-    static int i = 0;
-    return i;
+    static DISPENSO_THREAD_LOCAL int dummy = 0;
+    return dummy;
   }
   NoOpIter& operator++() {
     return *this;
   }
   NoOpIter operator++(int) {
     return *this;
+  }
+  NoOpIter& operator--() {
+    return *this;
+  }
+  NoOpIter operator--(int) {
+    return *this;
+  }
+  NoOpIter& operator+=(difference_type) {
+    return *this;
+  }
+  NoOpIter& operator-=(difference_type) {
+    return *this;
+  }
+  NoOpIter operator+(difference_type) const {
+    return *this;
+  }
+  NoOpIter operator-(difference_type) const {
+    return *this;
+  }
+  difference_type operator-(const NoOpIter&) const {
+    return 0;
+  }
+  bool operator==(const NoOpIter&) const {
+    return true;
+  }
+  bool operator!=(const NoOpIter&) const {
+    return false;
+  }
+  bool operator<(const NoOpIter&) const {
+    return false;
+  }
+  int& operator[](difference_type) const {
+    static DISPENSO_THREAD_LOCAL int dummy = 0;
+    return dummy;
   }
 };
 
