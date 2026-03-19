@@ -57,7 +57,8 @@ class OnceFunction {
    **/
   OnceFunction()
 #if defined DISPENSO_DEBUG
-      : onceCallable_(nullptr)
+      : data_(nullptr),
+        invoke_(nullptr)
 #endif // DISPENSO_DEBUG
   {
   }
@@ -71,22 +72,29 @@ class OnceFunction {
    **/
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
-  OnceFunction(F&& f) : onceCallable_(detail::createOnceCallable(std::forward<F>(f))) {}
+  OnceFunction(F&& f) {
+    auto callable = detail::createOnceCallable(std::forward<F>(f));
+    data_ = callable.data;
+    invoke_ = callable.invoke;
+  }
 
   OnceFunction(const OnceFunction& other) = delete;
 
   /** Move constructor. */
-  OnceFunction(OnceFunction&& other) noexcept : onceCallable_(other.onceCallable_) {
+  OnceFunction(OnceFunction&& other) noexcept : data_(other.data_), invoke_(other.invoke_) {
 #if defined DISPENSO_DEBUG
-    other.onceCallable_ = nullptr;
+    other.data_ = nullptr;
+    other.invoke_ = nullptr;
 #endif // DISPENSO_DEBUG
   }
 
   OnceFunction& operator=(OnceFunction&& other) noexcept {
-    onceCallable_ = other.onceCallable_;
+    data_ = other.data_;
+    invoke_ = other.invoke_;
 #if defined DISPENSO_DEBUG
     if (&other != this) {
-      other.onceCallable_ = nullptr;
+      other.data_ = nullptr;
+      other.invoke_ = nullptr;
     }
 #endif // DISPENSO_DEBUG
     return *this;
@@ -99,11 +107,12 @@ class OnceFunction {
    **/
   void cleanupNotRun() const {
 #if defined DISPENSO_DEBUG
-    assert(onceCallable_ != nullptr && "Must not cleanup an invalid OnceFunction!");
-    onceCallable_->destroyOnly();
-    onceCallable_ = nullptr;
+    assert(data_ != nullptr && "Must not cleanup an invalid OnceFunction!");
+    invoke_(data_, false);
+    data_ = nullptr;
+    invoke_ = nullptr;
 #else
-    onceCallable_->destroyOnly();
+    invoke_(data_, false);
 #endif // DISPENSO_DEBUG
   }
 
@@ -113,20 +122,22 @@ class OnceFunction {
    **/
   void operator()() const {
 #if defined DISPENSO_DEBUG
-    assert(onceCallable_ != nullptr && "Must not use OnceFunction more than once!");
+    assert(data_ != nullptr && "Must not use OnceFunction more than once!");
 #endif // DISPENSO_DEBUG
 
-    onceCallable_->run();
+    invoke_(data_, true);
 
 #if defined DISPENSO_DEBUG
-    onceCallable_ = nullptr;
+    data_ = nullptr;
+    invoke_ = nullptr;
 #endif // DISPENSO_DEBUG
   }
 
  private:
-  OnceFunction(detail::OnceCallable* func, bool) : onceCallable_(func) {}
+  OnceFunction(detail::OnceCallable* func, bool) : data_(func), invoke_(&detail::runOnceCallable) {}
 
-  mutable detail::OnceCallable* onceCallable_;
+  mutable void* data_;
+  void (*invoke_)(void*, bool);
 
   template <typename Result>
   friend class detail::FutureBase;

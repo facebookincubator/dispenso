@@ -6,6 +6,7 @@
  */
 
 #include <dispenso/detail/math.h>
+#include <dispenso/platform.h>
 #include <dispenso/small_buffer_allocator.h>
 
 namespace dispenso {
@@ -18,40 +19,40 @@ class OnceCallable {
   virtual ~OnceCallable() = default;
 };
 
-template <size_t kBufferSize, typename F>
-class OnceCallableImpl : public OnceCallable {
- public:
-  template <typename G>
-  OnceCallableImpl(G&& f) : f_(std::forward<G>(f)) {}
-
-  void run() override {
-    f_();
-    // This is admittedly playing nasty games here; however, the base class is empty, and we
-    // completely control our own polymorphic existence.  No need to make the virtual base class
-    // destructor get called (optimization).
-    this->OnceCallableImpl::~OnceCallableImpl();
-    deallocSmallBuffer<kBufferSize>(this);
-  }
-
-  void destroyOnly() override {
-    this->OnceCallableImpl::~OnceCallableImpl();
-    deallocSmallBuffer<kBufferSize>(this);
-  }
-
-  ~OnceCallableImpl() override = default;
-
- private:
-  F f_;
+struct OnceCallableData {
+  void* data;
+  void (*invoke)(void*, bool run);
 };
 
+template <size_t kBufferSize, typename F>
+void invokeImpl(void* ptr, bool run) {
+  F* f = static_cast<F*>(ptr);
+  if (DISPENSO_EXPECT(run, true)) {
+    (*f)();
+  }
+  f->~F();
+  deallocSmallBuffer<kBufferSize>(ptr);
+}
+
 template <typename F>
-inline OnceCallable* createOnceCallable(F&& f) {
+inline OnceCallableData createOnceCallable(F&& f) {
   using FNoRef = typename std::remove_reference<F>::type;
 
-  constexpr size_t kImplSize = static_cast<size_t>(nextPow2(sizeof(OnceCallableImpl<16, FNoRef>)));
+  constexpr size_t kAllocSize =
+      static_cast<size_t>(nextPow2(std::max(sizeof(FNoRef), alignof(FNoRef))));
 
-  return new (allocSmallBuffer<kImplSize>())
-      OnceCallableImpl<kImplSize, FNoRef>(std::forward<F>(f));
+  void* buf = allocSmallBuffer<kAllocSize>();
+  new (buf) FNoRef(std::forward<F>(f));
+  return {buf, &invokeImpl<kAllocSize, FNoRef>};
+}
+
+inline void runOnceCallable(void* ptr, bool run) {
+  auto* callable = static_cast<OnceCallable*>(ptr);
+  if (DISPENSO_EXPECT(run, true)) {
+    callable->run();
+  } else {
+    callable->destroyOnly();
+  }
 }
 
 } // namespace detail
