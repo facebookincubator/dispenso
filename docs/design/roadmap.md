@@ -71,3 +71,8 @@ These are ideas that may be pursued based on community feedback:
 - SIMD-optimized algorithms
 - Integration examples (game engines, scientific computing)
 - Discord/Slack community channel
+- NUMA and topology awareness (phased):
+  - Windows processor group support for >64 threads (less critical as newer Windows versions handle this automatically)
+  - Topology query API: expose NUMA node count, core-to-node mapping, and inter-node distances (Linux: `/sys/devices/system/node/` or `libnuma`; Windows: `GetLogicalProcessorInformationEx`)
+  - Per-NUMA-node thread pools: opt-in pool construction affinitized to a specific node, composable with existing TaskSet/Future APIs
+  - NUMA-aware allocator: STL-compatible allocator for node-local allocation (`mbind`/`numa_alloc_onnode` on Linux, `VirtualAllocExNuma` on Windows), paired with first-touch initialization guidance
