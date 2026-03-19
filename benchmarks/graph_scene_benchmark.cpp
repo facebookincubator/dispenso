@@ -285,6 +285,10 @@ Subgraphs prepareGraph(dispenso::ThreadPool& threadPool, Scene& scene, dispenso:
   dispenso::Subgraph& inGeoSub = g.addSubgraph();
   dispenso::Subgraph& outGeoSub = g.addSubgraph();
 
+  // Reserve capacity for known sizes
+  transformsSub.reserve(params::numTransforms);
+  inGeoSub.reserve(params::numInGeo);
+
   for (size_t i = 0; i < params::numInGeo; ++i) {
     inGeoSub.addNode([&threadPool, &inGeo, i]() { generateGeo(threadPool, inGeo, i); });
   }

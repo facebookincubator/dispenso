@@ -24,6 +24,24 @@
 #include <dispenso/platform.h>
 #include <dispenso/pool_allocator.h>
 #include <dispenso/small_buffer_allocator.h>
+#include <dispenso/small_vector.h>
+
+/**
+ * @def DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE
+ * @brief Number of dependent node pointers to store inline in each Node.
+ *
+ * Most graph nodes have few dependents (1-4 is common). This value controls
+ * how many dependent pointers are stored inline before heap allocation.
+ * Larger values reduce heap allocations but increase Node size.
+ * Define before including graph.h to customize.
+ **/
+#ifndef DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE
+#define DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE 4
+#endif
+
+static_assert(
+    DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE >= 1 && DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE <= 64,
+    "DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE must be between 1 and 64");
 
 /*
 Terminology
@@ -353,7 +371,7 @@ class Node {
   InvokerType destroy_;
   char* funcBuffer_;
 
-  std::vector<Node*> dependents_; // nodes depend on this
+  SmallVector<Node*, DISPENSO_GRAPH_DEPENDENTS_INLINE_SIZE> dependents_; // nodes depend on this
 
   template <class N>
   friend class SubgraphT;
@@ -452,6 +470,17 @@ class DISPENSO_DLL_ACCESS SubgraphT {
    **/
   size_t numNodes() const {
     return nodes_.size();
+  }
+  /**
+   * Reserve capacity for the specified number of nodes.
+   * This can improve performance when the number of nodes is known in advance
+   * by avoiding vector reallocations during addNode calls.
+   * This is not concurrency safe.
+   *
+   * @param n - number of nodes to reserve capacity for
+   **/
+  void reserve(size_t n) {
+    nodes_.reserve(n);
   }
   /**
    * Return const reference to node with index. Concurrency safe.

@@ -125,6 +125,7 @@ class BigTree {
     SubGraphType* subgraph = subgraphs_[level];
 
     const size_t numNodes = 1ul << (numBits_ - shiftStep_ * level);
+    subgraph->reserve(numNodes);
 
     for (size_t n = 0; n < numNodes; ++n) {
       subgraph->addNode([this, level, n]() {

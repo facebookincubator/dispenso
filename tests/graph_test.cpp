@@ -781,3 +781,249 @@ TEST(Graph, ClearMethod) {
   EXPECT_EQ(g.numSubgraphs(), 1u);
   EXPECT_EQ(g.numNodes(), 0u);
 }
+
+#if defined(__cpp_exceptions)
+
+// Exception safety tests for graph executors.
+// Verify that exceptions propagate correctly and that the pool remains usable.
+
+struct GraphTestException : std::runtime_error {
+  GraphTestException() : std::runtime_error("graph test exception") {}
+};
+
+TEST(GraphExceptionSafety, SingleThreadExecutor) {
+  for (int round = 0; round < 10; ++round) {
+    dispenso::Graph g;
+    int a = 0, b = 0;
+
+    g.addNode([&]() { a = 1; });
+    g.addNode([&]() { throw GraphTestException(); });
+    g.addNode([&]() { b = 2; });
+
+    dispenso::SingleThreadExecutor executor;
+    setAllNodesIncomplete(g);
+    EXPECT_THROW(executor(g), GraphTestException);
+  }
+
+  // Verify pool is still usable after exceptions
+  dispenso::Graph g;
+  int result = 0;
+  g.addNode([&]() { result = 42; });
+
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSetExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(tasks, g);
+  EXPECT_EQ(result, 42);
+}
+
+TEST(GraphExceptionSafety, ParallelForExecutor) {
+  for (int round = 0; round < 10; ++round) {
+    dispenso::Graph g;
+    std::atomic<int> count{0};
+
+    // Build a diamond graph:
+    //   N0 -> N1 (throws) -> N3
+    //   N0 -> N2           -> N3
+    dispenso::Node& n0 = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& n1 = g.addNode([&]() { throw GraphTestException(); });
+    dispenso::Node& n2 = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& n3 = g.addNode([&]() { count.fetch_add(1); });
+
+    n1.dependsOn(n0);
+    n2.dependsOn(n0);
+    n3.dependsOn(n1, n2);
+
+    dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+    dispenso::ParallelForExecutor executor;
+    setAllNodesIncomplete(g);
+    EXPECT_THROW(executor(taskSet, g), GraphTestException);
+  }
+
+  // Verify pool is still usable
+  dispenso::Graph g;
+  int result = 0;
+  g.addNode([&]() { result = 99; });
+
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::ParallelForExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(taskSet, g);
+  EXPECT_EQ(result, 99);
+}
+
+TEST(GraphExceptionSafety, ConcurrentTaskSetExecutor) {
+  for (int round = 0; round < 10; ++round) {
+    dispenso::Graph g;
+    std::atomic<int> count{0};
+
+    // Build a chain to exercise inline continuation:
+    //   N0 -> N1 -> N2 (throws) -> N3
+    dispenso::Node& n0 = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& n1 = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& n2 = g.addNode([&]() { throw GraphTestException(); });
+    dispenso::Node& n3 = g.addNode([&]() { count.fetch_add(1); });
+
+    n1.dependsOn(n0);
+    n2.dependsOn(n1);
+    n3.dependsOn(n2);
+
+    dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+    dispenso::ConcurrentTaskSetExecutor executor;
+    setAllNodesIncomplete(g);
+    EXPECT_THROW(executor(tasks, g), GraphTestException);
+  }
+
+  // Verify pool is still usable
+  dispenso::Graph g;
+  int result = 0;
+  g.addNode([&]() { result = 77; });
+
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSetExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(tasks, g);
+  EXPECT_EQ(result, 77);
+}
+
+TEST(GraphExceptionSafety, ConcurrentTaskSetExecutor_InlineContinuation) {
+  // Specifically test the inline continuation path in evaluateNodeConcurrently.
+  // Build a wide fan-out followed by a chain, so some nodes run inline.
+  for (int round = 0; round < 10; ++round) {
+    dispenso::Graph g;
+    std::atomic<int> count{0};
+
+    // Fan-out: root -> {A, B, C, D}
+    // Chain from A: A -> E -> F (throws)
+    dispenso::Node& root = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nA = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nB = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nC = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nD = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nE = g.addNode([&]() { count.fetch_add(1); });
+    dispenso::Node& nF = g.addNode([&]() { throw GraphTestException(); });
+
+    nA.dependsOn(root);
+    nB.dependsOn(root);
+    nC.dependsOn(root);
+    nD.dependsOn(root);
+    nE.dependsOn(nA);
+    nF.dependsOn(nE);
+
+    dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+    dispenso::ConcurrentTaskSetExecutor executor;
+    setAllNodesIncomplete(g);
+    EXPECT_THROW(executor(tasks, g), GraphTestException);
+  }
+
+  // Verify pool is still usable
+  dispenso::Graph g;
+  int result = 0;
+  g.addNode([&]() { result = 55; });
+
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSetExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(tasks, g);
+  EXPECT_EQ(result, 55);
+}
+
+TEST(GraphExceptionSafety, ConcurrentTaskSetExecutor_DeepGraphException) {
+  // Build a "staircase" graph that would cause deep recursion in
+  // evaluateNodeConcurrently without the depth guard. Each fork node has
+  // 2 ready dependents: a leaf (followed inline by while loop) and the next
+  // fork (scheduled, potentially inlined by CTS → recursion).
+  //
+  //   fork0 → leaf0
+  //   fork0 → fork1 → leaf1
+  //            fork1 → fork2 → leaf2
+  //                     fork2 → fork3 ...
+  //
+  // With depth 2000 and no depth guard, CTS inline execution would create
+  // ~2000 recursive stack frames — enough to overflow worker thread stacks.
+  // The depth guard caps recursion by using ForceQueuingTag beyond the limit.
+  constexpr int kDepth = 2000;
+
+  for (int round = 0; round < 5; ++round) {
+    dispenso::Graph g;
+    std::atomic<int> executed{0};
+    const int throwAt = kDepth / 2;
+
+    // Create fork and leaf nodes
+    std::vector<dispenso::Node*> forks(kDepth);
+    std::vector<dispenso::Node*> leaves(kDepth);
+
+    for (int i = 0; i < kDepth; ++i) {
+      if (i == throwAt) {
+        forks[i] = &g.addNode([&]() {
+          executed.fetch_add(1, std::memory_order_relaxed);
+          throw GraphTestException();
+        });
+      } else {
+        forks[i] = &g.addNode([&]() { executed.fetch_add(1, std::memory_order_relaxed); });
+      }
+      leaves[i] = &g.addNode([&]() { executed.fetch_add(1, std::memory_order_relaxed); });
+    }
+
+    // Wire up: each fork depends on the previous fork
+    // Each leaf depends on its fork
+    // Add leaf dependency FIRST so it becomes the inline continuation,
+    // and next fork becomes the "scheduled" dependent.
+    for (int i = 0; i < kDepth; ++i) {
+      leaves[i]->dependsOn(*forks[i]);
+      if (i + 1 < kDepth) {
+        forks[i + 1]->dependsOn(*forks[i]);
+      }
+    }
+
+    dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+    dispenso::ConcurrentTaskSetExecutor executor;
+    setAllNodesIncomplete(g);
+    EXPECT_THROW(executor(tasks, g), GraphTestException);
+  }
+
+  // Verify pool is still usable
+  dispenso::Graph g;
+  int result = 0;
+  g.addNode([&]() { result = 123; });
+
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSetExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(tasks, g);
+  EXPECT_EQ(result, 123);
+}
+
+#endif // __cpp_exceptions
+
+// Non-exception deep graph test — verifies depth guard prevents stack overflow
+// and all nodes execute correctly.
+TEST(GraphDepthGuard, ConcurrentTaskSetExecutor_DeepGraph) {
+  constexpr int kDepth = 2000;
+
+  dispenso::Graph g;
+  std::atomic<int> executed{0};
+
+  std::vector<dispenso::Node*> forks(kDepth);
+  std::vector<dispenso::Node*> leaves(kDepth);
+
+  for (int i = 0; i < kDepth; ++i) {
+    forks[i] = &g.addNode([&]() { executed.fetch_add(1, std::memory_order_relaxed); });
+    leaves[i] = &g.addNode([&]() { executed.fetch_add(1, std::memory_order_relaxed); });
+  }
+
+  for (int i = 0; i < kDepth; ++i) {
+    leaves[i]->dependsOn(*forks[i]);
+    if (i + 1 < kDepth) {
+      forks[i + 1]->dependsOn(*forks[i]);
+    }
+  }
+
+  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ConcurrentTaskSetExecutor executor;
+  setAllNodesIncomplete(g);
+  executor(tasks, g);
+
+  // All 2*kDepth nodes must have executed
+  EXPECT_EQ(executed.load(), 2 * kDepth);
+}

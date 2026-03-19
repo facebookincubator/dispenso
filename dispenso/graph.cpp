@@ -105,7 +105,7 @@ void SubgraphT<N>::removePredecessorDependencies(size_t numGraphPredecessors) {
       continue;
     }
     for (N* node : subgraph.nodes_) {
-      std::vector<Node*>& dependents = node->dependents_;
+      auto& dependents = node->dependents_;
       size_t num = dependents.size();
       for (size_t i = 0; i < num;) {
         if (dependents[i]->numPredecessors_ == kToDelete) {

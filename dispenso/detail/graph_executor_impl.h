@@ -7,10 +7,17 @@
 
 #pragma once
 #include <dispenso/graph.h>
+#include <dispenso/platform.h>
 #include <dispenso/task_set.h>
+
 #include <unordered_set>
 
 namespace detail {
+
+// Maximum recursion depth for inline graph node scheduling before forcing work
+// through the thread pool queue. Prevents unbounded stack growth when CTS inlines
+// evaluateNodeConcurrently calls for additional ready dependents.
+static constexpr int kMaxGraphInlineDepth = 32;
 
 class ExecutorBase {
  protected:
@@ -52,12 +59,46 @@ class ExecutorBase {
 
   template <class N>
   inline static void evaluateNodeConcurrently(dispenso::ConcurrentTaskSet& tasks, const N* node) {
-    node->run();
-    for (const dispenso::Node* const d : node->dependents_) {
-      if (decNumIncompletePredecessors(static_cast<const N&>(*d), std::memory_order_acq_rel)) {
-        tasks.schedule(
-            [&tasks, d]() { evaluateNodeConcurrently(tasks, static_cast<const N*>(d)); });
+    // Track recursion depth to prevent stack overflow. CTS may inline scheduled
+    // lambdas when load is high, causing evaluateNodeConcurrently to recurse
+    // through the schedule→inline→evaluate path. When depth exceeds the limit,
+    // force work through the pool queue to bound stack growth.
+    static DISPENSO_THREAD_LOCAL int depth = 0;
+    struct DepthGuard {
+      DISPENSO_INLINE DepthGuard(int& d) : d_(d) {
+        ++d_;
       }
+      DISPENSO_INLINE ~DepthGuard() {
+        --d_;
+      }
+      int& d_;
+    };
+    DepthGuard dGuard(depth);
+
+    // Process nodes in a loop, continuing inline with first ready dependent
+    // to avoid task scheduling overhead on the critical path
+    while (node != nullptr) {
+      node->run();
+
+      const N* inlineNext = nullptr;
+      for (const dispenso::Node* const d : node->dependents_) {
+        if (decNumIncompletePredecessors(static_cast<const N&>(*d), std::memory_order_acq_rel)) {
+          const N* dep = static_cast<const N*>(d);
+          if (inlineNext == nullptr) {
+            // First ready dependent: continue with it inline
+            inlineNext = dep;
+          } else if (depth < kMaxGraphInlineDepth) {
+            // Additional ready dependents: schedule to task queue
+            tasks.schedule([&tasks, dep]() { evaluateNodeConcurrently(tasks, dep); });
+          } else {
+            // Depth limit reached: force enqueue to prevent stack overflow
+            tasks.schedule(
+                [&tasks, dep]() { evaluateNodeConcurrently(tasks, dep); },
+                dispenso::ForceQueuingTag());
+          }
+        }
+      }
+      node = inlineNext;
     }
   }
 

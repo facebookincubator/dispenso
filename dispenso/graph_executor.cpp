@@ -15,11 +15,20 @@ void SingleThreadExecutor::operator()(const G& graph) {
   nodesToExecute_.clear();
   nodesToExecuteNext_.clear();
 
+  // Count total nodes to estimate capacity needs
+  size_t nodeCount = 0;
   graph.forEachNode([&](const NodeType& node) {
+    ++nodeCount;
     if (hasNoIncompletePredecessors(node)) {
       nodesToExecute_.emplace_back(&node);
     }
   });
+
+  // Reserve capacity to avoid reallocations during execution
+  // Use a fraction of total nodes as estimate for max wave size
+  size_t estimatedWaveSize = std::max(nodesToExecute_.size(), nodeCount / 4);
+  nodesToExecute_.reserve(estimatedWaveSize);
+  nodesToExecuteNext_.reserve(estimatedWaveSize);
 
   while (!nodesToExecute_.empty()) {
     for (const Node* n : nodesToExecute_) {
@@ -43,23 +52,51 @@ void ParallelForExecutor::operator()(TaskSetT& taskSet, const G& graph) {
   nodesToExecute_.clear();
   nodesToExecuteNext_.clear();
 
+  // Count total nodes to estimate capacity needs
+  size_t nodeCount = 0;
   graph.forEachNode([&](const NodeType& node) {
+    ++nodeCount;
     if (hasNoIncompletePredecessors(node)) {
       nodesToExecute_.emplace_back(&node);
     }
   });
-  while (!nodesToExecute_.empty()) {
-    dispenso::parallel_for(taskSet, size_t(0), nodesToExecute_.size(), [this](size_t i) {
-      const NodeType* node = static_cast<const NodeType*>(nodesToExecute_[i]);
-      node->run();
 
-      node->forEachDependent([&](const Node& d) {
-        if (decNumIncompletePredecessors(
-                static_cast<const NodeType&>(d), std::memory_order_acq_rel)) {
-          nodesToExecuteNext_.emplace_back(static_cast<const NodeType*>(&d));
-        }
-      });
-    });
+  // Reserve capacity to avoid reallocations during execution
+  size_t estimatedWaveSize = std::max(nodesToExecute_.size(), nodeCount / 4);
+  nodesToExecute_.reserve(estimatedWaveSize);
+  nodesToExecuteNext_.reserve(estimatedWaveSize);
+
+  while (!nodesToExecute_.empty()) {
+    // Use stateful parallel_for: each thread collects ready nodes locally
+    dispenso::parallel_for(
+        taskSet,
+        threadStates_,
+        []() { return ThreadLocalCollector{}; },
+        size_t(0),
+        nodesToExecute_.size(),
+        [this](ThreadLocalCollector& collector, size_t i) {
+          const NodeType* node = static_cast<const NodeType*>(nodesToExecute_[i]);
+          node->run();
+
+          node->forEachDependent([&](const Node& d) {
+            // Relaxed ordering is safe here because the parallel_for wave barrier
+            // provides a happens-before relationship, and nodesToExecute_.swap()
+            // between waves ensures visibility of all side effects from prior waves.
+            if (decNumIncompletePredecessors(
+                    static_cast<const NodeType&>(d), std::memory_order_relaxed)) {
+              collector.readyNodes.push_back(static_cast<const NodeType*>(&d));
+            }
+          });
+        });
+
+    // Merge thread-local collections into next wave
+    for (auto& collector : threadStates_) {
+      if (!collector.readyNodes.empty()) {
+        nodesToExecuteNext_.insert(
+            nodesToExecuteNext_.end(), collector.readyNodes.begin(), collector.readyNodes.end());
+        collector.readyNodes.clear();
+      }
+    }
 
     nodesToExecute_.swap(nodesToExecuteNext_);
     nodesToExecuteNext_.clear();

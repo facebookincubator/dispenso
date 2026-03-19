@@ -52,8 +52,14 @@ class ParallelForExecutor : public ::detail::ExecutorBase {
   void operator()(TaskSetT& taskSet, const G& graph);
 
  private:
-  dispenso::ConcurrentVector<const Node*> nodesToExecute_;
-  dispenso::ConcurrentVector<const Node*> nodesToExecuteNext_;
+  // Per-thread state for collecting ready nodes locally during parallel_for
+  struct ThreadLocalCollector {
+    std::vector<const Node*> readyNodes;
+  };
+
+  std::vector<const Node*> nodesToExecute_;
+  std::vector<const Node*> nodesToExecuteNext_;
+  std::vector<ThreadLocalCollector> threadStates_;
 };
 /**
  * Class to invoke <code>Graph</code> or <code>BiPropGraph</code> using
