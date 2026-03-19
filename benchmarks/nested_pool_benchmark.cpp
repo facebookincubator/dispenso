@@ -32,7 +32,7 @@
 
 static constexpr int kSmallSize = 1000;
 static constexpr int kMediumSize = 10000;
-static constexpr int kLargeSize = 1000000;
+static constexpr int kLargeSize = 300000;
 
 struct alignas(64) Work {
   size_t count = 0;
@@ -69,10 +69,11 @@ void BM_dispenso(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
 
+  dispenso::ThreadPool pool(num_threads);
   for (auto UNUSED_VAR : state) {
-    dispenso::ThreadPool pool(num_threads);
+    dispenso::TaskSet outerTasks(pool);
     for (int i = 0; i < num_elements; ++i) {
-      pool.schedule([&pool, num_elements]() {
+      outerTasks.schedule([&pool, num_elements]() {
         int num = std::sqrt(num_elements);
         dispenso::TaskSet tasks(pool);
         for (int j = 0; j < num; ++j) {
@@ -88,8 +89,8 @@ void BM_tbb(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
 
+  tbb_compat::task_scheduler_init initsched(num_threads);
   for (auto UNUSED_VAR : state) {
-    tbb_compat::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
       g.run([num_elements]() {

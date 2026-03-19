@@ -6,7 +6,6 @@
  */
 
 #include <cmath>
-#include <future>
 
 #include <dispenso/parallel_for.h>
 
@@ -17,7 +16,7 @@
 #if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_reduce.h"
-#include "tbb/task_scheduler_init.h"
+#include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
@@ -26,7 +25,7 @@ namespace {
 constexpr int kWorkMultiplier = 4;
 constexpr int kSmallSize = 10;
 constexpr int kMediumSize = 500;
-constexpr int kLargeSize = 3000;
+constexpr int kLargeSize = 2500;
 
 int g_numThreads = 0;
 } // namespace
@@ -88,7 +87,8 @@ uint64_t calculateInnerDispenso(uint64_t input, size_t foo, int numElements) {
   dispenso::parallel_for(
       sums,
       []() { return uint64_t{0}; },
-      dispenso::makeChunkedRange(0, kWorkMultiplier * numElements, dispenso::ParForChunking::kAuto),
+      0,
+      kWorkMultiplier * numElements,
       [input, foo](uint64_t& lsumStore, size_t i, size_t end) {
         uint64_t lsum = 0;
         for (; i != end; ++i) {
@@ -120,7 +120,8 @@ void BM_dispenso(benchmark::State& state) {
     dispenso::parallel_for(
         sums,
         []() { return uint64_t{0}; },
-        dispenso::makeChunkedRange(0, numElements, dispenso::ParForChunking::kAuto),
+        0,
+        numElements,
         [numElements, input, foo](uint64_t& lsumStore, size_t j, size_t end) {
           uint64_t lsum = 0;
           for (; j != end; ++j) {
@@ -193,7 +194,7 @@ void BM_tbb(benchmark::State& state) {
 
   auto input = getInputs(numElements);
   for (auto UNUSED_VAR : state) {
-    tbb::task_scheduler_init initsched(g_numThreads);
+    tbb_compat::task_scheduler_init initsched(g_numThreads);
     ++foo;
     sum = tbb::parallel_reduce(
         tbb::blocked_range<size_t>(0, numElements),
@@ -208,66 +209,6 @@ void BM_tbb(benchmark::State& state) {
   checkResults(input, sum, foo, numElements);
 }
 #endif // !BENCHMARK_WITHOUT_TBB
-
-uint64_t calculateInnerAsync(uint64_t input, size_t foo, int numElements) {
-  size_t chunkSize = (numElements + g_numThreads - 1) / g_numThreads;
-
-  std::vector<std::future<uint64_t>> futures;
-
-  for (int i = 0; i < kWorkMultiplier * numElements; i += chunkSize) {
-    futures.push_back(
-        std::async([input, foo, i, end = std::min<int>(numElements, i + chunkSize)]() mutable {
-          uint64_t lsum = 0;
-          for (; i != end; ++i) {
-            lsum += calculate(input, i, foo);
-          }
-          return lsum;
-        }));
-  }
-  uint64_t sum = 0;
-  for (auto& s : futures) {
-    sum += s.get();
-  }
-  return sum;
-}
-
-void BM_async(benchmark::State& state) {
-  g_numThreads = state.range(0);
-  const int numElements = state.range(1);
-  uint64_t sum = 0;
-  int foo = 0;
-
-  auto input = getInputs(numElements);
-  for (auto UNUSED_VAR : state) {
-    std::vector<uint64_t> sums;
-    ++foo;
-
-    size_t chunkSize = (numElements + g_numThreads - 1) / g_numThreads;
-
-    std::vector<std::future<uint64_t>> futures;
-
-    for (int i = 0; i < numElements; i += chunkSize) {
-      futures.push_back(
-          std::async([numElements,
-                      input,
-                      foo,
-                      i,
-                      end = std::min<int>(numElements, i + chunkSize)]() mutable {
-            uint64_t lsum = 0;
-            for (; i != end; ++i) {
-              lsum += calculateInnerAsync(input, foo, numElements);
-            }
-            return lsum;
-          }));
-    }
-    sum = 0;
-    for (auto& s : futures) {
-      sum += s.get();
-    }
-  }
-
-  checkResults(input, sum, foo, numElements);
-}
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
@@ -288,8 +229,6 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
-
-BENCHMARK(BM_async)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 

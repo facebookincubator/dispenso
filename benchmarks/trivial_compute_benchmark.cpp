@@ -6,7 +6,6 @@
  */
 
 #include <cmath>
-#include <future>
 
 #include <dispenso/parallel_for.h>
 
@@ -17,7 +16,7 @@
 #if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_reduce.h"
-#include "tbb/task_scheduler_init.h"
+#include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
@@ -147,7 +146,7 @@ void BM_tbb(benchmark::State& state) {
 
   auto input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
-    tbb::task_scheduler_init initsched(num_threads);
+    tbb_compat::task_scheduler_init initsched(num_threads);
     ++foo;
     sum = tbb::parallel_reduce(
         tbb::blocked_range<size_t>(0, num_elements),
@@ -162,40 +161,6 @@ void BM_tbb(benchmark::State& state) {
   checkResults(input, sum, foo, num_elements);
 }
 #endif // !BENCHMARK_WITHOUT_TBB
-
-void BM_async(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
-  uint64_t sum = 0;
-  int foo = 0;
-
-  auto input = getInputs(num_elements);
-  for (auto UNUSED_VAR : state) {
-    std::vector<uint64_t> sums;
-    ++foo;
-
-    size_t chunkSize = (num_elements + num_threads - 1) / num_threads;
-
-    std::vector<std::future<uint64_t>> futures;
-
-    for (int i = 0; i < num_elements; i += chunkSize) {
-      futures.push_back(
-          std::async([input, foo, i, end = std::min<int>(num_elements, i + chunkSize)]() mutable {
-            uint64_t lsum = 0;
-            for (; i != end; ++i) {
-              lsum += calculate(input, i, foo);
-            }
-            return lsum;
-          }));
-    }
-    sum = 0;
-    for (auto& s : futures) {
-      sum += s.get();
-    }
-  }
-
-  checkResults(input, sum, foo, num_elements);
-}
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
@@ -215,7 +180,6 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
-BENCHMARK(BM_async)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();

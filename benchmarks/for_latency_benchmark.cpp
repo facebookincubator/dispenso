@@ -19,7 +19,7 @@
 #if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
+#include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #include "thread_benchmark_common.h"
@@ -155,7 +155,7 @@ void BM_tbb(benchmark::State& state) {
 
   std::vector<int> output(kSize, 0);
 
-  tbb::task_scheduler_init initsched(numThreads);
+  tbb_compat::task_scheduler_init initsched(numThreads);
 
   std::vector<double> times;
   times.reserve(1000);

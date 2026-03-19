@@ -184,13 +184,25 @@ if(NOT TBB_FOUND)
   ##################################
 
   if(TBB_INCLUDE_DIRS)
-    file(READ "${TBB_INCLUDE_DIRS}/tbb/tbb_stddef.h" _tbb_version_file)
-    string(REGEX REPLACE ".*#define TBB_VERSION_MAJOR ([0-9]+).*" "\\1"
-        TBB_VERSION_MAJOR "${_tbb_version_file}")
-    string(REGEX REPLACE ".*#define TBB_VERSION_MINOR ([0-9]+).*" "\\1"
-        TBB_VERSION_MINOR "${_tbb_version_file}")
-    string(REGEX REPLACE ".*#define TBB_INTERFACE_VERSION ([0-9]+).*" "\\1"
-        TBB_INTERFACE_VERSION "${_tbb_version_file}")
+    # Try new oneTBB version.h first (TBB 2021+)
+    if(EXISTS "${TBB_INCLUDE_DIRS}/tbb/version.h")
+      file(READ "${TBB_INCLUDE_DIRS}/tbb/version.h" _tbb_version_file)
+      string(REGEX REPLACE ".*#define TBB_VERSION_MAJOR ([0-9]+).*" "\\1"
+          TBB_VERSION_MAJOR "${_tbb_version_file}")
+      string(REGEX REPLACE ".*#define TBB_VERSION_MINOR ([0-9]+).*" "\\1"
+          TBB_VERSION_MINOR "${_tbb_version_file}")
+      string(REGEX REPLACE ".*#define TBB_INTERFACE_VERSION ([0-9]+).*" "\\1"
+          TBB_INTERFACE_VERSION "${_tbb_version_file}")
+    # Fall back to old tbb_stddef.h (TBB < 2021)
+    elseif(EXISTS "${TBB_INCLUDE_DIRS}/tbb/tbb_stddef.h")
+      file(READ "${TBB_INCLUDE_DIRS}/tbb/tbb_stddef.h" _tbb_version_file)
+      string(REGEX REPLACE ".*#define TBB_VERSION_MAJOR ([0-9]+).*" "\\1"
+          TBB_VERSION_MAJOR "${_tbb_version_file}")
+      string(REGEX REPLACE ".*#define TBB_VERSION_MINOR ([0-9]+).*" "\\1"
+          TBB_VERSION_MINOR "${_tbb_version_file}")
+      string(REGEX REPLACE ".*#define TBB_INTERFACE_VERSION ([0-9]+).*" "\\1"
+          TBB_INTERFACE_VERSION "${_tbb_version_file}")
+    endif()
     set(TBB_VERSION "${TBB_VERSION_MAJOR}.${TBB_VERSION_MINOR}")
   endif()
 

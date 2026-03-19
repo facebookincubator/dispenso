@@ -16,7 +16,7 @@
 #if !defined(BENCHMARK_WITHOUT_TBB)
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
-#include "tbb/task_scheduler_init.h"
+#include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #include <taskflow/taskflow.hpp>
@@ -196,7 +196,7 @@ void BM_tbb(benchmark::State& state) {
 
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
-    tbb::task_scheduler_init initsched(num_threads);
+    tbb_compat::task_scheduler_init initsched(num_threads);
 
     tbb::parallel_for(
         tbb::blocked_range<size_t>(0, num_elements),
