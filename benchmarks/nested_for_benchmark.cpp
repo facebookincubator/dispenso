@@ -138,6 +138,70 @@ void BM_dispenso(benchmark::State& state) {
   checkResults(input, sum, foo, numElements);
 }
 
+uint64_t calculateInnerDispensoAuto(uint64_t input, size_t foo, int numElements) {
+  std::vector<uint64_t> sums;
+  sums.reserve(g_numThreads + 1);
+  dispenso::ParForOptions options;
+  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  dispenso::parallel_for(
+      sums,
+      []() { return uint64_t{0}; },
+      0,
+      kWorkMultiplier * numElements,
+      [input, foo](uint64_t& lsumStore, size_t i, size_t end) {
+        uint64_t lsum = 0;
+        for (; i != end; ++i) {
+          lsum += calculate(input, i, foo);
+        }
+        lsumStore += lsum;
+      },
+      options);
+  uint64_t sum = 0;
+  for (auto s : sums) {
+    sum += s;
+  }
+  return sum;
+}
+
+void BM_dispenso_auto(benchmark::State& state) {
+  g_numThreads = state.range(0) - 1;
+  const int numElements = state.range(1);
+
+  dispenso::resizeGlobalThreadPool(g_numThreads);
+
+  uint64_t sum = 0;
+  int foo = 0;
+
+  dispenso::ParForOptions options;
+  options.defaultChunking = dispenso::ParForChunking::kAuto;
+
+  auto input = getInputs(numElements);
+  for (auto UNUSED_VAR : state) {
+    std::vector<uint64_t> sums;
+    sums.reserve(g_numThreads + 1);
+    ++foo;
+    dispenso::parallel_for(
+        sums,
+        []() { return uint64_t{0}; },
+        0,
+        numElements,
+        [numElements, input, foo](uint64_t& lsumStore, size_t j, size_t end) {
+          uint64_t lsum = 0;
+          for (; j != end; ++j) {
+            lsum += calculateInnerDispensoAuto(input, foo, numElements);
+          }
+          lsumStore += lsum;
+        },
+        options);
+    sum = 0;
+    for (auto s : sums) {
+      sum += s;
+    }
+  }
+
+  checkResults(input, sum, foo, numElements);
+}
+
 #if defined(_OPENMP)
 uint64_t calculateInnerOmp(uint64_t input, size_t foo, int numElements) {
   uint64_t sum = 0;
@@ -231,5 +295,6 @@ BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
+BENCHMARK(BM_dispenso_auto)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();

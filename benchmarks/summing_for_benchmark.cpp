@@ -162,6 +162,47 @@ void BM_tbb(benchmark::State& state) {
 }
 #endif // !BENCHMARK_WITHOUT_TBB
 
+void BM_dispenso_static(benchmark::State& state) {
+  const int num_threads = state.range(0) - 1;
+  const int num_elements = state.range(1);
+
+  dispenso::ThreadPool pool(num_threads);
+
+  int64_t sum = 0;
+  int foo = 0;
+
+  dispenso::ParForOptions options;
+  options.minItemsPerChunk = 50000;
+
+  auto& input = getInputs(num_elements);
+  for (auto UNUSED_VAR : state) {
+    dispenso::TaskSet tasks(pool);
+
+    std::vector<int64_t> sums;
+    sums.reserve(num_threads + 1);
+    ++foo;
+    dispenso::parallel_for(
+        tasks,
+        sums,
+        []() { return int64_t{0}; },
+        dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kStatic),
+        [&input, foo](int64_t& lsumStore, size_t i, size_t end) {
+          int64_t lsum = 0;
+          for (; i != end; ++i) {
+            lsum += input[i] * input[i] - 3 * foo * input[i];
+          }
+          lsumStore += lsum;
+        },
+        options);
+    sum = 0;
+    for (auto s : sums) {
+      sum += s;
+    }
+  }
+
+  checkResults(input, sum, foo);
+}
+
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
     for (int i : pow2HalfStepThreads()) {
@@ -181,5 +222,6 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
+BENCHMARK(BM_dispenso_static)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();
