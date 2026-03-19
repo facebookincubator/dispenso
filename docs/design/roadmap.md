@@ -65,6 +65,7 @@ This document tracks planned features and improvements for the dispenso library.
 
 These are ideas that may be pursued based on community feedback:
 
+- CUDA graph mappings (TaskFlow has this; worth exploring for dispenso's Graph)
 - Lock-free stack
 - Scalable allocator (like TBB's)
 - Range-based API wrappers (explicit opt-in)
