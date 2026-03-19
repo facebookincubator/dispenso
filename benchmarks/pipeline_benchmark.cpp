@@ -16,7 +16,7 @@
 #include "benchmark_common.h"
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
-#include "tbb/pipeline.h"
+#include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #include <taskflow/taskflow.hpp>
@@ -196,7 +196,7 @@ void runTBB(std::vector<std::unique_ptr<uint8_t[]>>& results) {
   tbb::parallel_pipeline(
       /*max_number_of_live_token=*/std::thread::hardware_concurrency(),
       tbb::make_filter<void, Work*>(
-          tbb::filter::serial,
+          tbb_compat::filter::serial,
           [&counter](tbb::flow_control& fc) -> Work* {
             if (counter < kNumImages) {
               return new Work(fillImage(Work(counter++)));
@@ -205,13 +205,13 @@ void runTBB(std::vector<std::unique_ptr<uint8_t[]>>& results) {
             return nullptr;
           }) &
           tbb::make_filter<Work*, Work*>(
-              tbb::filter::serial,
+              tbb_compat::filter::serial,
               [](Work* workIn) {
                 Work& work = *workIn;
                 work = computeGeometricMean(std::move(work));
                 return workIn;
               }) &
-          tbb::make_filter<Work*, void>(tbb::filter::serial, [&results](Work* workIn) {
+          tbb::make_filter<Work*, void>(tbb_compat::filter::serial, [&results](Work* workIn) {
             size_t index = workIn->index;
             results[index] = tonemap(std::move(*workIn));
             delete workIn;
@@ -235,7 +235,7 @@ void runTBBPar(std::vector<std::unique_ptr<uint8_t[]>>& results) {
   tbb::parallel_pipeline(
       /*max_number_of_live_token=*/std::thread::hardware_concurrency(),
       tbb::make_filter<void, Work*>(
-          tbb::filter::parallel,
+          tbb_compat::filter::parallel,
           [&counter](tbb::flow_control& fc) -> Work* {
             size_t curIndex = counter.fetch_add(1, std::memory_order_acquire);
             if (curIndex < kNumImages) {
@@ -245,12 +245,12 @@ void runTBBPar(std::vector<std::unique_ptr<uint8_t[]>>& results) {
             return nullptr;
           }) &
           tbb::make_filter<Work*, Work*>(
-              tbb::filter::parallel,
+              tbb_compat::filter::parallel,
               [](Work* work) {
                 *work = computeGeometricMean(std::move(*work));
                 return work;
               }) &
-          tbb::make_filter<Work*, void>(tbb::filter::parallel, [&results](Work* work) {
+          tbb::make_filter<Work*, void>(tbb_compat::filter::parallel, [&results](Work* work) {
             size_t index = work->index;
             results[index] = tonemap(std::move(*work));
             delete work;
@@ -268,6 +268,7 @@ void BM_tbb_par(benchmark::State& state) {
 }
 #endif // !BENCHMARK_WITHOUT_TBB
 
+#if TF_VERSION > 300000
 void runTaskflow(std::vector<std::unique_ptr<uint8_t[]>>& results, tf::Executor& exec) {
   results.resize(kNumImages);
   std::vector<std::unique_ptr<Work>> work;
@@ -314,38 +315,32 @@ void BM_taskflow(benchmark::State& state) {
   checkResults(results);
 }
 
-// TODO(bbudge): Debug this.  Unclear exactly why this crashes and/or hangs (TSAN)
 void runTaskflowPar(std::vector<std::unique_ptr<uint8_t[]>>& results, tf::Executor& exec) {
   results.resize(kNumImages);
-  std::vector<std::unique_ptr<Work>> work;
-  // Ensure we don't resize underlying buffer causing data races
-  work.reserve(kNumImages);
+  std::vector<std::unique_ptr<Work>> work(kNumImages);
 
   tf::Taskflow taskflow;
 
-  std::atomic<size_t> counter2 = 0;
-  std::atomic<size_t> counter3 = 0;
   tf::Pipeline pl(
       std::thread::hardware_concurrency(),
       tf::Pipe{
-          tf::PipeType::SERIAL,
-          [&work](auto& pf) mutable {
-            if (work.size() < kNumImages) {
-              work.push_back(std::make_unique<Work>(fillImage(Work(work.size()))));
-            } else {
+          tf::PipeType::SERIAL, // First pipe must be serial in taskflow
+          [&work](tf::Pipeflow& pf) {
+            if (pf.token() >= kNumImages) {
               pf.stop();
+              return;
             }
+            work[pf.token()] = std::make_unique<Work>(fillImage(Work(pf.token())));
           }},
       tf::Pipe{
           tf::PipeType::PARALLEL,
-          [&counter2, &work](auto& pf) mutable {
-            Work& w = *work[counter2.fetch_add(1, std::memory_order_relaxed)];
+          [&work](tf::Pipeflow& pf) {
+            Work& w = *work[pf.token()];
             w = computeGeometricMean(std::move(w));
           }},
-      tf::Pipe{tf::PipeType::PARALLEL, [&counter3, &work, &results](auto& pf) mutable {
-                 size_t index = counter3.fetch_add(1, std::memory_order_relaxed);
-                 Work& w = *work[index];
-                 results[index] = tonemap(std::move(w));
+      tf::Pipe{tf::PipeType::PARALLEL, [&work, &results](tf::Pipeflow& pf) {
+                 size_t token = pf.token();
+                 results[token] = tonemap(std::move(*work[token]));
                }});
 
   taskflow.composed_of(pl);
@@ -362,20 +357,24 @@ void BM_taskflow_par(benchmark::State& state) {
 
   checkResults(results);
 }
+#endif // TF_VERSION > 300000
 
 BENCHMARK(BM_serial)->UseRealTime();
 BENCHMARK(BM_dispenso)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
+#if TF_VERSION > 300000
 BENCHMARK(BM_taskflow)->UseRealTime();
+#endif // TF_VERSION > 300000
 
 BENCHMARK(BM_dispenso_par)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb_par)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
-// TODO(bbudge): Re-enable once this is fixed.
-// BENCHMARK(BM_taskflow_par)->UseRealTime();
+#if TF_VERSION > 300000
+BENCHMARK(BM_taskflow_par)->UseRealTime();
+#endif // TF_VERSION > 300000
 
 BENCHMARK_MAIN();

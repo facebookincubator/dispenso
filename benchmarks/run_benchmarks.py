@@ -35,8 +35,6 @@ try:
     HAS_PLOTTING = True
 except ImportError:
     HAS_PLOTTING = False
-    print("Warning: matplotlib/pandas not available. Charts will not be generated.")
-    print("Install with: pip install matplotlib pandas")
 
 
 def get_machine_info() -> Dict[str, Any]:
@@ -437,6 +435,9 @@ def main():
             print(
                 "No benchmark data to plot (benchmarks may not use google benchmark format)"
             )
+    elif not args.json_only and not HAS_PLOTTING:
+        print("Warning: matplotlib/pandas not available. Charts will not be generated.")
+        print("Install with: pip install matplotlib pandas")
 
 
 if __name__ == "__main__":

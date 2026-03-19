@@ -6,9 +6,11 @@
  */
 
 /**
- * Basic thread pool benchmarks comparing dispenso, TBB, and Folly.
- * Tests simple task scheduling throughput.
+ * Benchmarks for nested/hierarchical task scheduling patterns.
+ * Tests scenarios where tasks spawn additional child tasks.
  */
+
+#include <cmath>
 
 #include <dispenso/task_set.h>
 
@@ -19,6 +21,10 @@
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 #include <folly/VirtualExecutor.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
@@ -62,12 +68,17 @@ inline Work& work() {
 void BM_dispenso(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
-  dispenso::ThreadPool pool(num_threads);
 
   for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
+    dispenso::ThreadPool pool(num_threads);
     for (int i = 0; i < num_elements; ++i) {
-      tasks.schedule([i]() { work() += i; });
+      pool.schedule([&pool, num_elements]() {
+        int num = std::sqrt(num_elements);
+        dispenso::TaskSet tasks(pool);
+        for (int j = 0; j < num; ++j) {
+          tasks.schedule([j]() { work() += j; });
+        }
+      });
     }
   }
 }
@@ -76,12 +87,19 @@ void BM_dispenso(benchmark::State& state) {
 void BM_tbb(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
-  tbb_compat::task_scheduler_init initsched(num_threads);
 
   for (auto UNUSED_VAR : state) {
+    tbb_compat::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
-      g.run([i]() { work() += i; });
+      g.run([num_elements]() {
+        int num = std::sqrt(num_elements);
+        tbb::task_group g2;
+        for (int j = 0; j < num; ++j) {
+          g2.run([j]() { work() += j; });
+        }
+        g2.wait();
+      });
     }
     g.wait();
   }
@@ -92,13 +110,31 @@ void BM_tbb(benchmark::State& state) {
 void BM_folly(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
-  folly::CPUThreadPoolExecutor follyExec(num_threads);
 
+  if (num_elements > 10000) {
+    state.SkipWithError("We run out of memory here with too many elements");
+  }
+
+  folly::CPUThreadPoolExecutor follyExec(num_threads);
   for (auto UNUSED_VAR : state) {
-    folly::VirtualExecutor tasks(&follyExec);
-    for (int i = 0; i < num_elements; ++i) {
-      tasks.add([i]() { work() += i; });
-    }
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      std::vector<folly::coro::Task<void>> tasks;
+      for (int i = 0; i < num_elements; ++i) {
+        tasks.push_back(folly::coro::co_invoke([num_elements]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::vector<folly::coro::Task<void>> tasks2;
+          int num = std::sqrt(num_elements);
+          for (int j = 0; j < num; ++j) {
+            tasks2.push_back(folly::coro::co_invoke([j]() -> folly::coro::Task<void> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              work() += j;
+            }));
+          }
+          co_await folly::coro::collectAllRange(std::move(tasks2));
+        }));
+      }
+      co_await folly::coro::collectAllRange(std::move(tasks)).scheduleOn(&follyExec);
+    }());
   }
 }
 #endif // !BENCHMARK_WITHOUT_FOLLY
@@ -114,11 +150,9 @@ static void CustomArguments(benchmark::internal::Benchmark* b) {
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
-
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 BENCHMARK(BM_folly)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_FOLLY
-
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 
 BENCHMARK_MAIN();
