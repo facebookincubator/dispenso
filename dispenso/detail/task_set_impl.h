@@ -257,11 +257,10 @@ class TaskSetBase {
   alignas(kCacheLineSize) ThreadPool& pool_;
   alignas(kCacheLineSize) std::atomic<bool> canceled_{false};
   const ssize_t taskSetLoadFactor_;
-#if defined(__cpp_exceptions)
+  // Always present to ensure stable ABI layout regardless of __cpp_exceptions.
   enum ExceptionState { kUnset, kSetting, kSet };
   std::atomic<ExceptionState> guardException_{kUnset};
   std::exception_ptr exception_;
-#endif // __cpp_exceptions
 
   TaskSetBase* parent_;
 

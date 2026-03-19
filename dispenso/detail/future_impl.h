@@ -58,9 +58,8 @@ class FutureImplResultMember {
 
   alignas(Result) mutable char resultBuf_[sizeof(Result)];
 
-#if defined(__cpp_exceptions)
+  // Always present to ensure stable ABI layout regardless of __cpp_exceptions.
   std::exception_ptr exception_;
-#endif // __cpp_exceptions
 };
 
 template <typename Result>
@@ -94,9 +93,8 @@ class FutureImplResultMember<Result&> {
 
   Result* result_;
 
-#if defined(__cpp_exceptions)
+  // Always present to ensure stable ABI layout regardless of __cpp_exceptions.
   std::exception_ptr exception_;
-#endif // __cpp_exceptions
 };
 
 template <>
@@ -123,9 +121,8 @@ class FutureImplResultMember<void> {
   }
   void setAsResult() const {}
 
-#if defined(__cpp_exceptions)
+  // Always present to ensure stable ABI layout regardless of __cpp_exceptions.
   std::exception_ptr exception_;
-#endif // __cpp_exceptions
 };
 
 template <typename Result>
