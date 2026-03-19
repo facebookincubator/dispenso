@@ -130,6 +130,84 @@ class TaskSetBase {
     };
   }
 
+  // Package a task without incrementing the counter (for bulk scheduling where
+  // the counter is incremented once for the entire batch).
+  template <typename F>
+  auto packageTaskNoIncrement(F&& f) {
+    return [this, f = std::move(f)]() mutable {
+      detail::pushThreadTaskSet(this);
+      if (!canceled_.load(std::memory_order_acquire)) {
+#if defined(__cpp_exceptions)
+        try {
+          f();
+        } catch (...) {
+          trySetCurrentException();
+        }
+#else
+        f();
+#endif // __cpp_exceptions
+      }
+      detail::popThreadTaskSet();
+      outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
+    };
+  }
+
+  template <typename Generator>
+  void scheduleBulkImpl(size_t count, Generator&& gen, moodycamel::ProducerToken* token) {
+    if (count == 0) {
+      return;
+    }
+
+    ssize_t numPool = pool_.numThreads();
+    size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
+    if (chunkSize < 1) {
+      chunkSize = 1;
+    }
+
+    size_t i = 0;
+    while (i < count) {
+      if (canceled()) {
+        break;
+      }
+      ssize_t outstanding = outstandingTaskCount_.load(std::memory_order_relaxed);
+      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
+      // Mirror the two-tier inline decision from ThreadPool::schedule():
+      // 1. TaskSet-level: outstandingTaskCount_ exceeds our own load factor
+      // 2. Pool recursive: tight quickLoadFactor (numThreads*1.5) when called from a pool
+      //    thread. Critical for nested patterns where inner scheduleBulk must throttle to
+      //    avoid flooding the pool queue and starving outer tasks.
+      // 3. Pool global: loose poolLoadFactor_ (numThreads*32) for non-recursive callers
+      if (outstanding > taskSetLoadFactor_ ||
+          (detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) &&
+           curWork > numPool + numPool / 2) ||
+          curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
+#if defined(__cpp_exceptions)
+        try {
+          gen(i)();
+        } catch (...) {
+          trySetCurrentException();
+        }
+#else
+        gen(i)();
+#endif // __cpp_exceptions
+        ++i;
+      } else {
+        ssize_t room = taskSetLoadFactor_ - outstanding;
+        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+        if (toEnqueue == 0) {
+          toEnqueue = 1;
+        }
+        outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
+        size_t base = i;
+        pool_.scheduleBulkEnqueue(
+            toEnqueue,
+            [this, &gen, base](size_t j) { return packageTaskNoIncrement(gen(base + j)); },
+            token);
+        i += toEnqueue;
+      }
+    }
+  }
+
   DISPENSO_DLL_ACCESS void trySetCurrentException();
   bool testAndResetException();
 

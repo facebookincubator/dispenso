@@ -7,6 +7,10 @@
 
 #include <dispenso/thread_pool.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -520,4 +524,116 @@ TEST(ThreadPool, SingleThreadSpinPoll) {
   for (int i = 0; i < kWorkItems; ++i) {
     EXPECT_EQ(outputs[static_cast<size_t>(i)], i * 3);
   }
+}
+
+TEST(ThreadPool, ScheduleBulkBasic) {
+  constexpr size_t kWorkItems = 1000;
+  std::vector<size_t> outputs(kWorkItems, 0);
+  {
+    dispenso::ThreadPool pool(10);
+    pool.scheduleBulk(
+        kWorkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i * i; }; });
+  }
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[i], i * i);
+  }
+}
+
+TEST(ThreadPool, ScheduleBulkZero) {
+  dispenso::ThreadPool pool(10);
+  bool called = false;
+  pool.scheduleBulk(0, [&called](size_t) {
+    called = true;
+    return []() {};
+  });
+  // Generator should never be called for count=0
+  EXPECT_FALSE(called);
+}
+
+TEST(ThreadPool, ScheduleBulkOne) {
+  std::atomic<int> result{0};
+  {
+    dispenso::ThreadPool pool(10);
+    pool.scheduleBulk(1, [&result](size_t i) {
+      return [i, &result]() { result.store(static_cast<int>(i) + 42); };
+    });
+  }
+  EXPECT_EQ(result.load(), 42);
+}
+
+TEST(ThreadPool, ScheduleBulkTwo) {
+  std::vector<int> outputs(2, 0);
+  {
+    dispenso::ThreadPool pool(10);
+    pool.scheduleBulk(2, [&outputs](size_t i) {
+      return [i, &outputs]() { outputs[i] = static_cast<int>(i) + 1; };
+    });
+  }
+  EXPECT_EQ(outputs[0], 1);
+  EXPECT_EQ(outputs[1], 2);
+}
+
+TEST(ThreadPool, ScheduleBulkLarge) {
+  constexpr size_t kWorkItems = 100000;
+  std::vector<size_t> outputs(kWorkItems, 0);
+  {
+    dispenso::ThreadPool pool(10);
+    pool.scheduleBulk(
+        kWorkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i * i; }; });
+  }
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[i], i * i);
+  }
+}
+
+TEST(ThreadPool, ScheduleBulkMixedWithSchedule) {
+  constexpr size_t kBulkItems = 500;
+  constexpr size_t kScheduleItems = 500;
+  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  std::vector<size_t> outputs(kTotal, 0);
+  {
+    dispenso::ThreadPool pool(10);
+
+    // First bulk batch: indices [0, 500)
+    pool.scheduleBulk(
+        kBulkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i + 1; }; });
+
+    // Individual schedule: indices [500, 1000)
+    for (size_t i = kBulkItems; i < kBulkItems + kScheduleItems; ++i) {
+      pool.schedule([i, &outputs]() { outputs[i] = i + 1; });
+    }
+
+    // Second bulk batch: indices [1000, 1500)
+    pool.scheduleBulk(kBulkItems, [&outputs](size_t i) {
+      size_t idx = i + kBulkItems + kScheduleItems;
+      return [idx, &outputs]() { outputs[idx] = idx + 1; };
+    });
+  }
+
+  for (size_t i = 0; i < kTotal; ++i) {
+    EXPECT_EQ(outputs[i], i + 1);
+  }
+}
+
+TEST(ThreadPool, ScheduleBulkConcurrent) {
+  constexpr int kTasksPerThread = 1000;
+  constexpr int kNumSchedulers = 4;
+  std::atomic<int> counter{0};
+  {
+    dispenso::ThreadPool pool(10);
+    std::vector<std::thread> schedulers;
+    for (int t = 0; t < kNumSchedulers; ++t) {
+      schedulers.emplace_back([&pool, &counter]() {
+        pool.scheduleBulk(static_cast<size_t>(kTasksPerThread), [&counter](size_t) {
+          return [&counter]() { counter.fetch_add(1, std::memory_order_relaxed); };
+        });
+      });
+    }
+    for (auto& t : schedulers) {
+      t.join();
+    }
+  }
+  EXPECT_EQ(counter.load(), kTasksPerThread * kNumSchedulers);
 }

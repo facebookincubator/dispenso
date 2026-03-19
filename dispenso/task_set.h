@@ -107,6 +107,23 @@ class TaskSet : public TaskSetBase {
   }
 
   /**
+   * Schedule multiple functors for execution on the underlying pool in bulk.
+   * This is more efficient than calling schedule() multiple times when you have many tasks to
+   * submit, as it reduces atomic contention and allows for better thread wakeup behavior.
+   *
+   * @param count The number of functors to schedule.
+   * @param gen A generator functor that takes an index and returns a functor to execute.
+   *            gen(i) will be called for i in [0, count) to produce each task.
+   *
+   * @note Work is processed in chunks, interleaving enqueue and inline execution based on the
+   *       task set's load factor, preventing both pool thread starvation and excessive overhead.
+   **/
+  template <typename Generator>
+  void scheduleBulk(size_t count, Generator&& gen) {
+    scheduleBulkImpl(count, std::forward<Generator>(gen), &token_);
+  }
+
+  /**
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    *
@@ -250,6 +267,23 @@ class ConcurrentTaskSet : public TaskSetBase {
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag fq) {
     pool_.schedule(packageTask(std::forward<F>(f)), fq);
+  }
+
+  /**
+   * Schedule multiple functors for execution on the underlying pool in bulk.
+   * This is more efficient than calling schedule() multiple times when you have many tasks to
+   * submit, as it reduces atomic contention and allows for better thread wakeup behavior.
+   *
+   * @param count The number of functors to schedule.
+   * @param gen A generator functor that takes an index and returns a functor to execute.
+   *            gen(i) will be called for i in [0, count) to produce each task.
+   *
+   * @note Work is processed in chunks, interleaving enqueue and inline execution based on the
+   *       task set's load factor, preventing both pool thread starvation and excessive overhead.
+   **/
+  template <typename Generator>
+  void scheduleBulk(size_t count, Generator&& gen) {
+    scheduleBulkImpl(count, std::forward<Generator>(gen), nullptr);
   }
 
   /**

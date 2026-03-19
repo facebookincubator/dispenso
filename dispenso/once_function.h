@@ -76,13 +76,13 @@ class OnceFunction {
   OnceFunction(const OnceFunction& other) = delete;
 
   /** Move constructor. */
-  OnceFunction(OnceFunction&& other) : onceCallable_(other.onceCallable_) {
+  OnceFunction(OnceFunction&& other) noexcept : onceCallable_(other.onceCallable_) {
 #if defined DISPENSO_DEBUG
     other.onceCallable_ = nullptr;
 #endif // DISPENSO_DEBUG
   }
 
-  OnceFunction& operator=(OnceFunction&& other) {
+  OnceFunction& operator=(OnceFunction&& other) noexcept {
     onceCallable_ = other.onceCallable_;
 #if defined DISPENSO_DEBUG
     if (&other != this) {

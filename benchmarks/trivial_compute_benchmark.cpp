@@ -79,6 +79,7 @@ void BM_dispenso(benchmark::State& state) {
   int foo = 0;
 
   dispenso::ParForOptions options;
+  options.defaultChunking = dispenso::ParForChunking::kAuto;
   options.minItemsPerChunk = 4000;
 
   auto input = getInputs(num_elements);
@@ -92,8 +93,9 @@ void BM_dispenso(benchmark::State& state) {
         tasks,
         sums,
         []() { return uint64_t{0}; },
-        dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kStatic),
-        [input, foo](uint64_t& lsumStore, size_t i, size_t end) {
+        0,
+        num_elements,
+        [input, foo](uint64_t& lsumStore, int i, int end) {
           uint64_t lsum = 0;
           for (; i != end; ++i) {
             lsum += calculate(input, i, foo);

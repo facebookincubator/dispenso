@@ -19,6 +19,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <deque>
+#include <iterator>
 #include <mutex>
 #include <thread>
 
@@ -154,6 +155,21 @@ class alignas(kCacheLineSize) ThreadPool {
   void schedule(F&& f, ForceQueuingTag);
 
   /**
+   * Schedule multiple functors to be executed in bulk.  This is more efficient than calling
+   * schedule() multiple times when you have many tasks to submit, as it reduces atomic contention
+   * and allows for better thread wakeup behavior.
+   *
+   * @param count The number of functors to schedule.
+   * @param gen A generator functor that takes an index and returns a functor to execute.
+   *            gen(i) will be called for i in [0, count) to produce each task.
+   *
+   * @note Work is enqueued in chunks and interleaved with inline execution based on the pool's
+   *       load factor, preventing both pool thread starvation and excessive queueing overhead.
+   **/
+  template <typename Generator>
+  void scheduleBulk(size_t count, Generator&& gen);
+
+  /**
    * Destruct the pool.  This destructor is blocking until all queued work is completed.  It is
    * illegal to call the destructor while any other thread makes calls to the pool (as is generally
    * the case with C++ classes).
@@ -203,6 +219,13 @@ class alignas(kCacheLineSize) ThreadPool {
 
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
+
+  // Core bulk enqueue: unconditionally stage, enqueue, and wake for a chunk of tasks.
+  // Caller is responsible for load factor checks. Count should be small (e.g. <= 2*numThreads).
+  // When a producer token is provided, uses token-based enqueue for better throughput.
+  template <typename Generator>
+  void
+  scheduleBulkEnqueue(size_t count, Generator&& gen, moodycamel::ProducerToken* token = nullptr);
 
   // The non-atomic read of two separate atomics (numSleeping_ and workRemaining_) can
   // race, potentially causing a missed wake in rare cases. This is benign: the epoch
@@ -377,6 +400,108 @@ inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToke
 inline void ThreadPool::executeNext(OnceFunction next) {
   next();
   workRemaining_.fetch_add(-1, std::memory_order_relaxed);
+}
+
+namespace detail {
+// Generating iterator for scheduleBulkEnqueue. Produces OnceFunction objects
+// on-the-fly during enqueue_bulk, avoiding the need for a staging buffer.
+// moodycamel's enqueue_bulk uses single-pass input iterator semantics.
+template <typename Generator>
+struct BulkGenIter {
+  using difference_type = std::ptrdiff_t;
+  using value_type = OnceFunction;
+  using pointer = OnceFunction*;
+  using reference = OnceFunction&;
+  using iterator_category = std::input_iterator_tag;
+
+  Generator* gen;
+  size_t index;
+  OnceFunction operator*() {
+    return (*gen)(index);
+  }
+  BulkGenIter& operator++() {
+    ++index;
+    return *this;
+  }
+  BulkGenIter operator++(int) {
+    BulkGenIter tmp = *this;
+    ++index;
+    return tmp;
+  }
+};
+} // namespace detail
+
+template <typename Generator>
+void ThreadPool::scheduleBulkEnqueue(
+    size_t count,
+    Generator&& gen,
+    moodycamel::ProducerToken* token) {
+  detail::BulkGenIter<typename std::remove_reference<Generator>::type> it{&gen, 0};
+
+  // Single atomic update + bulk enqueue
+  workRemaining_.fetch_add(static_cast<ssize_t>(count), std::memory_order_release);
+
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  bool enqueued;
+  if (token) {
+    enqueued = work_.enqueue_bulk(*token, it, count);
+  } else {
+    enqueued = work_.enqueue_bulk(it, count);
+  }
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+  (void)(enqueued);
+  assert(enqueued);
+
+  // Wake appropriate threads
+  if (enableEpochWaiter_.load(std::memory_order_acquire)) {
+    ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
+    ssize_t toWake = std::min(sleeping, static_cast<ssize_t>(count));
+    if (toWake > 0) {
+      wakeN(toWake);
+    }
+  }
+}
+
+template <typename Generator>
+void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
+  if (count == 0) {
+    return;
+  }
+
+  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);
+  if (!numPool) {
+    // No threads in pool - execute all inline
+    for (size_t i = 0; i < count; ++i) {
+      gen(i)();
+    }
+    return;
+  }
+
+  // Process in chunks, interleaving enqueue and inline execution based on load.
+  size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
+  if (chunkSize < 1) {
+    chunkSize = 1;
+  }
+  size_t i = 0;
+  while (i < count) {
+    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
+    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);
+    if (curWork > loadFactor) {
+      // Over load factor - execute one task inline, then re-check
+      gen(i)();
+      ++i;
+    } else {
+      // Under load factor - enqueue a chunk
+      ssize_t room = loadFactor - curWork;
+      size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+      if (toEnqueue == 0) {
+        toEnqueue = 1;
+      }
+      size_t base = i;
+      scheduleBulkEnqueue(toEnqueue, [&gen, base](size_t j) { return gen(base + j); });
+      i += toEnqueue;
+    }
+  }
 }
 
 } // namespace dispenso

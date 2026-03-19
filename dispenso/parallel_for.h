@@ -356,43 +356,59 @@ void parallel_for_staticImpl(
 
   bool perfectlyChunked = static_cast<size_type>(chunking.transitionTaskIndex) == numThreads;
 
-  // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  size_type firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
+  // Number of tasks to schedule (all but the last one if wait is true)
+  size_type numToSchedule = wait ? numThreads - 1 : numThreads;
 
-  auto stateIt = states.begin();
-  IntegerT start = range.start;
-  size_type t;
-  for (t = 0; t < firstLoopLen; ++t) {
-    IntegerT next = static_cast<IntegerT>(start + chunkSize);
-    taskSet.schedule([it = stateIt++, start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      f(*it, start, next);
-    });
-    start = next;
-  }
+  if (numToSchedule > 0) {
+    // Precompute range boundaries for the generator
+    // First loop: indices [0, transitionTaskIndex) use ceilChunkSize
+    // Second loop: indices [transitionTaskIndex, numToSchedule) use ceilChunkSize - 1
+    size_type transitionIdx = perfectlyChunked ? numToSchedule : chunking.transitionTaskIndex;
+    IntegerT smallChunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
 
-  // Reduce the remaining chunk sizes by 1.
-  chunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
-  // Finish submitting all but the last item.
-  for (; t < numThreads - 1; ++t) {
-    IntegerT next = static_cast<IntegerT>(start + chunkSize);
-    taskSet.schedule([it = stateIt++, start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      f(*it, start, next);
-    });
-    start = next;
+    taskSet.scheduleBulk(
+        static_cast<size_t>(numToSchedule),
+        [&, chunkSize, smallChunkSize, transitionIdx](size_t idx) {
+          // Calculate start position for this chunk
+          IntegerT start;
+          IntegerT thisChunkSize;
+          if (static_cast<size_type>(idx) < transitionIdx) {
+            start = range.start + static_cast<IntegerT>(idx) * chunkSize;
+            thisChunkSize = chunkSize;
+          } else {
+            // After transition, chunks are smaller by 1
+            start = range.start + static_cast<IntegerT>(transitionIdx) * chunkSize +
+                static_cast<IntegerT>(idx - transitionIdx) * smallChunkSize;
+            thisChunkSize = smallChunkSize;
+          }
+          IntegerT end = start + thisChunkSize;
+
+          auto stateIt = states.begin();
+          std::advance(stateIt, idx);
+
+          return [it = stateIt, start, end, f]() {
+            auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+            f(*it, start, end);
+          };
+        });
   }
 
   if (wait) {
-    f(*stateIt, start, range.end);
+    // Execute the last chunk on the calling thread
+    auto stateIt = states.begin();
+    std::advance(stateIt, numThreads - 1);
+    // Calculate start of last chunk
+    size_type transitionIdx = perfectlyChunked ? numThreads - 1 : chunking.transitionTaskIndex;
+    IntegerT smallChunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
+    IntegerT lastStart;
+    if (numThreads - 1 < transitionIdx) {
+      lastStart = range.start + static_cast<IntegerT>(numThreads - 1) * chunkSize;
+    } else {
+      lastStart = range.start + static_cast<IntegerT>(transitionIdx) * chunkSize +
+          static_cast<IntegerT>(numThreads - 1 - transitionIdx) * smallChunkSize;
+    }
+    f(*stateIt, lastStart, range.end);
     taskSet.wait();
-  } else {
-    taskSet.schedule(
-        [stateIt, start, end = range.end, f]() {
-          auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-          f(*stateIt, start, end);
-        },
-        ForceQueuingTag());
   }
 }
 
@@ -459,6 +475,9 @@ void parallel_for(
     }
     return;
   }
+
+  // Cap maxThreads to actual available threads before chunk size checks
+  maxThreads = std::min<size_type>(maxThreads, N + options.wait);
 
   // Adjust down workers if we would have too-small chunks
   if (minItemsPerChunk > 1) {
@@ -535,10 +554,13 @@ void parallel_for(
       }
     };
 
+    taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
+      auto it = states.begin();
+      std::advance(it, i);
+      return [&s = *it, worker]() { worker(s); };
+    });
     auto it = states.begin();
-    for (size_type i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule([&s = *it++, worker]() { worker(s); });
-    }
+    std::advance(it, numToLaunch);
     worker(*it);
     taskSet.wait();
   } else {
@@ -574,10 +596,11 @@ void parallel_for(
       }
     };
 
-    auto it = states.begin();
-    for (size_type i = 0; i < numToLaunch; ++i) {
-      taskSet.schedule([&s = *it++, worker]() { worker(s); }, ForceQueuingTag());
-    }
+    taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
+      auto it = states.begin();
+      std::advance(it, i);
+      return [&s = *it, worker]() { worker(s); };
+    });
   }
 }
 

@@ -7,6 +7,10 @@
 
 #include <dispenso/task_set.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 // Add a shim to account for older gtest
@@ -707,5 +711,313 @@ TEST(ConcurrentTaskSet, CanceledState) {
 
   tasks.cancel();
   EXPECT_TRUE(tasks.canceled());
+  EXPECT_TRUE(tasks.wait());
+}
+
+TEST(TaskSet, ScheduleBulkBasic) {
+  constexpr size_t kWorkItems = 1000;
+  std::vector<size_t> outputs(kWorkItems, 0);
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.scheduleBulk(
+      kWorkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i * i; }; });
+
+  tasks.wait();
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[i], i * i);
+  }
+}
+
+TEST(TaskSet, ScheduleBulkEdgeCases) {
+  dispenso::ThreadPool pool(10);
+
+  // Count=0: no-op
+  {
+    dispenso::TaskSet tasks(pool);
+    bool called = false;
+    tasks.scheduleBulk(0, [&called](size_t) {
+      called = true;
+      return []() {};
+    });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_FALSE(called);
+  }
+
+  // Count=1: single task
+  {
+    dispenso::TaskSet tasks(pool);
+    int result = 0;
+    tasks.scheduleBulk(
+        1, [&result](size_t i) { return [i, &result]() { result = static_cast<int>(i) + 42; }; });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_EQ(result, 42);
+  }
+
+  // Count=2: two tasks
+  {
+    dispenso::TaskSet tasks(pool);
+    std::vector<int> outputs(2, 0);
+    tasks.scheduleBulk(2, [&outputs](size_t i) {
+      return [i, &outputs]() { outputs[i] = static_cast<int>(i) + 1; };
+    });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_EQ(outputs[0], 1);
+    EXPECT_EQ(outputs[1], 2);
+  }
+}
+
+TEST(TaskSet, ScheduleBulkLarge) {
+  constexpr size_t kWorkItems = 10000;
+  std::vector<size_t> outputs(kWorkItems, 0);
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.scheduleBulk(
+      kWorkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i * i; }; });
+
+  tasks.wait();
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[i], i * i);
+  }
+}
+
+TEST(TaskSet, ScheduleBulkMultipleWaits) {
+  constexpr size_t kWorkItems = 1000;
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  std::vector<size_t> outputsA(kWorkItems, 0);
+  tasks.scheduleBulk(
+      kWorkItems, [&outputsA](size_t i) { return [i, &outputsA]() { outputsA[i] = i + 1; }; });
+  tasks.wait();
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputsA[i], i + 1);
+  }
+
+  std::vector<size_t> outputsB(kWorkItems, 0);
+  tasks.scheduleBulk(
+      kWorkItems, [&outputsB](size_t i) { return [i, &outputsB]() { outputsB[i] = i * 2; }; });
+  tasks.wait();
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputsB[i], i * 2);
+  }
+}
+
+TEST(TaskSet, ScheduleBulkMixedWithSchedule) {
+  constexpr size_t kBulkItems = 500;
+  constexpr size_t kScheduleItems = 500;
+  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  std::vector<size_t> outputs(kTotal, 0);
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  // First bulk batch
+  tasks.scheduleBulk(
+      kBulkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i + 1; }; });
+
+  // Individual schedule
+  for (size_t i = kBulkItems; i < kBulkItems + kScheduleItems; ++i) {
+    tasks.schedule([i, &outputs]() { outputs[i] = i + 1; });
+  }
+
+  // Second bulk batch
+  tasks.scheduleBulk(kBulkItems, [&outputs](size_t i) {
+    size_t idx = i + kBulkItems + kScheduleItems;
+    return [idx, &outputs]() { outputs[idx] = idx + 1; };
+  });
+
+  tasks.wait();
+
+  for (size_t i = 0; i < kTotal; ++i) {
+    EXPECT_EQ(outputs[i], i + 1);
+  }
+}
+
+TEST(TaskSet, ScheduleBulkCancellation) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  // Schedule spinning tasks via individual schedule with ForceQueuingTag
+  // to ensure they land on pool threads
+  for (int i = 0; i < 4; ++i) {
+    tasks.schedule(
+        []() {
+          while (!dispenso::parentTaskSet()->canceled()) {
+            std::this_thread::yield();
+          }
+        },
+        dispenso::ForceQueuingTag());
+  }
+
+  // Bulk-schedule more work
+  std::vector<int> outputs(100, 0);
+  tasks.scheduleBulk(100, [&outputs](size_t i) {
+    return [i, &outputs]() { outputs[i] = static_cast<int>(i) + 1; };
+  });
+
+  tasks.cancel();
+  EXPECT_TRUE(tasks.wait());
+}
+
+#if defined(__cpp_exceptions)
+TEST(TaskSet, ScheduleBulkException) {
+  dispenso::ThreadPool pool(10);
+  dispenso::TaskSet tasks(pool);
+
+  tasks.scheduleBulk(100, [](size_t i) {
+    return [i]() {
+      if (i == 50) {
+        throw std::logic_error("bulk oops");
+      }
+    };
+  });
+
+  bool caught = false;
+  try {
+    tasks.wait();
+  } catch (const std::logic_error&) {
+    caught = true;
+  }
+
+  EXPECT_TRUE(caught);
+}
+#endif // __cpp_exceptions
+
+TEST(ConcurrentTaskSet, ScheduleBulkBasic) {
+  constexpr size_t kWorkItems = 1000;
+  std::vector<size_t> outputs(kWorkItems, 0);
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  tasks.scheduleBulk(
+      kWorkItems, [&outputs](size_t i) { return [i, &outputs]() { outputs[i] = i * i; }; });
+
+  tasks.wait();
+
+  for (size_t i = 0; i < kWorkItems; ++i) {
+    EXPECT_EQ(outputs[i], i * i);
+  }
+}
+
+TEST(ConcurrentTaskSet, ScheduleBulkEdgeCases) {
+  dispenso::ThreadPool pool(10);
+
+  // Count=0: no-op
+  {
+    dispenso::ConcurrentTaskSet tasks(pool);
+    bool called = false;
+    tasks.scheduleBulk(0, [&called](size_t) {
+      called = true;
+      return []() {};
+    });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_FALSE(called);
+  }
+
+  // Count=1: single task
+  {
+    dispenso::ConcurrentTaskSet tasks(pool);
+    std::atomic<int> result{0};
+    tasks.scheduleBulk(1, [&result](size_t i) {
+      return [i, &result]() { result.store(static_cast<int>(i) + 42); };
+    });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_EQ(result.load(), 42);
+  }
+
+  // Count=2: two tasks
+  {
+    dispenso::ConcurrentTaskSet tasks(pool);
+    std::atomic<int> count{0};
+    tasks.scheduleBulk(2, [&count](size_t) { return [&count]() { count.fetch_add(1); }; });
+    EXPECT_FALSE(tasks.wait());
+    EXPECT_EQ(count.load(), 2);
+  }
+}
+
+TEST(ConcurrentTaskSet, ScheduleBulkConcurrent) {
+  constexpr int kTasksPerThread = 100;
+  constexpr int kNumSchedulers = 4;
+  std::atomic<int> counter{0};
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  std::vector<std::thread> schedulers;
+  for (int t = 0; t < kNumSchedulers; ++t) {
+    schedulers.emplace_back([&tasks, &counter]() {
+      tasks.scheduleBulk(static_cast<size_t>(kTasksPerThread), [&counter](size_t) {
+        return [&counter]() { counter.fetch_add(1, std::memory_order_relaxed); };
+      });
+    });
+  }
+
+  for (auto& t : schedulers) {
+    t.join();
+  }
+
+  tasks.wait();
+  EXPECT_EQ(counter.load(), kTasksPerThread * kNumSchedulers);
+}
+
+TEST(ConcurrentTaskSet, ScheduleBulkMixedWithSchedule) {
+  constexpr size_t kBulkItems = 500;
+  constexpr size_t kScheduleItems = 500;
+  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  std::vector<std::atomic<int>> outputs(kTotal);
+  for (auto& o : outputs) {
+    o.store(0);
+  }
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  // First bulk batch
+  tasks.scheduleBulk(kBulkItems, [&outputs](size_t i) {
+    return [i, &outputs]() { outputs[i].store(static_cast<int>(i) + 1); };
+  });
+
+  // Individual schedule
+  for (size_t i = kBulkItems; i < kBulkItems + kScheduleItems; ++i) {
+    tasks.schedule([i, &outputs]() { outputs[i].store(static_cast<int>(i) + 1); });
+  }
+
+  // Second bulk batch
+  tasks.scheduleBulk(kBulkItems, [&outputs](size_t i) {
+    size_t idx = i + kBulkItems + kScheduleItems;
+    return [idx, &outputs]() { outputs[idx].store(static_cast<int>(idx) + 1); };
+  });
+
+  tasks.wait();
+
+  for (size_t i = 0; i < kTotal; ++i) {
+    EXPECT_EQ(outputs[i].load(), static_cast<int>(i) + 1);
+  }
+}
+
+TEST(ConcurrentTaskSet, ScheduleBulkCancellation) {
+  dispenso::ThreadPool pool(10);
+  dispenso::ConcurrentTaskSet tasks(pool);
+
+  // Schedule spinning tasks via individual schedule with ForceQueuingTag
+  for (int i = 0; i < 4; ++i) {
+    tasks.schedule(
+        []() {
+          while (!dispenso::parentTaskSet()->canceled()) {
+            std::this_thread::yield();
+          }
+        },
+        dispenso::ForceQueuingTag());
+  }
+
+  // Bulk-schedule more work
+  std::atomic<int> bulkCounter{0};
+  tasks.scheduleBulk(
+      100, [&bulkCounter](size_t) { return [&bulkCounter]() { bulkCounter.fetch_add(1); }; });
+
+  tasks.cancel();
   EXPECT_TRUE(tasks.wait());
 }
