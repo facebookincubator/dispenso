@@ -20,6 +20,7 @@ Dispenso is a modern **C++ parallel computing library** that provides work-steal
 - [Features](#features)
 - [Quick Start](#quickstart)
 - [Comparison vs Other Libraries](#comparison)
+- [Migration Guides](#migrationguides)
 - [When Not to Use Dispenso](#nottouse)
 - [Documentation and Examples](#examples)
 - [Benchmark Results](#benchresults)
@@ -118,9 +119,13 @@ TBB has more functionality overall, but we built dispenso for three reasons:
 
 **Performance:** Dispenso tends to be faster for small and medium parallel loops, and on par for large ones. When many loops run independently, dispenso's cascading `parallel_for` avoids oversubscription and has delivered **32-50% speedups in production workloads** after porting from TBB at Meta. TBB lacks an equivalent mechanism.
 
+See [Migrating from TBB](docs/migrating_from_tbb.md) for a step-by-step porting guide.
+
 ### OpenMP
 
 OpenMP has simple syntax for basic loops but grows complex for advanced constructs. Nested `#pragma omp parallel for` inside threaded code risks thread explosion and machine exhaustion. Dispenso outperforms OpenMP for medium and large loops. OpenMP has an advantage for very small loops due to direct compiler support, though dispenso's `minItemsPerChunk` option can close this gap by tuning the parallelism threshold for small/fast loops.
+
+See [Migrating from OpenMP](docs/migrating_from_openmp.md) for a step-by-step porting guide.
 
 ### Folly
 
@@ -133,6 +138,13 @@ TaskFlow focuses on task graph execution. Dispenso has faster graph construction
 ### Others (GCD, C++ std parallelism)
 
 GCD is Apple-specific with ports to other platforms. C++ parallel algorithms are still evolving — we are interested in enabling dispenso as a backend for `std::execution` and C++ coroutines. Contributions and benchmarks are welcome.
+
+<div id='migrationguides'/>
+
+### Migration Guides
+
+- **[Migrating from TBB](docs/migrating_from_tbb.md)** — API mappings, thread pool differences, and common porting patterns
+- **[Migrating from OpenMP](docs/migrating_from_openmp.md)** — Replacing `#pragma omp` with dispenso equivalents, handling reductions and nested parallelism
 
 <div id='nottouse'/>
 

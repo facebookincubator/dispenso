@@ -20,13 +20,13 @@ This document tracks planned features and improvements for the dispenso library.
 | Parallel algorithms (Phase 1) | for_each, transform, fill, reduce | [parallel_algorithms.md](parallel_algorithms.md) |
 | C++20 concepts | Better error messages with concept constraints | [cpp20_concepts.md](cpp20_concepts.md) |
 | Benchmark automation | Script to run benchmarks and generate charts | See benchmarks/ |
+| Compiler Explorer examples | Godbolt links in README for try-it-now experience | - |
 
 ### Medium Priority
 
 | Feature | Description | Doc |
 |---------|-------------|-----|
 | Parallel algorithms (Phase 2-3) | Search, count, copy, replace | [parallel_algorithms.md](parallel_algorithms.md) |
-| Compiler Explorer examples | Godbolt links in README | - |
 | Barrier/Semaphore | C++20-style synchronization for C++14/17 | - |
 | ConcurrentQueue | Public API for blocking MPMC queue | - |
 
