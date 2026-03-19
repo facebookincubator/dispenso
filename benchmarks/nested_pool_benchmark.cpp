@@ -84,6 +84,24 @@ void BM_dispenso(benchmark::State& state) {
   }
 }
 
+void BM_dispenso_bulk(benchmark::State& state) {
+  const int num_threads = state.range(0) - 1;
+  const int num_elements = state.range(1);
+
+  dispenso::ThreadPool pool(num_threads);
+  for (auto UNUSED_VAR : state) {
+    dispenso::TaskSet outerTasks(pool);
+    outerTasks.scheduleBulk(static_cast<size_t>(num_elements), [&pool, num_elements](size_t) {
+      return [&pool, num_elements]() {
+        int num = std::sqrt(num_elements);
+        dispenso::TaskSet tasks(pool);
+        tasks.scheduleBulk(
+            static_cast<size_t>(num), [](size_t j) { return [j]() { work() += j; }; });
+      };
+    });
+  }
+}
+
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
   const int num_threads = state.range(0);
@@ -155,5 +173,6 @@ BENCHMARK(BM_tbb)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRea
 BENCHMARK(BM_folly)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_FOLLY
 BENCHMARK(BM_dispenso)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
+BENCHMARK(BM_dispenso_bulk)->Apply(CustomArguments)->Unit(benchmark::kMicrosecond)->UseRealTime();
 
 BENCHMARK_MAIN();

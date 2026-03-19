@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <array>
 #include <cmath>
 #include <future>
 #include <iostream>
@@ -323,6 +324,61 @@ void BM_dispenso_taskset_tree(benchmark::State& state) {
   checkTree(&root, depth, modulo);
 }
 
+void dispensoTaskSetTreeBulk(
+    dispenso::ConcurrentTaskSet& tasks,
+    Node* node,
+    Allocator& allocator,
+    uint32_t depth,
+    uint32_t bitset,
+    uint32_t modulo) {
+  node->setValue(bitset, modulo);
+  --depth;
+
+  if (!depth) {
+    node->left = nullptr;
+    node->right = nullptr;
+    return;
+  }
+
+  std::array<Node**, 2> children = {&node->left, &node->right};
+  tasks.scheduleBulk(2, [&tasks, &allocator, children, depth, bitset, modulo](size_t i) {
+    return [&tasks,
+            &allocator,
+            child = children[i],
+            depth,
+            bitset = (bitset << 1) | static_cast<uint32_t>(i),
+            modulo]() {
+      *child = allocator.alloc();
+      dispensoTaskSetTreeBulk(tasks, *child, allocator, depth, bitset, modulo);
+    };
+  });
+}
+
+template <size_t depth>
+void BM_dispenso_taskset_tree_bulk(benchmark::State& state) {
+  Allocator alloc;
+  alloc.reset(depth);
+  getModulos();
+
+  uint32_t modulo;
+  Node root;
+
+  dispenso::ConcurrentTaskSet tasks(
+      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
+
+  size_t m = 0;
+
+  for (auto UNUSED_VAR : state) {
+    alloc.reset(depth);
+    modulo = getModulos()[m];
+    dispensoTaskSetTreeBulk(tasks, &root, alloc, depth, 1, modulo);
+    tasks.wait();
+    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+  }
+
+  checkTree(&root, depth, modulo);
+}
+
 dispenso::Future<Node*>
 dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
   --depth;
@@ -392,6 +448,10 @@ BENCHMARK_TEMPLATE(BM_dispenso_tree, kLargeSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kLargeSize)->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kMediumSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kLargeSize)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
