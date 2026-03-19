@@ -47,6 +47,7 @@ using Vec3 = std::array<float, 3>;
 using Matrix4 = std::array<float, 16>;
 
 constexpr size_t kNoGeometry = std::numeric_limits<size_t>::max();
+constexpr float kPi = 3.14159265358979323846f;
 constexpr size_t kRoot = std::numeric_limits<size_t>::max();
 struct Transform {
   Matrix4 matrix;
@@ -73,7 +74,7 @@ void branchlessONB(const Vec3& n, Vec3& b1, Vec3& b2) {
 }
 
 Matrix4 getRandomTransformMatrix(std::mt19937& rng) {
-  std::uniform_real_distribution<float> thetaDistr(0.f, 2.f * static_cast<float>(M_PI));
+  std::uniform_real_distribution<float> thetaDistr(0.f, 2.f * kPi);
   std::uniform_real_distribution<float> uDistr(-1.f, 1.f);
   const float theta = thetaDistr(rng);
   const float u = uDistr(rng);
@@ -162,7 +163,7 @@ size_t numGeoPoints(size_t inGeoIndex) {
 
 Vec3 calculateGeoPoint(size_t inGeoIndex, size_t pointIndex) {
   size_t numPoints = numGeoPoints(inGeoIndex);
-  const float tStep = 2.f * 2.f * static_cast<float>(M_PI) / (static_cast<float>(numPoints) - 1.f);
+  const float tStep = 2.f * 2.f * kPi / (static_cast<float>(numPoints) - 1.f);
   const float t = tStep * static_cast<float>(pointIndex);
 
   const float r = 0.01;

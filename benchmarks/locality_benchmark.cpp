@@ -16,6 +16,13 @@
  * memory access patterns dominate performance, not compute.
  */
 
+// MSVC uses __restrict, GCC/Clang use __restrict__
+#ifdef _MSC_VER
+#define RESTRICT __restrict
+#else
+#define RESTRICT __restrict__
+#endif
+
 #include <cstring>
 #include <numeric>
 #include <vector>
@@ -54,12 +61,8 @@ static void initArrays(std::vector<double>& input, std::vector<double>& output, 
 
 // Simple 3-point stencil: output[i] = 0.25 * (input[i-1] + 2*input[i] + input[i+1])
 // Cheap compute, memory-bound. Multiple passes amplify locality effects.
-inline void stencilPass(
-    const double* __restrict__ src,
-    double* __restrict__ dst,
-    size_t begin,
-    size_t end,
-    size_t n) {
+inline void
+stencilPass(const double* RESTRICT src, double* RESTRICT dst, size_t begin, size_t end, size_t n) {
   for (size_t i = begin; i < end; ++i) {
     size_t im = (i > 0) ? i - 1 : 0;
     size_t ip = (i < n - 1) ? i + 1 : n - 1;
@@ -159,7 +162,7 @@ void BM_omp(benchmark::State& state) {
       const double* src = input.data();
       double* dst = output.data();
 #pragma omp parallel for schedule(static)
-      for (size_t i = 0; i < num_elements; ++i) {
+      for (int64_t i = 0; i < static_cast<int64_t>(num_elements); ++i) {
         size_t im = (i > 0) ? i - 1 : 0;
         size_t ip = (i < num_elements - 1) ? i + 1 : num_elements - 1;
         dst[i] = 0.25 * (src[im] + 2.0 * src[i] + src[ip]);

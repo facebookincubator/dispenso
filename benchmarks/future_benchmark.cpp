@@ -153,6 +153,22 @@ Node* stdTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t mo
 
 template <size_t depth>
 void BM_std_tree(benchmark::State& state) {
+#if defined(__APPLE__) || defined(__ANDROID__)
+  // std::async on macOS and Android (libc++) creates a real thread per call.
+  // At depth 16+ this spawns tens of thousands of threads recursively,
+  // exhausting OS thread limits and hanging the process.
+  if (depth >= kMediumSize) {
+    state.SkipWithError("std::async hangs on this platform at this tree depth");
+    return;
+  }
+#elif defined(_WIN32)
+  // std::async on Windows uses a threadpool. The recursive tree construction
+  // pattern causes deadlock as threadpool threads wait for tasks that require
+  // more threadpool threads. Skip all depths on Windows.
+  state.SkipWithError("std::async deadlocks on Windows threadpool");
+  return;
+#endif
+
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
