@@ -346,12 +346,13 @@ Some additional notes about the benchmarks: Your mileage may vary based on compi
 
 ---
 
-![plot](./docs/benchmarks/pipelines_256thread.png)
-![plot](./docs/benchmarks/pipelines_64thread.png)
+![plot](./docs/benchmarks/pipeline.png)
 
 ---
 
 ![plot](./docs/benchmarks/concurrent_vector.png)
+
+For detailed benchmark methodology and complete results, see [benchmark_results.md](./docs/benchmarks/benchmark_results.md).
 
 <div id='knownissues'/>
 
