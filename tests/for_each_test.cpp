@@ -367,3 +367,71 @@ TEST(ForEach, OptionsMaxThreadsSerialNonBlocking) {
   constexpr bool waitOption = false;
   testMaxThreads(8, 0, waitOption);
 }
+
+// Iterator with no default constructor — exercises the SmallVector<Iter>
+// boundary list which must not require Iter to be default-constructible.
+struct NoDefaultCtorIterator {
+  using iterator_category = std::input_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using value_type = size_t;
+  using pointer = const size_t*;
+  using reference = const size_t&;
+
+  explicit NoDefaultCtorIterator(const std::vector<size_t>& v, size_t idx) : v_(&v), idx_(idx) {}
+
+  reference operator*() const {
+    return (*v_)[idx_];
+  }
+  NoDefaultCtorIterator& operator++() {
+    ++idx_;
+    return *this;
+  }
+  NoDefaultCtorIterator operator++(int) {
+    auto tmp = *this;
+    ++idx_;
+    return tmp;
+  }
+  friend bool operator==(const NoDefaultCtorIterator& a, const NoDefaultCtorIterator& b) {
+    return a.idx_ == b.idx_;
+  }
+  friend bool operator!=(const NoDefaultCtorIterator& a, const NoDefaultCtorIterator& b) {
+    return a.idx_ != b.idx_;
+  }
+
+ private:
+  const std::vector<size_t>* v_;
+  size_t idx_;
+};
+
+TEST(ForEach, NonDefaultConstructibleIterator) {
+  constexpr size_t kNumVals = 1 << 12;
+  std::vector<size_t> data(kNumVals);
+  std::iota(data.begin(), data.end(), 0);
+
+  std::vector<uint8_t> validated(kNumVals, 0);
+
+  NoDefaultCtorIterator begin(data, 0);
+  NoDefaultCtorIterator end(data, kNumVals);
+
+  dispenso::for_each(begin, end, [&validated](size_t val) { validated[val] = true; });
+
+  for (auto v : validated) {
+    EXPECT_TRUE(v);
+  }
+}
+
+TEST(ForEachN, NonDefaultConstructibleIterator) {
+  constexpr size_t kNumVals = 1 << 12;
+  std::vector<size_t> data(kNumVals);
+  std::iota(data.begin(), data.end(), 0);
+
+  std::vector<uint8_t> validated(kNumVals, 0);
+
+  NoDefaultCtorIterator begin(data, 0);
+
+  dispenso::for_each_n(begin, kNumVals, [&validated](size_t val) { validated[val] = true; });
+
+  for (auto v : validated) {
+    EXPECT_TRUE(v);
+  }
+}

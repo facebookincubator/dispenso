@@ -33,25 +33,14 @@ if(NOT Taskflow_FOUND)
   else()
     message(STATUS "Taskflow not found locally, fetching from GitHub...")
     include(FetchContent)
-    if(CMAKE_CXX_STANDARD LESS 17)
-      message(STATUS "Using older taskflow due to c++14 support")
-      FetchContent_Declare(
-        taskflow
-        GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-        GIT_TAG        v2.7.0
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-      )
-    else()
-      message(STATUS "Using up-to-date taskflow")
-      FetchContent_Declare(
-        taskflow
-        GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-        GIT_TAG        v3.6.0
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-      )
-    endif()
+    message(STATUS "Using up-to-date taskflow")
+    FetchContent_Declare(
+      taskflow
+      GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+      GIT_TAG        v3.6.0
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+    )
     FetchContent_GetProperties(taskflow)
     if(NOT taskflow_POPULATED)
       FetchContent_Populate(taskflow)
@@ -104,6 +93,7 @@ foreach(BENCHMARK_FILE ${BENCHMARK_FILES})
   set(BENCHMARK_NAME)
   get_filename_component(BENCHMARK_NAME ${BENCHMARK_FILE} NAME_WE)
   add_executable(${BENCHMARK_NAME} ${BENCHMARK_FILE})
+  target_compile_features(${BENCHMARK_NAME} PRIVATE cxx_std_20)
   target_link_libraries(${BENCHMARK_NAME} ${REQUIRED_LIBS} ${OPTIONAL_LIBS})
 endforeach()
 

@@ -16,8 +16,10 @@
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 
 #include <dispenso/detail/per_thread_info.h>
+#include <dispenso/small_vector.h>
 #include <dispenso/task_set.h>
 
 namespace dispenso {
@@ -53,6 +55,114 @@ struct ForEachOptions {
    **/
   bool wait = true;
 };
+
+namespace detail {
+
+// Random-access iterators: compute chunk boundaries arithmetically, avoiding SmallVector.
+template <typename TaskSetT, typename Iter, typename F>
+void for_each_n_schedule(
+    TaskSetT& tasks,
+    Iter start,
+    F&& f,
+    ssize_t numThreads,
+    size_t chunkSize,
+    ssize_t transitionIdx,
+    size_t smallChunkSize,
+    const ForEachOptions& options,
+    std::random_access_iterator_tag) {
+  ssize_t numToSchedule = options.wait ? numThreads - 1 : numThreads;
+
+  if (numToSchedule > 0) {
+    tasks.scheduleBulk(
+        static_cast<size_t>(numToSchedule),
+        [start, &f, chunkSize, smallChunkSize, transitionIdx](size_t idx) {
+          ssize_t sidx = static_cast<ssize_t>(idx);
+          ssize_t offset;
+          ssize_t thisChunkSize;
+          if (sidx < transitionIdx) {
+            offset = sidx * static_cast<ssize_t>(chunkSize);
+            thisChunkSize = static_cast<ssize_t>(chunkSize);
+          } else {
+            offset = transitionIdx * static_cast<ssize_t>(chunkSize) +
+                (sidx - transitionIdx) * static_cast<ssize_t>(smallChunkSize);
+            thisChunkSize = static_cast<ssize_t>(smallChunkSize);
+          }
+          Iter s = start + offset;
+          Iter e = s + thisChunkSize;
+          return [s, e, f]() {
+            auto recurseInfo = PerPoolPerThreadInfo::parForRecurse();
+            for (Iter it = s; it != e; ++it) {
+              f(*it);
+            }
+          };
+        });
+  }
+
+  if (options.wait) {
+    ssize_t lastIdx = numThreads - 1;
+    ssize_t offset;
+    ssize_t thisChunkSize;
+    if (lastIdx < transitionIdx) {
+      offset = lastIdx * static_cast<ssize_t>(chunkSize);
+      thisChunkSize = static_cast<ssize_t>(chunkSize);
+    } else {
+      offset = transitionIdx * static_cast<ssize_t>(chunkSize) +
+          (lastIdx - transitionIdx) * static_cast<ssize_t>(smallChunkSize);
+      thisChunkSize = static_cast<ssize_t>(smallChunkSize);
+    }
+    Iter lastStart = start + offset;
+    Iter lastEnd = lastStart + thisChunkSize;
+    for (Iter it = lastStart; it != lastEnd; ++it) {
+      f(*it);
+    }
+    tasks.wait();
+  }
+}
+
+// Non-random-access iterators: pre-compute boundary iterators into SmallVector.
+template <typename TaskSetT, typename Iter, typename F, typename IterCategory>
+void for_each_n_schedule(
+    TaskSetT& tasks,
+    Iter start,
+    F&& f,
+    ssize_t numThreads,
+    size_t chunkSize,
+    ssize_t transitionIdx,
+    size_t smallChunkSize,
+    const ForEachOptions& options,
+    IterCategory) {
+  SmallVector<Iter, 64> boundaries;
+  boundaries.reserve(static_cast<size_t>(numThreads) + 1);
+  boundaries.push_back(start);
+  for (ssize_t t = 0; t < numThreads; ++t) {
+    size_t cs = (t < transitionIdx) ? chunkSize : smallChunkSize;
+    Iter next = boundaries[t];
+    std::advance(next, cs);
+    boundaries.push_back(next);
+  }
+
+  ssize_t numToSchedule = options.wait ? numThreads - 1 : numThreads;
+
+  if (numToSchedule > 0) {
+    tasks.scheduleBulk(static_cast<size_t>(numToSchedule), [&boundaries, &f](size_t idx) {
+      return [s = boundaries[idx], e = boundaries[idx + 1], f]() {
+        auto recurseInfo = PerPoolPerThreadInfo::parForRecurse();
+        for (Iter it = s; it != e; ++it) {
+          f(*it);
+        }
+      };
+    });
+  }
+
+  if (options.wait) {
+    for (Iter it = boundaries[numThreads - 1]; it != boundaries[numThreads]; ++it) {
+      f(*it);
+    }
+    tasks.wait();
+  }
+}
+
+} // namespace detail
 
 /**
  * A function like std::for_each_n, but where the function is invoked in parallel across the passed
@@ -92,56 +202,19 @@ void for_each_n(TaskSetT& tasks, Iter start, size_t n, F&& f, ForEachOptions opt
   size_t chunkSize = chunking.ceilChunkSize;
 
   bool perfectlyChunked = chunking.transitionTaskIndex == numThreads;
+  ssize_t transitionIdx = chunking.transitionTaskIndex;
+  size_t smallChunkSize = chunkSize - !perfectlyChunked;
 
-  // (!perfectlyChunked) ? chunking.transitionTaskIndex : numThreads - 1;
-  ssize_t firstLoopLen = chunking.transitionTaskIndex - perfectlyChunked;
-
-  ssize_t t;
-  for (t = 0; t < firstLoopLen; ++t) {
-    Iter next = start;
-    std::advance(next, chunkSize);
-    tasks.schedule([start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      for (Iter it = start; it != next; ++it) {
-        f(*it);
-      }
-    });
-    start = next;
-  }
-
-  // Reduce the remaining chunk sizes by 1.
-  chunkSize -= !perfectlyChunked;
-  // Finish submitting all but the last item.
-  for (; t < numThreads - 1; ++t) {
-    Iter next = start;
-    std::advance(next, chunkSize);
-    tasks.schedule([start, next, f]() {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      for (Iter it = start; it != next; ++it) {
-        f(*it);
-      }
-    });
-    start = next;
-  }
-
-  Iter end = start;
-  std::advance(end, chunkSize);
-
-  if (options.wait) {
-    for (Iter it = start; it != end; ++it) {
-      f(*it);
-    }
-    tasks.wait();
-  } else {
-    tasks.schedule(
-        [start, end, f]() {
-          auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-          for (Iter it = start; it != end; ++it) {
-            f(*it);
-          }
-        },
-        ForceQueuingTag());
-  }
+  detail::for_each_n_schedule(
+      tasks,
+      start,
+      std::forward<F>(f),
+      numThreads,
+      chunkSize,
+      transitionIdx,
+      smallChunkSize,
+      options,
+      typename std::iterator_traits<Iter>::iterator_category{});
 }
 
 /**
