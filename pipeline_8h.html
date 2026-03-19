@@ -155,14 +155,15 @@ template&lt;typename... Stages&gt; </div>
 <li>If there is only one stage, it takes no arguments, but returns a bool indicating completion (false means the pipeline is complete).</li>
 <li>Otherwise, the Generator stage takes no arguments and must return an OpResult or std::optional value, and an invalid/nullopt result indicates that the Generator is done (no more values forthcoming).</li>
 <li>Transform stages should accept the output of the prior stage (or output.value() in the case of OpResult or std::optional), and should return either a value or an OpResult or std::optional value if the Transform is capable of filtering results. Invalid/nullopt OpResult or std::optional values indicate that the value should be filtered, and not passed on to the next stage.</li>
-<li>The Sink stage should accept the output of the prior stage, just as a Transform stage does, but does not return any value (or at least the pipeline will ignore it). </li>
+<li>The Sink stage should accept the output of the prior stage, just as a Transform stage does, but does not return any value (or at least the pipeline will ignore it).</li>
 </ul>
 </td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section note"><dt>Note</dt><dd>See the ThreadPool overload of <code>pipeline()</code> for exception behavior details. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00109">109</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00122">122</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
 
 </div>
 </div>
@@ -194,16 +195,15 @@ template&lt;typename... Stages&gt; </div>
 <li>If there is only one stage, it takes no arguments, but returns a bool indicating completion (false means the pipeline is complete).</li>
 <li>Otherwise, the Generator stage takes no arguments and must return an OpResult or std::optional value, and an invalid/nullopt result indicates that the Generator is done (no more values forthcoming).</li>
 <li>Transform stages should accept the output of the prior stage (or output.value() in the case of OpResult or std::optional), and should return either a value or an OpResult or std::optional value if the Transform is capable of filtering results. Invalid/nullopt OpResult or std::optional values indicate that the value should be filtered, and not passed on to the next stage.</li>
-<li>The Sink stage should accept the output of the prior stage, just as a Transform stage does, but does not return any value (or at least the pipeline will ignore it). </li>
+<li>The Sink stage should accept the output of the prior stage, just as a Transform stage does, but does not return any value (or at least the pipeline will ignore it).</li>
 </ul>
 </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="pipeline_example_8cpp-example.html#a0">pipeline_example.cpp</a>.</dd>
-</dl>
+<dl class="section note"><dt>Note</dt><dd><b>Exception behavior:</b> If a stage function throws an exception, the pipeline will stop producing new work (the generator checks for exceptions between iterations) and allow any already-in-flight work to complete. Queued work that has not yet started will be discarded without execution. The first captured exception is rethrown from <code>pipeline()</code> when the pipeline winds down. Subsequent exceptions from concurrently in-flight stages are silently discarded. All internal state (concurrency counters, resource slots, completion events) is cleaned up via RAII, so the thread pool remains in a valid state after an exception and may be reused for subsequent pipelines. When exceptions are disabled at compile time (<code>__cpp_exceptions</code> not defined), all exception-related checks are eliminated with zero overhead. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00078">78</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00089">89</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
 
 </div>
 </div>
@@ -236,8 +236,6 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>A stage object suitable for pipelining. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="pipeline_example_8cpp-example.html#a1">pipeline_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00049">49</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
 
@@ -264,8 +262,6 @@ template&lt;typename F &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>A simple constant representing maximum parallelism for a stage. This number has no particular significance, and is simply here for convenience. </p>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="pipeline_example_8cpp-example.html#a3">pipeline_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="pipeline_8h_source.html#l00036">36</a> of file <a class="el" href="pipeline_8h_source.html">pipeline.h</a>.</p>
 

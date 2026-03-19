@@ -20,6 +20,8 @@ var dir_ff109a5d4b8a833924ba8452f0ad7d5d =
     [ "rw_lock.h", "rw__lock_8h.html", "rw__lock_8h" ],
     [ "schedulable.h", "schedulable_8h.html", "schedulable_8h" ],
     [ "small_buffer_allocator.h", "small__buffer__allocator_8h.html", "small__buffer__allocator_8h" ],
+    [ "small_vector.h", "small__vector_8h.html", "small__vector_8h" ],
+    [ "spsc_ring_buffer.h", "spsc__ring__buffer_8h.html", "spsc__ring__buffer_8h" ],
     [ "task_set.h", "task__set_8h.html", "task__set_8h" ],
     [ "thread_id.h", "thread__id_8h.html", "thread__id_8h" ],
     [ "thread_pool.h", "thread__pool_8h.html", "thread__pool_8h" ],

@@ -158,8 +158,6 @@ class dispenso::Future&lt; Result &gt;</div><p>A class that implements a hybrid 
 </ol>
 <p><a class="el" href="classdispenso_1_1_future.html">Future</a> is thread-safe to call into, with the usual caveats (one thread may not be calling anything on the <a class="el" href="classdispenso_1_1_future.html">Future</a> while another thread assigns to it or destructs it). It is thread-safe to assign or destruct on one copy of a <a class="el" href="classdispenso_1_1_future.html">Future</a> while making calls on another copy of a <a class="el" href="classdispenso_1_1_future.html">Future</a> with the same backing state.</p>
 <p>Because <a class="el" href="classdispenso_1_1_future.html">Future</a> is designed to work well with the dispenso <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> and <a class="el" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a> aggressively work steals in <code>get</code> and <code>wait</code> functions. This prevents deadlock due to thread pool resource starvation, similar to how TaskSets avoid that flavor of deadlock. It is important to note that deadlock is still possible due to traditional cyclic dependency, e.g. <a class="el" href="classdispenso_1_1_future.html">Future</a> A and <a class="el" href="classdispenso_1_1_future.html">Future</a> B which wait on each other. Just as with a cyclic mutex locking requirement, cyclic <a class="el" href="classdispenso_1_1_future.html">Future</a> waits are considered programmer error. </p>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#_a0">future_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00070">70</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
@@ -451,8 +449,6 @@ template&lt;typename Result &gt; </div>
 </div><div class="memdoc">
 <p>Get the result of the future functor. This function blocks until the result is ready.</p>
 <dl class="section return"><dt>Returns</dt><dd>A const reference to the result's value. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a2">future_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00221">221</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
@@ -484,8 +480,6 @@ template&lt;typename Result &gt; </div>
 </div><div class="memdoc">
 <p>Is the <a class="el" href="classdispenso_1_1_future.html">Future</a> ready?</p>
 <dl class="section return"><dt>Returns</dt><dd><code>true</code> if the value associated with this <a class="el" href="classdispenso_1_1_future.html">Future</a> has already be computed, and <code>get</code> can return the value immediately. Returns <code>false</code> if the functor is logically queued, or is in progress. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a4">future_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00164">164</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
@@ -548,8 +542,6 @@ template&lt;typename Result &gt; </div>
 </div><div class="memdoc">
 <p>Wait until <code>is_ready</code> is <code>true</code>.</p>
 <dl class="section note"><dt>Note</dt><dd>This function will invoke the functor if it is still logically queued. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a6">future_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00173">173</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 
@@ -590,8 +582,6 @@ template&lt;class Rep , class Period &gt; </div>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd><code>std::future_status::ready</code> if <code>get</code> can return immediately, <code>std::future_status::timeout</code> if the function timed out while waiting.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>This function may invoke the functor if it is still logically queued, and <code>std::launch::deferred</code> was specified at construction. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="future_example_8cpp-example.html#a5">future_example.cpp</a>.</dd>
-</dl>
 
 <p class="definition">Definition at line <a class="el" href="future_8h_source.html#l00189">189</a> of file <a class="el" href="future_8h_source.html">future.h</a>.</p>
 

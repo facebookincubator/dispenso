@@ -30,6 +30,8 @@ var annotated_dup =
       [ "ResourcePool", "classdispenso_1_1_resource_pool.html", "classdispenso_1_1_resource_pool" ],
       [ "RWLock", "classdispenso_1_1_r_w_lock.html", null ],
       [ "SingleThreadExecutor", "classdispenso_1_1_single_thread_executor.html", null ],
+      [ "SmallVector", "classdispenso_1_1_small_vector.html", "classdispenso_1_1_small_vector" ],
+      [ "SPSCRingBuffer", "classdispenso_1_1_s_p_s_c_ring_buffer.html", "classdispenso_1_1_s_p_s_c_ring_buffer" ],
       [ "SubgraphT", "classdispenso_1_1_subgraph_t.html", "classdispenso_1_1_subgraph_t" ],
       [ "TaskSet", "classdispenso_1_1_task_set.html", "classdispenso_1_1_task_set" ],
       [ "ThreadPool", "classdispenso_1_1_thread_pool.html", "classdispenso_1_1_thread_pool" ],

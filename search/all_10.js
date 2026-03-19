@@ -13,8 +13,14 @@ var searchData=
   ['timedtasktype_10',['TimedTaskType',['../timed__task_8h.html#ab8abb79aae8d5117f896bc3d8f33726b',1,'dispenso']]],
   ['timing_2eh_11',['timing.h',['../timing_8h.html',1,'']]],
   ['totalchunkcapacity_12',['totalChunkCapacity',['../classdispenso_1_1_pool_allocator_t.html#a811782e39e4b441b960bc35757af59c1',1,'dispenso::PoolAllocatorT']]],
-  ['try_5fwait_13',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
-  ['tryemplaceupdate_14',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
-  ['trywait_15',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]],
-  ['tsan_5fannotations_2eh_16',['tsan_annotations.h',['../tsan__annotations_8h.html',1,'']]]
+  ['try_5femplace_13',['try_emplace',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#aa66db857adebaa5dd9a9461e7515b3cd',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpop_14',['try_pop',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#abc22acfc3eeacf3f3f022ad8938ce873',1,'dispenso::SPSCRingBuffer::try_pop(T &amp;item)'],['../classdispenso_1_1_s_p_s_c_ring_buffer.html#acc8ab4079eae3023d33de71680f2e28d',1,'dispenso::SPSCRingBuffer::try_pop()']]],
+  ['try_5fpop_5fbatch_15',['try_pop_batch',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpop_5finto_16',['try_pop_into',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a268782c72bb128fa31f2fb6679343cfc',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpush_17',['try_push',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a8ccae05411a187a9c40efef9b0cbd565',1,'dispenso::SPSCRingBuffer::try_push(T &amp;&amp;item)'],['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a543fe6845a8a38154f51aea32d3e8aae',1,'dispenso::SPSCRingBuffer::try_push(const T &amp;item)']]],
+  ['try_5fpush_5fbatch_18',['try_push_batch',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a07ffce7b785c06e1fd39f06d309d3822',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fwait_19',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
+  ['tryemplaceupdate_20',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
+  ['trywait_21',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]],
+  ['tsan_5fannotations_2eh_22',['tsan_annotations.h',['../tsan__annotations_8h.html',1,'']]]
 ];

@@ -6,5 +6,6 @@ var classdispenso_1_1_thread_pool =
     [ "resize", "classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc", null ],
     [ "schedule", "classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289", null ],
     [ "schedule", "classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9", null ],
+    [ "scheduleBulk", "classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635", null ],
     [ "setSignalingWake", "classdispenso_1_1_thread_pool.html#a1496e66b4081c1f35ab2ff70536148ac", null ]
 ];

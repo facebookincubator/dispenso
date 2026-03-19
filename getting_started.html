@@ -120,9 +120,12 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"> </div>
 <div class="line"><span class="comment">// Or create a custom pool with a specific number of threads</span></div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a> myPool(4);  <span class="comment">// 4 worker threads</span></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00071">thread_pool.h:71</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00072">thread_pool.h:72</a></div></div>
 <div class="ttc" id="athread__pool_8h_html"><div class="ttname"><a href="thread__pool_8h.html">thread_pool.h</a></div></div>
-</div><!-- fragment --><h2>Task Sets</h2>
+</div><!-- fragment --><blockquote class="doxtable">
+<p>&zwj;<b>Note:</b> <code>globalThreadPool()</code> defaults to <code>std::thread::hardware_concurrency() - 1</code> worker threads, since the calling thread typically participates in computation. Use <code>dispenso::resizeGlobalThreadPool(n)</code> to change it. </p>
+</blockquote>
+<h2>Task Sets</h2>
 <p>A <code>TaskSet</code> groups related tasks and provides a way to wait for their completion:</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
 <div class="line"> </div>
@@ -136,7 +139,313 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
 </div><!-- fragment --><hr  />
 <h1>Your First Parallel Loop</h1>
-<p>The simplest way to parallelize work is with <code>parallel_for</code>. It distributes loop iterations across available threads. </p>
+<p>The simplest way to parallelize work is with <code>parallel_for</code>. It distributes loop iterations across available threads.</p>
+<p><b>Simple per-element parallel loop:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="parallel__for_8h.html">dispenso/parallel_for.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Process each element independently in parallel</span></div>
+<div class="line">dispenso::parallel_for(0, kArraySize, [&amp;](<span class="keywordtype">size_t</span> i) { output[i] = std::sqrt(input[i]); });</div>
+<div class="ttc" id="aparallel__for_8h_html"><div class="ttname"><a href="parallel__for_8h.html">parallel_for.h</a></div></div>
+</div><!-- fragment --><p><b>Reduction with per-thread state:</b></p>
+<div class="fragment"><div class="line">std::vector&lt;double&gt; partialSums;</div>
+<div class="line">dispenso::parallel_for(</div>
+<div class="line">    partialSums,</div>
+<div class="line">    []() { <span class="keywordflow">return</span> 0.0; }, <span class="comment">// State initializer</span></div>
+<div class="line">    <span class="keywordtype">size_t</span>{0},</div>
+<div class="line">    kArraySize,</div>
+<div class="line">    [&amp;](<span class="keywordtype">double</span>&amp; localSum, <span class="keywordtype">size_t</span> start, <span class="keywordtype">size_t</span> end) {</div>
+<div class="line">      <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = start; i &lt; end; ++i) {</div>
+<div class="line">        localSum += input[i];</div>
+<div class="line">      }</div>
+<div class="line">    });</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Combine partial sums</span></div>
+<div class="line"><span class="keywordtype">double</span> totalSum = 0.0;</div>
+<div class="line"><span class="keywordflow">for</span> (<span class="keywordtype">double</span> partial : partialSums) {</div>
+<div class="line">  totalSum += partial;</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>See <a href="../examples/parallel_for_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Use the simple form for independent per-element work</li>
+<li>Use chunked ranges when you want to control work distribution</li>
+<li>Per-thread state enables efficient reductions</li>
+<li>Options let you control parallelism and chunking strategy</li>
+</ul>
+<hr  />
+<h1>Parallel Iteration with for_each</h1>
+<p>When you have a container rather than an index range, use <code>for_each</code>:</p>
+<p><b>Parallel for_each on a vector:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="for__each_8h.html">dispenso/for_each.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line">std::vector&lt;double&gt; values = {1.0, 4.0, 9.0, 16.0, 25.0, 36.0, 49.0, 64.0};</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Apply square root to each element in parallel</span></div>
+<div class="line">dispenso::for_each(values.begin(), values.end(), [](<span class="keywordtype">double</span>&amp; val) { val = std::sqrt(val); });</div>
+<div class="ttc" id="afor__each_8h_html"><div class="ttname"><a href="for__each_8h.html">for_each.h</a></div></div>
+</div><!-- fragment --><p><b>for_each_n with explicit count:</b></p>
+<div class="fragment"><div class="line">std::vector&lt;int&gt; partial = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Only process first 5 elements</span></div>
+<div class="line">dispenso::for_each_n(partial.begin(), 5, [](<span class="keywordtype">int</span>&amp; n) { n += 100; });</div>
+</div><!-- fragment --><p>See <a href="../examples/for_each_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Works with any iterator type (including non-random-access iterators)</li>
+<li><code>for_each_n</code> takes an explicit count</li>
+<li>Pass a <code>TaskSet</code> for external synchronization control</li>
+</ul>
+<hr  />
+<h1>Working with Tasks</h1>
+<p>For more complex task patterns, use <code>TaskSet</code> and <code>ConcurrentTaskSet</code> directly:</p>
+<p><b>Basic TaskSet:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a> taskSet(dispenso::globalThreadPool());</div>
+<div class="line">std::atomic&lt;int&gt; counter(0);</div>
+<div class="line"> </div>
+<div class="line"><span class="keywordflow">for</span> (<span class="keywordtype">int</span> i = 0; i &lt; 10; ++i) {</div>
+<div class="line">  taskSet.schedule([&amp;counter, i]() { counter.fetch_add(i, std::memory_order_relaxed); });</div>
+<div class="line">}</div>
+<div class="line"> </div>
+<div class="line">taskSet.wait();</div>
+</div><!-- fragment --><p><b>ConcurrentTaskSet with nested scheduling:</b></p>
+<div class="fragment"><div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a> taskSet(dispenso::globalThreadPool());</div>
+<div class="line">std::atomic&lt;int&gt; total(0);</div>
+<div class="line"> </div>
+<div class="line"><span class="keywordflow">for</span> (<span class="keywordtype">int</span> i = 0; i &lt; 5; ++i) {</div>
+<div class="line">  taskSet.schedule([&amp;taskSet, &amp;total, i]() {</div>
+<div class="line">    <span class="comment">// Each task schedules two sub-tasks</span></div>
+<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">int</span> j = 0; j &lt; 2; ++j) {</div>
+<div class="line">      taskSet.schedule(</div>
+<div class="line">          [&amp;total, i, j]() { total.fetch_add(i * 10 + j, std::memory_order_relaxed); });</div>
+<div class="line">    }</div>
+<div class="line">  });</div>
+<div class="line">}</div>
+<div class="line"> </div>
+<div class="line">taskSet.wait();</div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00198">task_set.h:198</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/task_set_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li><code>TaskSet</code> is for single-threaded scheduling</li>
+<li><code>ConcurrentTaskSet</code> allows scheduling from multiple threads</li>
+<li>Both support cancellation for cooperative early termination</li>
+<li>The destructor waits for all tasks to complete</li>
+</ul>
+<hr  />
+<h1>Futures for Async Results</h1>
+<p>When you need return values from async operations, use <code>Future</code>:</p>
+<p><b>Basic async and get:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="future_8h.html">dispenso/future.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;int&gt;</a> future = dispenso::async([]() {</div>
+<div class="line">  <span class="keywordtype">int</span> result = 0;</div>
+<div class="line">  <span class="keywordflow">for</span> (<span class="keywordtype">int</span> i = 1; i &lt;= 100; ++i) {</div>
+<div class="line">    result += i;</div>
+<div class="line">  }</div>
+<div class="line">  <span class="keywordflow">return</span> result;</div>
+<div class="line">});</div>
+<div class="line"> </div>
+<div class="line"><span class="keywordtype">int</span> result = future.<a class="code hl_function" href="classdispenso_1_1_future.html#a6048c658bf896ca65535dd7ffa6623a5">get</a>();  <span class="comment">// blocks until ready</span></div>
+<div class="ttc" id="aclassdispenso_1_1_future_html"><div class="ttname"><a href="classdispenso_1_1_future.html">dispenso::Future</a></div><div class="ttdef"><b>Definition</b> <a href="future_8h_source.html#l00070">future.h:70</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_future_html_a6048c658bf896ca65535dd7ffa6623a5"><div class="ttname"><a href="classdispenso_1_1_future.html#a6048c658bf896ca65535dd7ffa6623a5">dispenso::Future::get</a></div><div class="ttdeci">const Result &amp; get() const</div><div class="ttdef"><b>Definition</b> <a href="future_8h_source.html#l00221">future.h:221</a></div></div>
+<div class="ttc" id="afuture_8h_html"><div class="ttname"><a href="future_8h.html">future.h</a></div></div>
+</div><!-- fragment --><p><b>Chaining with then():</b></p>
+<div class="fragment"><div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;double&gt;</a> chainedFuture = dispenso::async([]() {</div>
+<div class="line">                                           <span class="keywordflow">return</span> 16.0;</div>
+<div class="line">                                         })</div>
+<div class="line">                                             .then([](<a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;double&gt;</a>&amp;&amp; prev) {</div>
+<div class="line">                                               <span class="keywordflow">return</span> std::sqrt(prev.get());</div>
+<div class="line">                                             })</div>
+<div class="line">                                             .then([](<a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;double&gt;</a>&amp;&amp; prev) {</div>
+<div class="line">                                               <span class="keywordflow">return</span> prev.get() * 2.0;</div>
+<div class="line">                                             });</div>
+</div><!-- fragment --><p><b>when_all for multiple futures:</b></p>
+<div class="fragment"><div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;int&gt;</a> f1 = dispenso::async([]() { <span class="keywordflow">return</span> 10; });</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;int&gt;</a> f2 = dispenso::async([]() { <span class="keywordflow">return</span> 20; });</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;int&gt;</a> f3 = <a class="code hl_function" href="future_8h.html#a1e26a81b8ac83022faf9be5fa9116944">dispenso::async</a>([]() { <span class="keywordflow">return</span> 30; });</div>
+<div class="line"> </div>
+<div class="line"><span class="keyword">auto</span> allFutures = <a class="code hl_function" href="future_8h.html#a7910e3bd46b9cf1c12fe246ef65053f1">dispenso::when_all</a>(std::move(f1), std::move(f2), std::move(f3));</div>
+<div class="line"><span class="keyword">auto</span> tuple = allFutures.get();</div>
+<div class="line"><span class="keywordtype">int</span> sum = std::get&lt;0&gt;(tuple).get() + std::get&lt;1&gt;(tuple).get() + std::get&lt;2&gt;(tuple).get();</div>
+<div class="ttc" id="afuture_8h_html_a1e26a81b8ac83022faf9be5fa9116944"><div class="ttname"><a href="future_8h.html#a1e26a81b8ac83022faf9be5fa9116944">dispenso::async</a></div><div class="ttdeci">Future&lt; detail::ResultOf&lt; F, Args... &gt; &gt; async(std::launch policy, F &amp;&amp;f, Args &amp;&amp;... args)</div><div class="ttdef"><b>Definition</b> <a href="future_8h_source.html#l00453">future.h:453</a></div></div>
+<div class="ttc" id="afuture_8h_html_a7910e3bd46b9cf1c12fe246ef65053f1"><div class="ttname"><a href="future_8h.html#a7910e3bd46b9cf1c12fe246ef65053f1">dispenso::when_all</a></div><div class="ttdeci">Future&lt; std::vector&lt; typename std::iterator_traits&lt; InputIt &gt;::value_type &gt; &gt; when_all(InputIt first, InputIt last)</div></div>
+</div><!-- fragment --><p>See <a href="../examples/future_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li><code>async()</code> launches work and returns a <code>Future</code></li>
+<li><code>then()</code> chains dependent computations</li>
+<li><code>when_all()</code> waits for multiple futures</li>
+<li><code>make_ready_future()</code> creates an already-completed future</li>
+</ul>
+<hr  />
+<h1>Task Graphs</h1>
+<p>For complex dependency patterns, build a task graph:</p>
+<p><b>Diamond dependency pattern:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="graph_8h.html">dispenso/graph.h</a>&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="graph__executor_8h.html">dispenso/graph_executor.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><span class="comment">//         A</span></div>
+<div class="line"><span class="comment">//        / \</span></div>
+<div class="line"><span class="comment">//       B   C</span></div>
+<div class="line"><span class="comment">//        \ /</span></div>
+<div class="line"><span class="comment">//         D</span></div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_graph_t.html">dispenso::Graph</a> graph;</div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_node.html">dispenso::Node</a>&amp; A = graph.<a class="code hl_function" href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">addNode</a>([&amp;]() { r[0] = 1.0f; });</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_node.html">dispenso::Node</a>&amp; B = graph.<a class="code hl_function" href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">addNode</a>([&amp;]() { r[1] = r[0] * 2.0f; });</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_node.html">dispenso::Node</a>&amp; C = graph.<a class="code hl_function" href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">addNode</a>([&amp;]() { r[2] = r[0] + 5.0f; });</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_node.html">dispenso::Node</a>&amp; D = graph.<a class="code hl_function" href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">addNode</a>([&amp;]() { r[3] = r[1] + r[2]; });</div>
+<div class="line"> </div>
+<div class="line">B.<a class="code hl_function" href="classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a">dependsOn</a>(A);</div>
+<div class="line">C.<a class="code hl_function" href="classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a">dependsOn</a>(A);</div>
+<div class="line">D.<a class="code hl_function" href="classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a">dependsOn</a>(B, C);</div>
+<div class="line"> </div>
+<div class="line">setAllNodesIncomplete(graph);</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a> taskSet(dispenso::globalThreadPool());</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set_executor.html">dispenso::ConcurrentTaskSetExecutor</a> executor;</div>
+<div class="line">executor(taskSet, graph);</div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_executor_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set_executor.html">dispenso::ConcurrentTaskSetExecutor</a></div><div class="ttdef"><b>Definition</b> <a href="graph__executor_8h_source.html#l00068">graph_executor.h:68</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_graph_t_html"><div class="ttname"><a href="classdispenso_1_1_graph_t.html">dispenso::GraphT</a></div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00577">graph.h:577</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_graph_t_html_a13d24b1056de5324500d20702661fa7e"><div class="ttname"><a href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">dispenso::GraphT::addNode</a></div><div class="ttdeci">N &amp; addNode(T &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00605">graph.h:605</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_node_html"><div class="ttname"><a href="classdispenso_1_1_node.html">dispenso::Node</a></div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00247">graph.h:247</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_node_html_abfb52f4bd018eee8791499a9bd160c8a"><div class="ttname"><a href="classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a">dispenso::Node::dependsOn</a></div><div class="ttdeci">void dependsOn(Ns &amp;... nodes)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00273">graph.h:273</a></div></div>
+<div class="ttc" id="agraph_8h_html"><div class="ttname"><a href="graph_8h.html">graph.h</a></div></div>
+<div class="ttc" id="agraph__executor_8h_html"><div class="ttname"><a href="graph__executor_8h.html">graph_executor.h</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/graph_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Use <code>dependsOn()</code> to specify prerequisites</li>
+<li>Multiple executors available: single-thread, parallel_for, ConcurrentTaskSet</li>
+<li>Graphs can be re-executed after calling <code>setAllNodesIncomplete()</code></li>
+<li>Subgraphs help organize large graphs</li>
+</ul>
+<hr  />
+<h1>Pipelines</h1>
+<p>For streaming data through stages, use pipelines:</p>
+<p><b>3-stage pipeline (generator -&gt; transform -&gt; sink):</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="pipeline_8h.html">dispenso/pipeline.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line">std::vector&lt;int&gt; results;</div>
+<div class="line"><span class="keywordtype">int</span> counter = 0;</div>
+<div class="line"> </div>
+<div class="line">dispenso::pipeline(</div>
+<div class="line">    <span class="comment">// Stage 1: Generator - produces values</span></div>
+<div class="line">    [&amp;counter]() -&gt; dispenso::OpResult&lt;int&gt; {</div>
+<div class="line">      <span class="keywordflow">if</span> (counter &gt;= 10) {</div>
+<div class="line">        <span class="keywordflow">return</span> {}; <span class="comment">// Empty result signals end of input</span></div>
+<div class="line">      }</div>
+<div class="line">      <span class="keywordflow">return</span> counter++;</div>
+<div class="line">    },</div>
+<div class="line">    <span class="comment">// Stage 2: Transform - squares the value</span></div>
+<div class="line">    [](<span class="keywordtype">int</span> value) { <span class="keywordflow">return</span> value * value; },</div>
+<div class="line">    <span class="comment">// Stage 3: Sink - collects results</span></div>
+<div class="line">    [&amp;results](<span class="keywordtype">int</span> value) { results.push_back(value); });</div>
+<div class="ttc" id="apipeline_8h_html"><div class="ttname"><a href="pipeline_8h.html">pipeline.h</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/pipeline_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Generator stage produces values (returns <code>OpResult&lt;T&gt;</code> or <code>std::optional&lt;T&gt;</code>)</li>
+<li>Transform stages process values (can filter by returning empty result)</li>
+<li>Sink stage consumes final values</li>
+<li>Use <code>stage()</code> with a limit for parallel stages</li>
+</ul>
+<hr  />
+<h1>Thread-Safe Containers</h1>
+<h2>ConcurrentVector</h2>
+<p>A vector that supports concurrent push_back and growth:</p>
+<p><b>Concurrent push_back from multiple threads:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="concurrent__vector_8h.html">dispenso/concurrent_vector.h</a>&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="parallel__for_8h.html">dispenso/parallel_for.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_vector.html">dispenso::ConcurrentVector&lt;int&gt;</a> vec;</div>
+<div class="line"> </div>
+<div class="line">dispenso::parallel_for(0, 1000, [&amp;vec](<span class="keywordtype">size_t</span> i) { vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">push_back</a>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(i)); });</div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_vector_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_vector.html">dispenso::ConcurrentVector</a></div><div class="ttdef"><b>Definition</b> <a href="concurrent__vector_8h_source.html#l00158">concurrent_vector.h:158</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_vector_html_a0cc5821267defcaf8eaec2bb77ae19ff"><div class="ttname"><a href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">dispenso::ConcurrentVector::push_back</a></div><div class="ttdeci">iterator push_back(const T &amp;val)</div><div class="ttdef"><b>Definition</b> <a href="concurrent__vector_8h_source.html#l00595">concurrent_vector.h:595</a></div></div>
+<div class="ttc" id="aconcurrent__vector_8h_html"><div class="ttname"><a href="concurrent__vector_8h.html">concurrent_vector.h</a></div></div>
+</div><!-- fragment --><p><b>Iterator stability during concurrent modification:</b></p>
+<div class="fragment"><div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_vector.html">dispenso::ConcurrentVector&lt;int&gt;</a> vec;</div>
+<div class="line">vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">push_back</a>(1);</div>
+<div class="line">vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">push_back</a>(2);</div>
+<div class="line">vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">push_back</a>(3);</div>
+<div class="line"> </div>
+<div class="line"><span class="keyword">auto</span> it = vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a1d298932d92fbd994cc032b314f089cd">begin</a>();</div>
+<div class="line"><span class="keywordtype">int</span>&amp; firstElement = *it;</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Push more elements concurrently</span></div>
+<div class="line">dispenso::parallel_for(0, 100, [&amp;vec](<span class="keywordtype">size_t</span> i) { vec.<a class="code hl_function" href="classdispenso_1_1_concurrent_vector.html#a0cc5821267defcaf8eaec2bb77ae19ff">push_back</a>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(i + 100)); });</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Original iterator and reference are still valid</span></div>
+<div class="line">assert(*it == 1);</div>
+<div class="line">assert(firstElement == 1);</div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_vector_html_a1d298932d92fbd994cc032b314f089cd"><div class="ttname"><a href="classdispenso_1_1_concurrent_vector.html#a1d298932d92fbd994cc032b314f089cd">dispenso::ConcurrentVector::begin</a></div><div class="ttdeci">iterator begin()</div><div class="ttdef"><b>Definition</b> <a href="concurrent__vector_8h_source.html#l00807">concurrent_vector.h:807</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/concurrent_vector_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Iterators and references remain stable during growth</li>
+<li>Use <code>grow_by()</code> for efficient batch insertion</li>
+<li>Reserve capacity upfront when size is known</li>
+<li>Not all operations are concurrent-safe (see docs)</li>
+</ul>
+<hr  />
+<h1>Synchronization Primitives</h1>
+<h2>Latch</h2>
+<p>A one-shot barrier for thread synchronization:</p>
+<p><b>count_down + wait pattern:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="latch_8h.html">dispenso/latch.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><span class="keyword">constexpr</span> <span class="keywordtype">int</span> kNumWorkers = 3;</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_latch.html">dispenso::Latch</a> workComplete(kNumWorkers);</div>
+<div class="line">std::vector&lt;int&gt; results(kNumWorkers, 0);</div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a> taskSet(dispenso::globalThreadPool());</div>
+<div class="line"> </div>
+<div class="line"><span class="keywordflow">for</span> (<span class="keywordtype">int</span> i = 0; i &lt; kNumWorkers; ++i) {</div>
+<div class="line">  taskSet.schedule([&amp;workComplete, &amp;results, i]() {</div>
+<div class="line">    results[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(i)] = (i + 1) * 10;</div>
+<div class="line">    workComplete.count_down();  <span class="comment">// Signal work is done (non-blocking)</span></div>
+<div class="line">  });</div>
+<div class="line">}</div>
+<div class="line"> </div>
+<div class="line">workComplete.wait();  <span class="comment">// Main thread waits for all workers</span></div>
+<div class="ttc" id="aclassdispenso_1_1_latch_html"><div class="ttname"><a href="classdispenso_1_1_latch.html">dispenso::Latch</a></div><div class="ttdef"><b>Definition</b> <a href="latch_8h_source.html#l00027">latch.h:27</a></div></div>
+<div class="ttc" id="alatch_8h_html"><div class="ttname"><a href="latch_8h.html">latch.h</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/latch_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li><code>arrive_and_wait()</code> decrements and blocks</li>
+<li><code>count_down()</code> decrements without blocking</li>
+<li><code>wait()</code> blocks without decrementing</li>
+<li>Cannot be reset (one-shot)</li>
+</ul>
+<hr  />
+<h1>Resource Pooling</h1>
+<p>Manage expensive-to-create resources with <code>ResourcePool</code>:</p>
+<p><b>Basic buffer pool with RAII:</b></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="resource__pool_8h.html">dispenso/resource_pool.h</a>&gt;</span></div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Create a pool of 4 buffers</span></div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_resource_pool.html">dispenso::ResourcePool&lt;Buffer&gt;</a> bufferPool(4, []() { <span class="keywordflow">return</span> Buffer(); });</div>
+<div class="line"> </div>
+<div class="line">dispenso::parallel_for(0, 100, [&amp;bufferPool](<span class="keywordtype">size_t</span> i) {</div>
+<div class="line">  <span class="comment">// Acquire a resource from the pool (blocks if none available)</span></div>
+<div class="line">  <span class="keyword">auto</span> resource = bufferPool.acquire();</div>
+<div class="line"> </div>
+<div class="line">  <span class="comment">// Use the resource</span></div>
+<div class="line">  resource.get().process(<span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(i));</div>
+<div class="line"> </div>
+<div class="line">  <span class="comment">// Resource automatically returned to pool when &#39;resource&#39; goes out of scope</span></div>
+<div class="line">});</div>
+<div class="ttc" id="aclassdispenso_1_1_resource_pool_html"><div class="ttname"><a href="classdispenso_1_1_resource_pool.html">dispenso::ResourcePool</a></div><div class="ttdef"><b>Definition</b> <a href="resource__pool_8h_source.html#l00077">resource_pool.h:77</a></div></div>
+<div class="ttc" id="aresource__pool_8h_html"><div class="ttname"><a href="resource__pool_8h.html">resource_pool.h</a></div></div>
+</div><!-- fragment --><p>See <a href="../examples/resource_pool_example.cpp">full example</a>.</p>
+<p>Key points:</p><ul>
+<li>Resources automatically return to pool when RAII wrapper destructs</li>
+<li><code>acquire()</code> blocks if no resources available</li>
+<li>Good for database connections, buffers, etc.</li>
+<li>Can be used to limit concurrency</li>
+</ul>
+<hr  />
+<h1>Next Steps</h1>
+<ul>
+<li>Browse the <a href="modules.html">API Reference</a> for complete documentation</li>
+<li>Check out the <a href="https://github.com/facebookincubator/dispenso/tree/main/tests">tests</a> for more usage examples</li>
+<li>See the <a href="https://github.com/facebookincubator/dispenso/tree/main/benchmarks">benchmarks</a> for performance testing patterns </li>
+</ul>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->

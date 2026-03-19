@@ -127,6 +127,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a23cd5112fabde1f473d482ac41e3616f" id="r_a23cd5112fabde1f473d482ac41e3616f"><td class="memTemplParams" colspan="2">template&lt;typename F &gt; </td></tr>
 <tr class="memitem:a23cd5112fabde1f473d482ac41e3616f"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a23cd5112fabde1f473d482ac41e3616f">schedule</a> (F &amp;&amp;f, ForceQueuingTag fq)</td></tr>
 <tr class="separator:a23cd5112fabde1f473d482ac41e3616f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acb022ccd94e9af3c06ef15554be1bb1d" id="r_acb022ccd94e9af3c06ef15554be1bb1d"><td class="memTemplParams" colspan="2">template&lt;typename Generator &gt; </td></tr>
+<tr class="memitem:acb022ccd94e9af3c06ef15554be1bb1d"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#acb022ccd94e9af3c06ef15554be1bb1d">scheduleBulk</a> (size_t count, Generator &amp;&amp;gen)</td></tr>
+<tr class="separator:acb022ccd94e9af3c06ef15554be1bb1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1436539a3a484b59fe144170f2812077" id="r_a1436539a3a484b59fe144170f2812077"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1436539a3a484b59fe144170f2812077">wait</a> ()</td></tr>
 <tr class="separator:a1436539a3a484b59fe144170f2812077"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:affdda0f9e4d3108ccacece7d26860753" id="r_affdda0f9e4d3108ccacece7d26860753"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#affdda0f9e4d3108ccacece7d26860753">tryWait</a> (size_t maxToExecute)</td></tr>
@@ -141,10 +144,8 @@ Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> fulfills the same API as <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> with one minor difference: It may be used to schedule tasks concurrently from multiple threads (see more below). It is an object that allows scheduling multiple function-like objects to a thread pool, and allows to wait on that set of tasks.</p>
 <p><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> is "thread-compatible". This means that you can safely use different <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> objects on different threads concurrently. <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> also allows multiple threads to concurrently schedule against it. It is an error to call <a class="el" href="#a1436539a3a484b59fe144170f2812077">wait()</a> concurrently with <a class="el" href="#a141919e5ebb3e61135d4827f3906f108">schedule()</a> on the same <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>. </p>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#_a4">graph_example.cpp</a>, <a class="el" href="latch_example_8cpp-example.html#_a1">latch_example.cpp</a>, and <a class="el" href="task_set_example_8cpp-example.html#_a4">task_set_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00181">181</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00198">198</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a5e48f4df33cd5cf87b3973ffb9153f16" name="a5e48f4df33cd5cf87b3973ffb9153f16"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5e48f4df33cd5cf87b3973ffb9153f16">&#9670;&#160;</a></span>ConcurrentTaskSet() <span class="overload">[1/3]</span></h2>
@@ -187,7 +188,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00191">191</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00208">208</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -220,7 +221,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00198">198</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00215">215</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -258,7 +259,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00202">202</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00219">219</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -286,7 +287,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Destroy the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00299">299</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00333">333</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -315,10 +316,8 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Set the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="#a7b03e6239e7982f2d3cdc504606c6165">canceled()</a> status to exit early.</p>
 <dl class="section note"><dt>Note</dt><dd>This will be reset automatically by wait. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="task_set_example_8cpp-example.html#a11">task_set_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00282">282</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00316">316</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -346,10 +345,8 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Check the canceled status of the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> has been canceled. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="task_set_example_8cpp-example.html#a10">task_set_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00291">291</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00325">325</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -390,10 +387,8 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task is run inline. Otherwise, exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="latch_example_8cpp-example.html#a3">latch_example.cpp</a>, and <a class="el" href="task_set_example_8cpp-example.html#a5">task_set_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00226">226</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00243">243</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -435,7 +430,49 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00251">251</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00268">268</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<a id="acb022ccd94e9af3c06ef15554be1bb1d" name="acb022ccd94e9af3c06ef15554be1bb1d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acb022ccd94e9af3c06ef15554be1bb1d">&#9670;&#160;</a></span>scheduleBulk()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Generator &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void dispenso::ConcurrentTaskSet::scheduleBulk </td>
+          <td>(</td>
+          <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>count</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Generator &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>gen</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Schedule multiple functors for execution on the underlying pool in bulk. This is more efficient than calling <a class="el" href="#a141919e5ebb3e61135d4827f3906f108">schedule()</a> multiple times when you have many tasks to submit, as it reduces atomic contention and allows for better thread wakeup behavior.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">count</td><td>The number of functors to schedule. </td></tr>
+    <tr><td class="paramname">gen</td><td>A generator functor that takes an index and returns a functor to execute. gen(i) will be called for i in [0, count) to produce each task.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section note"><dt>Note</dt><dd>Work is processed in chunks, interleaving enqueue and inline execution based on the task set's load factor, preventing both pool thread starvation and excessive overhead. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00285">285</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -479,8 +516,6 @@ template&lt;typename F &gt; </div>
       </table>
 </div><div class="memdoc">
 <p>Wait for all currently scheduled functors to finish execution. If exceptions are thrown during execution of the set of tasks, <code>wait</code> will propagate the first exception. </p>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="latch_example_8cpp-example.html#a5">latch_example.cpp</a>, and <a class="el" href="task_set_example_8cpp-example.html#a6">task_set_example.cpp</a>.</dd>
-</dl>
 
 </div>
 </div>

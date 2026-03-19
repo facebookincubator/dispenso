@@ -121,6 +121,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a3f314f17214ede38225e89be5cdd79ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a90491dc1be17b0f2e35a8683f44c4215" id="r_a90491dc1be17b0f2e35a8683f44c4215"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a90491dc1be17b0f2e35a8683f44c4215">numNodes</a> () const</td></tr>
 <tr class="separator:a90491dc1be17b0f2e35a8683f44c4215"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abdbbf19bd29a67462acc48a16070f950" id="r_abdbbf19bd29a67462acc48a16070f950"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abdbbf19bd29a67462acc48a16070f950">reserve</a> (size_t n)</td></tr>
+<tr class="separator:abdbbf19bd29a67462acc48a16070f950"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e46a695042ae3675573a20d743b50ca" id="r_a2e46a695042ae3675573a20d743b50ca"><td class="memItemLeft" align="right" valign="top">const N &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2e46a695042ae3675573a20d743b50ca">node</a> (size_t index) const</td></tr>
 <tr class="separator:a2e46a695042ae3675573a20d743b50ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ace42166b89031a0059a7114467333b" id="r_a8ace42166b89031a0059a7114467333b"><td class="memItemLeft" align="right" valign="top">N &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8ace42166b89031a0059a7114467333b">node</a> (size_t index)</td></tr>
@@ -149,10 +151,8 @@ class dispenso::SubgraphT&lt; N &gt;</div><p>A subgraph within a Graph, containi
   </table>
   </dd>
 </dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#_a7">graph_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00426">426</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00444">444</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="af21f0274974b1085f74b75ff388306a4" name="af21f0274974b1085f74b75ff388306a4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af21f0274974b1085f74b75ff388306a4">&#9670;&#160;</a></span>SubgraphT()</h2>
@@ -180,7 +180,7 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Move constructor. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00433">433</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00451">451</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -219,10 +219,8 @@ template&lt;class T &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>reference to the created node. </dd></dl>
-<dl class="section examples"><dt>Examples</dt><dd><a class="el" href="graph_example_8cpp-example.html#a9">graph_example.cpp</a>.</dd>
-</dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00446">446</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00464">464</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -280,7 +278,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00490">490</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00519">519</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -318,7 +316,7 @@ template&lt;class F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00478">478</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00507">507</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -354,7 +352,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00469">469</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00498">498</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -390,7 +388,7 @@ template&lt;class N &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00461">461</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00490">490</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -420,7 +418,43 @@ template&lt;class N &gt; </div>
 </div><div class="memdoc">
 <p>Return number of nodes in subgraph. Concurrency safe. </p>
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00453">453</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00471">471</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+
+</div>
+</div>
+<a id="abdbbf19bd29a67462acc48a16070f950" name="abdbbf19bd29a67462acc48a16070f950"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abdbbf19bd29a67462acc48a16070f950">&#9670;&#160;</a></span>reserve()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class N &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="classdispenso_1_1_subgraph_t.html">dispenso::SubgraphT</a>&lt; N &gt;::reserve </td>
+          <td>(</td>
+          <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>n</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Reserve capacity for the specified number of nodes. This can improve performance when the number of nodes is known in advance by avoiding vector reallocations during addNode calls. This is not concurrency safe.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">n</td><td>- number of nodes to reserve capacity for </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00482">482</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>
@@ -449,7 +483,7 @@ template&lt;class T &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00535">535</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="graph_8h_source.html#l00564">564</a> of file <a class="el" href="graph_8h_source.html">graph.h</a>.</p>
 
 </div>
 </div>

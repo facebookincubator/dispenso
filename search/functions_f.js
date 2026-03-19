@@ -6,7 +6,13 @@ var searchData=
   ['timedtask_3',['TimedTask',['../classdispenso_1_1_timed_task.html#a5dbcec6915db0ff2080c49022c08ceda',1,'dispenso::TimedTask']]],
   ['timedtaskscheduler_4',['TimedTaskScheduler',['../classdispenso_1_1_timed_task_scheduler.html#acd3d15aa1ccd2557071a9e95502b4384',1,'dispenso::TimedTaskScheduler']]],
   ['totalchunkcapacity_5',['totalChunkCapacity',['../classdispenso_1_1_pool_allocator_t.html#a811782e39e4b441b960bc35757af59c1',1,'dispenso::PoolAllocatorT']]],
-  ['try_5fwait_6',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
-  ['tryemplaceupdate_7',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
-  ['trywait_8',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
+  ['try_5femplace_6',['try_emplace',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#aa66db857adebaa5dd9a9461e7515b3cd',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpop_7',['try_pop',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#abc22acfc3eeacf3f3f022ad8938ce873',1,'dispenso::SPSCRingBuffer::try_pop(T &amp;item)'],['../classdispenso_1_1_s_p_s_c_ring_buffer.html#acc8ab4079eae3023d33de71680f2e28d',1,'dispenso::SPSCRingBuffer::try_pop()']]],
+  ['try_5fpop_5fbatch_8',['try_pop_batch',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpop_5finto_9',['try_pop_into',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a268782c72bb128fa31f2fb6679343cfc',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fpush_10',['try_push',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a8ccae05411a187a9c40efef9b0cbd565',1,'dispenso::SPSCRingBuffer::try_push(T &amp;&amp;item)'],['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a543fe6845a8a38154f51aea32d3e8aae',1,'dispenso::SPSCRingBuffer::try_push(const T &amp;item)']]],
+  ['try_5fpush_5fbatch_11',['try_push_batch',['../classdispenso_1_1_s_p_s_c_ring_buffer.html#a07ffce7b785c06e1fd39f06d309d3822',1,'dispenso::SPSCRingBuffer']]],
+  ['try_5fwait_12',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
+  ['tryemplaceupdate_13',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
+  ['trywait_14',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
 ];

@@ -5,7 +5,6 @@ var hierarchy =
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
-    [ "dispenso::ConcurrentVector< const dispenso::Node * >", "classdispenso_1_1_concurrent_vector.html", null ],
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
     [ "dispenso::DefaultConcurrentVectorTraits", "structdispenso_1_1_default_concurrent_vector_traits.html", null ],
     [ "detail::ExecutorBase", null, [
@@ -41,6 +40,8 @@ var hierarchy =
       [ "dispenso::RWLock", "classdispenso_1_1_r_w_lock.html", null ],
       [ "dispenso::UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ],
+    [ "dispenso::SmallVector< T, N >", "classdispenso_1_1_small_vector.html", null ],
+    [ "dispenso::SPSCRingBuffer< T, Capacity, RoundUpToPowerOfTwo >", "classdispenso_1_1_s_p_s_c_ring_buffer.html", null ],
     [ "dispenso::SubgraphT< N >", "classdispenso_1_1_subgraph_t.html", null ],
     [ "TaskSetBase", null, [
       [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],

@@ -7,5 +7,6 @@ var classdispenso_1_1_subgraph_t =
     [ "forEachNode", "classdispenso_1_1_subgraph_t.html#a74f3cce906d66a8970425d3466677dfb", null ],
     [ "node", "classdispenso_1_1_subgraph_t.html#a8ace42166b89031a0059a7114467333b", null ],
     [ "node", "classdispenso_1_1_subgraph_t.html#a2e46a695042ae3675573a20d743b50ca", null ],
-    [ "numNodes", "classdispenso_1_1_subgraph_t.html#a90491dc1be17b0f2e35a8683f44c4215", null ]
+    [ "numNodes", "classdispenso_1_1_subgraph_t.html#a90491dc1be17b0f2e35a8683f44c4215", null ],
+    [ "reserve", "classdispenso_1_1_subgraph_t.html#abdbbf19bd29a67462acc48a16070f950", null ]
 ];

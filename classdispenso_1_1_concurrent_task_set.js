@@ -8,6 +8,7 @@ var classdispenso_1_1_concurrent_task_set =
     [ "canceled", "classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165", null ],
     [ "schedule", "classdispenso_1_1_concurrent_task_set.html#a141919e5ebb3e61135d4827f3906f108", null ],
     [ "schedule", "classdispenso_1_1_concurrent_task_set.html#a23cd5112fabde1f473d482ac41e3616f", null ],
+    [ "scheduleBulk", "classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d", null ],
     [ "tryWait", "classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753", null ],
     [ "wait", "classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077", null ]
 ];
