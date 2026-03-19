@@ -407,3 +407,162 @@ TEST(Pipeline, SerialStageStackBound) {
       [&](int) { processed.fetch_add(1, std::memory_order_relaxed); });
   EXPECT_EQ(processed.load(), kNumItems);
 }
+
+#if defined(__cpp_exceptions)
+
+// Helper: run a throwing pipeline multiple times, then verify recovery by running
+// a non-throwing pipeline on the same pool and checking all items are processed.
+template <typename PipelineFunc>
+void runExceptionSafetyTest(
+    dispenso::ThreadPool& pool,
+    int numItems,
+    int numRounds,
+    PipelineFunc&& throwingPipeline) {
+  for (int round = 0; round < numRounds; ++round) {
+    try {
+      throwingPipeline(pool, numItems);
+    } catch (...) {
+    }
+  }
+
+  // Recovery: run a clean pipeline on the same pool to verify it's still usable.
+  std::atomic<int> processed{0};
+  dispenso::pipeline(
+      pool,
+      [n = 0, numItems]() mutable -> dispenso::OpResult<int> {
+        return n < numItems ? dispenso::OpResult<int>(n++) : dispenso::OpResult<int>();
+      },
+      dispenso::stage([&](int) { processed.fetch_add(1, std::memory_order_relaxed); }, 1));
+  EXPECT_EQ(processed.load(), numItems);
+}
+
+// Sink stage throws (serial, limit=1)
+TEST(Pipeline, ExceptionSafety_SinkSerial) {
+  dispenso::ThreadPool pool(1);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage([](int) { throw std::runtime_error("sink"); }, 1));
+  });
+}
+
+// Sink stage throws (parallel, limit=4)
+TEST(Pipeline, ExceptionSafety_SinkParallel) {
+  dispenso::ThreadPool pool(4);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage([](int) { throw std::runtime_error("sink_par"); }, 4));
+  });
+}
+
+// Sink stage throws (unlimited)
+TEST(Pipeline, ExceptionSafety_SinkUnlimited) {
+  dispenso::ThreadPool pool(4);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage(
+            [](int) { throw std::runtime_error("sink_unlim"); }, dispenso::kStageNoLimit));
+  });
+}
+
+// Transform stage throws (serial)
+TEST(Pipeline, ExceptionSafety_TransformSerial) {
+  dispenso::ThreadPool pool(2);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage([](int) -> int { throw std::runtime_error("transform"); }, 1),
+        [](int) {});
+  });
+}
+
+// Transform stage throws (parallel)
+TEST(Pipeline, ExceptionSafety_TransformParallel) {
+  dispenso::ThreadPool pool(4);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage([](int) -> int { throw std::runtime_error("transform_par"); }, 4),
+        [](int) {});
+  });
+}
+
+// Filtering (OpTransform) stage throws
+TEST(Pipeline, ExceptionSafety_OpTransform) {
+  dispenso::ThreadPool pool(2);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage(
+            [](int) -> dispenso::OpResult<int> { throw std::runtime_error("op_transform"); }, 2),
+        [](int) {});
+  });
+}
+
+// Generator throws
+TEST(Pipeline, ExceptionSafety_Generator) {
+  dispenso::ThreadPool pool(2);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int) {
+    dispenso::pipeline(
+        p, []() -> dispenso::OpResult<int> { throw std::runtime_error("generator"); }, [](int) {});
+  });
+}
+
+// SingleStage pipeline throws
+TEST(Pipeline, ExceptionSafety_SingleStage) {
+  dispenso::ThreadPool pool(1);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int) {
+    dispenso::pipeline(p, []() -> bool { throw std::runtime_error("single"); });
+  });
+}
+
+// Multi-stage pipeline: middle transform throws
+TEST(Pipeline, ExceptionSafety_MultiStageMiddle) {
+  dispenso::ThreadPool pool(4);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        dispenso::stage([](int v) -> int { return v * 2; }, 2),
+        dispenso::stage([](int) -> int { throw std::runtime_error("middle"); }, 2),
+        dispenso::stage([](int v) -> int { return v + 1; }, 2),
+        [](int) {});
+  });
+}
+
+// Sink throws with unrelated function as generator (no stage wrapper)
+TEST(Pipeline, ExceptionSafety_PlainFunctionSink) {
+  dispenso::ThreadPool pool(2);
+  runExceptionSafetyTest(pool, 50, 40, [](auto& p, int n) {
+    dispenso::pipeline(
+        p,
+        [n, i = 0]() mutable -> dispenso::OpResult<int> {
+          return i < n ? dispenso::OpResult<int>(i++) : dispenso::OpResult<int>();
+        },
+        [](int) { throw std::runtime_error("plain_sink"); });
+  });
+}
+
+#endif // __cpp_exceptions

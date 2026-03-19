@@ -93,6 +93,21 @@ class OnceFunction {
   }
 
   /**
+   * Destroy the type-erased functor and release its resources without invoking it.
+   * Use this when a OnceFunction will not be called but its resources must still be freed.
+   * Like operator(), this must be called at most once, and the OnceFunction must not be used after.
+   **/
+  void cleanupNotRun() const {
+#if defined DISPENSO_DEBUG
+    assert(onceCallable_ != nullptr && "Must not cleanup an invalid OnceFunction!");
+    onceCallable_->destroyOnly();
+    onceCallable_ = nullptr;
+#else
+    onceCallable_->destroyOnly();
+#endif // DISPENSO_DEBUG
+  }
+
+  /**
    * Invoke the type-erased functor.  This function must be called exactly once.  Fewer will result
    * in a leak, while more will invoke on an invalid object.
    **/

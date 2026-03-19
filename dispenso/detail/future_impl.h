@@ -308,6 +308,11 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
   virtual void dealloc() = 0;
 
+  // Futures always run to completion (no cancellation), so destroyOnly() is unreachable.
+  void destroyOnly() override {
+    assert(false && "destroyOnly() should never be called on a FutureImpl");
+  }
+
   ~FutureImplBase() override = default;
 
   bool allowInline_;

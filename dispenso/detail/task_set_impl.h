@@ -74,6 +74,21 @@ class TaskSetBase {
     return canceled_.load(std::memory_order_acquire);
   }
 
+  /**
+   * Check whether an exception has been captured by this task set.
+   * When exceptions are disabled at compile time, this always returns false,
+   * allowing the compiler to eliminate exception-related branches entirely.
+   **/
+#if defined(__cpp_exceptions)
+  bool hasException() const {
+    return guardException_.load(std::memory_order_acquire) != kUnset;
+  }
+#else
+  constexpr bool hasException() const {
+    return false;
+  }
+#endif
+
   ~TaskSetBase() {
 #if defined DISPENSO_DEBUG
     pool_.outstandingTaskSets_.fetch_sub(1, std::memory_order_release);

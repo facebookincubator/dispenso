@@ -14,6 +14,7 @@ namespace detail {
 class OnceCallable {
  public:
   virtual void run() = 0;
+  virtual void destroyOnly() = 0;
   virtual ~OnceCallable() = default;
 };
 
@@ -28,6 +29,11 @@ class OnceCallableImpl : public OnceCallable {
     // This is admittedly playing nasty games here; however, the base class is empty, and we
     // completely control our own polymorphic existence.  No need to make the virtual base class
     // destructor get called (optimization).
+    this->OnceCallableImpl::~OnceCallableImpl();
+    deallocSmallBuffer<kBufferSize>(this);
+  }
+
+  void destroyOnly() override {
     this->OnceCallableImpl::~OnceCallableImpl();
     deallocSmallBuffer<kBufferSize>(this);
   }

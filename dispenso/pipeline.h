@@ -73,6 +73,17 @@ auto stage(F&& f, ssize_t limit) {
  * values indicate that the value should be filtered, and not passed on to the next stage.
  * - The Sink stage should accept the output of the prior stage, just as a Transform stage does, but
  * does not return any value (or at least the pipeline will ignore it).
+ *
+ * @note <b>Exception behavior:</b> If a stage function throws an exception, the pipeline will stop
+ * producing new work (the generator checks for exceptions between iterations) and allow any
+ * already-in-flight work to complete. Queued work that has not yet started will be discarded
+ * without execution. The first captured exception is rethrown from <code>pipeline()</code> when the
+ * pipeline winds down. Subsequent exceptions from concurrently in-flight stages are silently
+ * discarded. All internal state (concurrency counters, resource slots, completion events) is
+ * cleaned up via RAII, so the thread pool remains in a valid state after an exception and may be
+ * reused for subsequent pipelines. When exceptions are disabled at compile time
+ * (<code>__cpp_exceptions</code> not defined), all exception-related checks are eliminated with
+ * zero overhead.
  **/
 template <typename... Stages>
 void pipeline(ThreadPool& pool, Stages&&... sIn) {
@@ -104,6 +115,8 @@ void pipeline(ThreadPool& pool, Stages&&... sIn) {
  * values indicate that the value should be filtered, and not passed on to the next stage.
  * - The Sink stage should accept the output of the prior stage, just as a Transform stage does, but
  * does not return any value (or at least the pipeline will ignore it).
+ *
+ * @note See the ThreadPool overload of <code>pipeline()</code> for exception behavior details.
  **/
 template <typename... Stages>
 void pipeline(Stages&&... sIn) {
