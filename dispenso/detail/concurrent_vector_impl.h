@@ -370,16 +370,47 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
   }
 
   void allocAsNecessary(const BucketInfo& binfo) {
-    const size_t indexToCheck = (kStrategy == ConcurrentVectorReallocStrategy::kFullBufferAhead)
-        ? 0
-        : (kStrategy == ConcurrentVectorReallocStrategy::kHalfBufferAhead
-               ? binfo.bucketCapacity / 2
-               : binfo.bucketCapacity - 1);
+    allocAsNecessaryImpl(binfo, [](size_t, T*) {});
+  }
 
-    if (DISPENSO_EXPECT(binfo.bucketIndex == indexToCheck, 0)) {
+  void allocAsNecessary(const BucketInfo& binfo, T** cachedPtrs) {
+    allocAsNecessaryImpl(binfo, [cachedPtrs](size_t b, T* p) { cachedPtrs[b] = p; });
+  }
+
+  void allocAsNecessary(const BucketInfo& binfo, ssize_t rangeLen, const BucketInfo& bend) {
+    allocAsNecessaryImpl(binfo, rangeLen, bend, [](size_t, T*) {});
+  }
+
+  void allocAsNecessary(
+      const BucketInfo& binfo,
+      ssize_t rangeLen,
+      const BucketInfo& bend,
+      T** cachedPtrs) {
+    allocAsNecessaryImpl(
+        binfo, rangeLen, bend, [cachedPtrs](size_t b, T* p) { cachedPtrs[b] = p; });
+  }
+
+  bool shouldDealloc(size_t bucket) const {
+    return shouldDealloc_[bucket];
+  }
+
+ private:
+  using BaseType = ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, kMakeInline>;
+
+  DISPENSO_INLINE static size_t allocCheckIndex(size_t bucketCapacity) {
+    return (kStrategy == ConcurrentVectorReallocStrategy::kFullBufferAhead)
+        ? 0
+        : (kStrategy == ConcurrentVectorReallocStrategy::kHalfBufferAhead ? bucketCapacity / 2
+                                                                          : bucketCapacity - 1);
+  }
+
+  template <typename CacheUpdate>
+  void allocAsNecessaryImpl(const BucketInfo& binfo, CacheUpdate&& cacheUpdate) {
+    if (DISPENSO_EXPECT(binfo.bucketIndex == allocCheckIndex(binfo.bucketCapacity), 0)) {
       if (!this->buffers_[binfo.bucket + 1].load(std::memory_order_acquire)) {
-        this->buffers_[binfo.bucket + 1].store(
-            cv::alloc<T>(binfo.bucketCapacity << 1), std::memory_order_release);
+        T* newBuf = cv::alloc<T>(binfo.bucketCapacity << 1);
+        cacheUpdate(binfo.bucket + 1, newBuf);
+        this->buffers_[binfo.bucket + 1].store(newBuf, std::memory_order_release);
         shouldDealloc_[binfo.bucket + 1] = true;
       }
     }
@@ -387,12 +418,30 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
     }
   }
 
-  void allocAsNecessary(const BucketInfo& binfo, ssize_t rangeLen, const BucketInfo& bend) {
-    const size_t indexToCheck = (kStrategy == ConcurrentVectorReallocStrategy::kFullBufferAhead)
-        ? 0
-        : (kStrategy == ConcurrentVectorReallocStrategy::kHalfBufferAhead
-               ? binfo.bucketCapacity / 2
-               : binfo.bucketCapacity - 1);
+  template <typename CacheUpdate>
+  DISPENSO_INLINE bool tryAssignBuffer(
+      size_t bucket,
+      T*& allocBufs,
+      size_t cap,
+      bool firstAccounted,
+      CacheUpdate&& cacheUpdate) {
+    if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
+      cacheUpdate(bucket, allocBufs);
+      this->buffers_[bucket].store(allocBufs, std::memory_order_release);
+      allocBufs += cap;
+      shouldDealloc_[bucket] = !firstAccounted;
+      return true;
+    }
+    return false;
+  }
+
+  template <typename CacheUpdate>
+  void allocAsNecessaryImpl(
+      const BucketInfo& binfo,
+      ssize_t rangeLen,
+      const BucketInfo& bend,
+      CacheUpdate&& cacheUpdate) {
+    const size_t indexToCheck = allocCheckIndex(binfo.bucketCapacity);
 
     bool allocCurrentBucket =
         binfo.bucketIndex <= indexToCheck && binfo.bucketIndex + rangeLen > indexToCheck;
@@ -410,11 +459,7 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
       assert(bucket == bend.bucket + 1);
       assert((bucket == 1 && cap == bend.bucketCapacity) || cap == bend.bucketCapacity * 2);
 
-      const size_t endToCheck = (kStrategy == ConcurrentVectorReallocStrategy::kFullBufferAhead)
-          ? 0
-          : (kStrategy == ConcurrentVectorReallocStrategy::kHalfBufferAhead
-                 ? bend.bucketCapacity / 2
-                 : bend.bucketCapacity - 1);
+      const size_t endToCheck = allocCheckIndex(bend.bucketCapacity);
 
       if (DISPENSO_EXPECT(bend.bucketIndex > endToCheck, 0)) {
         if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
@@ -431,22 +476,14 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
       cap = binfo.bucketCapacity << ((bool)binfo.bucket + !allocCurrentBucket);
       bucket = binfo.bucket + 1 + !allocCurrentBucket;
       for (; bucket <= bend.bucket; ++bucket, cap <<= 1) {
-        if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
-          this->buffers_[bucket].store(allocBufs, std::memory_order_release);
-          allocBufs += cap;
-          shouldDealloc_[bucket] = !firstAccounted;
-          firstAccounted = true;
-        }
+        firstAccounted |= tryAssignBuffer(bucket, allocBufs, cap, firstAccounted, cacheUpdate);
       }
 
       assert(bucket == bend.bucket + 1);
       assert((bucket == 1 && cap == bend.bucketCapacity) || cap == bend.bucketCapacity * 2);
 
       if (DISPENSO_EXPECT(bend.bucketIndex > endToCheck, 0)) {
-        if (!this->buffers_[bucket].load(std::memory_order_acquire)) {
-          this->buffers_[bucket].store(allocBufs, std::memory_order_release);
-          shouldDealloc_[bucket] = !firstAccounted;
-        }
+        tryAssignBuffer(bucket, allocBufs, cap, firstAccounted, cacheUpdate);
       }
     }
     for (size_t bucket = binfo.bucket; bucket <= bend.bucket; ++bucket) {
@@ -458,12 +495,6 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
     }
   }
 
-  bool shouldDealloc(size_t bucket) const {
-    return shouldDealloc_[bucket];
-  }
-
- private:
-  using BaseType = ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, kMakeInline>;
   bool shouldDealloc_[BaseType::kMaxBuffers];
 };
 

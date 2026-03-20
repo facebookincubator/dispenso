@@ -135,14 +135,15 @@ TEST(Util, AlignedDeleter) {
 
 TEST(Util, AlignToCacheLine) {
   // alignToCacheLine rounds up to next cache line boundary
+  constexpr auto kCLS = dispenso::kCacheLineSize;
   // For 0, it stays 0 (already aligned)
   EXPECT_EQ(dispenso::alignToCacheLine(0), 0u);
-  EXPECT_EQ(dispenso::alignToCacheLine(1), dispenso::kCacheLineSize);
-  EXPECT_EQ(dispenso::alignToCacheLine(63), dispenso::kCacheLineSize);
-  EXPECT_EQ(dispenso::alignToCacheLine(64), dispenso::kCacheLineSize);
-  EXPECT_EQ(dispenso::alignToCacheLine(65), dispenso::kCacheLineSize * 2);
-  EXPECT_EQ(dispenso::alignToCacheLine(128), dispenso::kCacheLineSize * 2);
-  EXPECT_EQ(dispenso::alignToCacheLine(129), dispenso::kCacheLineSize * 3);
+  EXPECT_EQ(dispenso::alignToCacheLine(1), kCLS);
+  EXPECT_EQ(dispenso::alignToCacheLine(kCLS - 1), kCLS);
+  EXPECT_EQ(dispenso::alignToCacheLine(kCLS), kCLS);
+  EXPECT_EQ(dispenso::alignToCacheLine(kCLS + 1), kCLS * 2);
+  EXPECT_EQ(dispenso::alignToCacheLine(kCLS * 2), kCLS * 2);
+  EXPECT_EQ(dispenso::alignToCacheLine(kCLS * 2 + 1), kCLS * 3);
 }
 
 TEST(Util, CpuRelax) {

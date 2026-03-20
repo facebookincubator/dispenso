@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <type_traits>
 
 #if defined(_WIN32)
 #include <intrin.h>
@@ -45,7 +46,43 @@ constexpr inline uint32_t log2const(uint64_t v) {
   return r;
 }
 
-#if (defined(__GNUC__) || defined(__clang__))
+constexpr inline uint32_t log2const(uint32_t v) {
+  constexpr uint32_t b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
+  constexpr uint32_t S[] = {1, 2, 4, 8, 16};
+
+  uint32_t r = 0;
+  for (uint32_t i = 5; i--;) {
+    if (v & b[i]) {
+      v >>= S[i];
+      r |= S[i];
+    }
+  }
+
+  return r;
+}
+
+// On some platforms (e.g. macOS ARM64), size_t is 'unsigned long' which is a distinct type
+// from both uint32_t and uint64_t, causing overload ambiguity. This template resolves it
+// by delegating to the 64-bit overload; it is SFINAE-disabled on platforms where unsigned
+// long already matches one of the fixed-width types (Linux, Windows), so no behavior change.
+template <
+    typename T = unsigned long,
+    typename std::enable_if<
+        !std::is_same<T, uint32_t>::value && !std::is_same<T, uint64_t>::value,
+        int>::type = 0>
+constexpr inline uint32_t log2const(T v) {
+  return log2const(static_cast<uint64_t>(v));
+}
+
+// --- 64-bit log2 ---
+
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
+inline uint32_t log2(uint64_t v) {
+  uint64_t result;
+  __asm__("bsrq %1, %0" : "=r"(result) : "r"(v));
+  return static_cast<uint32_t>(result);
+}
+#elif (defined(__GNUC__) || defined(__clang__))
 inline uint32_t log2(uint64_t v) {
   return static_cast<uint32_t>(63 - __builtin_clzll(v));
 }
@@ -70,8 +107,40 @@ inline uint32_t log2(uint64_t v) {
 inline uint32_t log2(uint64_t v) {
   return log2const(v);
 }
+#endif // 64-bit
 
-#endif // PLATFORM
+template <
+    typename T = unsigned long,
+    typename std::enable_if<
+        !std::is_same<T, uint32_t>::value && !std::is_same<T, uint64_t>::value,
+        int>::type = 0>
+inline uint32_t log2(T v) {
+  return log2(static_cast<uint64_t>(v));
+}
+
+// --- 32-bit log2 ---
+
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__i386__))
+inline uint32_t log2(uint32_t v) {
+  uint32_t result;
+  __asm__("bsrl %1, %0" : "=r"(result) : "r"(v));
+  return result;
+}
+#elif (defined(__GNUC__) || defined(__clang__))
+inline uint32_t log2(uint32_t v) {
+  return static_cast<uint32_t>(31 - __builtin_clz(v));
+}
+#elif defined(_WIN32)
+inline uint32_t log2(uint32_t v) {
+  unsigned long index;
+  _BitScanReverse(&index, v);
+  return static_cast<uint32_t>(index);
+}
+#else
+inline uint32_t log2(uint32_t v) {
+  return log2const(v);
+}
+#endif // 32-bit
 
 } // namespace detail
 } // namespace dispenso

@@ -25,7 +25,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator++() {
     ++vb_;
     auto vb = getVecAndBucket();
     len <<= int{vb.bucket > 1};
-    bucketPtr_ = bucketStart_ = vb.vec->buffers_[vb.bucket].load(std::memory_order_relaxed);
+    bucketPtr_ = bucketStart_ = vb.vec->cachedBuffer(vb.bucket);
     bucketEnd_ = bucketPtr_ + len;
   }
   return *this;
@@ -41,7 +41,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator--() {
       auto len = bucketEnd_ - bucketStart_;
       --vb_;
       len >>= int{vb.bucket > 1};
-      bucketStart_ = vb.vec->buffers_[vb.bucket - 1].load(std::memory_order_relaxed);
+      bucketStart_ = vb.vec->cachedBuffer(vb.bucket - 1);
       bucketPtr_ = bucketStart_ + len;
       bucketEnd_ = bucketPtr_;
       --bucketPtr_;
@@ -75,7 +75,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator[](difference_type n) const
   ssize_t oldIndex = bucketPtr_ - bucketStart_;
   oldIndex += (bool)vb.bucket * (bucketEnd_ - bucketStart_);
   auto binfo = vb.vec->bucketAndSubIndexForIndex(oldIndex + n);
-  return *(vb.vec->buffers_[binfo.bucket].load(std::memory_order_relaxed) + binfo.bucketIndex);
+  return *(vb.vec->cachedBuffer(binfo.bucket) + binfo.bucketIndex);
 }
 
 template <typename VecT, typename T, bool kIsConst>
@@ -93,7 +93,7 @@ ConcurrentVectorIterator<VecT, T, kIsConst>::operator+=(difference_type n) {
   ssize_t oldIndex = bucketPtr_ - bucketStart_;
   oldIndex += (bool)vb.bucket * (bucketEnd_ - bucketStart_);
   auto binfo = vb.vec->bucketAndSubIndexForIndex(oldIndex + n);
-  bucketStart_ = vb.vec->buffers_[binfo.bucket].load(std::memory_order_relaxed);
+  bucketStart_ = vb.vec->cachedBuffer(binfo.bucket);
   bucketEnd_ = bucketStart_ + binfo.bucketCapacity;
   bucketPtr_ = bucketStart_ + binfo.bucketIndex;
   vb_ = reinterpret_cast<uintptr_t>(vb.vec) | binfo.bucket;

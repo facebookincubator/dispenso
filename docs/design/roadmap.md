@@ -26,6 +26,7 @@ This document tracks planned features and improvements for the dispenso library.
 
 | Feature | Description | Doc |
 |---------|-------------|-----|
+| Scalable allocator | Thread-caching allocator to eliminate malloc contention in concurrent growth (ConcurrentVector `parallel` is 3-5x faster with tcmalloc/jemalloc vs glibc) | - |
 | Parallel algorithms (Phase 2-3) | Search, count, copy, replace | [parallel_algorithms.md](parallel_algorithms.md) |
 | Barrier/Semaphore | C++20-style synchronization for C++14/17 | - |
 | ConcurrentQueue | Public API for blocking MPMC queue | - |
@@ -37,6 +38,54 @@ This document tracks planned features and improvements for the dispenso library.
 | Parallel algorithms (Phase 4-5) | Sorting, scan, unique | [parallel_algorithms.md](parallel_algorithms.md) |
 | Coroutine integration | Coroutine-based task scheduling | [coroutines.md](coroutines.md) |
 | Single-header amalgamation | Full library in one header | - |
+
+## ConcurrentVector Optimization Notes
+
+### Optimizations Applied (Default Traits)
+
+Three categories of optimization have been applied to ConcurrentVector:
+
+1. **Inline asm `bsr` for `detail::log2`** on x86 GCC/Clang, plus 32-bit
+   overloads and `unsigned long` disambiguation for macOS. Prevents Clang from
+   decomposing `63 - __builtin_clzll` back into `bsrq + xorq` when inlined
+   into arithmetic.
+
+2. **Platform-adaptive `bucketAndSubIndexForIndex`**: branching fast path
+   (early return for `index < firstBucketLen_`) on MSVC and ARM where branch
+   predictors handle the sequential pattern well; branchless cmov path on
+   Clang/GCC x86 where cmovs avoid misprediction penalties.
+
+3. **Non-atomic buffer pointer cache (`cachedPtrs_[]`)** on non-ARM platforms.
+   Packs 8 pointers per cache line (vs 1 per line for `AlignedAtomic
+   buffers_[]`), dramatically improving `operator[]` and iterator read paths.
+   Disabled on ARM where cache-line invalidation on every write exceeds the
+   read benefit. Cache stores are ordered before the release store to
+   `buffers_[]`, so any acquire on `buffers_[]` guarantees cache visibility.
+
+### Impact on Alternative Traits
+
+| Trait | Values | Optimization Interaction |
+|-------|--------|--------------------------|
+| `kPreferBuffersInline` | `false` | Cache is *more* valuable — bypasses the extra indirection through heap-allocated `buffers_[]` pointer |
+| `kIteratorPreferSpeed` | `false` (compact iterator) | Benefits *disproportionately* — compact iterator calls `operator[]` (and thus `cachedBuffer` + `bucketAndSubIndexForIndex`) on every dereference, vs speed iterator which only calls on bucket transitions |
+| `kReallocStrategy` | `kHalfBufferAhead`, `kFullBufferAhead` | No interaction — earlier allocation just means cache is populated earlier |
+
+**Conclusion:** All optimizations apply uniformly across trait combinations.
+The current defaults (`kPreferBuffersInline=true`, `kIteratorPreferSpeed=true`,
+`kReallocStrategy=kAsNeeded`) remain the best general-purpose configuration.
+The compact iterator (`kIteratorPreferSpeed=false`) benefits the most from the
+`cachedPtrs_` and `log2` optimizations in relative terms, since it hits the
+indexed access path on every element access.
+
+### Future Work
+
+- **Server ARM (Graviton) benchmarking**: The `DISPENSO_HAS_CACHED_PTRS`
+  guard currently disables the cache on all ARM (`__aarch64__`). If server ARM
+  shows different cache pressure characteristics than mobile ARM, a more
+  targeted guard could re-enable it selectively.
+- **Scalable allocator** (see Medium Priority above): Concurrent growth
+  benchmarks show 3-5x improvement with tcmalloc/jemalloc vs glibc malloc,
+  suggesting a thread-caching allocator would benefit all trait combinations.
 
 ## Completed
 
@@ -67,7 +116,6 @@ These are ideas that may be pursued based on community feedback:
 
 - CUDA graph mappings (TaskFlow has this; worth exploring for dispenso's Graph)
 - Lock-free stack
-- Scalable allocator (like TBB's)
 - Range-based API wrappers (explicit opt-in)
 - SIMD-optimized algorithms
 - Integration examples (game engines, scientific computing)

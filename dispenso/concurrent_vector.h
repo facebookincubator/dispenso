@@ -32,6 +32,13 @@
  * implementation, it is not safe to concurrently call .pop_back(), .reserve(), .resize(), etc...
  * The operation of these functions is lock-free if memory allocation is also lock-free.
  *
+ * @note Synchronization model: concurrent growth operations (push_back, emplace_back, grow_by)
+ * provide thread-safe index allocation, but do NOT guarantee that elements are visible to other
+ * threads immediately.  Reading an element that is being concurrently constructed by another thread
+ * is a data race.  Callers must establish their own happens-before relationship (e.g. via a mutex,
+ * atomic flag, or task completion) between the writer finishing construction and the reader
+ * accessing the element.  This is consistent with tbb::concurrent_vector's model.
+ *
  * As of this writing, with the benchmarks developed for testing ConcurrentVector, ConcurrentVector
  * appears to be faster than tbb::concurrent_vector by a factor of between about 15% and 3x
  * (depending on the operation).  ConcurrentVector's iteration and random access is on-par with
@@ -57,6 +64,16 @@
 #include <dispenso/detail/math.h>
 #include <dispenso/platform.h>
 #include <dispenso/tsan_annotations.h>
+
+// Whether to use a non-atomic buffer pointer cache for read-hot paths.
+// Disabled on ARM where cache-line writes on every growth operation cause store buffer
+// pressure that exceeds the read-path benefit (acquire loads are effectively free for
+// sequential access patterns on ARM).
+#if !defined(__aarch64__) && !defined(_M_ARM64)
+#define DISPENSO_HAS_CACHED_PTRS 1
+#else
+#define DISPENSO_HAS_CACHED_PTRS 0
+#endif
 
 namespace dispenso {
 
@@ -193,6 +210,9 @@ class ConcurrentVector {
                 detail::nextPow2(std::max(startCapacity, SizeTraits::kDefaultCapacity / 2)))),
         firstBucketLen_(size_type{1} << firstBucketShift_) {
     T* firstTwo = cv::alloc<T>(2 * firstBucketLen_);
+    initCachedPtrs();
+    setCachedPtr(0, firstTwo);
+    setCachedPtr(1, firstTwo + firstBucketLen_);
     buffers_[0].store(firstTwo, std::memory_order_release);
     buffers_[1].store(firstTwo + firstBucketLen_, std::memory_order_release);
   }
@@ -260,10 +280,13 @@ class ConcurrentVector {
         firstBucketShift_(other.firstBucketShift_),
         firstBucketLen_(other.firstBucketLen_),
         size_(other.size_.load(std::memory_order_relaxed)) {
+    moveCachedPtrsFrom(other);
     other.size_.store(0, std::memory_order_relaxed);
     // This is possibly unnecessary overhead, but enables the "other" vector to be in a valid,
     // usable state right away, no empty check or clear required, as it is for std::vector.
     T* firstTwo = cv::alloc<T>(2 * firstBucketLen_);
+    other.setCachedPtr(0, firstTwo);
+    other.setCachedPtr(1, firstTwo + firstBucketLen_);
     other.buffers_[0].store(firstTwo, std::memory_order_relaxed);
     other.buffers_[1].store(firstTwo + firstBucketLen_, std::memory_order_relaxed);
   }
@@ -297,6 +320,7 @@ class ConcurrentVector {
     swap(firstBucketShift_, other.firstBucketShift_);
     swap(firstBucketLen_, other.firstBucketLen_);
     buffers_ = std::move(other.buffers_);
+    swapCachedPtrs(other);
     size_t curLen = size_.load(std::memory_order_relaxed);
     size_.store(other.size_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     other.size_.store(curLen, std::memory_order_relaxed);
@@ -344,7 +368,8 @@ class ConcurrentVector {
    * @param capacity The amount of space to ensure is available to avoid further allocations.
    **/
   void reserve(difference_type capacity) {
-    buffers_.allocAsNecessary({0, 0, firstBucketLen_}, capacity, bucketAndSubIndex(capacity));
+    auto bend = bucketAndSubIndex(capacity);
+    allocateBufferRange({0, 0, firstBucketLen_}, capacity, bend);
   }
 
   /**
@@ -453,6 +478,7 @@ class ConcurrentVector {
       if (buffers_.shouldDealloc(b)) {
         cv::dealloc<T>(ptr);
       }
+      clearCachedPtr(b);
       buffers_[b].store(nullptr, std::memory_order_release);
     }
   }
@@ -615,7 +641,7 @@ class ConcurrentVector {
     auto index = size_.fetch_add(1, std::memory_order_relaxed);
     auto binfo = bucketAndSubIndex(index);
 
-    buffers_.allocAsNecessary(binfo);
+    allocateBuffer(binfo);
 
     iterator ret{this, index, binfo};
 
@@ -743,7 +769,7 @@ class ConcurrentVector {
    **/
   const T& operator[](size_type index) const {
     auto binfo = bucketAndSubIndexForIndex(index);
-    T* buf = buffers_[binfo.bucket].load(std::memory_order_relaxed);
+    T* buf = cachedBuffer(binfo.bucket);
     return buf[binfo.bucketIndex];
   }
 
@@ -757,7 +783,7 @@ class ConcurrentVector {
    **/
   T& operator[](size_type index) {
     auto binfo = bucketAndSubIndexForIndex(index);
-    T* buf = buffers_[binfo.bucket].load(std::memory_order_relaxed);
+    T* buf = cachedBuffer(binfo.bucket);
     return buf[binfo.bucketIndex];
   }
 
@@ -993,11 +1019,14 @@ class ConcurrentVector {
 
     // okay, this relies on the fact that we're essentially swapping in the move operator.
     buffers_ = std::move(oth.buffers_);
+    swapCachedPtrs(oth);
   }
 
  private:
   DISPENSO_INLINE cv::BucketInfo bucketAndSubIndexForIndex(size_t index) const {
-#if defined(__clang__)
+#if defined(_MSC_VER) || defined(__aarch64__) || defined(_M_ARM64)
+    // Branching fast path — benefits MSVC and ARM where branch prediction handles
+    // sequential access patterns well, avoiding log2/division for the common case.
     if (index < firstBucketLen_) {
       return {0, index, firstBucketLen_};
     }
@@ -1010,7 +1039,7 @@ class ConcurrentVector {
     return {bucket, bucketIndex, bucketCapacity};
 #else
     return bucketAndSubIndex(index);
-#endif // __clang__
+#endif // _MSC_VER || __aarch64__ || _M_ARM64
   }
 
   DISPENSO_INLINE cv::BucketInfo bucketAndSubIndex(size_t index) const {
@@ -1050,7 +1079,8 @@ class ConcurrentVector {
   iterator growByUninitialized(size_type delta) {
     auto index = size_.fetch_add(delta, std::memory_order_relaxed);
     auto binfo = bucketAndSubIndex(index);
-    buffers_.allocAsNecessary(binfo, delta, bucketAndSubIndex(index + delta));
+    auto bend = bucketAndSubIndex(index + delta);
+    allocateBufferRange(binfo, delta, bend);
     return {this, index, binfo};
   }
 
@@ -1058,7 +1088,7 @@ class ConcurrentVector {
     auto e = end();
     auto index = size_.fetch_add(1, std::memory_order_relaxed);
     auto binfo = bucketAndSubIndex(index);
-    buffers_.allocAsNecessary(binfo);
+    allocateBuffer(binfo);
     new (&*e) T();
     return std::move_backward(pos, const_iterator(e), e + 1) - 1;
   }
@@ -1066,7 +1096,9 @@ class ConcurrentVector {
   iterator insertPartial(const_iterator pos, size_t len) {
     auto e = end();
     auto index = size_.fetch_add(len, std::memory_order_relaxed);
-    buffers_.allocAsNecessary(bucketAndSubIndex(index), len, bucketAndSubIndex(index + len));
+    auto binfo = bucketAndSubIndex(index);
+    auto bend = bucketAndSubIndex(index + len);
+    allocateBufferRange(binfo, len, bend);
     for (auto it = e + len; it != e;) {
       --it;
       new (&*it) T();
@@ -1080,12 +1112,101 @@ class ConcurrentVector {
       SizeTraits::kMaxVectorSize,
       Traits::kPreferBuffersInline,
       Traits::kReallocStrategy> buffers_;
-  static constexpr size_t kMaxBuffers = decltype(buffers_)::kMaxBuffers;
+
+  static constexpr size_t kMaxBuffers =
+      detail::log2const(SizeTraits::kMaxVectorSize / (SizeTraits::kDefaultCapacity / 2)) + 1;
+
+#if DISPENSO_HAS_CACHED_PTRS
+  // Non-atomic cache of buffer pointers for read-hot paths. Buffer pointers are write-once
+  // (never change after allocation) and are stored here BEFORE the release store to buffers_[],
+  // so any thread that acquires from buffers_[] is guaranteed to see the cached value.
+  // All concurrent writes to a given slot store the same value.
+  // Disabled on ARM where cache-line invalidation pressure exceeds the read-path benefit.
+  alignas(kCacheLineSize) mutable T* cachedPtrs_[kMaxBuffers];
+#endif
 
   size_t firstBucketShift_;
   size_t firstBucketLen_;
 
   alignas(kCacheLineSize) std::atomic<size_t> size_{0};
+
+  DISPENSO_INLINE T* cachedBuffer(size_t bucket) const {
+#if DISPENSO_HAS_CACHED_PTRS
+    return cachedPtrs_[bucket];
+#else
+    // Relaxed is sufficient: callers only access indices that have been fully constructed, which
+    // requires an external happens-before with the writing thread. That synchronization
+    // transitively carries the buffer pointer visibility (which was release-stored during
+    // allocation). This matches the original pre-cache memory ordering and avoids the cost of
+    // ldar (load-acquire) on AArch64.
+    return buffers_[bucket].load(std::memory_order_relaxed);
+#endif
+  }
+
+  DISPENSO_INLINE void allocateBuffer(const cv::BucketInfo& binfo) {
+#if DISPENSO_HAS_CACHED_PTRS
+    buffers_.allocAsNecessary(binfo, cachedPtrs_);
+#else
+    buffers_.allocAsNecessary(binfo);
+#endif
+  }
+
+  DISPENSO_INLINE void
+  allocateBufferRange(const cv::BucketInfo& binfo, ssize_t rangeLen, const cv::BucketInfo& bend) {
+#if DISPENSO_HAS_CACHED_PTRS
+    buffers_.allocAsNecessary(binfo, rangeLen, bend, cachedPtrs_);
+#else
+    buffers_.allocAsNecessary(binfo, rangeLen, bend);
+#endif
+  }
+
+  DISPENSO_INLINE void initCachedPtrs() {
+#if DISPENSO_HAS_CACHED_PTRS
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      cachedPtrs_[i] = nullptr;
+    }
+#endif
+  }
+
+  DISPENSO_INLINE void setCachedPtr(size_t bucket, T* ptr) {
+#if DISPENSO_HAS_CACHED_PTRS
+    cachedPtrs_[bucket] = ptr;
+#else
+    (void)bucket;
+    (void)ptr;
+#endif
+  }
+
+  DISPENSO_INLINE void clearCachedPtr(size_t bucket) {
+#if DISPENSO_HAS_CACHED_PTRS
+    cachedPtrs_[bucket] = nullptr;
+#else
+    (void)bucket;
+#endif
+  }
+
+  DISPENSO_INLINE void moveCachedPtrsFrom(ConcurrentVector& other) {
+#if DISPENSO_HAS_CACHED_PTRS
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      cachedPtrs_[i] = other.cachedPtrs_[i];
+      other.cachedPtrs_[i] = nullptr;
+    }
+#else
+    (void)other;
+#endif
+  }
+
+  DISPENSO_INLINE void swapCachedPtrs(ConcurrentVector& other) {
+#if DISPENSO_HAS_CACHED_PTRS
+    for (size_t i = 0; i < kMaxBuffers; ++i) {
+      T* cur = cachedPtrs_[i];
+      cachedPtrs_[i] = other.cachedPtrs_[i];
+      other.cachedPtrs_[i] = cur;
+    }
+#else
+    (void)other;
+#endif
+  }
 
   friend class cv::ConVecIterBase<ConcurrentVector<T, Traits>, T>;
   friend class cv::ConcurrentVectorIterator<ConcurrentVector<T, Traits>, T, false>;

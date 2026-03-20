@@ -91,7 +91,11 @@ using ssize_t = std::make_signed<std::size_t>::type;
  * @var constexpr size_t kCacheLineSize
  * @brief A constant that defines a safe number of bytes+alignment to avoid false sharing.
  **/
+#if defined(__APPLE__) && defined(__arm64__)
+constexpr size_t kCacheLineSize = 128;
+#else
 constexpr size_t kCacheLineSize = 64;
+#endif
 
 /**
  * @def DISPENSO_THREAD_LOCAL
