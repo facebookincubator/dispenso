@@ -600,11 +600,7 @@ class SPSCRingBuffer {
    * Otherwise, uses exactly (Capacity + 1).
    */
   static constexpr size_t computeBufferSize() noexcept {
-    if constexpr (RoundUpToPowerOfTwo) {
-      return static_cast<size_t>(detail::nextPow2(Capacity + 1));
-    } else {
-      return Capacity + 1;
-    }
+    return RoundUpToPowerOfTwo ? static_cast<size_t>(detail::nextPow2(Capacity + 1)) : Capacity + 1;
   }
 
   /**
@@ -640,11 +636,7 @@ class SPSCRingBuffer {
    * @return The next index, wrapping to 0 if necessary.
    */
   static constexpr size_t increment(size_t index) noexcept {
-    if constexpr (kIsPowerOfTwo) {
-      return (index + 1) & kMask;
-    } else {
-      return (index + 1) % kBufferSize;
-    }
+    return kIsPowerOfTwo ? ((index + 1) & kMask) : ((index + 1) % kBufferSize);
   }
 
   /**
