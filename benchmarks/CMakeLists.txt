@@ -57,11 +57,31 @@ else()
   endif()
 endif()
 
-find_package(benchmark REQUIRED)
-if (NOT WIN32)
-  find_package(OpenMP)
-endif (NOT WIN32)
-find_package(TBB)
+find_package(benchmark QUIET)
+if(NOT benchmark_FOUND)
+  message(STATUS "Google Benchmark not found locally, fetching from GitHub...")
+  include(FetchContent)
+  FetchContent_Declare(
+    benchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG        v1.8.3
+  )
+  set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark tests")
+  set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "Disable gtest tests")
+  FetchContent_MakeAvailable(benchmark)
+else()
+  message(STATUS "Found system Google Benchmark")
+endif()
+# OpenMP support (including Windows/MSVC)
+find_package(OpenMP)
+
+# TBB support - prefer CONFIG mode to find TBBConfig.cmake from vcpkg/modern installs
+find_package(TBB CONFIG QUIET)
+if(NOT TBB_FOUND)
+  # Fall back to old FindTBB.cmake module
+  find_package(TBB QUIET)
+endif()
+
 find_package(folly)
 
 if (WIN32)
@@ -71,7 +91,14 @@ else (WIN32)
 endif (WIN32)
 
 if (TBB_FOUND)
-  set (OPTIONAL_LIBS ${OPTIONAL_LIBS} tbb)
+  # Handle both old TBB (lowercase 'tbb' target) and new oneTBB (TBB::tbb target)
+  if(TARGET TBB::tbb)
+    set (OPTIONAL_LIBS ${OPTIONAL_LIBS} TBB::tbb)
+  elseif(TARGET tbb)
+    set (OPTIONAL_LIBS ${OPTIONAL_LIBS} tbb)
+  else()
+    set (OPTIONAL_LIBS ${OPTIONAL_LIBS} TBB::tbb)
+  endif()
 else (TBB_FOUND)
   add_compile_definitions(BENCHMARK_WITHOUT_TBB)
 endif (TBB_FOUND)
