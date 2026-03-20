@@ -77,10 +77,11 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
     int num_elements;
   };
 
+  tbb_compat::task_scheduler_init initsched(num_threads);
+
   startRusage();
 
   for (auto UNUSED_VAR : state) {
-    tbb_compat::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     Recurse rec;
     rec.i = 0;
@@ -95,10 +96,11 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
 void BM_tbb_very_idle(benchmark::State& state) {
   const int num_threads = state.range(0);
 
+  tbb_compat::task_scheduler_init initsched(num_threads);
+
   startRusage();
 
   for (auto UNUSED_VAR : state) {
-    tbb_compat::task_scheduler_init initsched(num_threads);
     tbb::task_group g;
     g.run([]() {});
     std::this_thread::sleep_for(100ms);
@@ -118,24 +120,27 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
       work() += i;
       if (i < num_elements) {
         ++i;
-        pool->schedule(*this);
+        tasks->schedule(*this);
       }
     }
 
     int i;
-    dispenso::ThreadPool* pool;
+    dispenso::ConcurrentTaskSet* tasks;
     int num_elements;
   };
+
+  dispenso::ThreadPool pool(num_threads);
 
   startRusage();
 
   for (auto UNUSED_VAR : state) {
-    dispenso::ThreadPool pool(num_threads);
+    dispenso::ConcurrentTaskSet tasks(pool);
     Recurse rec;
     rec.i = 0;
-    rec.pool = &pool;
+    rec.tasks = &tasks;
     rec.num_elements = num_elements;
     rec();
+    tasks.wait();
   }
 
   endRusage(state);
@@ -143,13 +148,15 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
 
 void BM_dispenso_very_idle(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
+  dispenso::ThreadPool pool(num_threads);
   startRusage();
 
   for (auto UNUSED_VAR : state) {
-    dispenso::ThreadPool pool(num_threads);
-    pool.schedule([]() {});
+    dispenso::TaskSet tasks(pool);
+    tasks.schedule([]() {});
     std::this_thread::sleep_for(100ms);
-    pool.schedule([]() {});
+    tasks.schedule([]() {});
+    // TaskSet destructor waits for both tasks, mirroring TBB's g.wait()
   }
 
   endRusage(state);
