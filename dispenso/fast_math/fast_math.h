@@ -53,6 +53,13 @@ constexpr void assert_float_type() {
       "fast_math only supports float and float-based SIMD types (SseFloat, AvxFloat, etc.)");
 }
 
+/**
+ * @brief Hardware-delegated square root.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored; result is always 0 ULP.
+ * @param x Input value.
+ * @return Square root of @p x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt sqrt(Flt x) {
   assert_float_type<Flt>();
@@ -63,10 +70,15 @@ DISPENSO_INLINE Flt sqrt(Flt x) {
   }
 }
 
-// Characteristics:                 MaxAccuracyTraits       DefaultAccuracyTraits
-// Speedup vs std::cbrt             3.76x                   5.3x
-// Error in (+/-)[EPSILON:MAX]      3 ulps                  12 ulps
-// Error in {-EPSILON:EPSILON]      9.3e-10 abs             3.7e-9 abs
+/**
+ * @brief Cube root approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 12 ULP, MaxAccuracy: 3 ULP over normal range.
+ *   Near zero: 3.7e-9 (Default) / 9.3e-10 (MaxAccuracy) absolute error.
+ *   kBoundsValues: returns input for inf/NaN/zero.
+ * @param x Input value (all float domain).
+ * @return Cube root of @p x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt cbrt(Flt x) {
   assert_float_type<Flt>();
@@ -88,7 +100,15 @@ DISPENSO_INLINE Flt cbrt(Flt x) {
   }
 }
 
-// A bit-accurate implementation of frexpf, with 2.85x speedup
+/**
+ * @brief Decompose a float into mantissa and exponent (bit-accurate).
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored; result is always bit-accurate.
+ * @param x Input value.
+ * @param eptr Pointer to receive the exponent.
+ * @return Mantissa in [0.5, 1). Returns @p x unchanged for inf/NaN/zero.
+ *   Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt frexp(Flt x, IntType_t<Flt>* eptr) {
   assert_float_type<Flt>();
@@ -103,7 +123,15 @@ DISPENSO_INLINE Flt frexp(Flt x, IntType_t<Flt>* eptr) {
   }
 }
 
-// A bit-accurate implementation of ldexpf, with 5.38x speedup
+/**
+ * @brief Multiply a float by a power of 2 (bit-accurate).
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored; result is always bit-accurate.
+ * @param x Input value.
+ * @param e Exponent to apply (x * 2^e).
+ * @return @p x * 2^e. Returns @p x unchanged for inf/NaN.
+ *   Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt ldexp(Flt x, IntType_t<Flt> e) {
   assert_float_type<Flt>();
@@ -117,8 +145,13 @@ DISPENSO_INLINE Flt ldexp(Flt x, IntType_t<Flt> e) {
   }
 }
 
-// Benchmarks on Linux with clang show approx 1.82x speedup over scalar glibc ::acosf.  Accurate to
-// 4 ulps over entire domain [-1, 1].
+/**
+ * @brief Arc cosine approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 4 ULP.
+ * @param x Input value in [-1, 1].
+ * @return Arc cosine of @p x in radians. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt acos(Flt x) {
   assert_float_type<Flt>();
@@ -156,7 +189,13 @@ DISPENSO_INLINE Flt acos(Flt x) {
   }
 }
 
-// Accurate to 4 ulps over domain.  About 3x speedup over glibc ::asinf
+/**
+ * @brief Arc sine approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 4 ULP.
+ * @param x Input value in [-1, 1].
+ * @return Arc sine of @p x in radians. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt asin(Flt x) {
   assert_float_type<Flt>();
@@ -188,15 +227,14 @@ DISPENSO_INLINE Flt asin(Flt x) {
   }
 }
 
-// A version of sin that is compatible with arbitrary input range.  Note however without
-// kMaxAccuracy==true, result quality will suffer greatly outside of a small range around zero.
-// Error table for sin:
-// kMaxAccuracy == true.  Speedup is about 1.43x over glibc
-// -(2**7)pi:(2**7)pi:   1 ulps
-// -(2**20)pi:(2**20)pi: 2 ulps
-// kMaxAccuracy == false.  Speedup is about 1.5x over glibc
-// -(2**7)pi:(2**7)pi:   1 ulps
-// -(2**20)pi:(2**20)pi: 2 ulps
+/**
+ * @brief Sine approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits kMaxAccuracy uses higher-precision range reduction.
+ *   Default: 2 ULP in [-2^20 pi, 2^20 pi]; accuracy degrades for larger |x|.
+ * @param x Input value in radians (all float domain).
+ * @return Sine of @p x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt sin(Flt x) {
   assert_float_type<Flt>();
@@ -212,15 +250,15 @@ DISPENSO_INLINE Flt sin(Flt x) {
   }
 }
 
-// A version of cos that is compatible with arbitrary input range.
-// Error table for cos:
-// kMaxAccuracy == true.  Speedup is about 1.3x over glibc
-// -(2**7)pi:(2**7)pi:   1 ulps
-// -(2**20)pi:(2**20)pi: 2 ulps
-// kMaxAccuracy == false.  Speedup is about 1.45x over glibc
-// -(2**7)pi:(2**7)pi:   1 ulps
-// -(2**15)pi:(2**15)pi: 2 ulps
-// Note that for many applications, this is still quite suitable error.
+/**
+ * @brief Cosine approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits kMaxAccuracy uses 4-part Cody-Waite range reduction.
+ *   Default: 2 ULP in [-2^15 pi, 2^15 pi].
+ *   MaxAccuracy: 2 ULP in [-2^20 pi, 2^20 pi].
+ * @param x Input value in radians (all float domain).
+ * @return Cosine of @p x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt cos(Flt x) {
   assert_float_type<Flt>();
@@ -250,8 +288,14 @@ DISPENSO_INLINE Flt cos(Flt x) {
   }
 }
 
-// tan is accurate to within 3 ulps over domain -256K*Pi: 256K*Pi, and is approx 2.47x faster than
-// libc tanf
+/**
+ * @brief Tangent approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 3 ULP in [-256K pi, 256K pi].
+ *   kMaxAccuracy uses 4-part Cody-Waite reduction for wider accurate range.
+ * @param x Input value in radians; undefined at odd multiples of pi/2.
+ * @return Tangent of @p x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt tan(Flt x) {
   assert_float_type<Flt>();
@@ -277,7 +321,13 @@ DISPENSO_INLINE Flt tan(Flt x) {
   }
 }
 
-// 3 ulps error over domain.  1.47x speedup
+/**
+ * @brief Arc tangent approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 3 ULP.
+ * @param x Input value (all float domain).
+ * @return Arc tangent of @p x in radians. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt atan(Flt x) {
   assert_float_type<Flt>();
@@ -312,6 +362,14 @@ DISPENSO_INLINE Flt atan(Flt x) {
   }
 }
 
+/**
+ * @brief Base-2 exponential approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 1 ULP. kMaxAccuracy has no additional effect.
+ *   kBoundsValues: returns NaN for NaN, clamps input to avoid overflow.
+ * @param x Input value; [-127, 128] for normal output.
+ * @return 2^x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt exp2(Flt x) {
   assert_float_type<Flt>();
@@ -372,6 +430,15 @@ DISPENSO_INLINE Flt exp2(Flt x) {
   }
 }
 
+/**
+ * @brief Natural exponential approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 5 ULP. MaxAccuracy: 1 ULP (higher-order
+ *   polynomial + Norbert Juffa's rounding technique).
+ *   kBoundsValues: returns 0 for large negative, inf for large positive, NaN for NaN.
+ * @param x Input value; [-89, 89] for normal output.
+ * @return e^x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt exp(Flt x) {
   assert_float_type<Flt>();
@@ -451,6 +518,13 @@ DISPENSO_INLINE Flt exp(Flt x) {
   }
 }
 
+/**
+ * @brief Base-10 exponential approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 3 ULP. kBoundsValues: handles NaN.
+ * @param x Input value; [-38, 38] for normal output.
+ * @return 10^x. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt exp10(Flt x) {
   assert_float_type<Flt>();
@@ -496,8 +570,14 @@ DISPENSO_INLINE Flt exp10(Flt x) {
   }
 }
 
-// https://forums.developer.nvidia.com/t/faster-and-more-accurate-implementation-of-log2f/40635
-// Basic algorithm/constants courtesy njuffa (Norbert Juffa)
+/**
+ * @brief Base-2 logarithm approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 1 ULP. kMaxAccuracy handles denormals correctly.
+ *   kBoundsValues: returns -inf for 0, NaN for negative, +inf for +inf.
+ * @param x Input value in (0, +inf).
+ * @return log2(x). Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt log2(Flt x) {
   assert_float_type<Flt>();
@@ -533,6 +613,14 @@ DISPENSO_INLINE Flt log2(Flt x) {
   }
 }
 
+/**
+ * @brief Natural logarithm approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 2 ULP. kMaxAccuracy handles denormals correctly.
+ *   kBoundsValues: returns -inf for 0, NaN for negative, +inf for +inf.
+ * @param x Input value in (0, +inf).
+ * @return ln(x). Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt log(Flt x) {
   assert_float_type<Flt>();
@@ -577,6 +665,14 @@ DISPENSO_INLINE Flt log(Flt x) {
   }
 }
 
+/**
+ * @brief Base-10 logarithm approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy handles denormals correctly.
+ *   kBoundsValues: returns -inf for 0, NaN for negative, +inf for +inf.
+ * @param x Input value in (0, +inf).
+ * @return log10(x). Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt log10(Flt x) {
   assert_float_type<Flt>();
@@ -623,6 +719,15 @@ DISPENSO_INLINE Flt log10(Flt x) {
   }
 }
 
+/**
+ * @brief Two-argument arc tangent approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy has no additional effect.
+ *   kBoundsValues: handles the case where both arguments are inf.
+ * @param y Y coordinate (all float domain).
+ * @param x X coordinate (all float domain).
+ * @return atan2(y, x) in radians. Compatible with all SIMD backends.
+ */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt atan2(Flt y, Flt x) {
   assert_float_type<Flt>();
