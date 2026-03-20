@@ -28,7 +28,9 @@ endif()
 
 target_compile_options(dispenso PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
-  $<$<CXX_COMPILER_ID:GNU>: -Wno-stringop-overflow>
+  # GCC 13 false positive: stringop-overflow through deeply inlined atomics.
+  # GCC 14+ does not trigger this.  Revisit when CI moves off GCC 13.
+  $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,14>>:-Wno-stringop-overflow>
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
 )
 

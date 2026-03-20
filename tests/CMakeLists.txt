@@ -37,6 +37,10 @@ macro(package_add_test TEST_NAME LABEL TEST_FILE)
     add_executable(${TEST_NAME} ${TEST_FILE})
     target_compile_options(${TEST_NAME} PRIVATE
       $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+      # GCC 13 false positives: stringop-overflow through deeply inlined atomics,
+      # maybe-uninitialized through inlined try_pop + gtest macros.
+      # GCC 14+ does not trigger these.  Revisit when CI moves off GCC 13.
+      $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,14>>:-Wno-stringop-overflow -Wno-maybe-uninitialized>
       $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
       )
     target_link_libraries(${TEST_NAME} gmock_main dispenso)
