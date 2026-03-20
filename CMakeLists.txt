@@ -5,6 +5,22 @@
 
 
 cmake_minimum_required(VERSION 3.12)
+
+# Use /Z7 (embedded debug info) instead of /Zi (PDB server) on MSVC+Ninja.
+# /Zi requires mspdbsrv.exe which can fail with C1902 "Program database manager
+# mismatch" when Ninja launches cl.exe as a subprocess.
+if(POLICY CMP0141)
+  cmake_policy(SET CMP0141 NEW)
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+endif()
+
+# CMake 4.x enables C++20 module scanning by default with Ninja, which breaks
+# try_compile() checks. Dispenso doesn't use C++20 modules.
+if(POLICY CMP0155)
+  cmake_policy(SET CMP0155 OLD)
+endif()
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
 project(
   Dispenso
   VERSION 1.4.1

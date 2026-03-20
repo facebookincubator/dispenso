@@ -1,0 +1,107 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default (system packages)",
+      "description": "Basic build without vcpkg. Uses system-installed dependencies.",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "vcpkg",
+      "displayName": "vcpkg",
+      "description": "Use vcpkg for dependencies (TBB, GoogleTest, benchmark, etc.)",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development (tests + benchmarks)",
+      "description": "Build everything for development: tests, benchmarks, and examples.",
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "DISPENSO_BUILD_TESTS": "ON",
+        "DISPENSO_BUILD_BENCHMARKS": "ON",
+        "DISPENSO_BUILD_EXAMPLES": "ON",
+        "CMAKE_CXX_STANDARD": "20"
+      }
+    },
+    {
+      "name": "win-dev",
+      "displayName": "Windows Development (Ninja)",
+      "description": "Windows dev build using Ninja for fast single-config builds. Run from a VS Developer Command Prompt.",
+      "inherits": "dev",
+      "binaryDir": "$env{TEMP}/dispenso-build/${presetName}",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_APPLOCAL_DEPS": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "Address Sanitizer",
+      "inherits": "dev",
+      "cacheVariables": {
+        "ADDRESS_SANITIZER": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "displayName": "Thread Sanitizer",
+      "inherits": "dev",
+      "cacheVariables": {
+        "THREAD_SANITIZER": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "configuration": "Release"
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Release"
+    },
+    {
+      "name": "win-dev",
+      "configurePreset": "win-dev"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "win-dev",
+      "configurePreset": "win-dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
