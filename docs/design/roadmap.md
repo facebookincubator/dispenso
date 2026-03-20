@@ -110,6 +110,12 @@ indexed access path on every element access.
 | vcpkg | In progress | - |
 | Conan | In progress | - |
 
+## Subcomponent Roadmaps
+
+| Component | Doc |
+|-----------|-----|
+| dispenso::fast_math | [fast_math_roadmap.md](fast_math_roadmap.md) |
+
 ## Ideas / Backlog
 
 These are ideas that may be pursued based on community feedback:
