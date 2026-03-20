@@ -15,10 +15,10 @@
 
 #include <cmath>
 #include <limits>
-#include <memory>
 
 #include <dispenso/detail/can_invoke.h>
 #include <dispenso/detail/per_thread_info.h>
+#include <dispenso/small_buffer_allocator.h>
 #include <dispenso/task_set.h>
 
 namespace dispenso {
@@ -317,6 +317,25 @@ struct NoOpStateGen {
   }
 };
 
+/**
+ * Initialize states container with enough entries for the given thread count.
+ * Respects reuseExistingState: when true, only adds entries if the container
+ * doesn't already have enough.
+ */
+template <typename StateContainer, typename StateGen>
+void initStates(
+    StateContainer& states,
+    const StateGen& defaultState,
+    size_t numNeeded,
+    bool reuseExistingState) {
+  if (!reuseExistingState) {
+    states.clear();
+  }
+  for (size_t i = states.size(); i < numNeeded; ++i) {
+    states.emplace_back(defaultState());
+  }
+}
+
 template <
     typename TaskSetT,
     typename IntegerT,
@@ -338,17 +357,7 @@ void parallel_for_staticImpl(
   // Reduce threads used if they exceed work to be done.
   numThreads = std::min(numThreads, range.size());
 
-  if (!reuseExistingState) {
-    states.clear();
-  }
-
-  size_t numToEmplace = states.size() < static_cast<size_t>(numThreads)
-      ? static_cast<size_t>(numThreads) - states.size()
-      : 0;
-
-  for (; numToEmplace--;) {
-    states.emplace_back(defaultState());
-  }
+  detail::initStates(states, defaultState, static_cast<size_t>(numThreads), reuseExistingState);
 
   auto chunking =
       detail::staticChunkSize(static_cast<ssize_t>(range.size()), static_cast<ssize_t>(numThreads));
@@ -412,6 +421,120 @@ void parallel_for_staticImpl(
   }
 }
 
+template <typename IntegerT>
+struct ChunkSizingResult {
+  typename ChunkedRange<IntegerT>::size_type maxThreads;
+  bool isStatic;
+};
+
+/**
+ * Adjust the thread count and static/dynamic scheduling decision based on work size.
+ *
+ * The goal is to avoid oversubscription and ensure each thread gets enough work:
+ *
+ * 1. Cap maxThreads to available pool threads (plus calling thread if waiting).
+ * 2. If minItemsPerChunk > 1, reduce thread count so each thread gets at least
+ *    that many items. If even after reduction the chunks are too small, fall back
+ *    to static scheduling (which distributes items evenly without atomic contention).
+ * 3. If minItemsPerChunk == 1 and the range is smaller than the thread count,
+ *    fall back to static scheduling (auto mode) or cap threads (explicit dynamic).
+ */
+template <typename IntegerT>
+ChunkSizingResult<IntegerT> adjustChunkSizing(
+    const ChunkedRange<IntegerT>& range,
+    typename ChunkedRange<IntegerT>::size_type maxThreads,
+    bool isStatic,
+    uint32_t minItemsPerChunk,
+    typename ChunkedRange<IntegerT>::size_type poolThreads,
+    bool wait) {
+  using size_type = typename ChunkedRange<IntegerT>::size_type;
+
+  // Step 1: never use more threads than the pool actually has
+  maxThreads = std::min<size_type>(maxThreads, poolThreads + wait);
+
+  if (minItemsPerChunk > 1) {
+    // Step 2a: reduce threads so each gets at least minItemsPerChunk items
+    size_type maxWorkers = range.size() / minItemsPerChunk;
+    if (maxWorkers < maxThreads) {
+      maxThreads = maxWorkers;
+    }
+    // Step 2b: if dynamic chunks would still be too small, use static scheduling
+    if (maxThreads > 0 && range.size() / (maxThreads + wait) < minItemsPerChunk && range.isAuto()) {
+      isStatic = true;
+    }
+  } else if (range.size() <= poolThreads + wait) {
+    // Step 3: fewer items than threads — static is better (no atomic overhead)
+    if (range.isAuto()) {
+      isStatic = true;
+    } else if (!range.isStatic()) {
+      maxThreads = range.size() - wait;
+    }
+  }
+
+  return {maxThreads, isStatic};
+}
+
+/**
+ * Dynamic (work-stealing) parallel_for implementation.
+ *
+ * Workers atomically claim chunks from a shared index and process them.
+ * The ExitAction callback is invoked when a worker finds no more chunks;
+ * this allows the no-wait path to deallocate a heap-allocated index when
+ * the last worker exits, while the wait path passes a no-op.
+ *
+ * When wait is true, the calling thread participates as an additional worker
+ * and blocks until all tasks complete.
+ */
+template <
+    typename TaskSetT,
+    typename IntegerT,
+    typename F,
+    typename StateContainer,
+    typename IndexRef,
+    typename ExitAction>
+void parallel_for_dynamicImpl(
+    TaskSetT& taskSet,
+    StateContainer& states,
+    IntegerT start,
+    IntegerT end,
+    F&& f,
+    size_t numToLaunch,
+    typename ChunkedRange<IntegerT>::size_type chunkSize,
+    typename ChunkedRange<IntegerT>::size_type numChunks,
+    IndexRef& index,
+    ExitAction exitAction,
+    bool wait) {
+  auto worker = [start, end, &index, f, chunkSize, numChunks, exitAction](auto& s) {
+    auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+    while (true) {
+      auto cur = index.fetch_add(1, std::memory_order_relaxed);
+      if (cur >= numChunks) {
+        exitAction(cur);
+        break;
+      }
+      auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
+      if (cur + 1 == numChunks) {
+        f(s, sidx, end);
+      } else {
+        f(s, sidx, static_cast<IntegerT>(sidx + chunkSize));
+      }
+    }
+  };
+
+  taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
+    auto it = states.begin();
+    std::advance(it, i);
+    return [&s = *it, worker]() { worker(s); };
+  });
+
+  if (wait) {
+    auto it = states.begin();
+    std::advance(it, numToLaunch);
+    worker(*it);
+    taskSet.wait();
+  }
+}
+
 } // namespace detail
 
 /**
@@ -452,23 +575,14 @@ void parallel_for(
 
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  // Ensure minItemsPerChunk is sane
   uint32_t minItemsPerChunk = std::max<uint32_t>(1, options.minItemsPerChunk);
-
-  // 0 indicates serial execution per API spec
   size_type maxThreads = std::max<int32_t>(options.maxThreads, 1);
-
   bool isStatic = range.isStatic();
 
   const size_type N = taskSet.numPoolThreads();
   if (N == 0 || !options.maxThreads || range.size() <= minItemsPerChunk ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
-    if (!options.reuseExistingState) {
-      states.clear();
-    }
-    if (states.empty()) {
-      states.emplace_back(defaultState());
-    }
+    detail::initStates(states, defaultState, 1, options.reuseExistingState);
     f(*states.begin(), range.start, range.end);
     if (options.wait) {
       taskSet.wait();
@@ -476,24 +590,19 @@ void parallel_for(
     return;
   }
 
-  // Cap maxThreads to actual available threads before chunk size checks
-  maxThreads = std::min<size_type>(maxThreads, N + options.wait);
+  auto chunkSizing =
+      detail::adjustChunkSizing(range, maxThreads, isStatic, minItemsPerChunk, N, options.wait);
+  maxThreads = chunkSizing.maxThreads;
+  isStatic = chunkSizing.isStatic;
 
-  // Adjust down workers if we would have too-small chunks
-  if (minItemsPerChunk > 1) {
-    size_type maxWorkers = range.size() / minItemsPerChunk;
-    if (maxWorkers < maxThreads) {
-      maxThreads = static_cast<uint32_t>(maxWorkers);
+  // If adjustment reduced threads below 2, run inline — not worth parallelizing.
+  if (maxThreads < 2) {
+    detail::initStates(states, defaultState, 1, options.reuseExistingState);
+    f(*states.begin(), range.start, range.end);
+    if (options.wait) {
+      taskSet.wait();
     }
-    if (range.size() / (maxThreads + options.wait) < minItemsPerChunk && range.isAuto()) {
-      isStatic = true;
-    }
-  } else if (range.size() <= N + options.wait) {
-    if (range.isAuto()) {
-      isStatic = true;
-    } else if (!range.isStatic()) {
-      maxThreads = range.size() - options.wait;
-    }
+    return;
   }
 
   if (isStatic) {
@@ -509,24 +618,17 @@ void parallel_for(
     return;
   }
 
-  // wanting maxThreads workers (potentially including the calling thread), capped by N
   const size_type numToLaunch = std::min<size_type>(maxThreads - options.wait, N);
 
-  if (!options.reuseExistingState) {
-    states.clear();
-  }
-
-  size_t numToEmplace = static_cast<size_type>(states.size()) < (numToLaunch + options.wait)
-      ? (static_cast<size_t>(numToLaunch) + options.wait) - states.size()
-      : 0;
-  for (; numToEmplace--;) {
-    states.emplace_back(defaultState());
-  }
+  detail::initStates(
+      states,
+      defaultState,
+      static_cast<size_t>(numToLaunch + options.wait),
+      options.reuseExistingState);
 
   if (numToLaunch == 1 && !options.wait) {
     taskSet.schedule(
         [&s = states.front(), range, f = std::move(f)]() { f(s, range.start, range.end); });
-
     return;
   }
 
@@ -536,71 +638,43 @@ void parallel_for(
 
   if (options.wait) {
     alignas(kCacheLineSize) std::atomic<decltype(numChunks)> index(0);
-    auto worker = [start = range.start, end = range.end, &index, f, chunkSize, numChunks](auto& s) {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-
-      while (true) {
-        auto cur = index.fetch_add(1, std::memory_order_relaxed);
-        if (cur >= numChunks) {
-          break;
-        }
-        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
-        if (cur + 1 == numChunks) {
-          f(s, sidx, end);
-        } else {
-          auto eidx = static_cast<IntegerT>(sidx + chunkSize);
-          f(s, sidx, eidx);
-        }
-      }
-    };
-
-    taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
-      auto it = states.begin();
-      std::advance(it, i);
-      return [&s = *it, worker]() { worker(s); };
-    });
-    auto it = states.begin();
-    std::advance(it, numToLaunch);
-    worker(*it);
-    taskSet.wait();
+    detail::parallel_for_dynamicImpl(
+        taskSet,
+        states,
+        range.start,
+        range.end,
+        std::forward<F>(f),
+        static_cast<size_t>(numToLaunch),
+        chunkSize,
+        numChunks,
+        index,
+        [](auto) {},
+        options.wait);
   } else {
-    struct Atomic {
-      Atomic() : index(0) {}
-      alignas(kCacheLineSize) std::atomic<decltype(numChunks)> index;
-      char buffer[kCacheLineSize - sizeof(index)];
+    using SizeType = decltype(numChunks);
+    struct ChunkIndex {
+      std::atomic<SizeType> index;
     };
-
-    void* ptr = detail::alignedMalloc(sizeof(Atomic), alignof(Atomic));
-    auto* atm = new (ptr) Atomic();
-
-    std::shared_ptr<Atomic> wrapper(atm, detail::AlignedFreeDeleter<Atomic>());
-    auto worker = [start = range.start,
-                   end = range.end,
-                   wrapper = std::move(wrapper),
-                   f,
-                   chunkSize,
-                   numChunks](auto& s) {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      while (true) {
-        auto cur = wrapper->index.fetch_add(1, std::memory_order_relaxed);
-        if (cur >= numChunks) {
-          break;
-        }
-        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
-        if (cur + 1 == numChunks) {
-          f(s, sidx, end);
-        } else {
-          auto eidx = static_cast<IntegerT>(sidx + chunkSize);
-          f(s, sidx, eidx);
-        }
-      }
-    };
-
-    taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
-      auto it = states.begin();
-      std::advance(it, i);
-      return [&s = *it, worker]() { worker(s); };
-    });
+    static_assert(sizeof(ChunkIndex) <= kCacheLineSize, "ChunkIndex must fit in one cache line");
+    char* mem = allocSmallBuffer<kCacheLineSize>();
+    auto* ci = new (mem) ChunkIndex{{0}};
+    SizeType lastExit = numChunks + static_cast<SizeType>(numToLaunch) - 1;
+    detail::parallel_for_dynamicImpl(
+        taskSet,
+        states,
+        range.start,
+        range.end,
+        std::forward<F>(f),
+        static_cast<size_t>(numToLaunch),
+        chunkSize,
+        numChunks,
+        ci->index,
+        [ci, lastExit](auto cur) {
+          if (cur == lastExit) {
+            deallocSmallBuffer<kCacheLineSize>(ci);
+          }
+        },
+        options.wait);
   }
 }
 
