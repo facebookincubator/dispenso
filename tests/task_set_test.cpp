@@ -650,8 +650,8 @@ TEST(ConcurrentTaskSet, ConcurrentScheduling) {
   dispenso::ConcurrentTaskSet tasks(pool);
 
   std::atomic<int> counter{0};
-  constexpr int kTasksPerThread = 100;
-  constexpr int kNumSchedulers = 4;
+  static constexpr int kTasksPerThread = 100;
+  static constexpr int kNumSchedulers = 4;
 
   // Create threads that will concurrently schedule tasks
   std::vector<std::thread> schedulers;
@@ -809,9 +809,9 @@ TEST(TaskSet, ScheduleBulkMultipleWaits) {
 }
 
 TEST(TaskSet, ScheduleBulkMixedWithSchedule) {
-  constexpr size_t kBulkItems = 500;
-  constexpr size_t kScheduleItems = 500;
-  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  static constexpr size_t kBulkItems = 500;
+  static constexpr size_t kScheduleItems = 500;
+  static constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
   std::vector<size_t> outputs(kTotal, 0);
   dispenso::ThreadPool pool(10);
   dispenso::TaskSet tasks(pool);
@@ -941,8 +941,8 @@ TEST(ConcurrentTaskSet, ScheduleBulkEdgeCases) {
 }
 
 TEST(ConcurrentTaskSet, ScheduleBulkConcurrent) {
-  constexpr int kTasksPerThread = 100;
-  constexpr int kNumSchedulers = 4;
+  static constexpr int kTasksPerThread = 100;
+  static constexpr int kNumSchedulers = 4;
   std::atomic<int> counter{0};
   dispenso::ThreadPool pool(10);
   dispenso::ConcurrentTaskSet tasks(pool);
@@ -965,9 +965,9 @@ TEST(ConcurrentTaskSet, ScheduleBulkConcurrent) {
 }
 
 TEST(ConcurrentTaskSet, ScheduleBulkMixedWithSchedule) {
-  constexpr size_t kBulkItems = 500;
-  constexpr size_t kScheduleItems = 500;
-  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  static constexpr size_t kBulkItems = 500;
+  static constexpr size_t kScheduleItems = 500;
+  static constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
   std::vector<std::atomic<int>> outputs(kTotal);
   for (auto& o : outputs) {
     o.store(0);

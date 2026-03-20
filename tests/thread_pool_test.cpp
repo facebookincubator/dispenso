@@ -589,9 +589,9 @@ TEST(ThreadPool, ScheduleBulkLarge) {
 }
 
 TEST(ThreadPool, ScheduleBulkMixedWithSchedule) {
-  constexpr size_t kBulkItems = 500;
-  constexpr size_t kScheduleItems = 500;
-  constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
+  static constexpr size_t kBulkItems = 500;
+  static constexpr size_t kScheduleItems = 500;
+  static constexpr size_t kTotal = kBulkItems + kScheduleItems + kBulkItems;
   std::vector<size_t> outputs(kTotal, 0);
   {
     dispenso::ThreadPool pool(10);
@@ -618,8 +618,8 @@ TEST(ThreadPool, ScheduleBulkMixedWithSchedule) {
 }
 
 TEST(ThreadPool, ScheduleBulkConcurrent) {
-  constexpr int kTasksPerThread = 1000;
-  constexpr int kNumSchedulers = 4;
+  static constexpr int kTasksPerThread = 1000;
+  static constexpr int kNumSchedulers = 4;
   std::atomic<int> counter{0};
   {
     dispenso::ThreadPool pool(10);

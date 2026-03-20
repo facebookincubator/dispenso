@@ -396,7 +396,7 @@ TEST(Pipeline, ZeroSizeThreadPool) {
 }
 
 TEST(Pipeline, SerialStageStackBound) {
-  constexpr int kNumItems = 100000;
+  static constexpr int kNumItems = 100000;
   dispenso::ThreadPool pool(4);
   std::atomic<int> processed{0};
   dispenso::pipeline(

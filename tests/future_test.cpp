@@ -559,8 +559,12 @@ TEST(Future, BasicThenUsage) {
 }
 
 TEST(Future, LongerThenChain) {
-  const int inval = 123;
+  int inval = 123;
   int outval;
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4172) // returning address of local variable or temporary
+#endif
   auto intFuture = dispenso::async([&inval]() -> const int& {
                      return inval;
                    }).then([](dispenso::Future<const int&>&& parent) {
@@ -569,6 +573,9 @@ TEST(Future, LongerThenChain) {
     outval = parent.get();
     return parent.get();
   });
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
   EXPECT_EQ(inval, intFuture.get());
   EXPECT_EQ(inval, outval);
 }
