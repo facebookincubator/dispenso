@@ -20,6 +20,11 @@
 #include <thread>
 #include <type_traits>
 
+#if defined(_MSC_VER) && \
+    (defined(_M_AMD64) || defined(_M_IX86) || defined(_M_ARM64) || defined(_M_ARM))
+#include <intrin.h>
+#endif
+
 namespace dispenso {
 
 #define DISPENSO_MAJOR_VERSION 1
@@ -231,9 +236,17 @@ inline constexpr uintptr_t alignToCacheLine(uintptr_t val) {
 inline void cpuRelax() {
   asm volatile("pause" ::: "memory");
 }
+#elif defined _MSC_VER && (defined _M_AMD64 || defined _M_IX86)
+inline void cpuRelax() {
+  _mm_pause();
+}
 #elif defined __arm64__ || defined __aarch64__
 inline void cpuRelax() {
   asm volatile("yield" ::: "memory");
+}
+#elif defined _MSC_VER && (defined _M_ARM64 || defined _M_ARM)
+inline void cpuRelax() {
+  __yield();
 }
 #elif defined __powerpc__ || defined __POWERPC__
 #if defined __APPLE__
