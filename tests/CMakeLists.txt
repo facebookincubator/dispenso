@@ -74,3 +74,7 @@ foreach(TEST_FILE ${FLAKY_TEST_FILES})
   get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
   package_add_test(${TEST_NAME} flaky ${TEST_FILE})
 endforeach()
+
+if(DISPENSO_BUILD_FAST_MATH)
+  add_subdirectory(fast_math)
+endif()

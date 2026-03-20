@@ -7,6 +7,12 @@ cmake_minimum_required(VERSION 3.12)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cpp)
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS *.h)
+
+if(NOT DISPENSO_BUILD_FAST_MATH)
+  list(FILTER SOURCES EXCLUDE REGEX "fast_math/")
+  list(FILTER HEADERS EXCLUDE REGEX "fast_math/")
+endif()
+
 message("SOURCES:  ${SOURCES}")
 
 if(DISPENSO_SHARED_LIB)
@@ -100,11 +106,20 @@ install(TARGETS dispenso
 
 ## Install headers ##
 
-install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING
-    PATTERN *.h
-)
+if(DISPENSO_BUILD_FAST_MATH)
+  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+      PATTERN *.h
+  )
+else()
+  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+      PATTERN *.h
+      PATTERN "fast_math" EXCLUDE
+  )
+endif()
 
 ## Generate and install CMake target exports ##
 

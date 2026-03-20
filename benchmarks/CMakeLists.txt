@@ -124,3 +124,6 @@ foreach(BENCHMARK_FILE ${BENCHMARK_FILES})
   target_link_libraries(${BENCHMARK_NAME} ${REQUIRED_LIBS} ${OPTIONAL_LIBS})
 endforeach()
 
+if(DISPENSO_BUILD_FAST_MATH)
+  add_subdirectory(fast_math)
+endif()

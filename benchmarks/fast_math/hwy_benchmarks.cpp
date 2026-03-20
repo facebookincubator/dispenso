@@ -47,12 +47,12 @@ static void consumeSum(HwyVecF sum) {
 
 // --- sin ---
 
-const std::vector<HwyFloat>& sinHwyInputs() {
-  static std::vector<HwyFloat> inputs = []() {
+const std::vector<HwyVecF>& sinHwyInputs() {
+  static std::vector<HwyVecF> inputs = []() {
     const HwyFloatTag d;
     const size_t N = hn::Lanes(d);
     float delta = static_cast<float>(M_PI / kNumInputs);
-    std::vector<HwyFloat> inp;
+    std::vector<HwyVecF> inp;
     float f = static_cast<float>(-M_PI / 2.0);
     constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(float);
     HWY_ALIGN float buf[kMaxLanes];
@@ -98,7 +98,7 @@ void BM_sin_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::sin(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::sin(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -137,7 +137,7 @@ void BM_cos_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::cos(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::cos(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -146,12 +146,12 @@ void BM_cos_hwy(benchmark::State& state) {
 
 // --- exp ---
 
-const std::vector<HwyFloat>& expHwyInputs() {
-  static std::vector<HwyFloat> inputs = []() {
+const std::vector<HwyVecF>& expHwyInputs() {
+  static std::vector<HwyVecF> inputs = []() {
     const HwyFloatTag d;
     const size_t N = hn::Lanes(d);
     float delta = 20.0f / kNumInputs;
-    std::vector<HwyFloat> inp;
+    std::vector<HwyVecF> inp;
     float f = -10.0f;
     constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(float);
     HWY_ALIGN float buf[kMaxLanes];
@@ -197,7 +197,7 @@ void BM_exp_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::exp(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::exp(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -218,12 +218,12 @@ void BM_exp_libc(benchmark::State& state) {
 
 // --- log ---
 
-const std::vector<HwyFloat>& logHwyInputs() {
-  static std::vector<HwyFloat> inputs = []() {
+const std::vector<HwyVecF>& logHwyInputs() {
+  static std::vector<HwyVecF> inputs = []() {
     const HwyFloatTag d;
     const size_t N = hn::Lanes(d);
     float delta = 10000.0f / kNumInputs;
-    std::vector<HwyFloat> inp;
+    std::vector<HwyVecF> inp;
     float f = 0.001f;
     constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(float);
     HWY_ALIGN float buf[kMaxLanes];
@@ -269,7 +269,7 @@ void BM_log_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::log(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::log(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -308,7 +308,7 @@ void BM_cbrt_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::cbrt(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::cbrt(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -335,7 +335,7 @@ void BM_atan_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::atan(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::atan(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -344,12 +344,12 @@ void BM_atan_hwy(benchmark::State& state) {
 
 // --- acos ---
 
-const std::vector<HwyFloat>& acosHwyInputs() {
-  static std::vector<HwyFloat> inputs = []() {
+const std::vector<HwyVecF>& acosHwyInputs() {
+  static std::vector<HwyVecF> inputs = []() {
     const HwyFloatTag d;
     const size_t N = hn::Lanes(d);
     float delta = 2.0f / kNumInputs;
-    std::vector<HwyFloat> inp;
+    std::vector<HwyVecF> inp;
     float f = -0.999f;
     constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(float);
     HWY_ALIGN float buf[kMaxLanes];
@@ -395,7 +395,7 @@ void BM_acos_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::acos(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::acos(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -415,7 +415,7 @@ void BM_sin_hwy_accurate(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::sin<HwyVecF, dfm::MaxAccuracyTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::sin<HwyVecF, dfm::MaxAccuracyTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -428,7 +428,7 @@ void BM_cos_hwy_accurate(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::cos<HwyVecF, dfm::MaxAccuracyTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::cos<HwyVecF, dfm::MaxAccuracyTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -441,7 +441,7 @@ void BM_exp_hwy_accurate(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::exp<HwyVecF, dfm::MaxAccuracyTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::exp<HwyVecF, dfm::MaxAccuracyTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -454,7 +454,7 @@ void BM_exp_hwy_bounds(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::exp<HwyVecF, BoundsTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::exp<HwyVecF, BoundsTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -467,7 +467,7 @@ void BM_log_hwy_accurate(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::log<HwyVecF, dfm::MaxAccuracyTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::log<HwyVecF, dfm::MaxAccuracyTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -480,7 +480,7 @@ void BM_cbrt_hwy_accurate(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::cbrt<HwyVecF, dfm::MaxAccuracyTraits>(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::cbrt<HwyVecF, dfm::MaxAccuracyTraits>(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -507,7 +507,7 @@ void BM_tan_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::tan(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::tan(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -534,7 +534,7 @@ void BM_asin_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::asin(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::asin(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -563,7 +563,7 @@ void BM_atan2_hwy(benchmark::State& state) {
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
     size_t idx2 = (idx + 1) & kInputsMask;
-    sum = hn::Add(sum, dfm::atan2(HwyVecF(inputs[idx]), HwyVecF(inputs[idx2])));
+    sum = hn::Add(sum, dfm::atan2(inputs[idx], inputs[idx2]));
     idx = (idx + 2) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -590,7 +590,7 @@ void BM_exp2_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::exp2(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::exp2(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -617,7 +617,7 @@ void BM_exp10_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::exp10(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::exp10(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -644,7 +644,7 @@ void BM_log2_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::log2(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::log2(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -671,7 +671,7 @@ void BM_log10_hwy(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::log10(HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, dfm::log10(inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -700,7 +700,7 @@ void BM_frexp_hwy(benchmark::State& state) {
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
     dfm::IntType_t<HwyVecF> e;
-    sum = hn::Add(sum, dfm::frexp(HwyVecF(inputs[idx]), &e));
+    sum = hn::Add(sum, dfm::frexp(inputs[idx], &e));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -728,7 +728,7 @@ void BM_ldexp_hwy(benchmark::State& state) {
   const hn::RebindToSigned<HwyFloatTag> di;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, dfm::ldexp(HwyVecF(inputs[idx]), hn::Set(di, 3)));
+    sum = hn::Add(sum, dfm::ldexp(inputs[idx], hn::Set(di, 3)));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -743,7 +743,7 @@ void BM_sin_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Sin(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Sin(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -756,7 +756,7 @@ void BM_cos_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Cos(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Cos(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -769,7 +769,7 @@ void BM_exp_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Exp(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Exp(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -782,7 +782,7 @@ void BM_exp2_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Exp2(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Exp2(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -795,7 +795,7 @@ void BM_log_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Log(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Log(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -808,7 +808,7 @@ void BM_log2_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Log2(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Log2(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -821,7 +821,7 @@ void BM_log10_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Log10(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Log10(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -834,7 +834,7 @@ void BM_atan_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Atan(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Atan(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -847,7 +847,7 @@ void BM_acos_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Acos(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Acos(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -860,7 +860,7 @@ void BM_asin_hwy_contrib(benchmark::State& state) {
   const HwyFloatTag d;
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
-    sum = hn::Add(sum, hn::Asin(d, HwyVecF(inputs[idx])));
+    sum = hn::Add(sum, hn::Asin(d, inputs[idx]));
     idx = (idx + 1) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
@@ -874,7 +874,7 @@ void BM_atan2_hwy_contrib(benchmark::State& state) {
   HwyVecF sum = hn::Zero(d);
   for (auto UNUSED_VAR : state) {
     size_t idx2 = (idx + 1) & kInputsMask;
-    sum = hn::Add(sum, hn::Atan2(d, HwyVecF(inputs[idx]), HwyVecF(inputs[idx2])));
+    sum = hn::Add(sum, hn::Atan2(d, inputs[idx], inputs[idx2]));
     idx = (idx + 2) & kInputsMask;
   }
   state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
