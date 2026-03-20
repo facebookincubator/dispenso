@@ -1,0 +1,679 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * EXPERIMENTAL — This sublibrary is under active development.
+ * The API is unstable and subject to breaking changes without notice.
+ * Do not depend on it in production code.
+ */
+
+#pragma once
+
+#include <array>
+
+namespace dispenso {
+namespace fast_math {
+
+struct DefaultAccuracyTraits {
+  // Check for out-of-range, NaN, Inf inputs and ensure outputs match std.  Note that functions may
+  // still provide correct values out of bounds, but if this is false, they are not required to.
+  static constexpr bool kBoundsValues = false;
+  // Try to get the lowest possible errors to match std.
+  static constexpr bool kMaxAccuracy = false;
+};
+
+struct MaxAccuracyTraits {
+  // Check for out-of-range, NaN, Inf inputs and ensure outputs match std
+  static constexpr bool kBoundsValues = true;
+  // Try to get the lowest possible errors to match std.
+  static constexpr bool kMaxAccuracy = true;
+};
+
+} // namespace fast_math
+} // namespace dispenso
+
+#include "detail/fast_math_impl.h"
+
+namespace dispenso {
+namespace fast_math {
+
+// Compile-time check that Flt is a supported type: float, a SIMD float wrapper,
+// or a raw intrinsic type that maps to one via SimdTypeFor.
+template <typename Flt>
+constexpr void assert_float_type() {
+  // For raw intrinsics (__m128 etc.), SimdType_t maps to the wrapper (SseFloat etc.).
+  // For wrappers and float, SimdType_t is identity. Check that FloatTraits exists
+  // by verifying the kOne constant is present (only defined for float-based types).
+  static_assert(
+      FloatTraits<SimdType_t<Flt>>::kOne == 0x3f800000,
+      "fast_math only supports float and float-based SIMD types (SseFloat, AvxFloat, etc.)");
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt sqrt(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return FloatTraits<SimdType_t<Flt>>::sqrt(SimdType_t<Flt>(x)).v;
+  } else {
+    return std::sqrt(x);
+  }
+}
+
+// Characteristics:                 MaxAccuracyTraits       DefaultAccuracyTraits
+// Speedup vs std::cbrt             3.76x                   5.3x
+// Error in (+/-)[EPSILON:MAX]      3 ulps                  12 ulps
+// Error in {-EPSILON:EPSILON]      9.3e-10 abs             3.7e-9 abs
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt cbrt(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return cbrt<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+    IntT i = bit_cast<IntT>(x);
+    IntT isgn = i & 0x80000000;
+    i &= 0x7fffffff;
+    Flt z = bit_cast<Flt>(i);
+    Flt sgnx = bit_cast<Flt>(isgn | FloatTraits<Flt>::kOne);
+    Flt result = sgnx / detail::rcp_cbrt<Flt, AccuracyTraits>(z, i);
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      return FloatTraits<Flt>::conditional(nonnormalOrZero<Flt>(i), x, result);
+    } else {
+      return result;
+    }
+  }
+}
+
+// A bit-accurate implementation of frexpf, with 2.85x speedup
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt frexp(Flt x, IntType_t<Flt>* eptr) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return frexp<SimdType_t<Flt>>(SimdType_t<Flt>(x), eptr).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+    IntT ix = bit_cast<IntType_t<Flt>>(x);
+    *eptr = 0;
+    return FloatTraits<Flt>::conditional(
+        nonnormalOrZero<Flt>(ix), x, detail::frexpImpl<Flt>(ix, eptr));
+  }
+}
+
+// A bit-accurate implementation of ldexpf, with 5.38x speedup
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt ldexp(Flt x, IntType_t<Flt> e) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return ldexp<SimdType_t<Flt>>(SimdType_t<Flt>(x), e).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+    IntT hx = bit_cast<IntT>(x);
+
+    return FloatTraits<Flt>::conditional(nonnormal<Flt>(hx), x, detail::ldexpImpl<Flt>(hx, e));
+  }
+}
+
+// Benchmarks on Linux with clang show approx 1.82x speedup over scalar glibc ::acosf.  Accurate to
+// 4 ulps over entire domain [-1, 1].
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt acos(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return acos<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+  } else {
+    BoolType_t<Flt> xneg = x < 0.0f;
+    // abs
+    UintType_t<Flt> xi = bit_cast<UintType_t<Flt>>(x);
+    xi &= 0x7fffffff;
+    x = bit_cast<Flt>(xi);
+
+    static constexpr std::array<float, 8> ks = {
+        1.570796251296997f,
+        -0.2145989686250687f,
+        0.08899597078561783f,
+        -0.05029246956110001f,
+        0.03122001513838768f,
+        -0.0175294354557991f,
+        0.006957028061151505f,
+        -0.001334964530542493f};
+
+    auto fma = FloatTraits<Flt>::fma;
+    Flt y = ks[7];
+    y = fma(y, x, ks[6]);
+    y = fma(y, x, ks[5]);
+    y = fma(y, x, ks[4]);
+    y = fma(y, x, ks[3]);
+    y = fma(y, x, ks[2]);
+    y = fma(y, x, ks[1]);
+    y = fma(y, x, ks[0]);
+
+    auto sqrt1mx = FloatTraits<Flt>::sqrt(1.0f - x);
+    return FloatTraits<Flt>::conditional(xneg, fma(y, -sqrt1mx, Flt(kPi)), y * sqrt1mx);
+  }
+}
+
+// Accurate to 4 ulps over domain.  About 3x speedup over glibc ::asinf
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt asin(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return asin<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+
+    IntT xi = bit_cast<IntT>(x);
+    IntT sgnbit = xi & 0x80000000;
+    xi &= 0x7fffffff;
+    x = bit_cast<Flt>(xi);
+
+    Flt ret;
+    if constexpr (std::is_same_v<Flt, float>) {
+      if (xi > 0x3f000000) { // x > 0.5
+        ret = detail::asin_pt5_1(x);
+
+      } else {
+        ret = detail::asin_0_pt5(x);
+      }
+    } else {
+      // Use compensating sum for better rounding.
+      auto y = detail::asin_pt5_1(x);
+      auto z = detail::asin_0_pt5(x);
+      ret = FloatTraits<Flt>::conditional(xi > 0x3f000000, y, z); // choose between correct estimate
+    }
+    return bit_cast<Flt>(sgnbit | bit_cast<IntT>(ret));
+  }
+}
+
+// A version of sin that is compatible with arbitrary input range.  Note however without
+// kMaxAccuracy==true, result quality will suffer greatly outside of a small range around zero.
+// Error table for sin:
+// kMaxAccuracy == true.  Speedup is about 1.43x over glibc
+// -(2**7)pi:(2**7)pi:   1 ulps
+// -(2**20)pi:(2**20)pi: 2 ulps
+// kMaxAccuracy == false.  Speedup is about 1.5x over glibc
+// -(2**7)pi:(2**7)pi:   1 ulps
+// -(2**20)pi:(2**20)pi: 2 ulps
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt sin(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return sin<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    constexpr float kPi_2hi = 1.57079625f;
+    constexpr float kPi_2med = 7.54978942e-08f;
+    constexpr float kPi_2lo = 5.39032794e-15f;
+    constexpr float k2_pi = 0.636619747f;
+    Flt j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
+    return detail::sincos_pi_impl(x, j, 0);
+  }
+}
+
+// A version of cos that is compatible with arbitrary input range.
+// Error table for cos:
+// kMaxAccuracy == true.  Speedup is about 1.3x over glibc
+// -(2**7)pi:(2**7)pi:   1 ulps
+// -(2**20)pi:(2**20)pi: 2 ulps
+// kMaxAccuracy == false.  Speedup is about 1.45x over glibc
+// -(2**7)pi:(2**7)pi:   1 ulps
+// -(2**15)pi:(2**15)pi: 2 ulps
+// Note that for many applications, this is still quite suitable error.
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt cos(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return cos<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    Flt j;
+    // See e.g. my answer on https://stackoverflow.com/a/76932247/830441 for why this range
+    // reduction is like this.
+    /* subtract closest multiple of pi/2 giving reduced argument and quadrant */
+    if constexpr (AccuracyTraits::kMaxAccuracy) {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2medh = 7.54978942e-08f;
+      constexpr float kPi_2medl = 5.39030253e-15f;
+      constexpr float kPi_2lo = 3.28200367e-22f;
+      constexpr float k2_pi = 0.636619747f;
+      j = detail::rangeReduce3(x, k2_pi, kPi_2hi, kPi_2medh, kPi_2medl, kPi_2lo);
+    } else {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2med = 7.54978942e-08f;
+      constexpr float kPi_2lo = 5.39032794e-15f;
+      constexpr float k2_pi = 0.636619747f;
+
+      j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
+    }
+    return detail::sincos_pi_impl(x, j, 1);
+  }
+}
+
+// tan is accurate to within 3 ulps over domain -256K*Pi: 256K*Pi, and is approx 2.47x faster than
+// libc tanf
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt tan(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return tan<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    Flt j;
+    if constexpr (AccuracyTraits::kMaxAccuracy) {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2medh = 7.54978942e-08f;
+      constexpr float kPi_2medl = 5.39030253e-15f;
+      constexpr float kPi_2lo = 3.28200367e-22f;
+      constexpr float k2_pi = 0.636619747f;
+      j = detail::rangeReduce3(x, k2_pi, kPi_2hi, kPi_2medh, kPi_2medl, kPi_2lo);
+    } else {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2med = 7.54978942e-08f;
+      constexpr float kPi_2lo = 5.39032794e-15f;
+      constexpr float k2_pi = 0.636619747f;
+      j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
+    }
+    return detail::tan_pi_2_impl(x, j);
+  }
+}
+
+// 3 ulps error over domain.  1.47x speedup
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt atan(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return atan<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+
+    IntT xi = bit_cast<IntT>(x);
+    IntT sgnbit = xi & 0x80000000;
+    xi &= 0x7fffffff;
+    x = bit_cast<Flt>(xi);
+
+    auto flip = x > 1.0f;
+    // TODO(bbudge): Verify, Some compilers (MSVC) don't optimize this as well, check for scalar
+    // case.
+    if constexpr (std::is_same_v<Flt, float>) {
+      if (flip) {
+        x = 1.0f / x;
+      }
+    } else {
+      x = FloatTraits<Flt>::conditional(flip, 1.0f / x, x);
+    }
+
+    auto y = detail::atan_poly(x);
+
+    y = FloatTraits<Flt>::conditional(flip, kPi_2 - y, y);
+
+    y = bit_cast<Flt>(bit_cast<IntT>(y) | sgnbit);
+
+    return y;
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt exp2(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return exp2<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+
+    Flt xf;
+    IntT xi;
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      if constexpr (std::is_same_v<float, Flt>) {
+        if (!(x == x)) {
+          return x;
+        }
+        x = clamp_allow_nan(x, -127.0f, 128.0f);
+        xf = floor_small(x);
+        xi = convert_to_int(xf);
+      } else {
+        // bool_as_mask converts any comparison result (lane-wide or __mmask16)
+        // to IntType uniformly across all SIMD backends.
+        IntType_t<Flt> nonanmask = bool_as_mask<IntType_t<Flt>>(x == x);
+        x = clamp_allow_nan(x, Flt(-127.0f), Flt(128.0f));
+        xf = floor_small(x);
+        xi = nonanmask & convert_to_int(xf);
+      }
+    } else {
+      xf = floor_small(x);
+      xi = convert_to_int(xf);
+    }
+
+    x -= xf;
+    xi += 127;
+    xi <<= 23;
+
+    Flt powxi = bit_cast<Flt>(xi);
+
+    auto fma = FloatTraits<Flt>::fma;
+
+    constexpr std::array<float, 7> ks = {
+        1.000000002530745f,
+        0.6931469327588555f,
+        0.2402304544124029f,
+        0.05548063019650077f,
+        0.00968418631036627f,
+        0.001239133183698219f,
+        2.186578477026809e-4f};
+
+    Flt y = ks[6];
+    y = fma(y, x, ks[5]);
+    y = fma(y, x, ks[4]);
+    y = fma(y, x, ks[3]);
+    y = fma(y, x, ks[2]);
+    y = fma(y, x, ks[1]);
+    y = fma(y, x, ks[0]);
+
+    return powxi * y;
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt exp(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return exp<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+    using UintT = UintType_t<Flt>;
+    auto fma = FloatTraits<Flt>::fma;
+    constexpr float k1_ln2 = k1_Ln2;
+    constexpr float kLn2hi = 6.93145752e-1f;
+    constexpr float kLn2lo = 1.42860677e-6f;
+
+    if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+      // Rounding algorithm courtesy Norbert Juffa, https://stackoverflow.com/a/40519989/830441
+      // exp(x) = 2**i * exp(f); i = rintf (x / log(2))
+      Flt f = x;
+      Flt j = detail::rangeReduce(f, k1_ln2, kLn2hi, kLn2lo);
+      IntT i = convert_to_int(j);
+      // approximate r = exp(f) on interval [-log(2)/2, +log(2)/2]
+      constexpr std::array<float, 7> ks = {
+          1.f, 1.f, 0.49999997f, 0.166665733f, 0.041665338f, 0.00836656243f, 0.00140835939f};
+      Flt y = ks[6];
+      y = fma(y, f, ks[5]);
+      y = fma(y, f, ks[4]);
+      y = fma(y, f, ks[3]);
+      y = fma(y, f, ks[2]);
+      y = fma(y, f, ks[1]);
+      y = fma(y, f, ks[0]);
+      // exp(x) = 2**i * y (with rounding)
+      auto ipos = i > IntT(0);
+      UintT ia = FloatTraits<Flt>::conditional(ipos, UintT(0u), UintT(0x83000000u));
+      Flt s = bit_cast<Flt>(UintT(0x7f000000u) + ia);
+      Flt t = bit_cast<Flt>((UintT(i) << 23) - ia);
+      y = y * s;
+      y = y * t;
+      if constexpr (AccuracyTraits::kBoundsValues) {
+        if constexpr (std::is_same_v<float, Flt>) {
+          auto zero = (x < -89.0f);
+          if ((zero || x > 89.0f)) {
+            IntT xi = bit_cast<IntT>(x);
+            auto inf = xi == 0x7f800000;
+            Flt orbits = bit_cast<Flt>(bool_apply_or_zero(inf, 0x7f800000));
+            y = FloatTraits<Flt>::conditional(zero | inf, orbits, y);
+          }
+        } else {
+          IntT xi = bit_cast<IntT>(x);
+          auto zero = (x < -89.0f);
+          auto inf = xi == IntT(0x7f800000);
+          IntT orbits = bool_apply_or_zero<IntT>(inf, IntT(0x7f800000));
+          auto mask = bool_as_mask<IntT>(zero) | bool_as_mask<IntT>(inf);
+          y = FloatTraits<Flt>::conditional(mask, bit_cast<Flt>(orbits), y);
+        }
+      }
+      return y;
+    } else {
+      Flt j = detail::rangeReduceFloor(x, k1_ln2, kLn2hi, kLn2lo);
+      IntT xi = convert_to_int(j);
+
+      xi += 127;
+      xi <<= 23;
+
+      Flt powxi = bit_cast<Flt>(xi);
+
+      // approximate r = exp(f) on interval [0, 1]
+      constexpr std::array<float, 6> ks = {
+          1.f, 1.0000006f, 0.499961555f, 0.16710797f, 0.0398967788f, 0.0111452239f};
+      Flt y = ks[5];
+      y = fma(y, x, ks[4]);
+      y = fma(y, x, ks[3]);
+      y = fma(y, x, ks[2]);
+      y = fma(y, x, ks[1]);
+      y = fma(y, x, ks[0]);
+
+      return powxi * y;
+    }
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt exp10(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return exp10<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    using IntT = IntType_t<Flt>;
+    constexpr double kLog10of2d = 0.3010299956639812;
+    constexpr float k1_log10of2 = static_cast<float>(1.0 / kLog10of2d);
+    constexpr float kLog10of2 = static_cast<float>(kLog10of2d);
+    constexpr float kLog10of2lo = static_cast<float>(kLog10of2d - kLog10of2);
+
+    Flt j;
+    IntT xi;
+
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      IntType_t<Flt> nonanmask = bool_as_mask<IntType_t<Flt>>(x == x);
+
+      x = clamp_allow_nan(x, Flt(-38.23080944932561f), Flt(38.53183944498959f));
+      j = detail::rangeReduceFloor(x, k1_log10of2, kLog10of2, kLog10of2lo);
+      xi = nonanmask & convert_to_int(j);
+    } else {
+      j = detail::rangeReduceFloor(x, k1_log10of2, kLog10of2, kLog10of2lo);
+      xi = convert_to_int(j);
+    }
+
+    xi += 127;
+    xi <<= 23;
+
+    Flt powxi = bit_cast<Flt>(xi);
+    auto fma = FloatTraits<Flt>::fma;
+    constexpr std::array<float, 7> ks = {
+        1.f, 2.30258512f, 2.65094399f, 2.03472686f, 1.17230284f, 0.524341643f, 0.266741097f};
+    Flt y = ks[6];
+    y = fma(y, x, ks[5]);
+    y = fma(y, x, ks[4]);
+    y = fma(y, x, ks[3]);
+    y = fma(y, x, ks[2]);
+    y = fma(y, x, ks[1]);
+    y = fma(y, x, ks[0]);
+
+    return powxi * y;
+  }
+}
+
+// https://forums.developer.nvidia.com/t/faster-and-more-accurate-implementation-of-log2f/40635
+// Basic algorithm/constants courtesy njuffa (Norbert Juffa)
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt log2(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return log2<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    auto [xi, i, m] = detail::logarithmSep<Flt, AccuracyTraits>(x);
+
+    m = m - 1.0f;
+
+    // Compute log2(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
+    Flt y = -1.09985352e-1f;
+    auto fma = FloatTraits<Flt>::fma;
+    y = fma(y, m, 1.86182275e-1f);
+    y = fma(y, m, -1.91066533e-1f);
+    y = fma(y, m, 2.04593703e-1f);
+    y = fma(y, m, -2.39627063e-1f);
+    y = fma(y, m, 2.88573444e-1f);
+    y = fma(y, m, -3.60695332e-1f);
+    y = fma(y, m, 4.80897635e-1f);
+    y = fma(y, m, -7.21347392e-1f);
+    y = fma(y, m, 4.42695051e-1f);
+    y = fma(y, m, m); // simplify due to constants 0 and 1
+
+    y = y + i;
+
+    /* Check for and handle special cases */
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      y = detail::logarithmBounds(x, y, xi);
+    }
+
+    return y;
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt log(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return log<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    auto [xi, i, m] = detail::logarithmSep<Flt, AccuracyTraits>(x);
+
+    m = m - 1.0f;
+
+    // Compute log(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
+    auto fma = FloatTraits<Flt>::fma;
+    constexpr std::array<float, 10> ks = {
+        0.f,
+        1.f,
+        -0.499999911f,
+        0.333337069f,
+        -0.250024557f,
+        0.199700251f,
+        -0.165455937f,
+        0.148145974f,
+        -0.14482744f,
+        0.0924733654f};
+    Flt y = ks[9];
+    y = fma(y, m, ks[8]);
+    y = fma(y, m, ks[7]);
+    y = fma(y, m, ks[6]);
+    y = fma(y, m, ks[5]);
+    y = fma(y, m, ks[4]);
+    y = fma(y, m, ks[3]);
+    y = fma(y, m, ks[2]);
+    y = fma(y, m * m, m); // simplify due to constants 0 and 1
+
+    y = fma(i, kLn2, y);
+
+    /* Check for and handle special cases */
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      y = detail::logarithmBounds(x, y, xi);
+    }
+
+    return y;
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt log10(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return log10<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    auto [xi, i, m] = detail::logarithmSep<Flt, AccuracyTraits>(x);
+
+    m = m - 1.0f;
+
+    // Compute log10(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
+    auto fma = FloatTraits<Flt>::fma;
+    constexpr std::array<float, 10> ks = {
+        0.f,
+        0.434294462f,
+        -0.217147425f,
+        0.144770443f,
+        -0.108560629f,
+        0.086600922f,
+        -0.0723559037f,
+        0.0659840927f,
+        -0.0601400957f,
+        0.0326662175f};
+    Flt y = ks[9];
+    y = fma(y, m, ks[8]);
+    y = fma(y, m, ks[7]);
+    y = fma(y, m, ks[6]);
+    y = fma(y, m, ks[5]);
+    y = fma(y, m, ks[4]);
+    y = fma(y, m, ks[3]);
+    y = fma(y, m, ks[2]);
+    y = fma(y, m, ks[1]);
+    y = fma(y, m, ks[0]);
+
+    constexpr float kLog10of2 = 0.30102999566398f;
+    y = fma(i, kLog10of2, y);
+
+    /* Check for and handle special cases */
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      y = detail::logarithmBounds(x, y, xi);
+    }
+
+    return y;
+  }
+}
+
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt atan2(Flt y, Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return atan2<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(y), SimdType_t<Flt>(x)).v;
+  } else {
+    using UintT = UintType_t<Flt>;
+    UintT yi = bit_cast<UintT>(y);
+    UintT xi = bit_cast<UintT>(x);
+
+    auto someNonzero = ((yi | xi) & 0x7fffffff) != 0;
+
+    UintT xsgn = xi & 0x80000000;
+    UintT ysgn = yi & 0x80000000;
+    UintT allsgn = xsgn ^ ysgn;
+
+    yi &= 0x7fffffff;
+    xi &= 0x7fffffff;
+
+    auto flip = yi > xi;
+
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      using IntT = IntType_t<Flt>;
+      auto yinf = yi == UintT(0x7f800000u);
+      auto bothinf = (yinf & (xi == UintT(0x7f800000u)));
+      auto bothinfi = bool_as_mask<IntT>(bothinf);
+      yi = FloatTraits<Flt>::conditional(bothinfi, UintT(0x7f7fffffu), yi);
+      xi = FloatTraits<Flt>::conditional(bothinfi, UintT(0x7f7fffffu), xi);
+      // keepsgn = NOT(yinf AND NOT bothinf) = bothinf OR NOT yinf.
+      auto keepsgn = !((!bothinf) & yinf);
+      xsgn &= bool_as_mask<UintT>(keepsgn);
+    }
+
+    Flt den = bit_cast<Flt>(FloatTraits<Flt>::conditional(flip, yi, xi));
+    Flt num = bit_cast<Flt>(FloatTraits<Flt>::conditional(flip, xi, yi));
+
+    Flt y_x = bool_apply_or_zero(someNonzero, num / den);
+
+    auto z = detail::atan_poly(y_x);
+
+    z = FloatTraits<Flt>::conditional(flip, kPi_2 - z, z);
+
+    z = bit_cast<Flt>(bit_cast<UintT>(z) | allsgn);
+
+    // Branchless offset: π where x<0, 0 where x≥0, with y's sign applied.
+    UintT x_neg_mask = UintT(0) - (xsgn >> 31);
+    Flt pi_or_zero = bit_cast<Flt>(x_neg_mask & bit_cast<UintT>(Flt(kPi)));
+    Flt offset = bit_cast<Flt>(bit_cast<UintT>(pi_or_zero) | ysgn);
+    return z + offset;
+  }
+}
+
+} // namespace fast_math
+} // namespace dispenso
