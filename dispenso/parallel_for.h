@@ -382,18 +382,21 @@ void parallel_for_staticImpl(
           IntegerT start;
           IntegerT thisChunkSize;
           if (static_cast<size_type>(idx) < transitionIdx) {
-            start = range.start + static_cast<IntegerT>(idx) * chunkSize;
+            IntegerT i = static_cast<IntegerT>(idx);
+            start = range.start + static_cast<IntegerT>(i * chunkSize);
             thisChunkSize = chunkSize;
           } else {
             // After transition, chunks are smaller by 1
-            start = range.start + static_cast<IntegerT>(transitionIdx) * chunkSize +
-                static_cast<IntegerT>(idx - transitionIdx) * smallChunkSize;
+            IntegerT ti = static_cast<IntegerT>(transitionIdx);
+            IntegerT ri = static_cast<IntegerT>(idx - transitionIdx);
+            start = range.start + static_cast<IntegerT>(ti * chunkSize) +
+                static_cast<IntegerT>(ri * smallChunkSize);
             thisChunkSize = smallChunkSize;
           }
           IntegerT end = start + thisChunkSize;
 
           auto stateIt = states.begin();
-          std::advance(stateIt, idx);
+          std::advance(stateIt, static_cast<ptrdiff_t>(idx));
 
           return [it = stateIt, start, end, f]() {
             auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
@@ -405,16 +408,19 @@ void parallel_for_staticImpl(
   if (wait) {
     // Execute the last chunk on the calling thread
     auto stateIt = states.begin();
-    std::advance(stateIt, numThreads - 1);
+    std::advance(stateIt, static_cast<ptrdiff_t>(numThreads - 1));
     // Calculate start of last chunk
     size_type transitionIdx = perfectlyChunked ? numThreads - 1 : chunking.transitionTaskIndex;
     IntegerT smallChunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
     IntegerT lastStart;
     if (numThreads - 1 < transitionIdx) {
-      lastStart = range.start + static_cast<IntegerT>(numThreads - 1) * chunkSize;
+      IntegerT i = static_cast<IntegerT>(numThreads - 1);
+      lastStart = range.start + static_cast<IntegerT>(i * chunkSize);
     } else {
-      lastStart = range.start + static_cast<IntegerT>(transitionIdx) * chunkSize +
-          static_cast<IntegerT>(numThreads - 1 - transitionIdx) * smallChunkSize;
+      IntegerT ti = static_cast<IntegerT>(transitionIdx);
+      IntegerT ri = static_cast<IntegerT>(numThreads - 1 - transitionIdx);
+      lastStart = range.start + static_cast<IntegerT>(ti * chunkSize) +
+          static_cast<IntegerT>(ri * smallChunkSize);
     }
     f(*stateIt, lastStart, range.end);
     taskSet.wait();
@@ -523,13 +529,13 @@ void parallel_for_dynamicImpl(
 
   taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
     auto it = states.begin();
-    std::advance(it, i);
+    std::advance(it, static_cast<ptrdiff_t>(i));
     return [&s = *it, worker]() { worker(s); };
   });
 
   if (wait) {
     auto it = states.begin();
-    std::advance(it, numToLaunch);
+    std::advance(it, static_cast<ptrdiff_t>(numToLaunch));
     worker(*it);
     taskSet.wait();
   }

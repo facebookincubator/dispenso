@@ -137,7 +137,7 @@ void for_each_n_schedule(
   for (ssize_t t = 0; t < numThreads; ++t) {
     size_t cs = (t < transitionIdx) ? chunkSize : smallChunkSize;
     Iter next = boundaries[t];
-    std::advance(next, cs);
+    std::advance(next, static_cast<ptrdiff_t>(cs));
     boundaries.push_back(next);
   }
 
