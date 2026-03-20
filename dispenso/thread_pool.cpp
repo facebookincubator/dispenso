@@ -84,8 +84,16 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 ThreadPool::PerThreadData::~PerThreadData() {}
 
 void ThreadPool::threadLoop(PerThreadData& data) {
+  // On Windows, wake syscalls (WakeByAddressSingle) are expensive per-thread
+  // kernel transitions, so spin longer before sleeping to avoid costly
+  // sleep/wake cycles.
+#if defined(_WIN32)
+  static constexpr int kBackoffYield = 100;
+  static constexpr int kBackoffSleep = kBackoffYield + 20;
+#else
   static constexpr int kBackoffYield = 50;
   static constexpr int kBackoffSleep = kBackoffYield + 5;
+#endif
 
   moodycamel::ConsumerToken ctoken(work_);
   moodycamel::ProducerToken ptoken(work_);
@@ -230,17 +238,22 @@ void resizeGlobalThreadPool(size_t numThreads) {
 }
 
 void ThreadPool::wakeN(ssize_t n) {
+#if defined(_WIN32)
+  // On Windows, always use WakeAll. WakeByAddressSingle has no batch wake
+  // count, so multiple calls means O(N) kernel transitions. A single WakeAll
+  // is one transition and keeps threads in their spin phase (kBackoffYield
+  // iterations) where they can absorb follow-up work without re-waking.
+  (void)n;
+  epochWaiter_.bumpAndWakeAll();
+#else
   ssize_t sleeping = numSleeping_.load(std::memory_order_relaxed);
-  // Use wakeAll when waking >= 1/kWakeAllMultiplier of sleeping threads.
-  // On Mac/Windows, bumpAndWakeN loops individual wake syscalls,
-  // so wakeAll is cheaper when waking many threads.
-  // Multiply form avoids integer division. Using unsigned for well-defined overflow.
   constexpr unsigned kWakeAllMultiplier = 2;
   if (static_cast<unsigned>(n) * kWakeAllMultiplier >= static_cast<unsigned>(sleeping)) {
     epochWaiter_.bumpAndWakeAll();
   } else {
     epochWaiter_.bumpAndWakeN(static_cast<int>(n), static_cast<int>(sleeping));
   }
+#endif
 }
 
 } // namespace dispenso

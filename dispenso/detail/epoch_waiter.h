@@ -146,7 +146,11 @@ class EpochWaiter {
 
   void bumpAndWake() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
-    WakeByAddressSingle(&epoch_);
+    // Always WakeAll on Windows. WakeByAddressSingle and WakeByAddressAll
+    // have comparable per-call kernel cost, but WakeAll keeps more threads
+    // in their spin phase (kBackoffYield iterations) where they can pick up
+    // subsequent work without another kernel wake transition.
+    WakeByAddressAll(&epoch_);
   }
 
   void bumpAndWakeAll() {
@@ -154,14 +158,16 @@ class EpochWaiter {
     WakeByAddressAll(&epoch_);
   }
 
-  void bumpAndWakeN(int n, int totalWaiters) {
+  void bumpAndWakeN(int /*n*/, int totalWaiters) {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
-    if (n >= totalWaiters) {
-      WakeByAddressAll(&epoch_);
+    // Only use WakeByAddressSingle when there is exactly one waiter —
+    // it avoids waking threads that aren't waiting. Otherwise, WakeAll
+    // is preferred: same single kernel transition, and keeps threads
+    // spinning where they can absorb follow-up work without re-waking.
+    if (totalWaiters <= 1) {
+      WakeByAddressSingle(&epoch_);
     } else {
-      for (int i = 0; i < n; ++i) {
-        WakeByAddressSingle(&epoch_);
-      }
+      WakeByAddressAll(&epoch_);
     }
   }
 

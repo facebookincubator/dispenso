@@ -38,6 +38,11 @@ static constexpr int32_t kLargeSize = 10000000;
 
 static constexpr int32_t kNumLoops = 8;
 
+// Minimum work per chunk to amortize scheduling overhead for cheap lambdas.
+// With trivial compute (~4 integer ops ≈ 2ns/element), 512 elements ≈ 1µs
+// of work, comfortably covering task dispatch cost on Windows.
+static constexpr uint32_t kMinItemsPerChunk = 512;
+
 static uint32_t kSeed(42);
 
 inline int32_t compute(int32_t x) {
@@ -124,24 +129,35 @@ void BM_dispenso_blocking(benchmark::State& state) {
   auto& ba = getArrays(numElements);
 
   dispenso::ThreadPool pool(numThreads);
+  dispenso::ParForOptions opts;
+  opts.minItemsPerChunk = kMinItemsPerChunk;
 
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     for (int32_t k = 0; k < kNumLoops; ++k) {
       auto kk = static_cast<size_t>(k);
       dispenso::parallel_for(
-          tasks, 0, numElements, [&inputs = ba.inputs[kk], &outputs = ba.outputs[kk]](int32_t i) {
+          tasks,
+          0,
+          numElements,
+          [&inputs = ba.inputs[kk], &outputs = ba.outputs[kk]](int32_t i) {
             outputs[static_cast<size_t>(i)] = compute(inputs[static_cast<size_t>(i)]);
-          });
+          },
+          opts);
     }
-    dispenso::parallel_for(tasks, 0, numElements, [&ba](int32_t i) {
-      auto idx = static_cast<size_t>(i);
-      std::array<int32_t, kNumLoops> vals;
-      for (int32_t k = 0; k < kNumLoops; ++k) {
-        vals[static_cast<size_t>(k)] = ba.outputs[static_cast<size_t>(k)][idx];
-      }
-      ba.result[idx] = fuse(vals);
-    });
+    dispenso::parallel_for(
+        tasks,
+        0,
+        numElements,
+        [&ba](int32_t i) {
+          auto idx = static_cast<size_t>(i);
+          std::array<int32_t, kNumLoops> vals;
+          for (int32_t k = 0; k < kNumLoops; ++k) {
+            vals[static_cast<size_t>(k)] = ba.outputs[static_cast<size_t>(k)][idx];
+          }
+          ba.result[idx] = fuse(vals);
+        },
+        opts);
   }
   checkResults(ba, numElements);
 }
@@ -154,6 +170,9 @@ void BM_dispenso_cascaded(benchmark::State& state) {
   dispenso::ThreadPool pool(numThreads);
   dispenso::ParForOptions noWait;
   noWait.wait = false;
+  noWait.minItemsPerChunk = kMinItemsPerChunk;
+  dispenso::ParForOptions opts;
+  opts.minItemsPerChunk = kMinItemsPerChunk;
 
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
@@ -174,19 +193,28 @@ void BM_dispenso_cascaded(benchmark::State& state) {
     {
       constexpr auto kk = static_cast<size_t>(kNumLoops - 1);
       dispenso::parallel_for(
-          tasks, 0, numElements, [&inputs = ba.inputs[kk], &outputs = ba.outputs[kk]](int32_t i) {
+          tasks,
+          0,
+          numElements,
+          [&inputs = ba.inputs[kk], &outputs = ba.outputs[kk]](int32_t i) {
             outputs[static_cast<size_t>(i)] = compute(inputs[static_cast<size_t>(i)]);
-          });
+          },
+          opts);
     }
     // Fusion: blocking (depends on all outputs being complete)
-    dispenso::parallel_for(tasks, 0, numElements, [&ba](int32_t i) {
-      auto idx = static_cast<size_t>(i);
-      std::array<int32_t, kNumLoops> vals;
-      for (int32_t k = 0; k < kNumLoops; ++k) {
-        vals[static_cast<size_t>(k)] = ba.outputs[static_cast<size_t>(k)][idx];
-      }
-      ba.result[idx] = fuse(vals);
-    });
+    dispenso::parallel_for(
+        tasks,
+        0,
+        numElements,
+        [&ba](int32_t i) {
+          auto idx = static_cast<size_t>(i);
+          std::array<int32_t, kNumLoops> vals;
+          for (int32_t k = 0; k < kNumLoops; ++k) {
+            vals[static_cast<size_t>(k)] = ba.outputs[static_cast<size_t>(k)][idx];
+          }
+          ba.result[idx] = fuse(vals);
+        },
+        opts);
   }
   checkResults(ba, numElements);
 }
