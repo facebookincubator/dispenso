@@ -383,17 +383,18 @@ void parallel_for_staticImpl(
           IntegerT thisChunkSize;
           if (static_cast<size_type>(idx) < transitionIdx) {
             IntegerT i = static_cast<IntegerT>(idx);
-            start = range.start + static_cast<IntegerT>(i * chunkSize);
+            start = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
             thisChunkSize = chunkSize;
           } else {
             // After transition, chunks are smaller by 1
             IntegerT ti = static_cast<IntegerT>(transitionIdx);
             IntegerT ri = static_cast<IntegerT>(idx - transitionIdx);
-            start = range.start + static_cast<IntegerT>(ti * chunkSize) +
-                static_cast<IntegerT>(ri * smallChunkSize);
+            start = static_cast<IntegerT>(
+                range.start + static_cast<IntegerT>(ti * chunkSize) +
+                static_cast<IntegerT>(ri * smallChunkSize));
             thisChunkSize = smallChunkSize;
           }
-          IntegerT end = start + thisChunkSize;
+          IntegerT end = static_cast<IntegerT>(start + thisChunkSize);
 
           auto stateIt = states.begin();
           std::advance(stateIt, static_cast<ptrdiff_t>(idx));
@@ -415,12 +416,13 @@ void parallel_for_staticImpl(
     IntegerT lastStart;
     if (numThreads - 1 < transitionIdx) {
       IntegerT i = static_cast<IntegerT>(numThreads - 1);
-      lastStart = range.start + static_cast<IntegerT>(i * chunkSize);
+      lastStart = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
     } else {
       IntegerT ti = static_cast<IntegerT>(transitionIdx);
       IntegerT ri = static_cast<IntegerT>(numThreads - 1 - transitionIdx);
-      lastStart = range.start + static_cast<IntegerT>(ti * chunkSize) +
-          static_cast<IntegerT>(ri * smallChunkSize);
+      lastStart = static_cast<IntegerT>(
+          range.start + static_cast<IntegerT>(ti * chunkSize) +
+          static_cast<IntegerT>(ri * smallChunkSize));
     }
     f(*stateIt, lastStart, range.end);
     taskSet.wait();

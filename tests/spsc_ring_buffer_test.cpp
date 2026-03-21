@@ -464,7 +464,7 @@ TEST(SPSCRingBuffer, ConcurrentProducerConsumer) {
   // Consumer thread
   std::thread consumer([&]() {
     int value;
-    while (consumed.size() < kNumItems) {
+    while (consumed.size() < static_cast<size_t>(kNumItems)) {
       if (buffer.try_pop(value)) {
         consumed.push_back(value);
       } else if (producerDone.load(std::memory_order_acquire) && buffer.empty()) {
@@ -505,7 +505,7 @@ TEST(SPSCRingBuffer, ConcurrentWithSmallBuffer) {
 
   std::thread consumer([&]() {
     int value;
-    while (consumed.size() < kNumItems) {
+    while (consumed.size() < static_cast<size_t>(kNumItems)) {
       if (buffer.try_pop(value)) {
         consumed.push_back(value);
       } else if (producerDone.load(std::memory_order_acquire) && buffer.empty()) {
@@ -545,7 +545,7 @@ TEST(SPSCRingBuffer, ConcurrentWithMoveOnlyType) {
 
   std::thread consumer([&]() {
     std::unique_ptr<int> value;
-    while (consumed.size() < kNumItems) {
+    while (consumed.size() < static_cast<size_t>(kNumItems)) {
       if (buffer.try_pop(value)) {
         consumed.push_back(*value);
         value.reset();
@@ -836,7 +836,7 @@ TEST(SPSCRingBuffer, LargeCapacityConcurrent) {
 
   std::thread consumer([&]() {
     int value;
-    while (consumed.size() < kNumItems) {
+    while (consumed.size() < static_cast<size_t>(kNumItems)) {
       if (buffer.try_pop(value)) {
         consumed.push_back(value);
       } else if (producerDone.load(std::memory_order_acquire) && buffer.empty()) {
@@ -1039,7 +1039,7 @@ TEST(SPSCRingBuffer, BatchConcurrent) {
 
   std::thread consumer([&]() {
     std::vector<int> batch(kBatchSize);
-    while (consumed.size() < kNumItems) {
+    while (consumed.size() < static_cast<size_t>(kNumItems)) {
       size_t popped = buffer.try_pop_batch(batch.begin(), kBatchSize);
       if (popped > 0) {
         for (size_t i = 0; i < popped; ++i) {
