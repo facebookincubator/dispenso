@@ -80,15 +80,23 @@ jobs:
         working-directory: ./build
         run: ctest -LE flaky
 
-  build-linux-arm64:
-    name: Linux ARM64
-    runs-on: ubuntu-24.04-arm64
+  build-macos-gcc:
+    name: macOS GCC C++14 (ARM64)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up GCC
+        run: |
+          brew list gcc || brew install gcc
+          GCC_PREFIX=$(brew --prefix gcc)
+          GCC_VER=$(ls "$GCC_PREFIX/bin"/gcc-* | grep -oE '[0-9]+$' | sort -n | tail -1)
+          echo "CC=$GCC_PREFIX/bin/gcc-$GCC_VER" >> $GITHUB_ENV
+          echo "CXX=$GCC_PREFIX/bin/g++-$GCC_VER" >> $GITHUB_ENV
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=14
       - name: Build
         working-directory: ./build
         run: cmake --build . --parallel 4
@@ -197,8 +205,9 @@ jobs:
           lcov --remove coverage.info '/usr/*' '*/build/_deps/*' '*/tests/*' --output-file coverage.info --ignore-errors unused
           lcov --list coverage.info
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           verbose: true
