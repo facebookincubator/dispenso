@@ -273,11 +273,13 @@ static void minChunkSize(dispenso::ParForChunking choice, int start, int end, in
   dispenso::ConcurrentVector<std::pair<int, int>> ranges;
 
   dispenso::ThreadPool pool(16);
+  dispenso::TaskSet tasks(pool);
 
   dispenso::ParForOptions options;
   options.minItemsPerChunk = minSize;
 
   dispenso::parallel_for(
+      tasks,
       dispenso::makeChunkedRange(start, end, choice),
       [&ranges](int ystart, int yend) { ranges.push_back({ystart, yend}); },
       options);

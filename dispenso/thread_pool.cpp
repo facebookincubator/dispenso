@@ -208,19 +208,27 @@ ThreadPool::~ThreadPool() {
   // useful diagnostic to learn that the mutex is already locked when we reach this point.
   std::unique_lock<std::mutex> lk(threadsMutex_, std::try_to_lock);
   assert(lk.owns_lock());
+
+  // Mark all threads as stopped first, then wake them all at once. The previous
+  // approach (stop + wake one at a time) was fragile: a wake() could reach an
+  // already-awake thread while another thread remained sleeping, forcing it to
+  // wait for the epoch timeout (e.g. 30ms) to notice the stop flag. Under TSAN
+  // this caused severe slowdowns in ThreadPool destruction.
   for (auto& t : threads_) {
     t.stop();
-    wake();
+  }
+  ssize_t numThreads = static_cast<ssize_t>(threads_.size());
+  if (numThreads > 0) {
+    wakeN(numThreads);
   }
 
   while (tryExecuteNext()) {
   }
 
-  while (!threads_.empty()) {
-    wake();
-    threads_.back().thread_.join();
-    threads_.pop_back();
+  for (auto& t : threads_) {
+    t.thread_.join();
   }
+  threads_.clear();
 
   while (tryExecuteNext()) {
   }

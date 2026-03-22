@@ -637,3 +637,14 @@ TEST(ThreadPool, ScheduleBulkConcurrent) {
   }
   EXPECT_EQ(counter.load(), kTasksPerThread * kNumSchedulers);
 }
+
+TEST(ThreadPool, RepeatedCreationDestruction) {
+  // Verify that creating and destroying many thread pools completes promptly.
+  // This exercises the destructor's bulk-wake shutdown path and catches
+  // regressions where threads wait for epoch timeouts instead of waking
+  // immediately (particularly visible under TSAN).
+  for (int i = 0; i < 50; ++i) {
+    dispenso::ThreadPool pool(16);
+    EXPECT_EQ(pool.numThreads(), 16);
+  }
+}
