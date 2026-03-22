@@ -15,7 +15,8 @@ constexpr float kPi = static_cast<float>(M_PI);
 constexpr float kPi_2 = static_cast<float>(M_PI_2);
 constexpr float kPi_4 = static_cast<float>(M_PI_4);
 
-// Provide less accuracy coverage if we have TSAN or ASAN as these really slow down tests
+// Reduce accuracy coverage for sanitizer and debug builds, which are much slower.
+// Clang uses __has_feature, GCC uses __SANITIZE_ADDRESS__/__SANITIZE_THREAD__.
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
 #define REDUCE_TEST_CASES
@@ -23,6 +24,11 @@ constexpr float kPi_4 = static_cast<float>(M_PI_4);
 #define REDUCE_TEST_CASES
 #endif // relevant feature
 #endif // has_feature
+#if !defined(REDUCE_TEST_CASES)
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__) || !defined(NDEBUG)
+#define REDUCE_TEST_CASES
+#endif
+#endif
 
 namespace dispenso {
 namespace fast_math {
