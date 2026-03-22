@@ -263,12 +263,12 @@ dispenso::parallel_for(
 
 ## Benchmark Results
 
-One example benchmark:
+Dispenso is benchmarked across Linux (x64), macOS (ARM64), Windows (x64), and Android (ARM64),
+comparing against OpenMP, TBB, TaskFlow, folly, and `std::async` across thread pools, parallel
+loops, futures, graphs, concurrent containers, and more.
 
-![Parallel tree build](./docs/benchmarks/par_tree_build.png)
-
-For detailed benchmark methodology and complete results across all primitives, see
-[benchmark_results.md](./docs/benchmarks/benchmark_results.md).
+**[Interactive Benchmark Dashboard](./docs/benchmarks/index.html)** — explore all results
+with platform switching, dark/light theme, and detailed per-benchmark charts.
 
 <div id='installing'/>
 
