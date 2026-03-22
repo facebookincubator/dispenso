@@ -154,41 +154,47 @@ class LimitGatedScheduler {
 
     void wait() {
       if (!unlimited_) {
-        // LIMITED path: drain the local queue into the ConcurrentTaskSet, then
-        // return. We do NOT need to spin on outstanding_ here because the
-        // generator's wait() calls ConcurrentTaskSet::wait() after all stage
-        // wait() calls complete, which ensures every scheduled task finishes.
-        OnceFunction func;
-        while (true) {
+        // LIMITED path: drain items from the local queue into the
+        // ConcurrentTaskSet, and spin until all outstanding items for this
+        // stage have completed. We must spin on outstanding_ because in-flight
+        // CTS tasks from the previous stage may call pipeNext_.execute() after
+        // this drain starts, enqueuing new items into our local queue. Without
+        // the outstanding_ check, those late-arriving items could be orphaned
+        // if schedule()'s try_dequeue spuriously misses them.
+        while (outstanding_.load(std::memory_order_acquire)) {
+          if (tasks_.hasException()) {
+            // Drain remaining queued items without executing them.
+            OnceFunction discard;
+            while (queue_.try_dequeue(discard)) {
+              outstanding_.fetch_sub(1, std::memory_order_acq_rel);
+              discard.cleanupNotRun();
+            }
+            break;
+          }
+          OnceFunction func;
           DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
           bool deqd = queue_.try_dequeue(func);
           DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-          if (!deqd) {
-            break;
-          }
-          // When an exception has been captured, drain remaining queued items
-          // without executing them. Decrement outstanding_ for each discarded
-          // item, and use cleanupNotRun() since OnceFunction only frees its
-          // resources when called (not on destruction).
-          if (tasks_.hasException()) {
-            outstanding_.fetch_sub(1, std::memory_order_acq_rel);
-            func.cleanupNotRun();
-            continue;
-          }
-          // Spin until a resource slot is available. Check for exceptions
-          // each iteration to avoid deadlocking when all pool threads have
-          // finished and no one will release a resource.
-          while (resources_.fetch_sub(1, std::memory_order_acq_rel) <= 0) {
-            resources_.fetch_add(1, std::memory_order_acq_rel);
-            if (tasks_.hasException()) {
-              outstanding_.fetch_sub(1, std::memory_order_acq_rel);
-              func.cleanupNotRun();
-              goto next_item;
+          if (deqd) {
+            // Spin until a resource slot is available. Check for exceptions
+            // each iteration to avoid deadlocking when all pool threads have
+            // finished and no one will release a resource.
+            while (resources_.fetch_sub(1, std::memory_order_acq_rel) <= 0) {
+              resources_.fetch_add(1, std::memory_order_acq_rel);
+              if (tasks_.hasException()) {
+                outstanding_.fetch_sub(1, std::memory_order_acq_rel);
+                func.cleanupNotRun();
+                goto next_item;
+              }
+              if (!tasks_.tryExecuteNext()) {
+                std::this_thread::yield();
+              }
             }
+            tasks_.schedule(std::move(func));
+          next_item:;
+          } else if (!tasks_.tryExecuteNext()) {
             std::this_thread::yield();
           }
-          tasks_.schedule(std::move(func));
-        next_item:;
         }
         return;
       }
