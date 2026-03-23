@@ -6,8 +6,8 @@ coverage:
   status:
     project:
       default:
-        # Require at least 90% overall coverage
-        target: 90%
+        # Require at least 92% overall coverage
+        target: 92%
     patch:
       default:
         # New code should have at least 80% coverage
