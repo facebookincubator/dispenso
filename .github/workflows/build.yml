@@ -196,9 +196,12 @@ jobs:
       - name: Build
         working-directory: ./build
         run: cmake --build . --parallel 4
-      - name: Test
+      - name: Test (stable tests)
         working-directory: ./build
         run: ctest -LE flaky
+      - name: Test (TimedTask, with retries)
+        working-directory: ./build
+        run: ctest -L flaky -R "^TimedTaskTest\." --repeat until-pass:5
       - name: Generate coverage report
         run: |
           lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,gcov,negative
