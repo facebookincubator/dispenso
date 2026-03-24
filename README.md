@@ -48,8 +48,8 @@ Dispenso is a modern **C++ parallel computing library** that provides work-steal
 Dispenso provides a comprehensive set of parallel programming primitives:
 
 **Core runtime:**
-* **[`ThreadPool`](https://facebookincubator.github.io/dispenso/classdispenso_1_1ThreadPool.html)** — work-stealing thread pool backing all dispenso parallelism
-* **[`TaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1TaskSet.html) / [`ConcurrentTaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1ConcurrentTaskSet.html)** — task grouping with wait, cancellation, and recursive scheduling
+* **[`ThreadPool`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_thread_pool.html)** — work-stealing thread pool backing all dispenso parallelism
+* **[`TaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_task_set.html) / [`ConcurrentTaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_concurrent_task_set.html)** — task grouping with wait, cancellation, and recursive scheduling
 
 **Parallel algorithms:**
 * **[`parallel_for`](docs/getting_started.md#your-first-parallel-loop)** — parallel loops over indices, blocking or non-blocking (cascaded); cascading `parallel_for` enables overlapping independent loops without oversubscription
@@ -61,7 +61,7 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 **Concurrent containers and synchronization:**
 * **[`ConcurrentVector`](docs/getting_started.md#concurrentvector)** — concurrent growable vector, superset of TBB `concurrent_vector` API
 * **[`Latch`](docs/getting_started.md#latch)** — one-shot barrier for thread synchronization
-* **[`RWLock`](https://facebookincubator.github.io/dispenso/classdispenso_1_1RWLock.html)** — reader-writer spin lock, outperforms `std::shared_mutex` under low write contention
+* **[`RWLock`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_r_w_lock.html)** — reader-writer spin lock, outperforms `std::shared_mutex` under low write contention
 * **`SPSCRingBuffer`** — lock-free single-producer single-consumer ring buffer *(1.5.0)*
 
 **General-purpose utilities:**

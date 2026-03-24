@@ -69,10 +69,12 @@
 // Disabled on ARM where cache-line writes on every growth operation cause store buffer
 // pressure that exceeds the read-path benefit (acquire loads are effectively free for
 // sequential access patterns on ARM).
+#if !defined(DISPENSO_HAS_CACHED_PTRS)
 #if !defined(__aarch64__) && !defined(_M_ARM64)
 #define DISPENSO_HAS_CACHED_PTRS 1
 #else
 #define DISPENSO_HAS_CACHED_PTRS 0
+#endif
 #endif
 
 namespace dispenso {
