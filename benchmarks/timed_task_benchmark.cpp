@@ -14,7 +14,7 @@
 #include "thread_benchmark_common.h"
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
-#include <folly/experimental/FunctionScheduler.h>
+#include <folly/executors/FunctionScheduler.h>
 #include <folly/synchronization/Baton.h>
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
