@@ -41,11 +41,24 @@ endif()
 target_include_directories(dispenso
 PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dispenso/third-party>
 )
+
+if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
+  find_package(concurrentqueue CONFIG REQUIRED)
+  target_link_libraries(dispenso PUBLIC concurrentqueue::concurrentqueue)
+else()
+  target_include_directories(dispenso
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dispenso/third-party>
+  )
+endif()
+
+# Export the C++ standard requirement so downstream consumers compile with at
+# least the same standard dispenso was built with (default: C++14).
+target_compile_features(dispenso PUBLIC cxx_std_${CMAKE_CXX_STANDARD})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -108,20 +121,21 @@ install(TARGETS dispenso
 
 ## Install headers ##
 
-if(DISPENSO_BUILD_FAST_MATH)
-  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING
-      PATTERN *.h
-  )
-else()
-  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING
-      PATTERN *.h
-      PATTERN "fast_math" EXCLUDE
-  )
+# Build list of directory patterns to exclude from header installation.
+set(_dispenso_install_excludes "")
+if(NOT DISPENSO_BUILD_FAST_MATH)
+  list(APPEND _dispenso_install_excludes PATTERN "fast_math" EXCLUDE)
 endif()
+if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
+  list(APPEND _dispenso_install_excludes PATTERN "third-party" EXCLUDE)
+endif()
+
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING
+    PATTERN *.h
+    ${_dispenso_install_excludes}
+)
 
 ## Generate and install CMake target exports ##
 

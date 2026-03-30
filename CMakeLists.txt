@@ -44,13 +44,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(CMAKE_CXX_EXTENSIONS OFF)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-  option(DISPENSO_SHARED_LIB "Build Dispenso shared library" ON)
-
-
-  # Windows-specific
-  if(WIN32)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
+  # Default to BUILD_SHARED_LIBS when set (e.g. by vcpkg), otherwise ON.
+  if(DEFINED BUILD_SHARED_LIBS)
+    option(DISPENSO_SHARED_LIB "Build Dispenso shared library" ${BUILD_SHARED_LIBS})
+  else()
+    option(DISPENSO_SHARED_LIB "Build Dispenso shared library" ON)
   endif()
+
 endif()
 
 option(ADDRESS_SANITIZER "Use Address Sanitizer, incompatible with THREAD_SANITIZER" OFF)
@@ -65,6 +65,9 @@ elseif (THREAD_SANITIZER)
 endif()
 
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "the C++ standard to use for this project")
+
+set(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE OFF CACHE BOOL
+    "Use system-installed moodycamel::concurrentqueue instead of bundled copy")
 
 ###########################################################
 # Targets
