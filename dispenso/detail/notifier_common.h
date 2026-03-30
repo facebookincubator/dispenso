@@ -125,14 +125,14 @@ inline void mac_futex_wake_all(void* addr, size_t size) {
 
 #elif defined(_WIN32)
 
-#if (defined(_M_ARM64) || defined(_M_ARM)) && !defined(_ARM_)
+#if (defined(_M_ARM64) || defined(__aarch64__)) && !defined(_ARM64_)
+#define _ARM64_
+#elif (defined(_M_ARM) || defined(__arm__)) && !defined(_ARM_)
 #define _ARM_
-#elif _WIN64
+#elif (defined(_M_AMD64) || defined(__x86_64__) || defined(_WIN64)) && !defined(_AMD64_)
 #define _AMD64_
-#elif _WIN32
+#elif !defined(_X86_)
 #define _X86_
-#else
-#error "No valid windows platform"
 #endif // platform
 
 #include <errhandlingapi.h>
