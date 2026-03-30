@@ -1,0 +1,35 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (C/C++)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+
+      - name: Build
+        run: |
+          cmake -S . -B build \
+            -DDISPENSO_BUILD_TESTS=OFF \
+            -DDISPENSO_BUILD_BENCHMARKS=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel 4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
