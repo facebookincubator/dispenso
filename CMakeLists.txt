@@ -23,7 +23,7 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 project(
   Dispenso
-  VERSION 1.5.0
+  VERSION 1.5.1
   DESCRIPTION "Dispenso is a library for working with sets of parallel tasks"
   LANGUAGES CXX)
 

@@ -1,3 +1,22 @@
+1.5.1 (March 28, 2026)
+
+### Bug fixes
+* Fixed `__ulock_wait`/`__ulock_wake` usage on macOS versions prior to 10.12 and on PowerPC where these APIs are unavailable. The ulock path is now guarded behind a runtime version check with `pthread_cond` fallback.
+* Fixed ARM64 Windows build failure: `notifier_common.h` incorrectly defined `_ARM_` (32-bit ARM) instead of `_ARM64_` on ARM64 Windows, causing `winnt.h` to reference missing 32-bit ARM intrinsics.
+* Fixed `platform.h` version macros not being updated for 1.5.0 release (were stuck at 1.4.1)
+* Removed vestigial `CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS` from CMakeLists.txt. All public APIs now use proper `DISPENSO_DLL_ACCESS` annotations; the blanket export is no longer needed and is prohibited by vcpkg's maintainer guide.
+
+### Build system
+* Added `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE` CMake option to use system-installed `moodycamel::concurrentqueue` instead of bundled copy (default OFF), for vcpkg compatibility
+* Export C++ standard requirement via `target_compile_features` so downstream consumers compile with at least the same standard dispenso was built with
+* Respect `BUILD_SHARED_LIBS` for `DISPENSO_SHARED_LIB` default, allowing vcpkg to control static/shared linkage
+
+### Infrastructure
+* Added package manager release automation script (`scripts/update_package_managers.py`) with post-write checksum verification, platform-aware testing, and PR body templates following each repo's CONTRIBUTING.md
+* Added CodeQL security analysis workflow scoped to main branch
+* Added package manager badges (vcpkg, Conan, Homebrew, MacPorts) to README
+* Added release checklist documentation
+
 1.5.0 (March 22, 2026)
 
 ### New features
