@@ -47,7 +47,10 @@ static int futex(
 #endif
 
 #ifndef DISPENSO_HAS_OS_SYNC
-// Fallback: use private __ulock APIs (available since macOS 10.12)
+// __ulock APIs are available since macOS 10.12 (Sierra). On older versions (e.g. PPC/10.5 builds
+// for MacPorts), fall through to the std::mutex fallback.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#define DISPENSO_HAS_ULOCK 1
 extern "C" int __ulock_wait(uint32_t operation, void* addr, uint64_t value, uint32_t timeout_us);
 extern "C" int __ulock_wake(uint32_t operation, void* addr, uint64_t value);
 
@@ -57,8 +60,15 @@ extern "C" int __ulock_wake(uint32_t operation, void* addr, uint64_t value);
 #ifndef ULF_WAKE_ALL
 #define ULF_WAKE_ALL 0x00000100
 #endif
+#endif // macOS >= 10.12
 #endif // DISPENSO_HAS_OS_SYNC
 
+// DISPENSO_HAS_MAC_FUTEX is set when any mac futex-like API is available.
+#if defined(DISPENSO_HAS_OS_SYNC) || defined(DISPENSO_HAS_ULOCK)
+#define DISPENSO_HAS_MAC_FUTEX 1
+#endif
+
+#ifdef DISPENSO_HAS_MAC_FUTEX
 namespace dispenso {
 namespace detail {
 
@@ -111,6 +121,7 @@ inline void mac_futex_wake_all(void* addr, size_t size) {
 
 } // namespace detail
 } // namespace dispenso
+#endif // DISPENSO_HAS_MAC_FUTEX
 
 #elif defined(_WIN32)
 

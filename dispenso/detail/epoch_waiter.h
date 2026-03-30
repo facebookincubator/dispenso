@@ -77,7 +77,7 @@ class EpochWaiter {
   };
 };
 
-#elif defined(__MACH__)
+#elif defined(__MACH__) && defined(DISPENSO_HAS_MAC_FUTEX)
 
 class EpochWaiter {
  public:
