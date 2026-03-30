@@ -1,6 +1,11 @@
 [![Build and test](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml/badge.svg)](https://github.com/facebookincubator/dispenso/actions/workflows/build.yml)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://facebookincubator.github.io/dispenso)
 [![codecov](https://codecov.io/gh/facebookincubator/dispenso/branch/main/graph/badge.svg)](https://codecov.io/gh/facebookincubator/dispenso)
+[![Conan Center](https://img.shields.io/conan/v/dispenso)](https://conan.io/center/recipes/dispenso)
+[![vcpkg](https://img.shields.io/vcpkg/v/dispenso)](https://vcpkg.io/en/package/dispenso)
+[![Homebrew](https://img.shields.io/homebrew/v/dispenso)](https://formulae.brew.sh/formula/dispenso)
+[![MacPorts](https://img.shields.io/badge/macports-dispenso-blue)](https://ports.macports.org/port/dispenso/)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/dispenso/badges/version.svg)](https://anaconda.org/conda-forge/dispenso)
 
 # Dispenso
 
@@ -276,14 +281,15 @@ with platform switching, dark/light theme, and detailed per-benchmark charts.
 Binary builds of Dispenso are available through several package managers:
 
 - **Conda**: `conda install -c conda-forge dispenso`
-- **Fedora/RHEL**: `sudo dnf install dispenso-devel`
+- **Conan**: `conan install --requires=dispenso/1.5.0`
+- **vcpkg**: `vcpkg install dispenso`
+- **Homebrew**: `brew install dispenso`
 - **MacPorts**: `sudo port install dispenso`
-- **Conan** and **vcpkg**: coming soon
+- **Fedora/RHEL**: `sudo dnf install dispenso-devel`
 
 If your platform is not on the list, see [the next section](#building) for instructions to build from source.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg)](https://repology.org/project/dispenso/versions)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/dispenso/badges/version.svg)](https://anaconda.org/conda-forge/dispenso)
 
 <div id='building'/>
 
