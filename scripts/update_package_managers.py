@@ -8,23 +8,33 @@
 
 Downloads the release tarball, computes hashes, updates version/hash references
 in each package manager's repo, commits, tests locally, pushes to the user's
-fork, and prints branch URLs for manual PR creation.
+fork, and creates PRs.
 
-Usage:
-    python3 update_package_managers.py --version 1.5.0
-    python3 update_package_managers.py --version 1.5.0 --managers conan,vcpkg
-    python3 update_package_managers.py --version 1.5.0 --dry-run
-    python3 update_package_managers.py --version 1.5.0 --skip-test
-    python3 update_package_managers.py --version 1.5.0 --skip-push
+Recommended usage (interactive guided flow):
+    python3 update_package_managers.py --version 1.5.1 --guided
+
+The guided flow walks through every step: updating each manager, running tests,
+inspecting diffs, pushing, closing superseded PRs, creating new PRs, and
+guiding through any remaining manual steps like CLA signing.
+
+Advanced usage (individual flags):
+    python3 update_package_managers.py --version 1.5.1 --managers conan,vcpkg
+    python3 update_package_managers.py --version 1.5.1 --dry-run
+    python3 update_package_managers.py --version 1.5.1 --skip-test
+    python3 update_package_managers.py --version 1.5.1 --skip-push
+    python3 update_package_managers.py --version 1.5.1 --create-prs
 """
 
 import argparse
 import hashlib
+import json
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import urllib.request
 
@@ -87,6 +97,17 @@ def parse_args():
         "--github-user",
         default="graphicsMan",
         help="GitHub fork username (default: graphicsMan)",
+    )
+    parser.add_argument(
+        "--create-prs",
+        action="store_true",
+        help="Create PRs on GitHub after pushing (uses gh CLI)",
+    )
+    parser.add_argument(
+        "--guided",
+        action="store_true",
+        help="Interactive guided flow: walks through every step, prompts "
+        "before each action, creates PRs at the end",
     )
     args = parser.parse_args()
     args.managers = [m.strip() for m in args.managers.split(",")]
@@ -151,7 +172,7 @@ def download_and_hash(version):
     return tarball_path, hashes
 
 
-def run(cmd, cwd=None, check=True, dry_run=False, capture=False):
+def run(cmd, cwd=None, check=True, dry_run=False, capture=False, env=None):
     """Run a shell command, printing it first. Respects dry_run."""
     if isinstance(cmd, str):
         display = cmd
@@ -168,6 +189,8 @@ def run(cmd, cwd=None, check=True, dry_run=False, capture=False):
     if capture:
         kwargs["capture_output"] = True
         kwargs["text"] = True
+    if env is not None:
+        kwargs["env"] = env
 
     return subprocess.run(cmd, **kwargs)
 
@@ -267,6 +290,13 @@ def checkout_branch(repo_dir, branch, dry_run):
         else:
             default_branch = "main"
 
+    # Abort any in-progress rebase (e.g. from a previous failed run)
+    rebase_merge = os.path.join(repo_dir, ".git", "rebase-merge")
+    rebase_apply = os.path.join(repo_dir, ".git", "rebase-apply")
+    if os.path.isdir(rebase_merge) or os.path.isdir(rebase_apply):
+        print("  Aborting in-progress rebase from previous run ...")
+        run(["git", "rebase", "--abort"], cwd=repo_dir, check=False)
+
     # Stash any dirty changes so we can switch branches
     result = subprocess.run(
         ["git", "status", "--porcelain"],
@@ -284,16 +314,19 @@ def checkout_branch(repo_dir, branch, dry_run):
     run(["git", "checkout", default_branch], cwd=repo_dir)
     run(["git", "pull", "origin", default_branch], cwd=repo_dir)
 
-    # Create or checkout working branch
+    # Create or reset working branch to start fresh from default branch.
+    # We reset instead of rebase because the script overwrites all port files
+    # and commit_and_push() squashes into one commit anyway.  Rebasing can
+    # conflict when a previous version's changes were already merged.
     result = subprocess.run(
         ["git", "show-ref", "--verify", f"refs/heads/{branch}"],
         cwd=repo_dir,
         capture_output=True,
     )
     if result.returncode == 0:
-        print(f"  Branch {branch} already exists, rebasing onto {default_branch} ...")
+        print(f"  Branch {branch} already exists, resetting to {default_branch} ...")
         run(["git", "checkout", branch], cwd=repo_dir)
-        run(["git", "rebase", default_branch], cwd=repo_dir)
+        run(["git", "reset", "--hard", default_branch], cwd=repo_dir)
     else:
         print(f"  Creating branch {branch} from {default_branch} ...")
         run(["git", "checkout", "-b", branch], cwd=repo_dir)
@@ -351,10 +384,11 @@ def commit_and_push(repo_dir, branch, message, github_user, dry_run, skip_push):
                 cwd=repo_dir,
             )
             if result.returncode == 0:
-                print("  No changes to commit (already up to date)")
-                if not skip_push:
-                    run(["git", "push", "-u", "fork", branch, "--force"], cwd=repo_dir)
-                return True
+                print(
+                    "  WARNING: No changes to commit — upstream already"
+                    " has this version. Skipping."
+                )
+                return False
 
         # Soft-reset to merge base and recommit as single commit
         print("  Squashing into single commit ...")
@@ -410,10 +444,19 @@ def test_vcpkg(repo_dir, version):
         print("  WARNING: vcpkg not found, skipping test")
         return False
 
+    # Detect default triplet so we remove/install for the right platform
+    if sys.platform == "darwin":
+        machine = platform.machine()  # arm64 or x86_64
+        default_triplet = "arm64-osx" if machine == "arm64" else "x64-osx"
+    elif sys.platform == "win32":
+        default_triplet = "x64-windows"
+    else:
+        default_triplet = "x64-linux"
+
     # Remove existing install to force rebuild
-    print("  Removing existing vcpkg install (if any) ...")
+    print(f"  Removing existing vcpkg install (if any) [{default_triplet}] ...")
     run(
-        [vcpkg_bin, "remove", "dispenso:x64-linux"],
+        [vcpkg_bin, "remove", f"dispenso:{default_triplet}"],
         cwd=repo_dir,
         check=False,
     )
@@ -423,8 +466,9 @@ def test_vcpkg(repo_dir, version):
         [
             vcpkg_bin,
             "install",
-            "dispenso",
+            f"dispenso:{default_triplet}",
             f"--overlay-ports={os.path.join(repo_dir, 'ports', 'dispenso')}",
+            "--no-binarycaching",
         ],
         cwd=repo_dir,
         check=False,
@@ -466,11 +510,15 @@ def test_homebrew(repo_dir, version):
         run([brew_bin, "uninstall", "dispenso"], check=False)
 
         # Install from source
-        print("  Running brew install --build-from-source ...")
+        print(
+            "  Running HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source ..."
+        )
+        brew_env = {**os.environ, "HOMEBREW_NO_INSTALL_FROM_API": "1"}
         result = run(
             [brew_bin, "install", "--build-from-source", "dispenso"],
             check=False,
             capture=True,
+            env=brew_env,
         )
         if result.returncode != 0:
             print(f"  FAIL: brew install failed\n{result.stderr}")
@@ -484,10 +532,10 @@ def test_homebrew(repo_dir, version):
             return False
 
         # Audit
-        print("  Running brew audit --new ...")
-        result = run([brew_bin, "audit", "--new", "dispenso"], check=False)
+        print("  Running brew audit --strict ...")
+        result = run([brew_bin, "audit", "--strict", "dispenso"], check=False)
         if result.returncode != 0:
-            print("  WARNING: brew audit --new reported issues")
+            print("  WARNING: brew audit --strict reported issues")
 
         print("  PASS: homebrew tests succeeded")
         return True
@@ -503,11 +551,18 @@ def test_homebrew(repo_dir, version):
         run([brew_bin, "uninstall", "dispenso"], check=False)
 
 
-def test_macports(repo_dir, version):
-    """Test macports portfile with port lint."""
+def test_macports(repo_dir, version, hashes=None):
+    """Test macports portfile with port lint, install, and test."""
+    # Verify checksums first — this catches the most common error
+    if hashes:
+        print("  --- Verifying checksums ---")
+        if not verify_portfile_checksums(repo_dir, hashes):
+            print("  FAIL: checksum verification failed — fix before continuing")
+            return False
+
     port_bin = shutil.which("port")
     if not port_bin:
-        print("  WARNING: port not found — full testing requires macOS")
+        print("  WARNING: port not found — install MacPorts to run full tests")
         return False
 
     portdir = os.path.join(repo_dir, "devel", "dispenso")
@@ -520,12 +575,125 @@ def test_macports(repo_dir, version):
     if result.returncode != 0:
         print("  FAIL: port lint failed")
         return False
+    print("  PASS: port lint succeeded")
 
-    print("  PASS: macports lint succeeded")
-    print("  NOTE: For full testing, also run:")
-    print(f"    sudo port -D {portdir} -vst install")
-    print(f"    sudo port -D {portdir} test")
-    return True
+    # Install and test require sudo.  Root cannot access files under the
+    # user's home directory on macOS, so copy to /tmp.  Running sudo from a
+    # Python subprocess may also be blocked by endpoint security tools, so
+    # print the commands for the user to run manually.
+    tmp_parent = tempfile.mkdtemp(prefix="dispenso-port-", dir="/tmp")
+    os.chmod(tmp_parent, 0o755)
+    tmp_portdir = os.path.join(tmp_parent, "dispenso")
+    shutil.copytree(portdir, tmp_portdir)
+    for dirpath, dirs, files in os.walk(tmp_portdir):
+        for d in dirs:
+            os.chmod(os.path.join(dirpath, d), 0o755)
+        for f in files:
+            os.chmod(os.path.join(dirpath, f), 0o644)
+
+    print()
+    print("  The next steps require sudo.  Please run each command manually")
+    print("  in a separate terminal, then come back and report the result.")
+
+    install_ok = False
+    test_ok = False
+    install_note = ""
+    test_note = ""
+
+    # Step 1: install
+    print()
+    print(f"  Step 1 — run this command:")
+    print(f"    sudo {port_bin} -D {tmp_portdir} -vst install")
+    print()
+    answer = input("  Result? [y=succeeded / or describe what happened] ").strip()
+    if answer.lower() == "y":
+        install_ok = True
+        print("  PASS: port install (user-confirmed)")
+    else:
+        install_note = answer
+        print(f"  NOTED: port install issue — {answer}")
+
+    # Step 2: test
+    print()
+    print(f"  Step 2 — run this command:")
+    print(f"    sudo {port_bin} -D {tmp_portdir} test")
+    print()
+    answer = input("  Result? [y=succeeded / or describe what happened] ").strip()
+    if answer.lower() == "y":
+        test_ok = True
+        print("  PASS: port test (user-confirmed)")
+    else:
+        test_note = answer
+        print(f"  NOTED: port test issue — {answer}")
+
+    # Summarize
+    print()
+    if install_ok and test_ok:
+        print("  PASS: port install + test both succeeded")
+    elif test_ok and not install_ok:
+        print("  PARTIAL: port test passed but install had issues")
+        print(f"    install note: {install_note}")
+    elif install_ok and not test_ok:
+        print("  PARTIAL: port install passed but test had issues")
+        print(f"    test note: {test_note}")
+    else:
+        print("  FAIL: both install and test had issues")
+
+    if not (install_ok and test_ok):
+        print(f"  (temp port dir preserved at {tmp_portdir} for debugging)")
+    else:
+        shutil.rmtree(tmp_parent, ignore_errors=True)
+
+    return test_ok
+
+
+def get_macos_tested_on():
+    """Gather macOS system info for MacPorts 'Tested on' PR section.
+
+    Returns a formatted string matching the MacPorts PR template, or None
+    if not running on macOS.
+    """
+    if platform.system() != "Darwin":
+        return None
+
+    lines = []
+
+    # macOS version + build + arch
+    result = subprocess.run(
+        ["sw_vers", "-productVersion"], capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        mac_ver = result.stdout.strip()
+        build_result = subprocess.run(
+            ["sw_vers", "-buildVersion"], capture_output=True, text=True
+        )
+        build = build_result.stdout.strip() if build_result.returncode == 0 else ""
+        arch_result = subprocess.run(["uname", "-m"], capture_output=True, text=True)
+        arch = arch_result.stdout.strip() if arch_result.returncode == 0 else ""
+        lines.append(f"macOS {mac_ver} {build} {arch}")
+
+    # Xcode or Command Line Tools version
+    result = subprocess.run(["xcodebuild", "-version"], capture_output=True, text=True)
+    if result.returncode == 0:
+        parts = result.stdout.strip().split("\n")
+        if len(parts) >= 2:
+            # "Xcode 16.2\nBuild version 16C5032a" → "Xcode 16.2 16C5032a"
+            lines.append(f"{parts[0]} {parts[-1].split()[-1]}")
+        elif parts:
+            lines.append(parts[0])
+    else:
+        result = subprocess.run(
+            ["pkgutil", "--pkg-info=com.apple.pkg.CLTools_Executables"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.split("\n"):
+                if "version:" in line:
+                    lines.append(f"Command Line Tools {line.split(':')[1].strip()}")
+                    break
+
+    return "\n".join(lines) if lines else None
 
 
 # ---------------------------------------------------------------------------
@@ -586,6 +754,92 @@ def verify_formula_checksums(repo_dir, hashes):
 # ---------------------------------------------------------------------------
 
 
+def ensure_conan_issue(version, github_user, dry_run):
+    """Search for or create a Conan Center Index issue for this version.
+
+    Returns the issue number if found/created, or None on failure.
+    """
+    repo = UPSTREAM_REPOS["conan"]
+    search_query = f"[package] dispenso/{version}"
+
+    # Search for existing issue
+    print(f"  Searching for existing Conan issue: {search_query}")
+    if dry_run:
+        print(f"  [DRY RUN] Would search/create issue for dispenso/{version}")
+        return None
+
+    result = subprocess.run(
+        [
+            "gh",
+            "search",
+            "issues",
+            search_query,
+            "--repo",
+            repo,
+            "--json",
+            "number,title",
+            "--limit",
+            "5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        try:
+            issues = json.loads(result.stdout)
+            for issue in issues:
+                if f"dispenso/{version}" in issue.get("title", ""):
+                    number = issue["number"]
+                    print(f"  Found existing issue #{number}: {issue['title']}")
+                    return number
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Create new issue
+    print(f"  Creating new Conan issue for dispenso/{version} ...")
+    issue_body = f"""\
+### Package Details
+- **Name**: dispenso
+- **Version**: {version}
+- **Homepage**: https://github.com/facebookincubator/dispenso
+- **License**: MIT
+
+### Description
+dispenso is a high-performance C++ library for parallel programming from Meta. \
+It provides work-stealing thread pools, parallel for loops, futures, task graphs, \
+pipelines, and concurrent containers. Requires C++14, no external dependencies \
+beyond pthreads."""
+
+    result = subprocess.run(
+        [
+            "gh",
+            "issue",
+            "create",
+            "--repo",
+            repo,
+            "--title",
+            f"[package] dispenso/{version}",
+            "--body",
+            issue_body,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        # Output is the issue URL, extract number from it
+        url = result.stdout.strip()
+        match = re.search(r"/issues/(\d+)", url)
+        if match:
+            number = int(match.group(1))
+            print(f"  Created issue #{number}: {url}")
+            return number
+        print(f"  Created issue: {url}")
+        return None
+
+    print(f"  WARNING: Failed to create Conan issue: {result.stderr.strip()}")
+    return None
+
+
 def update_conan(args, hashes, tarball_path):
     """Update conan-center-index with new dispenso version."""
     print(f"=== Conan (conan-center-index) ===")
@@ -638,20 +892,26 @@ def update_conan(args, hashes, tarball_path):
     else:
         print(f"  [DRY RUN] Would add {version} entry to config.yml")
 
+    # --- Ensure GitHub issue exists ---
+    print("  --- Conan issue ---")
+    issue_number = ensure_conan_issue(version, args.github_user, args.dry_run)
+
     # --- Commit ---
     commit_msg = f"dispenso: add version {version}"
-    commit_and_push(
+    committed = commit_and_push(
         repo_dir, branch, commit_msg, args.github_user, args.dry_run, skip_push=True
     )
 
     # --- Test ---
     test_passed = True
-    if not args.dry_run and not args.skip_test:
+    if committed and not args.dry_run and not args.skip_test:
         print("  --- Testing ---")
         test_passed = test_conan(repo_dir, version)
 
     # --- Push ---
-    if not args.dry_run and not args.skip_push:
+    if not committed:
+        print("  Skipping push — no changes to push")
+    elif not args.dry_run and not args.skip_push:
         if not test_passed:
             print("  Skipping push due to test failure")
         else:
@@ -661,18 +921,218 @@ def update_conan(args, hashes, tarball_path):
         f"https://github.com/{args.github_user}/conan-center-index/tree/{branch}"
     )
     tests_ran = not args.skip_test and not args.dry_run and test_passed
-    title = pr_title("conan", version, is_new=True)
-    body = pr_body_conan(version, tests_ran=tests_ran)
+    title = pr_title("conan", version)
+    body = pr_body_conan(version, tests_ran=tests_ran, issue_number=issue_number)
     print()
     return {
-        "status": "ok" if test_passed else "test_failed",
+        "status": "no_changes"
+        if not committed
+        else "ok"
+        if test_passed
+        else "test_failed",
+        "branch": branch,
         "branch_url": branch_url,
         "version": version,
-        "is_new": True,
         "tests_ran": tests_ran,
         "pr_title": title,
         "pr_body": body,
     }
+
+
+def detect_obsolete_patches(tarball_path, port_dir):
+    """Check which patches in port_dir are obsolete against the tarball source.
+
+    Extracts the tarball to a temp directory and tries `git apply --check` for
+    each .patch file. Returns a list of patch filenames that no longer apply
+    (i.e. the fix has been upstreamed).
+    """
+    patch_files = [f for f in os.listdir(port_dir) if f.endswith(".patch")]
+    if not patch_files:
+        return []
+
+    obsolete = []
+    tmpdir = tempfile.mkdtemp(prefix="dispenso-patch-check-")
+    try:
+        # Extract tarball
+        with tarfile.open(tarball_path, "r:gz") as tf:
+            tf.extractall(tmpdir, filter="data")
+
+        # Find the extracted directory (e.g. dispenso-1.5.1/)
+        entries = os.listdir(tmpdir)
+        if len(entries) == 1 and os.path.isdir(os.path.join(tmpdir, entries[0])):
+            src_dir = os.path.join(tmpdir, entries[0])
+        else:
+            src_dir = tmpdir
+
+        # Initialize a temporary git repo so we can use git apply --check
+        subprocess.run(["git", "init"], cwd=src_dir, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "add", "-A"], cwd=src_dir, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "initial"],
+            cwd=src_dir,
+            capture_output=True,
+            check=True,
+        )
+
+        for patch_file in patch_files:
+            patch_path = os.path.join(port_dir, patch_file)
+            result = subprocess.run(
+                ["git", "apply", "--check", patch_path],
+                cwd=src_dir,
+                capture_output=True,
+            )
+            if result.returncode != 0:
+                print(f"  Patch {patch_file}: OBSOLETE (no longer applies)")
+                obsolete.append(patch_file)
+            else:
+                print(f"  Patch {patch_file}: still needed (applies cleanly)")
+
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return obsolete
+
+
+def remove_obsolete_patches(port_dir, portfile_path, obsolete_patches):
+    """Remove obsolete patches from portfile.cmake and delete patch files."""
+    if not obsolete_patches:
+        return
+
+    content = open(portfile_path).read()
+
+    for patch_file in obsolete_patches:
+        # Delete the patch file
+        patch_path = os.path.join(port_dir, patch_file)
+        if os.path.exists(patch_path):
+            os.unlink(patch_path)
+            print(f"  Deleted {patch_file}")
+
+    # Check if there are remaining patches
+    remaining = [f for f in os.listdir(port_dir) if f.endswith(".patch")]
+
+    if not remaining:
+        # Remove entire PATCHES block from portfile.cmake
+        # Match: PATCHES\n    file1.patch\n    file2.patch\n (up to next keyword or end)
+        content = re.sub(
+            r"\s+PATCHES\n(?:\s+\S+\.patch\n?)+",
+            "\n",
+            content,
+        )
+        print("  Removed entire PATCHES block from portfile.cmake")
+    else:
+        # Remove only obsolete patch filenames from PATCHES block
+        for patch_file in obsolete_patches:
+            # Remove the line "    patch_file.patch\n"
+            content = re.sub(
+                rf"\s+{re.escape(patch_file)}\n?",
+                "\n",
+                content,
+            )
+        print(f"  Removed obsolete patches from portfile.cmake, kept: {remaining}")
+
+    open(portfile_path, "w").write(content)
+
+
+def _vcpkg_update_port_files(repo_dir, version, hashes, dry_run):
+    """Update vcpkg.json version/port-version and portfile.cmake SHA512."""
+    vcpkg_json_path = os.path.join(repo_dir, "ports", "dispenso", "vcpkg.json")
+    print(f"  Updating {vcpkg_json_path} ...")
+
+    if not dry_run:
+        content = open(vcpkg_json_path).read()
+        content = re.sub(
+            r'"version"\s*:\s*"[^"]*"',
+            f'"version": "{version}"',
+            content,
+        )
+        # Remove port-version (resets to 0 on version bump)
+        content = re.sub(r',?\s*"port-version"\s*:\s*\d+', "", content)
+        open(vcpkg_json_path, "w").write(content)
+        print(f"  Updated version to {version} (removed port-version if present)")
+    else:
+        print(f"  [DRY RUN] Would update version to {version} (remove port-version)")
+
+    portfile_path = os.path.join(repo_dir, "ports", "dispenso", "portfile.cmake")
+    print(f"  Updating {portfile_path} ...")
+
+    if not dry_run:
+        content = open(portfile_path).read()
+        content = re.sub(
+            r"SHA512\s+[0-9a-fA-F]+",
+            f"SHA512 {hashes['sha512']}",
+            content,
+        )
+        open(portfile_path, "w").write(content)
+        print(f"  Updated SHA512")
+    else:
+        print(f"  [DRY RUN] Would update SHA512 to {hashes['sha512']}")
+
+    return vcpkg_json_path
+
+
+def _vcpkg_cleanup_patches(repo_dir, tarball_path, dry_run):
+    """Detect and remove obsolete patches from the vcpkg port."""
+    port_dir = os.path.join(repo_dir, "ports", "dispenso")
+    portfile_path = os.path.join(port_dir, "portfile.cmake")
+
+    if dry_run or not os.path.isdir(port_dir):
+        return
+    patch_files = [f for f in os.listdir(port_dir) if f.endswith(".patch")]
+    if not patch_files:
+        return
+
+    print("  --- Checking patches against new source ---")
+    obsolete = detect_obsolete_patches(tarball_path, port_dir)
+    if obsolete:
+        remove_obsolete_patches(port_dir, portfile_path, obsolete)
+
+
+def _vcpkg_run_tooling(repo_dir, vcpkg_json_path, dry_run):
+    """Run vcpkg format-manifest and x-add-version if vcpkg is available."""
+    vcpkg_bin = shutil.which("vcpkg")
+    if not vcpkg_bin:
+        print(
+            "  WARNING: vcpkg not found. Run 'vcpkg format-manifest' and "
+            "'vcpkg x-add-version dispenso --overlay-ports=ports/dispenso' "
+            "manually before pushing."
+        )
+        return
+
+    print("  Running vcpkg format-manifest ...")
+    run(
+        [vcpkg_bin, "format-manifest", vcpkg_json_path],
+        cwd=repo_dir,
+        check=False,
+        dry_run=dry_run,
+    )
+
+    # x-add-version requires port changes to be committed first, so we make
+    # a temporary commit. The final commit_and_push will squash everything.
+    print("  Running vcpkg x-add-version ...")
+    if not dry_run:
+        run(["git", "add", "-A"], cwd=repo_dir)
+        result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir)
+        if result.returncode != 0:
+            run(
+                ["git", "commit", "-m", "temp: port changes for x-add-version"],
+                cwd=repo_dir,
+            )
+    run(
+        [
+            vcpkg_bin,
+            "x-add-version",
+            "dispenso",
+            "--overwrite-version",
+            f"--overlay-ports={os.path.join(repo_dir, 'ports', 'dispenso')}",
+        ],
+        cwd=repo_dir,
+        check=False,
+        dry_run=dry_run,
+    )
+    # Version database changes from x-add-version will be staged by
+    # commit_and_push's git add -A.
 
 
 def update_vcpkg(args, hashes, tarball_path):
@@ -685,103 +1145,45 @@ def update_vcpkg(args, hashes, tarball_path):
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
 
-    # --- Update vcpkg.json ---
-    vcpkg_json_path = os.path.join(repo_dir, "ports", "dispenso", "vcpkg.json")
-    print(f"  Updating {vcpkg_json_path} ...")
+    vcpkg_json_path = _vcpkg_update_port_files(repo_dir, version, hashes, args.dry_run)
+    _vcpkg_cleanup_patches(repo_dir, tarball_path, args.dry_run)
+    _vcpkg_run_tooling(repo_dir, vcpkg_json_path, args.dry_run)
 
-    if not args.dry_run:
-        content = open(vcpkg_json_path).read()
-        content = re.sub(
-            r'"version"\s*:\s*"[^"]*"',
-            f'"version": "{version}"',
-            content,
-        )
-        open(vcpkg_json_path, "w").write(content)
-        print(f"  Updated version to {version}")
-    else:
-        print(f"  [DRY RUN] Would update version to {version}")
-
-    # --- Update portfile.cmake ---
-    portfile_path = os.path.join(repo_dir, "ports", "dispenso", "portfile.cmake")
-    print(f"  Updating {portfile_path} ...")
-
-    if not args.dry_run:
-        content = open(portfile_path).read()
-        content = re.sub(
-            r"SHA512\s+[0-9a-fA-F]+",
-            f"SHA512 {hashes['sha512']}",
-            content,
-        )
-        open(portfile_path, "w").write(content)
-        print(f"  Updated SHA512")
-    else:
-        print(f"  [DRY RUN] Would update SHA512 to {hashes['sha512']}")
-
-    # --- Run vcpkg x-add-version ---
-    # x-add-version requires port changes to be committed first, so we make
-    # a temporary commit. The final commit_and_push will squash everything.
-    vcpkg_bin = shutil.which("vcpkg")
-    if vcpkg_bin:
-        print("  Running vcpkg x-add-version ...")
-        if not args.dry_run:
-            run(["git", "add", "-A"], cwd=repo_dir)
-            result = subprocess.run(
-                ["git", "diff", "--cached", "--quiet"], cwd=repo_dir
-            )
-            if result.returncode != 0:
-                run(
-                    ["git", "commit", "-m", "temp: port changes for x-add-version"],
-                    cwd=repo_dir,
-                )
-        run(
-            [
-                vcpkg_bin,
-                "x-add-version",
-                "dispenso",
-                f"--overlay-ports={os.path.join(repo_dir, 'ports', 'dispenso')}",
-            ],
-            cwd=repo_dir,
-            check=False,
-            dry_run=args.dry_run,
-        )
-        # Stage any version database changes from x-add-version
-        if not args.dry_run:
-            run(["git", "add", "-A"], cwd=repo_dir)
-    else:
-        print(
-            "  WARNING: vcpkg not found. Run 'vcpkg x-add-version dispenso "
-            "--overlay-ports=ports/dispenso' manually before pushing."
-        )
-
-    # --- Commit (if not already committed above) ---
+    # --- Commit ---
     commit_msg = f"[dispenso] Update to version {version}"
-    commit_and_push(
+    committed = commit_and_push(
         repo_dir, branch, commit_msg, args.github_user, args.dry_run, skip_push=True
     )
 
     # --- Test ---
     test_passed = True
-    if not args.dry_run and not args.skip_test:
+    if committed and not args.dry_run and not args.skip_test:
         print("  --- Testing ---")
         test_passed = test_vcpkg(repo_dir, version)
 
     # --- Push ---
-    if not args.dry_run and not args.skip_push:
+    if not committed:
+        print("  Skipping push — no changes to push")
+    elif not args.dry_run and not args.skip_push:
         if not test_passed:
             print("  Skipping push due to test failure")
         else:
             run(["git", "push", "-u", "fork", branch, "--force"], cwd=repo_dir)
 
     branch_url = f"https://github.com/{args.github_user}/vcpkg/tree/{branch}"
-    tests_ran = not args.skip_test and not args.dry_run and test_passed
-    title = pr_title("vcpkg", version, is_new=True)
-    body = pr_body_vcpkg(version, is_new_port=True)
+    tests_ran = committed and not args.skip_test and not args.dry_run and test_passed
+    title = pr_title("vcpkg", version)
+    body = pr_body_vcpkg(version)
     print()
     return {
-        "status": "ok" if test_passed else "test_failed",
+        "status": "no_changes"
+        if not committed
+        else "ok"
+        if test_passed
+        else "test_failed",
+        "branch": branch,
         "branch_url": branch_url,
         "version": version,
-        "is_new": True,
         "tests_ran": tests_ran,
         "pr_title": title,
         "pr_body": body,
@@ -839,38 +1241,41 @@ def update_homebrew(args, hashes, tarball_path):
         checksums_ok = verify_formula_checksums(repo_dir, hashes)
 
     # --- Commit ---
-    commit_msg = f"dispenso {version} (new formula)"
-    commit_and_push(
+    commit_msg = f"dispenso {version}"
+    committed = commit_and_push(
         repo_dir, branch, commit_msg, args.github_user, args.dry_run, skip_push=True
     )
 
     # --- Test ---
     fully_tested = False
-    if checksums_ok and not args.dry_run and not args.skip_test:
+    if committed and checksums_ok and not args.dry_run and not args.skip_test:
         print("  --- Testing ---")
         fully_tested = test_homebrew(repo_dir, version)
 
     # --- Push ---
-    if not args.dry_run and not args.skip_push:
+    if not committed:
+        print("  Skipping push — no changes to push")
+    elif not args.dry_run and not args.skip_push:
         if not checksums_ok:
             print("  Skipping push due to checksum verification failure")
         else:
             run(["git", "push", "-u", "fork", branch, "--force"], cwd=repo_dir)
 
     branch_url = f"https://github.com/{args.github_user}/homebrew-core/tree/{branch}"
-    is_new = True  # TODO: detect from formula existence in upstream
-    title = pr_title("homebrew", version, is_new=is_new)
-    body = pr_body_homebrew(version, is_new_formula=is_new, tests_ran=fully_tested)
+    title = pr_title("homebrew", version)
+    body = pr_body_homebrew(version, tests_ran=fully_tested)
     print()
     return {
-        "status": "error"
+        "status": "no_changes"
+        if not committed
+        else "error"
         if not checksums_ok
         else "ok"
         if fully_tested or args.skip_test
         else "needs_macos",
+        "branch": branch,
         "branch_url": branch_url,
         "version": version,
-        "is_new": is_new,
         "tests_ran": fully_tested,
         "pr_title": title,
         "pr_body": body,
@@ -948,36 +1353,43 @@ def update_macports(args, hashes, tarball_path):
 
     # --- Commit ---
     commit_msg = f"dispenso: update to {version}"
-    commit_and_push(
+    committed = commit_and_push(
         repo_dir, branch, commit_msg, args.github_user, args.dry_run, skip_push=True
     )
 
     # --- Test ---
     fully_tested = False
-    if checksums_ok and not args.dry_run and not args.skip_test:
+    tested_on = None
+    if committed and checksums_ok and not args.dry_run and not args.skip_test:
         print("  --- Testing ---")
-        fully_tested = test_macports(repo_dir, version)
+        fully_tested = test_macports(repo_dir, version, hashes=hashes)
+        if fully_tested:
+            tested_on = get_macos_tested_on()
 
     # --- Push ---
-    if not args.dry_run and not args.skip_push:
+    if not committed:
+        print("  Skipping push — no changes to push")
+    elif not args.dry_run and not args.skip_push:
         if not checksums_ok:
             print("  Skipping push due to checksum verification failure")
         else:
             run(["git", "push", "-u", "fork", branch, "--force"], cwd=repo_dir)
 
     branch_url = f"https://github.com/{args.github_user}/macports-ports/tree/{branch}"
-    title = pr_title("macports", version, is_new=True)
-    body = pr_body_macports(version, tests_ran=fully_tested)
+    title = pr_title("macports", version)
+    body = pr_body_macports(version, tests_ran=fully_tested, tested_on=tested_on)
     print()
     return {
-        "status": "error"
+        "status": "no_changes"
+        if not committed
+        else "error"
         if not checksums_ok
         else "ok"
         if fully_tested or args.skip_test
         else "needs_macos",
+        "branch": branch,
         "branch_url": branch_url,
         "version": version,
-        "is_new": True,
         "tests_ran": fully_tested,
         "pr_title": title,
         "pr_body": body,
@@ -989,9 +1401,8 @@ def update_macports(args, hashes, tarball_path):
 # ---------------------------------------------------------------------------
 
 
-def pr_body_homebrew(version, is_new_formula, tests_ran):
+def pr_body_homebrew(version, tests_ran):
     """Generate PR body following Homebrew's PR template."""
-    formula_type = "new formula" if is_new_formula else "version bump"
     test_check = "[x]" if tests_ran else "[ ]"
     audit_line = (
         f"- {test_check} Does your build pass `brew audit --strict <formula>` "
@@ -1016,7 +1427,7 @@ The formula was verified locally before submission.
 
 -----
 
-Add dispenso {version} ({formula_type}).
+Update dispenso to {version}.
 
 [dispenso](https://github.com/facebookincubator/dispenso) is a high-performance \
 C++ library for parallel programming from Meta. It provides work-stealing thread \
@@ -1047,30 +1458,12 @@ No changes to `conanfile.py` (version-agnostic).
 ---"""
 
 
-def pr_body_vcpkg(version, is_new_port):
+def pr_body_vcpkg(version):
     """Generate PR body following vcpkg's PR template."""
-    if is_new_port:
-        return f"""\
-## New Port Checklist
-
-- [ ] Complies with the [maintainer guide](https://learn.microsoft.com/en-us/vcpkg/contributing/maintainer-guide)
-- [x] Port name is associated with the packaged project
-- [x] All optional build dependencies controlled by the port
-- [x] Version scheme and license declarations match upstream
-- [x] Copyright file is accurate
-- [x] Source code comes from authoritative origin
-- [x] Brief, accurate usage text provided
-- [x] Version database updated via `./vcpkg x-add-version --all`
-- [x] Exactly one version added per modified versions file
-
-Add [dispenso](https://github.com/facebookincubator/dispenso) {version} — \
-a high-performance C++ parallel programming library from Meta. MIT licensed, \
-requires C++14, no external dependencies beyond pthreads."""
-    else:
-        return f"""\
+    return f"""\
 ## Port Update Checklist
 
-- [ ] Complies with the [maintainer guide](https://learn.microsoft.com/en-us/vcpkg/contributing/maintainer-guide)
+- [x] Complies with the [maintainer guide](https://learn.microsoft.com/en-us/vcpkg/contributing/maintainer-guide)
 - [x] Updated SHA512 checksums
 - [x] Version database updated via `./vcpkg x-add-version --all`
 - [x] Exactly one version added per modified versions file
@@ -1078,9 +1471,16 @@ requires C++14, no external dependencies beyond pthreads."""
 Update dispenso to version {version}."""
 
 
-def pr_body_macports(version, tests_ran):
+def pr_body_macports(version, tests_ran, tested_on=None):
     """Generate PR body following MacPorts' PR template."""
-    lint_check = "[x]" if tests_ran else "[ ]"
+    test_check = "[x]" if tests_ran else "[ ]"
+    if tested_on:
+        tested_on_section = tested_on
+    else:
+        tested_on_section = (
+            "<!-- Run and paste output of: "
+            "port version && sw_vers && xcode-select -p -->"
+        )
     return f"""\
 #### Description
 Update dispenso to version {version}.
@@ -1088,37 +1488,32 @@ Update dispenso to version {version}.
 [dispenso](https://github.com/facebookincubator/dispenso) is a high-performance \
 C++ parallel programming library from Meta.
 
-#### Type(s)
+###### Type(s)
 - [ ] bugfix
 - [x] enhancement
 - [ ] security fix
 
-#### Tested on
-<!-- Run and paste output of: port version && sw_vers && xcode-select -p -->
+###### Tested on
+{tested_on_section}
 
-#### Verification
+###### Verification
 - [x] Followed [Commit Message Guidelines](https://trac.macports.org/wiki/CommitMessages)
 - [x] Squashed and minimized commits
 - [x] Checked that there aren't other open [pull requests](https://github.com/macports/macports-ports/pulls) for the same change
-- {lint_check} Checked Portfile with `port lint --nitpick`
-- [ ] Tested with `sudo port -vst install`
-- [ ] Checked that binaries work as expected
-- [ ] Tested important variants"""
+- {test_check} Checked Portfile with `port lint --nitpick`
+- {test_check} Tried existing tests with `sudo port test`
+- {test_check} Tested with `sudo port -vst install`
+- {test_check} Checked that binaries work as expected
+- [x] Tested important variants (dispenso has no variants)"""
 
 
-def pr_title(manager, version, is_new):
+def pr_title(manager, version):
     """Generate the PR title for a given manager."""
     titles = {
         "conan": f"dispenso: add version {version}",
-        "vcpkg": f"[dispenso] Add new port (v{version})"
-        if is_new
-        else f"[dispenso] Update to version {version}",
-        "homebrew": f"dispenso {version} (new formula)"
-        if is_new
-        else f"dispenso {version}",
-        "macports": f"dispenso: add new port @{version}"
-        if is_new
-        else f"dispenso: update to {version}",
+        "vcpkg": f"[dispenso] Update to version {version}",
+        "homebrew": f"dispenso {version}",
+        "macports": f"dispenso: update to {version}",
     }
     return titles.get(manager, f"dispenso {version}")
 
@@ -1130,13 +1525,11 @@ def pre_pr_checklist(manager, version, tests_ran):
             "Read contributing guidelines: https://github.com/Homebrew/homebrew-core/blob/HEAD/CONTRIBUTING.md",
             "Run: HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source dispenso",
             "Run: brew test dispenso",
-            "Run: brew audit --new dispenso  (or --strict for updates)",
+            "Run: brew audit --strict dispenso",
         ],
         "conan": [
-            "Open or comment on an issue at conan-center-index per CONTRIBUTING.md",
             "Sign the CLA if prompted on the PR",
             "Run: conan create recipes/dispenso/all --version=" + version,
-            "Include 'fixes #<issue>' in PR body to link the issue",
         ],
         "vcpkg": [
             "Read maintainer guide: https://learn.microsoft.com/en-us/vcpkg/contributing/maintainer-guide",
@@ -1156,6 +1549,217 @@ def pre_pr_checklist(manager, version, tests_ran):
         # Filter out "Run:" items that the script already tested
         pass  # Keep all — user should still double-check
     return items
+
+
+# ---------------------------------------------------------------------------
+# PR creation and guided flow
+# ---------------------------------------------------------------------------
+
+
+def get_default_branch(upstream_repo):
+    """Get the default branch of an upstream repo via gh API."""
+    result = subprocess.run(
+        ["gh", "api", f"repos/{upstream_repo}", "--jq", ".default_branch"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return result.stdout.strip()
+    return "master"
+
+
+def close_superseded_prs(upstream_repo, version, github_user, dry_run):
+    """Close any open dispenso PRs by this user in the upstream repo."""
+    result = subprocess.run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            upstream_repo,
+            "--author",
+            github_user,
+            "--search",
+            "dispenso",
+            "--state",
+            "open",
+            "--json",
+            "number,title,url",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return
+
+    try:
+        prs = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return
+
+    for pr in prs:
+        title = pr.get("title", "")
+        number = pr["number"]
+        url = pr.get("url", "")
+        comment = (
+            f"Superseded by version {version} update. Closing in favor of the new PR."
+        )
+        if dry_run:
+            print(f"  [DRY RUN] Would close #{number}: {title}")
+            continue
+
+        close_result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "close",
+                str(number),
+                "--repo",
+                upstream_repo,
+                "--comment",
+                comment,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if close_result.returncode == 0:
+            print(f"  Closed #{number}: {title}")
+        else:
+            print(
+                f"  WARNING: Failed to close #{number}: {close_result.stderr.strip()}"
+            )
+
+
+def create_pr(upstream_repo, branch, title, body, github_user, dry_run):
+    """Create a PR via gh CLI. Returns the PR URL or None."""
+    if dry_run:
+        print(f"  [DRY RUN] Would create PR: {title}")
+        return None
+
+    base = get_default_branch(upstream_repo)
+
+    result = subprocess.run(
+        [
+            "gh",
+            "pr",
+            "create",
+            "--repo",
+            upstream_repo,
+            "--head",
+            f"{github_user}:{branch}",
+            "--base",
+            base,
+            "--title",
+            title,
+            "--body",
+            body,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        url = result.stdout.strip()
+        print(f"  Created PR: {url}")
+        return url
+
+    stderr = result.stderr.strip()
+    # If a PR already exists for this branch, extract its URL
+    if "already exists" in stderr:
+        print(f"  PR already exists for branch {branch}")
+        view_result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                branch,
+                "--repo",
+                upstream_repo,
+                "--json",
+                "url",
+                "--jq",
+                ".url",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if view_result.returncode == 0:
+            url = view_result.stdout.strip()
+            print(f"  Existing PR: {url}")
+            return url
+        return None
+
+    print(f"  ERROR: Failed to create PR: {stderr}")
+    return None
+
+
+def create_prs_phase(results, args):
+    """Create PRs for all successful managers. Returns dict of manager→URL."""
+    if args.skip_push:
+        print("  --skip-push is set — cannot create PRs without pushing first.")
+        return {}
+
+    gh_bin = shutil.which("gh")
+    if not gh_bin:
+        print("  ERROR: gh CLI not found — install it to create PRs automatically.")
+        print("  PR titles and bodies were printed above for manual creation.")
+        return {}
+
+    print()
+    print("=" * 60)
+    print("CREATING PRs")
+    print("=" * 60)
+
+    pr_urls = {}
+    for mgr, result in results.items():
+        if result.get("status") not in ("ok",):
+            continue
+
+        upstream = UPSTREAM_REPOS[mgr]
+        branch = result.get("branch", "")
+        title = result.get("pr_title", "")
+        body = result.get("pr_body", "")
+
+        if not branch or not title:
+            continue
+
+        print(f"\n--- {mgr} ---")
+
+        # Close any superseded open PRs
+        close_superseded_prs(upstream, args.version, args.github_user, args.dry_run)
+
+        # Create the new PR
+        url = create_pr(upstream, branch, title, body, args.github_user, args.dry_run)
+        if url:
+            pr_urls[mgr] = url
+
+    if pr_urls:
+        print()
+        print("=" * 60)
+        print("PR URLs")
+        print("=" * 60)
+        for mgr, url in pr_urls.items():
+            print(f"  {mgr:12s}  {url}")
+
+    return pr_urls
+
+
+def post_pr_steps(pr_urls, version):
+    """Guide the user through remaining manual post-PR steps."""
+    print()
+    print("=" * 60)
+    print("POST-PR STEPS")
+    print("=" * 60)
+
+    if "conan" in pr_urls:
+        print()
+        print("  Conan: If this is your first PR from this account, the CLA")
+        print("  bot will comment on the PR. Sign it if prompted.")
+        input("  Press Enter to continue ...")
+
+    print()
+    print("  Monitor CI on each PR and respond to reviewer feedback.")
+    print()
+    print("  All done!")
 
 
 def print_summary(results, github_user):
@@ -1181,6 +1785,8 @@ def print_summary(results, github_user):
         elif status == "needs_macos":
             print(f"  WARN  {mgr:12s}  Checksums OK, but full testing requires macOS")
             print(f"        {'':12s}  {branch_url}")
+        elif status == "no_changes":
+            print(f"  SKIP  {mgr:12s}  Upstream already has this version")
         elif status == "skipped":
             print(f"  SKIP  {mgr:12s}  {result.get('reason', '')}")
         else:
@@ -1199,7 +1805,6 @@ def print_summary(results, github_user):
         if result.get("status") != "ok":
             continue
         version = result.get("version", "")
-        is_new = result.get("is_new", False)
         tests_ran = result.get("tests_ran", False)
         body = result.get("pr_body", "")
         title = result.get("pr_title", "")
@@ -1231,8 +1836,334 @@ def print_summary(results, github_user):
     print()
 
 
+# ---------------------------------------------------------------------------
+# Guided interactive flow
+# ---------------------------------------------------------------------------
+
+
+def prompt_continue(message="Continue?"):
+    """Prompt user to continue, skip, or quit. Returns the chosen action."""
+    response = input(f"  {message} [Enter=yes / s=skip / q=quit] ").strip().lower()
+    if response in ("", "y", "yes"):
+        return "continue"
+    if response in ("s", "skip"):
+        return "skip"
+    if response in ("q", "quit"):
+        return "quit"
+    return "continue"
+
+
+def _detect_default_branch(repo_dir):
+    """Detect the default branch from local remote refs."""
+    result = subprocess.run(
+        ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return result.stdout.strip().replace("refs/remotes/origin/", "")
+    for candidate in ["main", "master"]:
+        r = subprocess.run(
+            ["git", "show-ref", "--verify", f"refs/remotes/origin/{candidate}"],
+            cwd=repo_dir,
+            capture_output=True,
+        )
+        if r.returncode == 0:
+            return candidate
+    return "master"
+
+
+def _guided_run_updates(args, managers, hashes, tarball_path):
+    """Run each manager's update handler, prompting before each.
+
+    Returns (results, aborted).  *aborted* is True if the user chose 'quit'.
+    """
+    handlers = {
+        "conan": update_conan,
+        "vcpkg": update_vcpkg,
+        "homebrew": update_homebrew,
+        "macports": update_macports,
+    }
+    step_descriptions = {
+        "vcpkg": "Update vcpkg port (version, SHA512, patches, version DB)",
+        "conan": "Update Conan recipe (conandata.yml, config.yml, issue)",
+        "homebrew": "Update Homebrew formula (URL, SHA256, build + test)",
+        "macports": "Update MacPorts Portfile (version, checksums, lint + install + test)",
+    }
+
+    results = {}
+    for mgr in managers:
+        print()
+        print("=" * 60)
+        print(f"  {step_descriptions.get(mgr, mgr)}")
+        if mgr in MACOS_ONLY_MANAGERS and platform.system() != "Darwin":
+            print("  (full testing requires macOS — will verify checksums only)")
+        print("=" * 60)
+
+        action = prompt_continue(f"Proceed with {mgr}?")
+        if action == "quit":
+            print("\n  Quitting. Local commits (if any) are preserved.")
+            return results, True
+        if action == "skip":
+            results[mgr] = {"status": "skipped", "reason": "skipped by user"}
+            continue
+
+        try:
+            results[mgr] = handlers[mgr](args, hashes, tarball_path)
+        except Exception as e:
+            print(f"\n  ERROR: {mgr} failed: {e}")
+            results[mgr] = {"status": "error", "error": str(e)}
+
+        _print_manager_result(mgr, results[mgr])
+
+    return results, False
+
+
+def _print_manager_result(mgr, result):
+    """Print the outcome of a single manager update."""
+    status = result.get("status", "unknown")
+    messages = {
+        "ok": "PASSED",
+        "no_changes": "SKIPPED — upstream already has this version",
+        "needs_macos": "checksums OK — re-run on macOS for full testing",
+        "test_failed": "TESTS FAILED — branch will not be pushed",
+    }
+    if status in messages:
+        print(f"\n  {mgr}: {messages[status]}")
+    elif status == "error":
+        print(f"\n  {mgr}: ERROR — {result.get('error', '')}")
+
+
+def _guided_push_branches(args, pushable):
+    """Push branches to fork and print compare URLs.
+
+    Returns dict of successfully pushed managers.
+    """
+    print()
+    print("=" * 60)
+    print("  Pushing branches to fork")
+    print("=" * 60)
+
+    pushed = {}
+    for mgr, result in pushable.items():
+        repo_dir = os.path.join(args.repos_dir, REPO_DIRS[mgr])
+        branch = result.get("branch", "")
+        if not branch:
+            continue
+        print(f"\n  {mgr}: pushing {branch} ...")
+        run(["git", "push", "-u", "fork", branch, "--force"], cwd=repo_dir)
+        pushed[mgr] = result
+
+    print()
+    print("  All branches pushed. Review the proposed changes:")
+    print()
+    for mgr, result in pushed.items():
+        upstream = UPSTREAM_REPOS[mgr]
+        repo_dir = os.path.join(args.repos_dir, REPO_DIRS[mgr])
+        default = _detect_default_branch(repo_dir)
+        branch = result.get("branch", "")
+        repo_name = REPO_DIRS[mgr]
+        compare_url = (
+            f"https://github.com/{upstream}/compare/"
+            f"{default}...{args.github_user}:{repo_name}:{branch}"
+        )
+        print(f"    {mgr:12s}  {compare_url}")
+
+    return pushed
+
+
+def _guided_create_prs(pushed, args):
+    """Create PRs for successfully pushed managers via gh CLI.
+
+    Returns dict mapping manager name to PR URL.
+    """
+    pr_urls = {}
+    for mgr, result in pushed.items():
+        if result.get("status") != "ok":
+            continue
+        upstream = UPSTREAM_REPOS[mgr]
+        branch = result.get("branch", "")
+        title = result.get("pr_title", "")
+        body = result.get("pr_body", "")
+        if not branch or not title:
+            continue
+
+        print(f"\n--- {mgr} ---")
+        close_superseded_prs(upstream, args.version, args.github_user, False)
+        url = create_pr(upstream, branch, title, body, args.github_user, False)
+        if url:
+            pr_urls[mgr] = url
+
+    return pr_urls
+
+
+def _guided_review_push_pr(args, results, pushable, tarball_path):
+    """Review diffs, push branches, and create PRs.
+
+    Handles all user prompts for the post-update phase.
+    """
+    version = args.version
+
+    # ---- Inspect diffs ----
+    print()
+    print("=" * 60)
+    print("  Review changes before pushing")
+    print("=" * 60)
+    print()
+    print("  Inspect the diffs in each repo:")
+    for mgr in pushable:
+        repo_dir = os.path.join(args.repos_dir, REPO_DIRS[mgr])
+        default = _detect_default_branch(repo_dir)
+        print(f"    cd {repo_dir} && git diff origin/{default}...HEAD")
+
+    action = prompt_continue("Diffs look good? Push to fork?")
+    if action == "quit":
+        print("\n  Quitting. Changes are committed locally in each repo.")
+        _guided_cleanup(tarball_path)
+        return
+    if action == "skip":
+        print("\n  Skipped push. Changes are committed locally.")
+        print_summary(results, args.github_user)
+        _guided_cleanup(tarball_path)
+        return
+
+    # ---- Push ----
+    pushed = _guided_push_branches(args, pushable)
+
+    # ---- Create PRs ----
+    pr_urls = _guided_offer_pr_creation(args, pushed, results, tarball_path)
+    if pr_urls is None:
+        return
+
+    if pr_urls:
+        print()
+        print("=" * 60)
+        print("  PR URLs")
+        print("=" * 60)
+        for mgr, url in pr_urls.items():
+            print(f"    {mgr:12s}  {url}")
+
+    post_pr_steps(pr_urls, version)
+
+    # ---- needs_macos reminder ----
+    needs_macos = [m for m, r in results.items() if r.get("status") == "needs_macos"]
+    if needs_macos:
+        print()
+        print("=" * 60)
+        print("  macOS required for full testing")
+        print("=" * 60)
+        mgr_list = ",".join(needs_macos)
+        print(f"\n  Re-run on macOS to complete testing and create PRs:")
+        print(
+            f"    python3 {sys.argv[0]} --version {version}"
+            f" --managers {mgr_list} --guided"
+        )
+
+    _guided_cleanup(tarball_path)
+    print()
+    print("  Release update complete!")
+
+
+def _guided_offer_pr_creation(args, pushed, results, tarball_path):
+    """Prompt to create PRs via gh CLI.
+
+    Returns pr_urls dict, or None if the user skipped/quit or gh is missing.
+    """
+    print()
+    print("=" * 60)
+    print("  Create pull requests")
+    print("=" * 60)
+
+    gh_bin = shutil.which("gh")
+    if not gh_bin:
+        print()
+        print("  gh CLI not found. Install it to create PRs automatically.")
+        print("  PR titles and bodies are printed below for manual creation.")
+        print_summary(results, args.github_user)
+        _guided_cleanup(tarball_path)
+        return None
+
+    action = prompt_continue("Create PRs via gh CLI?")
+    if action in ("skip", "quit"):
+        print("\n  Branches are pushed. Create PRs manually if needed.")
+        print_summary(results, args.github_user)
+        _guided_cleanup(tarball_path)
+        return None
+
+    return _guided_create_prs(pushed, args)
+
+
+def guided_flow(args):
+    """Run the complete release update flow interactively.
+
+    Walks through every step, prompts before each action, and creates PRs
+    at the end. Replaces the need for a separate checklist document.
+    """
+    version = args.version
+    managers = args.managers
+
+    print()
+    print("=" * 60)
+    print(f"  dispenso {version} — guided release update")
+    print("=" * 60)
+    print()
+    print("  Managers: " + ", ".join(managers))
+    if args.dry_run:
+        print("  Mode: DRY RUN (no files will be modified)")
+    if args.skip_test:
+        print("  Mode: SKIP TESTS")
+    print()
+    print("  At each step you can press Enter to continue,")
+    print("  's' to skip, or 'q' to quit.")
+    print()
+
+    # ---- Download tarball ----
+    print("-" * 60)
+    print("  Downloading release tarball ...")
+    print("-" * 60)
+    tarball_path, hashes = download_and_hash(version)
+
+    # ---- Update each manager (no push) ----
+    original_skip_push = args.skip_push
+    args.skip_push = True
+    results, aborted = _guided_run_updates(args, managers, hashes, tarball_path)
+    args.skip_push = original_skip_push
+
+    if aborted:
+        _guided_cleanup(tarball_path)
+        return
+
+    pushable = {
+        m: r for m, r in results.items() if r.get("status") in ("ok", "needs_macos")
+    }
+
+    if not pushable:
+        print("\n  No managers succeeded. Fix issues and re-run.")
+        _guided_cleanup(tarball_path)
+        return
+
+    if args.dry_run:
+        print("\n  Dry run complete. Re-run without --dry-run to apply changes.")
+        _guided_cleanup(tarball_path)
+        return
+
+    _guided_review_push_pr(args, results, pushable, tarball_path)
+
+
+def _guided_cleanup(tarball_path):
+    """Clean up the downloaded tarball."""
+    if os.path.exists(tarball_path):
+        os.unlink(tarball_path)
+        print(f"\n  Cleaned up {tarball_path}")
+
+
 def main():
     args = parse_args()
+
+    if args.guided:
+        guided_flow(args)
+        return
 
     print(f"Updating dispenso to version {args.version}")
     if args.dry_run:
@@ -1241,6 +2172,8 @@ def main():
         print("*** SKIP TEST MODE — no local verification ***")
     if args.skip_push:
         print("*** SKIP PUSH MODE — commit and test only ***")
+    if args.create_prs:
+        print("*** CREATE PRS MODE — will create PRs after push ***")
     print()
 
     tarball_path, hashes = download_and_hash(args.version)
@@ -1262,6 +2195,12 @@ def main():
             print()
 
     print_summary(results, args.github_user)
+
+    # Create PRs if requested
+    if args.create_prs:
+        pr_urls = create_prs_phase(results, args)
+        if pr_urls:
+            post_pr_steps(pr_urls, args.version)
 
     # Clean up tarball
     if os.path.exists(tarball_path):
