@@ -110,6 +110,10 @@ def parse_args():
         "before each action, creates PRs at the end",
     )
     args = parser.parse_args()
+    if not re.match(r"^\d+\.\d+\.\d+$", args.version):
+        parser.error(
+            f"Invalid version format: {args.version!r}. Expected semver like 1.5.1"
+        )
     args.managers = [m.strip() for m in args.managers.split(",")]
     for m in args.managers:
         if m not in MANAGERS:
@@ -252,10 +256,10 @@ def ensure_repo(repos_dir, manager, github_user, dry_run):
             cwd=repo_dir,
         )
     else:
-        print(f"  Fork remote already exists")
+        print("  Fork remote already exists")
 
     # Fetch upstream
-    print(f"  Fetching origin ...")
+    print("  Fetching origin ...")
     run(["git", "fetch", "origin"], cwd=repo_dir)
 
     return repo_dir
@@ -390,9 +394,12 @@ def commit_and_push(repo_dir, branch, message, github_user, dry_run, skip_push):
                 )
                 return False
 
-        # Soft-reset to merge base and recommit as single commit
+        # Soft-reset to merge base and recommit as single commit.
+        # Re-add after reset so the index reflects all working-tree changes
+        # relative to the new HEAD (merge_base), not the old HEAD.
         print("  Squashing into single commit ...")
         run(["git", "reset", "--soft", merge_base], cwd=repo_dir)
+        run(["git", "add", "-A"], cwd=repo_dir)
         run(["git", "commit", "-m", message], cwd=repo_dir)
     else:
         # Fallback: just commit normally if we can't find a merge base
@@ -602,7 +609,7 @@ def test_macports(repo_dir, version, hashes=None):
 
     # Step 1: install
     print()
-    print(f"  Step 1 — run this command:")
+    print("  Step 1 — run this command:")
     print(f"    sudo {port_bin} -D {tmp_portdir} -vst install")
     print()
     answer = input("  Result? [y=succeeded / or describe what happened] ").strip()
@@ -615,7 +622,7 @@ def test_macports(repo_dir, version, hashes=None):
 
     # Step 2: test
     print()
-    print(f"  Step 2 — run this command:")
+    print("  Step 2 — run this command:")
     print(f"    sudo {port_bin} -D {tmp_portdir} test")
     print()
     answer = input("  Result? [y=succeeded / or describe what happened] ").strip()
@@ -740,7 +747,7 @@ def verify_formula_checksums(repo_dir, hashes):
     expected = hashes["sha256"]
     actual = match.group(1)
     if actual != expected:
-        print(f"  FAIL: sha256 mismatch in formula")
+        print("  FAIL: sha256 mismatch in formula")
         print(f"    Formula:   {actual}")
         print(f"    Expected:  {expected}")
         return False
@@ -842,7 +849,7 @@ beyond pthreads."""
 
 def update_conan(args, hashes, tarball_path):
     """Update conan-center-index with new dispenso version."""
-    print(f"=== Conan (conan-center-index) ===")
+    print("=== Conan (conan-center-index) ===")
     version = args.version
     manager = "conan"
     branch = BRANCH_NAMES.get(manager, "add-dispenso")
@@ -939,12 +946,16 @@ def update_conan(args, hashes, tarball_path):
     }
 
 
-def detect_obsolete_patches(tarball_path, port_dir):
+def detect_obsolete_patches(tarball_path, port_dir, strip_level=1):
     """Check which patches in port_dir are obsolete against the tarball source.
 
     Extracts the tarball to a temp directory and tries `git apply --check` for
     each .patch file. Returns a list of patch filenames that no longer apply
     (i.e. the fix has been upstreamed).
+
+    Args:
+        strip_level: Number of leading path components to strip (0 for MacPorts,
+            1 for vcpkg/git-style patches).
     """
     patch_files = [f for f in os.listdir(port_dir) if f.endswith(".patch")]
     if not patch_files:
@@ -979,7 +990,7 @@ def detect_obsolete_patches(tarball_path, port_dir):
         for patch_file in patch_files:
             patch_path = os.path.join(port_dir, patch_file)
             result = subprocess.run(
-                ["git", "apply", "--check", patch_path],
+                ["git", "apply", "--check", f"-p{strip_level}", patch_path],
                 cwd=src_dir,
                 capture_output=True,
             )
@@ -1065,7 +1076,7 @@ def _vcpkg_update_port_files(repo_dir, version, hashes, dry_run):
             content,
         )
         open(portfile_path, "w").write(content)
-        print(f"  Updated SHA512")
+        print("  Updated SHA512")
     else:
         print(f"  [DRY RUN] Would update SHA512 to {hashes['sha512']}")
 
@@ -1087,6 +1098,60 @@ def _vcpkg_cleanup_patches(repo_dir, tarball_path, dry_run):
     obsolete = detect_obsolete_patches(tarball_path, port_dir)
     if obsolete:
         remove_obsolete_patches(port_dir, portfile_path, obsolete)
+
+
+def _macports_cleanup_patches(repo_dir, tarball_path, dry_run):
+    """Detect and remove obsolete patches from the MacPorts port.
+
+    MacPorts patches use -p0 (no a/b prefixes) and are stored in a files/
+    subdirectory. The Portfile references them via 'patchfiles'.
+    """
+    port_dir = os.path.join(repo_dir, "devel", "dispenso")
+    files_dir = os.path.join(port_dir, "files")
+
+    if dry_run or not os.path.isdir(files_dir):
+        return
+
+    patch_files = [f for f in os.listdir(files_dir) if f.endswith(".patch")]
+    if not patch_files:
+        return
+
+    print("  --- Checking patches against new source ---")
+    obsolete = detect_obsolete_patches(tarball_path, files_dir, strip_level=0)
+    if not obsolete:
+        return
+
+    portfile_path = os.path.join(port_dir, "Portfile")
+
+    # Delete obsolete patch files
+    for patch_file in obsolete:
+        patch_path = os.path.join(files_dir, patch_file)
+        if os.path.exists(patch_path):
+            os.unlink(patch_path)
+            print(f"  Deleted {patch_file}")
+
+    # Check if any patches remain
+    remaining = [f for f in os.listdir(files_dir) if f.endswith(".patch")]
+
+    # Update Portfile: remove patchfiles entries
+    content = open(portfile_path).read()
+    if not remaining:
+        # Remove entire patchfiles line(s)
+        content = re.sub(r"\n*patchfiles\s+.*\n?", "\n", content)
+        print("  Removed patchfiles from Portfile")
+        # Remove empty files/ directory
+        try:
+            os.rmdir(files_dir)
+            print("  Removed empty files/ directory")
+        except OSError:
+            pass
+    else:
+        # Remove only obsolete entries from patchfiles
+        for patch_file in obsolete:
+            content = re.sub(rf"\s*{re.escape(patch_file)}", "", content)
+        print(f"  Removed obsolete patches from Portfile, kept: {remaining}")
+
+    open(portfile_path, "w").write(content)
 
 
 def _vcpkg_run_tooling(repo_dir, vcpkg_json_path, dry_run):
@@ -1135,9 +1200,51 @@ def _vcpkg_run_tooling(repo_dir, vcpkg_json_path, dry_run):
     # commit_and_push's git add -A.
 
 
+def _vcpkg_verify_port_files(repo_dir, version, hashes):
+    """Verify port files contain the expected version and hash after updates."""
+    port_dir = os.path.join(repo_dir, "ports", "dispenso")
+    errors = []
+
+    vcpkg_json_path = os.path.join(port_dir, "vcpkg.json")
+    portfile_path = os.path.join(port_dir, "portfile.cmake")
+
+    # Check vcpkg.json has correct version
+    vcpkg_json = open(vcpkg_json_path).read()
+    if f'"version": "{version}"' not in vcpkg_json:
+        errors.append(f"vcpkg.json does not contain version {version}")
+
+    # Check portfile.cmake has correct SHA512
+    portfile = open(portfile_path).read()
+    if hashes["sha512"] not in portfile:
+        errors.append("portfile.cmake does not contain expected SHA512")
+
+    # Check portfile doesn't reference deleted patch files.
+    # Only match lines that look like bare filenames (no spaces, no comment chars).
+    for line in portfile.splitlines():
+        stripped = line.strip()
+        if (
+            stripped.endswith(".patch")
+            and " " not in stripped
+            and not stripped.startswith("#")
+        ):
+            patch_path = os.path.join(port_dir, stripped)
+            if not os.path.exists(patch_path):
+                errors.append(
+                    f"portfile.cmake references {stripped} but file does not exist"
+                )
+
+    if errors:
+        print("  ERROR: Port file verification failed:")
+        for e in errors:
+            print(f"    - {e}")
+        raise RuntimeError("vcpkg port files are inconsistent; aborting")
+    else:
+        print("  Verified: vcpkg.json and portfile.cmake are consistent")
+
+
 def update_vcpkg(args, hashes, tarball_path):
     """Update vcpkg with new dispenso version."""
-    print(f"=== vcpkg ===")
+    print("=== vcpkg ===")
     version = args.version
     manager = "vcpkg"
     branch = BRANCH_NAMES.get(manager, "add-dispenso")
@@ -1148,6 +1255,10 @@ def update_vcpkg(args, hashes, tarball_path):
     vcpkg_json_path = _vcpkg_update_port_files(repo_dir, version, hashes, args.dry_run)
     _vcpkg_cleanup_patches(repo_dir, tarball_path, args.dry_run)
     _vcpkg_run_tooling(repo_dir, vcpkg_json_path, args.dry_run)
+
+    # Verify port files were updated correctly before committing.
+    if not args.dry_run:
+        _vcpkg_verify_port_files(repo_dir, version, hashes)
 
     # --- Commit ---
     commit_msg = f"[dispenso] Update to version {version}"
@@ -1192,7 +1303,7 @@ def update_vcpkg(args, hashes, tarball_path):
 
 def update_homebrew(args, hashes, tarball_path):
     """Update homebrew-core with new dispenso version."""
-    print(f"=== Homebrew (homebrew-core) ===")
+    print("=== Homebrew (homebrew-core) ===")
     version = args.version
     manager = "homebrew"
     branch = f"dispenso-{version}"
@@ -1206,7 +1317,7 @@ def update_homebrew(args, hashes, tarball_path):
     if not args.dry_run:
         if not os.path.exists(formula_path):
             print(f"  ERROR: Formula file not found at {formula_path}")
-            print(f"  The dispenso formula may not exist yet in homebrew-core.")
+            print("  The dispenso formula may not exist yet in homebrew-core.")
             print()
             return {"status": "error", "error": "Formula file not found"}
 
@@ -1230,9 +1341,9 @@ def update_homebrew(args, hashes, tarball_path):
         content = re.sub(r"\n\s*revision\s+\d+", "", content)
 
         open(formula_path, "w").write(content)
-        print(f"  Updated url, sha256 (removed revision if present)")
+        print("  Updated url, sha256 (removed revision if present)")
     else:
-        print(f"  [DRY RUN] Would update url and sha256 in formula")
+        print("  [DRY RUN] Would update url and sha256 in formula")
 
     # --- Verify checksums ---
     checksums_ok = True
@@ -1284,7 +1395,7 @@ def update_homebrew(args, hashes, tarball_path):
 
 def update_macports(args, hashes, tarball_path):
     """Update macports-ports with new dispenso version."""
-    print(f"=== MacPorts (macports-ports) ===")
+    print("=== MacPorts (macports-ports) ===")
     version = args.version
     manager = "macports"
     branch = f"dispenso-{version}"
@@ -1303,7 +1414,7 @@ def update_macports(args, hashes, tarball_path):
     if not args.dry_run:
         if not os.path.exists(portfile_path):
             print(f"  ERROR: Portfile not found at {portfile_path}")
-            print(f"  The dispenso port may not exist yet in MacPorts.")
+            print("  The dispenso port may not exist yet in MacPorts.")
             print()
             return {"status": "error", "error": "Portfile not found"}
 
@@ -1341,7 +1452,7 @@ def update_macports(args, hashes, tarball_path):
         )
 
         open(portfile_path, "w").write(content)
-        print(f"  Updated github.setup version, checksums (rmd160, sha256, size)")
+        print("  Updated github.setup version, checksums (rmd160, sha256, size)")
     else:
         print(f"  [DRY RUN] Would update version to {version} and checksums")
 
@@ -1350,6 +1461,9 @@ def update_macports(args, hashes, tarball_path):
     if not args.dry_run:
         print("  --- Verifying checksums ---")
         checksums_ok = verify_portfile_checksums(repo_dir, hashes)
+
+    # --- Clean up obsolete patches ---
+    _macports_cleanup_patches(repo_dir, tarball_path, args.dry_run)
 
     # --- Commit ---
     commit_msg = f"dispenso: update to {version}"
@@ -1599,8 +1713,9 @@ def close_superseded_prs(upstream_repo, version, github_user, dry_run):
 
     for pr in prs:
         title = pr.get("title", "")
-        number = pr["number"]
-        url = pr.get("url", "")
+        number = pr.get("number")
+        if number is None:
+            continue
         comment = (
             f"Superseded by version {version} update. Closing in favor of the new PR."
         )
@@ -2054,7 +2169,7 @@ def _guided_review_push_pr(args, results, pushable, tarball_path):
         print("  macOS required for full testing")
         print("=" * 60)
         mgr_list = ",".join(needs_macos)
-        print(f"\n  Re-run on macOS to complete testing and create PRs:")
+        print("\n  Re-run on macOS to complete testing and create PRs:")
         print(
             f"    python3 {sys.argv[0]} --version {version}"
             f" --managers {mgr_list} --guided"
@@ -2216,8 +2331,8 @@ def main():
         print("=" * 60)
         print("ERROR: Full testing requires macOS")
         print("=" * 60)
-        print(f"  The following managers were updated and checksums verified,")
-        print(f"  but full testing (lint, install, audit) requires macOS:")
+        print("  The following managers were updated and checksums verified,")
+        print("  but full testing (lint, install, audit) requires macOS:")
         for mgr in needs_macos:
             print(f"    - {mgr}")
         print()
