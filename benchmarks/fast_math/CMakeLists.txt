@@ -10,7 +10,12 @@ set(FAST_MATH_EXTRA_FLAGS ${DISPENSO_FAST_MATH_SIMD_FLAGS})
 set(FAST_MATH_EXTRA_LIBS "")
 if(DISPENSO_FAST_MATH_HIGHWAY AND TARGET hwy)
   list(APPEND FAST_MATH_EXTRA_LIBS hwy)
-  list(APPEND FAST_MATH_EXTRA_FLAGS -isystem${hwy_SOURCE_DIR})
+  # Treat Highway as a system include to suppress warnings from its headers.
+  if(MSVC)
+    list(APPEND FAST_MATH_EXTRA_FLAGS /external:I ${hwy_SOURCE_DIR})
+  else()
+    list(APPEND FAST_MATH_EXTRA_FLAGS -isystem${hwy_SOURCE_DIR})
+  endif()
 endif()
 
 file(GLOB FAST_MATH_BENCHMARK_FILES CONFIGURE_DEPENDS *.cpp)

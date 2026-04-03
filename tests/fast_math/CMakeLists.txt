@@ -11,7 +11,11 @@ set(FAST_MATH_EXTRA_LIBS "")
 if(DISPENSO_FAST_MATH_HIGHWAY AND TARGET hwy)
   list(APPEND FAST_MATH_EXTRA_LIBS hwy)
   # Treat Highway as a system include to suppress warnings from its headers.
-  list(APPEND FAST_MATH_EXTRA_FLAGS -isystem${hwy_SOURCE_DIR})
+  if(MSVC)
+    list(APPEND FAST_MATH_EXTRA_FLAGS /external:I ${hwy_SOURCE_DIR})
+  else()
+    list(APPEND FAST_MATH_EXTRA_FLAGS -isystem${hwy_SOURCE_DIR})
+  endif()
 endif()
 
 # Scalar function tests (link eval.cpp helper)
