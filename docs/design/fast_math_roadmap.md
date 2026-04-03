@@ -111,3 +111,112 @@ dispenso::fast_math occupies a different niche:
 5. **Scalar-first design** — Every function works on plain `float` with the same API. SIMD is opt-in, not required.
 
 For users who need the full breadth of SLEEF's function coverage, SLEEF is the right choice. For users who want fast transcendentals integrated into a C++ parallel computing library with a clean generic API, dispenso::fast_math fills that gap.
+
+### SIMD Architecture Evolution
+
+The current SIMD wrapper design (`FloatTraits<T>`, `SimdTypeFor<T>`) supports
+fixed-width architectures (SSE, AVX, AVX-512, NEON) with native wrappers and
+variable-width via Highway. This section outlines the path toward broader
+architecture support and integration with dispenso's parallel algorithms.
+
+#### Variable-Length Vector Architectures
+
+**ARM SVE/SVE2** (128-2048 bit) and **RISC-V Vector Extension (RVV)** use
+runtime-determined vector lengths. Key differences from fixed-width SIMD:
+
+- Vector types are **sizeless** (`svfloat32_t`, `vfloat32m1_t`) — can't take
+  sizeof, store in arrays, or (portably) place in structs.
+- Comparisons return **predicate registers** (`svbool_t`, `vbool_t`), not
+  lane-wide float masks. This differs from SSE/AVX (float masks) and AVX-512
+  (bit masks), but the existing `BoolType_t<Flt>` / `bool_as_mask` abstraction
+  extends naturally to predicates.
+- RVV uses a **vector-length-agnostic (VLA)** programming model: `vsetvl(n)`
+  sets the number of elements to process per iteration, and the hardware
+  handles tail elements natively. This is closer to Cray-style vector
+  processing than traditional SIMD.
+- RVV's **LMUL** (register grouping) gangs 1-8 registers together, trading
+  register count for width. Effective width is `VLEN * LMUL / element_bits`,
+  all runtime-determined.
+
+**Short-term strategy**: Use Highway for SVE/RVV. Highway already dispatches
+to `HWY_SVE`, `HWY_SVE2`, and `HWY_RVV` targets. The `HwyFloat` wrapper
+works regardless of underlying width. This avoids sizeless type complexity.
+
+**Medium-term strategy**: If SVE becomes a high-priority target (e.g. for
+Neoverse server workloads), add native `SveFloat` / `RvvFloat` wrappers with
+predicate-aware `FloatTraits`. The existing `BoolType` pattern extends cleanly.
+
+**POWER VMX/VSX**: Fixed 128-bit (4 lanes), similar to SSE. Low priority —
+niche HPC audience. Highway covers it via `HWY_PPC8` if needed.
+
+#### SimdOps: Cross-Lane Operations for Parallel Algorithms
+
+`FloatTraits<T>` provides per-element operations (arithmetic, comparisons,
+conditional blending) sufficient for fast_math. Dispenso's parallel algorithms
+(reductions, scans, partitions) additionally need **cross-lane** operations.
+
+Proposed `SimdOps<T>` trait alongside `FloatTraits<T>`:
+
+```cpp
+template <typename Flt>
+struct SimdOps {
+  // Runtime vector width (compile-time for SSE/AVX, runtime for SVE/RVV).
+  static size_t width();
+
+  // Horizontal operations.
+  static float reduce_sum(Flt v);
+  static float reduce_min(Flt v);
+  static float reduce_max(Flt v);
+
+  // Prefix sums (within a single SIMD register).
+  static Flt inclusive_prefix_sum(Flt v);
+  static Flt exclusive_prefix_sum(Flt v);
+
+  // Lane permutations.
+  static Flt shuffle(Flt v, IntType_t<Flt> indices);
+  static Flt broadcast_lane(Flt v, int lane);
+  static Flt rotate(Flt v, int amount);
+};
+```
+
+These are **building blocks** for dispenso's task-parallel algorithms, not
+full algorithms. The SIMD block operations compose with dispenso's existing
+task scheduler:
+
+1. **Phase 1** (parallel): Each task processes SIMD-width blocks using
+   `SimdOps` (e.g. block prefix sum + block total).
+2. **Phase 2** (sequential or recursive): Combine block totals across tasks.
+3. **Phase 3** (parallel): Each task applies its offset to its block results.
+
+This decomposition keeps SIMD building blocks pure and stateless, while
+dispenso's `parallel_for` / `parallel_reduce` handles work distribution.
+
+#### Widening Operations
+
+Many reductions and scans require **widening accumulation** to avoid precision
+loss or overflow:
+
+- Sum of `float` buffer → `double` accumulator (catastrophic cancellation)
+- Prefix sum of `int16_t` → `int32_t` output (overflow prevention)
+- Histogram of `uint8_t` → `uint32_t` counts
+
+This is a fundamental pattern, not a special case. The SIMD building blocks
+must support it from the start:
+
+```cpp
+template <typename Flt>
+struct SimdOps {
+  using WideType = ...;  // SseFloat → SseDouble, NeonFloat → NeonDouble, etc.
+
+  // Widening convert: N narrow elements → N wide elements (2 output vectors).
+  static std::pair<WideType, WideType> widen(Flt v);
+
+  // Widening reduce: accumulate narrow elements in wide precision.
+  static scalar_t<WideType> reduce_sum_wide(Flt v);
+};
+```
+
+Every architecture has native widening support: SSE `cvtps_pd`, NEON
+`vcvt_f64_f32`, SVE `svcvt_f64_f32_x`, RVV `vfwcvt`. RVV's LMUL system
+handles widening especially naturally — `vfwcvt.f.f.v` converts N floats to
+N doubles using 2x the register group width with no loop splitting.
