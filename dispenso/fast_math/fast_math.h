@@ -73,35 +73,81 @@ DISPENSO_INLINE Flt sqrt(Flt x) {
 /**
  * @brief Cube root approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: 12 ULP, MaxAccuracy: 3 ULP over normal range.
- *   Near zero: 3.7e-9 (Default) / 9.3e-10 (MaxAccuracy) absolute error.
+ * @tparam AccuracyTraits Default: 12 ULP, MaxAccuracy: 3 ULP.
  *   kBoundsValues: returns input for inf/NaN/zero.
- * @param x Input value (all float domain).
+ * @param x Input value (all float domain, including denormals).
  * @return Cube root of @p x. Compatible with all SIMD backends.
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt cbrt(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    // Raw intrinsic type (__m128, Vec512<float>, etc.) — forward to wrapper.
     return cbrt<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    // Scalar path: branchless for the normal case.
+    // Denormals get prescale=2^24, postscale=1/256 (cmov).
+    // Zero is zeroed via AND mask (no blend).
+    uint32_t ui = bit_cast<uint32_t>(x);
+    uint32_t usgn = ui & 0x80000000u;
+    uint32_t uabs = ui & 0x7fffffffu;
+
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      if (DISPENSO_EXPECT((uabs & 0x7f800000u) == 0x7f800000u, 0)) {
+        return x; // inf/NaN
+      }
+      if (DISPENSO_EXPECT(uabs == 0u, 0)) {
+        return x; // ±0 (preserves -0)
+      }
+    }
+
+    // expZero covers both zero and denormal; zero is handled by AND mask below.
+    bool expZero = (uabs & 0x7f800000u) == 0u;
+    float prescale = expZero ? 16777216.0f : 1.0f;
+    float postscale = expZero ? (1.0f / 256.0f) : 1.0f;
+
+    float absX = bit_cast<float>(uabs) * prescale;
+    int32_t iScaled = static_cast<int32_t>(bit_cast<uint32_t>(absX));
+    float sgnx = bit_cast<float>(usgn | 0x3f800000u);
+    float result = sgnx / detail::rcp_cbrt<float, AccuracyTraits>(absX, iScaled);
+    result *= postscale;
+
+    // Zero mask: AND zeros out result for zero input, OR sign bit back in
+    // so that cbrt(-0) = -0.
+    uint32_t zeroMask = 0u - static_cast<uint32_t>(uabs != 0u);
+    return bit_cast<float>((bit_cast<uint32_t>(result) & zeroMask) | usgn);
   } else {
+    // SIMD wrapper path: prescale/postscale multipliers + AND mask for zero.
     using IntT = IntType_t<Flt>;
     IntT i = bit_cast<IntT>(x);
     IntT isgn = i & 0x80000000;
     i &= 0x7fffffff;
-    Flt z = bit_cast<Flt>(i);
+
+    // expZero covers both zero and denormal.
+    auto expZero = (i & 0x7f800000) == 0;
+
+    Flt prescale = FloatTraits<Flt>::conditional(expZero, Flt(16777216.0f), Flt(1.0f));
+    Flt postscale = FloatTraits<Flt>::conditional(expZero, Flt(1.0f / 256.0f), Flt(1.0f));
+
+    Flt absX = bit_cast<Flt>(i) * prescale;
+    IntT iScaled = bit_cast<IntT>(absX);
+
     Flt sgnx = bit_cast<Flt>(isgn | FloatTraits<Flt>::kOne);
-    Flt result = sgnx / detail::rcp_cbrt<Flt, AccuracyTraits>(z, i);
+    Flt result = sgnx / detail::rcp_cbrt<Flt, AccuracyTraits>(absX, iScaled);
+    result = result * postscale;
+
+    // Zero: AND mask zeroes result, OR sign bit back so cbrt(-0) = -0.
+    auto zeroMask = bool_as_mask<IntT>(i != 0);
+    result = bit_cast<Flt>((bit_cast<IntT>(result) & zeroMask) | isgn);
+
     if constexpr (AccuracyTraits::kBoundsValues) {
-      return FloatTraits<Flt>::conditional(nonnormalOrZero<Flt>(i), x, result);
-    } else {
-      return result;
+      return FloatTraits<Flt>::conditional(nonnormal<Flt>(iScaled), x, result);
     }
+    return result;
   }
 }
 
 /**
- * @brief Decompose a float into mantissa and exponent (bit-accurate).
  * @tparam Flt float or SIMD float type.
  * @tparam AccuracyTraits Accepted but ignored; result is always bit-accurate.
  * @param x Input value.

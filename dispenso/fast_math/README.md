@@ -142,7 +142,7 @@ Inf, and NaN inputs.
 | Function | Signature | Max Error | Notes |
 |:---------|:----------|:----------|:------|
 | `sqrt` | `sqrt(x)` | 0 ULP | Delegates to hardware `sqrt` |
-| `cbrt` | `cbrt(x)` | 12 ULP (Default), 3 ULP (MaxAccuracy) | Near-zero: 3.7e-9 / 9.3e-10 absolute |
+| `cbrt` | `cbrt(x)` | 12 ULP (Default), 3 ULP (MaxAccuracy) | |
 | `frexp` | `frexp(x, &e)` | 0 | Bit-accurate |
 | `ldexp` | `ldexp(x, e)` | 0 | Bit-accurate |
 

@@ -27,7 +27,6 @@ TEST(Cbrt, SpecialValues) {
 }
 
 constexpr uint32_t kCbrtOuterUlps = 13; // 12 bits on Linux, MacOs, 13 with MSVC
-constexpr float kCbrtMaxErrorSmallDomain = 4.2e-9f; // 4e-9f Linux, MacOs;
 
 TEST(Cbrt, RangeNeg) {
   auto result = dispenso::fast_math::evalAccuracy(
@@ -48,17 +47,17 @@ TEST(Cbrt, RangePos) {
   EXPECT_LE(result, kCbrtOuterUlps);
 }
 TEST(Cbrt, RangeSmall) {
-  float resAbs = dispenso::fast_math::evalAccuracyAbs(
+  auto result = dispenso::fast_math::evalAccuracy(
       cbrtf,
       dispenso::fast_math::cbrt<float>,
       -std::numeric_limits<float>::epsilon(),
       std::numeric_limits<float>::epsilon());
 
-  EXPECT_LE(resAbs, kCbrtMaxErrorSmallDomain);
+  // cbrt handles denormals via rescaling — uniform ULP accuracy near zero.
+  EXPECT_LE(result, kCbrtOuterUlps);
 }
 
 constexpr uint32_t kCbrtOuterUlpsAcc = 3;
-constexpr float kCbrtMaxErrorSmallDomainAcc = 1e-9f;
 
 TEST(CbrtAccurate, RangeNeg) {
   auto result = dispenso::fast_math::evalAccuracy(
@@ -73,11 +72,11 @@ TEST(CbrtAccurate, RangePos) {
   EXPECT_LE(result, kCbrtOuterUlpsAcc);
 }
 TEST(CbrtAccurate, RangeSmall) {
-  float resAbs = dispenso::fast_math::evalAccuracyAbs(
+  auto result = dispenso::fast_math::evalAccuracy(
       cbrtf,
       cbrt_acc,
       -std::numeric_limits<float>::epsilon(),
       std::numeric_limits<float>::epsilon());
 
-  EXPECT_LE(resAbs, kCbrtMaxErrorSmallDomainAcc);
+  EXPECT_LE(result, kCbrtOuterUlpsAcc);
 }

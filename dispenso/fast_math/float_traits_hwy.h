@@ -531,17 +531,22 @@ DISPENSO_INLINE HwyFloat gather<HwyFloat>(const float* table, HwyInt32 index) {
 }
 
 DISPENSO_INLINE HwyInt32 int_div_by_3(HwyInt32 i) {
-  // Scalar fallback: extract, divide, reload.
+  // Multiply each 32-bit lane by 0x55555556 and take the high 32 bits.
+  // Uses widening MulEven/MulOdd to stay in SIMD registers (no scalar fallback).
+  const HwyUint32Tag du;
   const HwyInt32Tag di;
-  constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(int32_t);
-  HWY_ALIGN int32_t in[kMaxLanes];
-  HWY_ALIGN int32_t out[kMaxLanes];
-  const size_t N = hn::Lanes(di);
-  hn::StoreU(i.v, di, in);
-  for (size_t j = 0; j < N; ++j) {
-    out[j] = static_cast<int32_t>((uint64_t(in[j]) * 0x55555556) >> 32);
-  }
-  return hn::Load(di, out);
+  auto ui = hn::BitCast(du, i.v);
+  auto mul = hn::Set(du, 0x55555556u);
+  // Even lanes (0, 2, ...): widening 32×32→64 multiply.
+  auto even_prod = hn::MulEven(ui, mul);
+  // Odd lanes (1, 3, ...): widening 32×32→64 multiply.
+  auto odd_prod = hn::MulOdd(ui, mul);
+  // Extract high 32 bits of each 64-bit product.
+  auto even_hi = hn::ShiftRight<32>(even_prod);
+  auto odd_hi = hn::ShiftRight<32>(odd_prod);
+  // Interleave: odd results into upper 32 bits of each 64-bit lane, OR with even.
+  auto combined = hn::Or(even_hi, hn::ShiftLeft<32>(odd_hi));
+  return hn::BitCast(di, combined);
 }
 
 // nonnormal/nonnormalOrZero: return HwyInt32 masks.

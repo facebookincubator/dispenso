@@ -20,19 +20,27 @@ template <typename Flt, typename AccuracyTraits>
 DISPENSO_INLINE Flt rcp_cbrt(Flt x, IntType_t<Flt> i) {
   auto fma = FloatTraits<Flt>::fma;
   if constexpr (AccuracyTraits::kMaxAccuracy) {
-    // Algorithm 5 3 ulps
-    constexpr float k1 = 1.752319676f;
-    constexpr float k2 = 1.2509524245f;
-    constexpr float k3 = 0.5093818292f;
-    i = 0x548c2b4b - int_div_by_3(i);
+    // Algorithm 3 step 1 + FMA quadratic correction (2 ULP, division-free Halley).
+    //
+    // Step 1 uses Algorithm 3's magic constant and tuned Newton step (~10 bits).
+    // Step 2 computes the FMA residual e = 1 - x*y^3 with single rounding (no
+    // cancellation), then applies a Sollya-optimized quadratic correction:
+    //   y *= 1 + e*(c1 + c2*e)
+    // This achieves cubic convergence (bits triple) without Halley's division,
+    // at the same op count as the previous Algorithm 5 but with better accuracy.
+    //
+    // Polynomial: fpminimax for (1-e)^(-1/3), constant=1, on [-0.005, 0.005].
+    // Relative error ~1.08e-8 (~26.5 bits).
+    constexpr float c1 = 0.3333354890346527099609375f;
+    constexpr float c2 = 0.22222582995891571044921875f;
+    i = 0x548c39cb - int_div_by_3(i);
     Flt y = bit_cast<Flt>(i);
-    Flt c = x * y * y * y;
-    y = y * fma(-c, fma(c, -k3, k2), k1);
-    c = fma(x * y, -y * y, 1.0f);
-    y = y * fma(c, 0.333333333333f, 1.0f);
+    y = y * fma(-0.534850249f * x * y, y * y, 1.5015480449f);
+    Flt e = fma(x * y, -y * y, 1.0f);
+    y = y * fma(e, fma(Flt(c2), e, Flt(c1)), 1.0f);
     return y;
   } else {
-    // Algorithm 3 12 ulps,
+    // Algorithm 3 from Moroz et al. (12 ULP).
     i = 0x548c39cb - int_div_by_3(i);
     Flt y = bit_cast<Flt>(i);
     y = y * fma(-0.534850249f * x * y, y * y, 1.5015480449f);
