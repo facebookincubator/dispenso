@@ -450,6 +450,16 @@ DISPENSO_INLINE SseFloat floor_small(SseFloat x) {
   return _mm_floor_ps(x.v);
 }
 
+DISPENSO_INLINE SseInt32 convert_to_int_trunc(SseFloat f) {
+  return _mm_cvttps_epi32(f.v);
+}
+
+DISPENSO_INLINE SseInt32 convert_to_int_trunc_safe(SseFloat f) {
+  SseInt32 fi = bit_cast<SseInt32>(f);
+  SseInt32 norm = (fi & 0x7f800000) != 0x7f800000;
+  return norm & SseInt32(_mm_cvttps_epi32(f.v));
+}
+
 DISPENSO_INLINE SseInt32 convert_to_int(SseFloat f) {
   // _mm_cvtps_epi32 uses round-to-nearest-even.
   // Mask non-normals to 0 to avoid undefined behavior.

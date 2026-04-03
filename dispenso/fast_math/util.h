@@ -61,6 +61,17 @@ DISPENSO_INLINE uint32_t float_distance(float a, float b) {
   return static_cast<uint32_t>(diff < 0 ? -diff : diff);
 }
 
+// Absolute value: clears the sign bit.  Works for all float/SIMD types.
+template <typename Flt>
+DISPENSO_INLINE Flt fabs(Flt x) {
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return fabs(SimdType_t<Flt>(x)).v;
+  } else {
+    using Uint = UintType_t<Flt>;
+    return bit_cast<Flt>(bit_cast<Uint>(x) & Uint(0x7fffffff));
+  }
+}
+
 // Return +1.0 or -1.0 matching the sign bit of x. +0 gives +1, -0 gives -1.
 template <typename Flt>
 DISPENSO_INLINE Flt signof(Flt x) {
@@ -106,6 +117,33 @@ DISPENSO_INLINE auto nonnormalOrZero(IntType_t<Flt> i) {
 template <typename Flt>
 DISPENSO_INLINE auto nonnormal(Flt f) {
   return nonnormal<Flt>(bit_cast<IntType_t<Flt>>(f));
+}
+
+// Truncate float toward zero, returning int. No inf/NaN guard — caller must
+// ensure inputs are finite (e.g. after range reduction by a finite constant).
+// Maps to cvttps2epi32 (SSE), vcvtq_s32_f32 (NEON), or (int)f (scalar).
+template <typename Flt>
+DISPENSO_INLINE IntType_t<Flt> convert_to_int_trunc(Flt f) {
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return convert_to_int_trunc(SimdType_t<Flt>(f)).v;
+  } else {
+    return static_cast<IntType_t<Flt>>(f);
+  }
+}
+
+// Truncate float toward zero, returning int. Inf/NaN lanes are zeroed.
+// Use when the input may contain non-finite values.
+template <typename Flt>
+DISPENSO_INLINE IntType_t<Flt> convert_to_int_trunc_safe(Flt f) {
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return convert_to_int_trunc_safe(SimdType_t<Flt>(f)).v;
+  } else {
+    auto fi = bit_cast<IntType_t<Flt>>(f);
+    if ((fi & 0x7f800000) == 0x7f800000) {
+      return 0;
+    }
+    return static_cast<IntType_t<Flt>>(f);
+  }
 }
 
 // Convert float to int using round-to-nearest-even (SSE cvtss2si semantics).

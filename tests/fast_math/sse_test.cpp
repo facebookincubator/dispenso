@@ -252,22 +252,26 @@ TEST(SseUtil, Signofi) {
 
 TEST(SseSin, LaneByLane) {
   __m128 input = make4(0.0f, 0.5f, 1.0f, -0.7f);
-  checkLaneByLane([](float x) { return dfm::sin(x); }, [](__m128 x) { return dfm::sin(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::sinf(x); }, [](__m128 x) { return dfm::sin(x); }, input, 2);
 }
 
 TEST(SseSin, LargeRange) {
   __m128 input = make4(-3.14f, 3.14f, 6.28f, -6.28f);
-  checkLaneByLane([](float x) { return dfm::sin(x); }, [](__m128 x) { return dfm::sin(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::sinf(x); }, [](__m128 x) { return dfm::sin(x); }, input, 2);
 }
 
 TEST(SseCos, LaneByLane) {
   __m128 input = make4(0.0f, 0.5f, 1.0f, -0.7f);
-  checkLaneByLane([](float x) { return dfm::cos(x); }, [](__m128 x) { return dfm::cos(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::cosf(x); }, [](__m128 x) { return dfm::cos(x); }, input, 2);
 }
 
 TEST(SseCos, LargeRange) {
   __m128 input = make4(-3.14f, 3.14f, 6.28f, -6.28f);
-  checkLaneByLane([](float x) { return dfm::cos(x); }, [](__m128 x) { return dfm::cos(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::cosf(x); }, [](__m128 x) { return dfm::cos(x); }, input, 2);
 }
 
 TEST(SseTan, LaneByLane) {
@@ -388,7 +392,8 @@ TEST(SseLog, Sweep) {
 TEST(SseSin, MixedValues) {
   // Deliberately different magnitudes and signs per lane.
   __m128 input = make4(0.0f, static_cast<float>(M_PI_2), static_cast<float>(-M_PI), 100.0f);
-  checkLaneByLane([](float x) { return dfm::sin(x); }, [](__m128 x) { return dfm::sin(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::sinf(x); }, [](__m128 x) { return dfm::sin(x); }, input, 2);
 }
 
 TEST(SseExp, MixedValues) {
@@ -486,9 +491,10 @@ struct BoundsTraits {
 TEST(SseSinAccurate, LaneByLane) {
   __m128 input = make4(0.0f, 0.5f, -1.0f, 2.5f);
   checkLaneByLane(
-      [](float x) { return dfm::sin<float, dfm::MaxAccuracyTraits>(x); },
+      [](float x) { return ::sinf(x); },
       [](__m128 x) { return dfm::sin<__m128, dfm::MaxAccuracyTraits>(x); },
-      input);
+      input,
+      2);
 }
 
 TEST(SseSinAccurate, Sweep) {
@@ -506,9 +512,10 @@ TEST(SseSinAccurate, Sweep) {
 TEST(SseCosAccurate, LaneByLane) {
   __m128 input = make4(0.0f, 0.5f, -1.0f, 2.5f);
   checkLaneByLane(
-      [](float x) { return dfm::cos<float, dfm::MaxAccuracyTraits>(x); },
+      [](float x) { return ::cosf(x); },
       [](__m128 x) { return dfm::cos<__m128, dfm::MaxAccuracyTraits>(x); },
-      input);
+      input,
+      2);
 }
 
 TEST(SseCosAccurate, Sweep) {
@@ -1232,12 +1239,14 @@ TEST(SseAtan2, Sweep) {
 TEST(SseSin, LargeMagnitude) {
   // Test range reduction with large inputs.
   __m128 input = make4(100.0f, -100.0f, 1000.0f, -1000.0f);
-  checkLaneByLane([](float x) { return dfm::sin(x); }, [](__m128 x) { return dfm::sin(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::sinf(x); }, [](__m128 x) { return dfm::sin(x); }, input, 2);
 }
 
 TEST(SseCos, LargeMagnitude) {
   __m128 input = make4(100.0f, -100.0f, 1000.0f, -1000.0f);
-  checkLaneByLane([](float x) { return dfm::cos(x); }, [](__m128 x) { return dfm::cos(x); }, input);
+  checkLaneByLane(
+      [](float x) { return ::cosf(x); }, [](__m128 x) { return dfm::cos(x); }, input, 2);
 }
 
 TEST(SseTan, LargeMagnitude) {

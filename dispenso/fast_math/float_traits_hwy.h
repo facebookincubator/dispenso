@@ -489,6 +489,20 @@ DISPENSO_INLINE HwyFloat floor_small(HwyFloat x) {
   return hn::Floor(x.v);
 }
 
+DISPENSO_INLINE HwyInt32 convert_to_int_trunc(HwyFloat f) {
+  const HwyInt32Tag di;
+  // ConvertTo truncates toward zero (no Round needed).
+  return hn::ConvertTo(di, f.v);
+}
+
+DISPENSO_INLINE HwyInt32 convert_to_int_trunc_safe(HwyFloat f) {
+  const HwyInt32Tag di;
+  auto converted = hn::ConvertTo(di, f.v);
+  HwyInt32 fi = bit_cast<HwyInt32>(f);
+  HwyInt32 norm = (fi & 0x7f800000) != 0x7f800000;
+  return norm & HwyInt32(converted);
+}
+
 DISPENSO_INLINE HwyInt32 convert_to_int(HwyFloat f) {
   const HwyInt32Tag di;
   // Round to nearest even, then convert to int.

@@ -438,6 +438,16 @@ DISPENSO_INLINE NeonFloat floor_small(NeonFloat x) {
   return vrndmq_f32(x.v);
 }
 
+DISPENSO_INLINE NeonInt32 convert_to_int_trunc(NeonFloat f) {
+  return vcvtq_s32_f32(f.v);
+}
+
+DISPENSO_INLINE NeonInt32 convert_to_int_trunc_safe(NeonFloat f) {
+  NeonInt32 fi = bit_cast<NeonInt32>(f);
+  NeonInt32 norm = (fi & 0x7f800000) != 0x7f800000;
+  return norm & NeonInt32(vcvtq_s32_f32(f.v));
+}
+
 DISPENSO_INLINE NeonInt32 convert_to_int(NeonFloat f) {
   // vcvtnq_s32_f32 uses round-to-nearest-even.
   // Mask non-normals to 0 to avoid undefined behavior.

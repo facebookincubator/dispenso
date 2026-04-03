@@ -1058,10 +1058,10 @@ TEST(HwyEdgeCases, MixedValues) {
   auto result = dfm::sin(input);
 
   for (size_t i = 0; i < N(); ++i) {
-    float expected = dfm::sin(vals[i]);
+    float expected = ::sinf(vals[i]);
     float actual = lane(result, i);
     uint32_t dist = dfm::float_distance(expected, actual);
-    EXPECT_LE(dist, 0u) << "Lane " << i << ": input=" << vals[i] << " expected=" << expected
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": input=" << vals[i] << " expected=" << expected
                         << " actual=" << actual;
   }
 }
@@ -1499,13 +1499,13 @@ TEST(HwySin, MixedSpecialValues) {
   auto result = dfm::sin(input);
 
   for (size_t i = 0; i < N(); ++i) {
-    float expected = dfm::sin(vals[i]);
+    float expected = ::sinf(vals[i]);
     float actual = lane(result, i);
     if (std::isnan(expected)) {
       EXPECT_TRUE(std::isnan(actual)) << "Lane " << i << " input=" << vals[i];
     } else {
       uint32_t dist = dfm::float_distance(expected, actual);
-      EXPECT_LE(dist, 0u) << "Lane " << i << " input=" << vals[i] << " expected=" << expected
+      EXPECT_LE(dist, 2u) << "Lane " << i << " input=" << vals[i] << " expected=" << expected
                           << " actual=" << actual;
     }
   }
@@ -1524,13 +1524,13 @@ TEST(HwyCos, MixedSpecialValues) {
   auto result = dfm::cos(input);
 
   for (size_t i = 0; i < N(); ++i) {
-    float expected = dfm::cos(vals[i]);
+    float expected = ::cosf(vals[i]);
     float actual = lane(result, i);
     if (std::isnan(expected)) {
       EXPECT_TRUE(std::isnan(actual)) << "Lane " << i << " input=" << vals[i];
     } else {
       uint32_t dist = dfm::float_distance(expected, actual);
-      EXPECT_LE(dist, 0u) << "Lane " << i << " input=" << vals[i] << " expected=" << expected
+      EXPECT_LE(dist, 2u) << "Lane " << i << " input=" << vals[i] << " expected=" << expected
                           << " actual=" << actual;
     }
   }

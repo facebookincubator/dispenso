@@ -96,6 +96,23 @@ DISPENSO_INLINE Flt sin_pi_4(Flt x2, Flt x) {
   return s;
 }
 
+// Wider-domain sin/cos polynomials for pi-reduction (no quadrant blending needed).
+// sin(x) on [-pi/2, pi/2], degree 11 odd polynomial: sin(x) = x * P(x^2)
+// Sollya fpminimax(sin(x), [|1,3,5,7,9,11|], [|SG...|], [-pi/2;pi/2], absolute)
+// Absolute error: 3.2e-10 (31.5 bits)
+template <typename Flt>
+DISPENSO_INLINE Flt sin_pi_2(Flt x2, Flt x) {
+  auto fma = FloatTraits<Flt>::fma;
+  Flt s = -0x1.ab55a8p-26f;
+  s = fma(s, x2, 0x1.725326p-19f);
+  s = fma(s, x2, -0x1.a0205p-13f);
+  s = fma(s, x2, 0x1.11112ep-7f);
+  s = fma(s, x2, -0x1.555556p-3f);
+  auto t = x * x2;
+  s = fma(s, t, x);
+  return s;
+}
+
 template <typename Flt>
 DISPENSO_INLINE Flt
 rangeReduceFloor(Flt& x, NonDeduced<Flt> rcpMod, NonDeduced<Flt> valHi, NonDeduced<Flt> valLo) {
@@ -188,6 +205,28 @@ DISPENSO_INLINE void sincos_pi_impl_both(Flt x, Flt j, Flt* out_sin, Flt* out_co
 
   *out_sin = FloatTraits<Flt>::conditional((i & 2) != 0, -sr, sr);
   *out_cos = FloatTraits<Flt>::conditional(((i + 1) & 2) != 0, -cr, cr);
+}
+
+// Pi-reduction dispatch: each function evaluates only its own polynomial.
+// j = round(x / pi), so x_reduced in [-pi/2, pi/2].
+// sin(x) = (-1)^j * sin(x_reduced), cos(x) = (-1)^j * cos(x_reduced).
+template <typename Flt>
+DISPENSO_INLINE Flt sin_pi_reduction(Flt x, Flt j) {
+  auto ji = convert_to_int(j);
+  auto x2 = x * x;
+  auto result = sin_pi_2(x2, x);
+  return FloatTraits<Flt>::conditional((ji & 1) != 0, -result, result);
+}
+
+// Cosine via offset-pi reduction (Highway-style).
+// q = 2*trunc(|x|/pi) + 1 maps cos zeros to x_r = 0. Then cos(x) = ±sin(x_r).
+// No quadrant blending: one polynomial, sign flip only.
+template <typename Flt>
+DISPENSO_INLINE Flt cos_offset_pi_reduction(Flt x_r, IntType_t<Flt> qi) {
+  auto x2 = x_r * x_r;
+  auto result = sin_pi_2(x2, x_r);
+  // (q & 2) == 0 → negate (cos starts positive at q=1).
+  return FloatTraits<Flt>::conditional((qi & 2) != 0, result, -result);
 }
 
 template <typename Flt>

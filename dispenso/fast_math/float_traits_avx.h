@@ -452,6 +452,16 @@ DISPENSO_INLINE AvxFloat floor_small(AvxFloat x) {
   return _mm256_floor_ps(x.v);
 }
 
+DISPENSO_INLINE AvxInt32 convert_to_int_trunc(AvxFloat f) {
+  return _mm256_cvttps_epi32(f.v);
+}
+
+DISPENSO_INLINE AvxInt32 convert_to_int_trunc_safe(AvxFloat f) {
+  AvxInt32 fi = bit_cast<AvxInt32>(f);
+  AvxInt32 norm = (fi & 0x7f800000) != 0x7f800000;
+  return norm & AvxInt32(_mm256_cvttps_epi32(f.v));
+}
+
 DISPENSO_INLINE AvxInt32 convert_to_int(AvxFloat f) {
   // _mm256_cvtps_epi32 uses round-to-nearest-even.
   // Mask non-normals to 0 to avoid undefined behavior.

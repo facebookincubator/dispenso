@@ -280,19 +280,31 @@ DISPENSO_INLINE Flt asin(Flt x) {
  *   Default: 2 ULP in [-2^20 pi, 2^20 pi]; accuracy degrades for larger |x|.
  * @param x Input value in radians (all float domain).
  * @return Sine of @p x. Compatible with all SIMD backends.
+ *
+ * Scalar: pi/4 reduction with quadrant branching (lowest latency).
+ * SIMD:   pi reduction, single sin polynomial, sign flip (no blending, ~30-40% faster).
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt sin(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return sin<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
-  } else {
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    // Scalar: pi/4 reduction + branch selects sin or cos polynomial per quadrant.
     constexpr float kPi_2hi = 1.57079625f;
     constexpr float kPi_2med = 7.54978942e-08f;
     constexpr float kPi_2lo = 5.39032794e-15f;
     constexpr float k2_pi = 0.636619747f;
     Flt j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
     return detail::sincos_pi_impl(x, j, 0);
+  } else {
+    // SIMD: pi reduction — single sin_pi_2 polynomial, sign flip, no blending.
+    constexpr float kPi_hi = 3.1415925f;
+    constexpr float kPi_med = 1.50995788e-07f;
+    constexpr float kPi_lo = 1.07806559e-14f;
+    constexpr float k1_pi = 0.318309886f;
+    Flt j = detail::rangeReduce2(x, k1_pi, kPi_hi, kPi_med, kPi_lo);
+    return detail::sin_pi_reduction(x, j);
   }
 }
 
@@ -304,17 +316,19 @@ DISPENSO_INLINE Flt sin(Flt x) {
  *   MaxAccuracy: 2 ULP in [-2^20 pi, 2^20 pi].
  * @param x Input value in radians (all float domain).
  * @return Cosine of @p x. Compatible with all SIMD backends.
+ *
+ * Scalar: pi/4 reduction with quadrant branching (lowest latency).
+ * SIMD:   offset-pi reduction (q = 2*trunc(|x|/pi)+1), single sin polynomial,
+ *         sign flip (no blending, ~30% faster).
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt cos(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return cos<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
-  } else {
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    // Scalar: pi/4 reduction + branch selects sin or cos polynomial per quadrant.
     Flt j;
-    // See e.g. my answer on https://stackoverflow.com/a/76932247/830441 for why this range
-    // reduction is like this.
-    /* subtract closest multiple of pi/2 giving reduced argument and quadrant */
     if constexpr (AccuracyTraits::kMaxAccuracy) {
       constexpr float kPi_2hi = 1.57079625f;
       constexpr float kPi_2medh = 7.54978942e-08f;
@@ -327,10 +341,35 @@ DISPENSO_INLINE Flt cos(Flt x) {
       constexpr float kPi_2med = 7.54978942e-08f;
       constexpr float kPi_2lo = 5.39032794e-15f;
       constexpr float k2_pi = 0.636619747f;
-
       j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
     }
     return detail::sincos_pi_impl(x, j, 1);
+  } else {
+    // SIMD: offset-pi reduction maps cos zeros to x_r = 0, then evaluates sin_pi_2.
+    auto fma = FloatTraits<Flt>::fma;
+    Flt y = fabs(x);
+    constexpr float k1_pi = 0.318309886f;
+    auto qi = convert_to_int_trunc(y * k1_pi);
+    qi = qi + qi + 1;
+    Flt qf = Flt(qi);
+    if constexpr (AccuracyTraits::kMaxAccuracy) {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2medh = 7.54978942e-08f;
+      constexpr float kPi_2medl = 5.39030253e-15f;
+      constexpr float kPi_2lo = 3.28200367e-22f;
+      y = fma(qf, Flt(-kPi_2hi), y);
+      y = fma(qf, Flt(-kPi_2medh), y);
+      y = fma(qf, Flt(-kPi_2medl), y);
+      y = fma(qf, Flt(-kPi_2lo), y);
+    } else {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2med = 7.54978942e-08f;
+      constexpr float kPi_2lo = 5.39032794e-15f;
+      y = fma(qf, Flt(-kPi_2hi), y);
+      y = fma(qf, Flt(-kPi_2med), y);
+      y = fma(qf, Flt(-kPi_2lo), y);
+    }
+    return detail::cos_offset_pi_reduction(y, qi);
   }
 }
 

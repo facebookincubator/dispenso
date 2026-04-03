@@ -518,6 +518,17 @@ DISPENSO_INLINE Avx512Float floor_small(Avx512Float x) {
   return _mm512_floor_ps(x.v);
 }
 
+DISPENSO_INLINE Avx512Int32 convert_to_int_trunc(Avx512Float f) {
+  return _mm512_cvttps_epi32(f.v);
+}
+
+DISPENSO_INLINE Avx512Int32 convert_to_int_trunc_safe(Avx512Float f) {
+  Avx512Int32 fi = bit_cast<Avx512Int32>(f);
+  __mmask16 norm = static_cast<__mmask16>(~_mm512_cmpeq_epi32_mask(
+      _mm512_and_si512(fi.v, _mm512_set1_epi32(0x7f800000)), _mm512_set1_epi32(0x7f800000)));
+  return _mm512_maskz_cvttps_epi32(norm, f.v);
+}
+
 DISPENSO_INLINE Avx512Int32 convert_to_int(Avx512Float f) {
   // _mm512_cvtps_epi32 uses round-to-nearest-even.
   // Use maskz to zero non-normal lanes and avoid undefined behavior.

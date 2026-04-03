@@ -66,17 +66,24 @@ static int32x4_t makeInt4(int32_t a, int32_t b, int32_t c, int32_t d) {
 
 // Check that a SIMD function matches the scalar float version lane-by-lane.
 template <typename SimdFn, typename ScalarFn>
-static void checkLaneByLane(float32x4_t input, SimdFn simdFn, ScalarFn scalarFn, const char* name) {
+static void checkLaneByLane(
+    float32x4_t input,
+    SimdFn simdFn,
+    ScalarFn scalarFn,
+    const char* name,
+    uint32_t max_ulps = 0) {
   auto result = simdFn(input);
   for (int i = 0; i < kLanes; ++i) {
     float scalarResult = scalarFn(lane(input, i));
-    uint32_t rBits;
-    memcpy(&rBits, &scalarResult, 4);
     float rLane = lane(result, i);
-    uint32_t lBits;
-    memcpy(&lBits, &rLane, 4);
-    EXPECT_EQ(lBits, rBits) << name << " lane " << i << ": input=" << lane(input, i)
-                            << " simd=" << rLane << " scalar=" << scalarResult;
+    if (std::isnan(scalarResult)) {
+      EXPECT_TRUE(std::isnan(rLane)) << name << " lane " << i << ": expected NaN, got " << rLane;
+    } else {
+      uint32_t dist = dfm::float_distance(scalarResult, rLane);
+      EXPECT_LE(dist, max_ulps) << name << " lane " << i << ": input=" << lane(input, i)
+                                << " simd=" << rLane << " scalar=" << scalarResult
+                                << " ulps=" << dist;
+    }
   }
 }
 
@@ -501,13 +508,21 @@ TEST(NeonUtil, ClampNoNan) {
 TEST(NeonTranscendentals, Sin) {
   float32x4_t input = make4(0.0f, 0.5f, 1.0f, -0.5f);
   checkLaneByLane(
-      input, [](float32x4_t x) { return dfm::sin(x); }, [](float x) { return dfm::sin(x); }, "sin");
+      input,
+      [](float32x4_t x) { return dfm::sin(x); },
+      [](float x) { return ::sinf(x); },
+      "sin",
+      2);
 }
 
 TEST(NeonTranscendentals, Cos) {
   float32x4_t input = make4(0.0f, 0.5f, 1.0f, -0.5f);
   checkLaneByLane(
-      input, [](float32x4_t x) { return dfm::cos(x); }, [](float x) { return dfm::cos(x); }, "cos");
+      input,
+      [](float32x4_t x) { return dfm::cos(x); },
+      [](float x) { return ::cosf(x); },
+      "cos",
+      2);
 }
 
 TEST(NeonTranscendentals, Tan) {
@@ -611,8 +626,9 @@ TEST(NeonSweep, SinSweep) {
     checkLaneByLane(
         input,
         [](float32x4_t x) { return dfm::sin(x); },
-        [](float x) { return dfm::sin(x); },
-        "sin_sweep");
+        [](float x) { return ::sinf(x); },
+        "sin_sweep",
+        2);
     f += kLanes * delta;
   }
 }
@@ -626,8 +642,9 @@ TEST(NeonSweep, CosSweep) {
     checkLaneByLane(
         input,
         [](float32x4_t x) { return dfm::cos(x); },
-        [](float x) { return dfm::cos(x); },
-        "cos_sweep");
+        [](float x) { return ::cosf(x); },
+        "cos_sweep",
+        2);
     f += kLanes * delta;
   }
 }
@@ -754,7 +771,7 @@ TEST(NeonEdgeCases, SinEdgeCases) {
   float inf = std::numeric_limits<float>::infinity();
   float32x4_t input = make4(0.0f, nan, inf, -inf);
   auto result = dfm::sin(input);
-  EXPECT_EQ(lane(result, 0), dfm::sin(0.0f));
+  EXPECT_NEAR(lane(result, 0), ::sinf(0.0f), 1e-7f);
 }
 
 TEST(NeonEdgeCases, ExpEdgeCases) {
@@ -818,7 +835,7 @@ TEST(NeonSin, MixedSpecialValues) {
   EXPECT_TRUE(std::isnan(lane(result, 0))) << "sin(NaN) should be NaN";
   EXPECT_TRUE(std::isnan(lane(result, 1))) << "sin(+Inf) should be NaN";
   EXPECT_TRUE(std::isnan(lane(result, 2))) << "sin(-Inf) should be NaN";
-  EXPECT_NEAR(lane(result, 3), dfm::sin(1.0f), 1e-7f) << "sin(1) lane contaminated";
+  EXPECT_NEAR(lane(result, 3), ::sinf(1.0f), 1e-7f) << "sin(1) lane contaminated";
 }
 
 TEST(NeonCos, MixedSpecialValues) {
@@ -1160,8 +1177,9 @@ TEST(NeonSin, LargeMagnitude) {
   checkLaneByLane(
       input,
       [](float32x4_t x) { return dfm::sin(x); },
-      [](float x) { return dfm::sin(x); },
-      "sin_large");
+      [](float x) { return ::sinf(x); },
+      "sin_large",
+      2);
 }
 
 TEST(NeonCos, LargeMagnitude) {
@@ -1169,8 +1187,9 @@ TEST(NeonCos, LargeMagnitude) {
   checkLaneByLane(
       input,
       [](float32x4_t x) { return dfm::cos(x); },
-      [](float x) { return dfm::cos(x); },
-      "cos_large");
+      [](float x) { return ::cosf(x); },
+      "cos_large",
+      2);
 }
 
 TEST(NeonTan, LargeMagnitude) {
@@ -1209,8 +1228,9 @@ TEST(NeonMixed, MixedSin) {
   checkLaneByLane(
       input,
       [](float32x4_t x) { return dfm::sin(x); },
-      [](float x) { return dfm::sin(x); },
-      "mixed_sin");
+      [](float x) { return ::sinf(x); },
+      "mixed_sin",
+      2);
 }
 
 TEST(NeonMixed, MixedExp) {

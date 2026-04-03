@@ -707,7 +707,7 @@ static void BM_batch_sin_scalar(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * kNumInputs);
 }
 
-static void BM_batch_sin_pi4_sse(benchmark::State& state) {
+static void BM_batch_sin_sse(benchmark::State& state) {
   using namespace dispenso::fast_math;
   const auto& inputs = sinInputs();
   alignas(16) float outputs[kNumInputs];
@@ -724,7 +724,37 @@ static void BM_batch_sin_pi4_sse(benchmark::State& state) {
 
 BENCHMARK(BM_batch_sinf);
 BENCHMARK(BM_batch_sin_scalar);
-BENCHMARK(BM_batch_sin_pi4_sse);
+BENCHMARK(BM_batch_sin_sse);
+
+static void BM_batch_cos_scalar(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  alignas(16) float outputs[kNumInputs];
+  for (auto UNUSED_VAR : state) {
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      outputs[i] = dispenso::fast_math::cos(inputs[i]);
+    }
+    benchmark::DoNotOptimize(outputs);
+  }
+  state.SetItemsProcessed(state.iterations() * kNumInputs);
+}
+
+static void BM_batch_cos_sse(benchmark::State& state) {
+  using namespace dispenso::fast_math;
+  const auto& inputs = sinInputs();
+  alignas(16) float outputs[kNumInputs];
+  for (auto UNUSED_VAR : state) {
+    for (size_t i = 0; i < kNumInputs; i += 4) {
+      SseFloat x = _mm_loadu_ps(&inputs[i]);
+      SseFloat r = cos<SseFloat>(x);
+      _mm_storeu_ps(&outputs[i], r.v);
+    }
+    benchmark::DoNotOptimize(outputs);
+  }
+  state.SetItemsProcessed(state.iterations() * kNumInputs);
+}
+
+BENCHMARK(BM_batch_cos_scalar);
+BENCHMARK(BM_batch_cos_sse);
 #endif // __SSE4_1__
 
 BENCHMARK(BM_acos);
