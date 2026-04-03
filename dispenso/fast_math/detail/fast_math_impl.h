@@ -162,6 +162,26 @@ DISPENSO_INLINE Flt sincos_pi_impl(Flt x, Flt j, int phaseShift) {
   return FloatTraits<Flt>::conditional((i & 2) != 0, -r, r);
 }
 
+// Combined sin+cos computation. Always evaluates both polynomials (needed for sincos).
+// For SIMD types, evaluates both polynomials and blends per-lane.
+template <typename Flt>
+DISPENSO_INLINE void sincos_pi_impl_both(Flt x, Flt j, Flt* out_sin, Flt* out_cos) {
+  auto i = convert_to_int(j);
+  auto x2 = x * x;
+  auto sv = sin_pi_4(x2, x);
+  auto cv = cos_pi_4(x2);
+
+  // For sin: quadrant i. For cos: quadrant i+1 (phase shift).
+  auto sin_use_cos = (i & 1) != 0;
+  auto cos_use_cos = ((i + 1) & 1) != 0;
+
+  Flt sr = FloatTraits<Flt>::conditional(sin_use_cos, cv, sv);
+  Flt cr = FloatTraits<Flt>::conditional(cos_use_cos, cv, sv);
+
+  *out_sin = FloatTraits<Flt>::conditional((i & 2) != 0, -sr, sr);
+  *out_cos = FloatTraits<Flt>::conditional(((i + 1) & 2) != 0, -cr, cr);
+}
+
 template <typename Flt>
 DISPENSO_INLINE Flt tan_pi_2_impl(Flt x, Flt j) {
   auto i = convert_to_int(j);

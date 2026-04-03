@@ -289,6 +289,117 @@ DISPENSO_INLINE Flt cos(Flt x) {
 }
 
 /**
+ * @brief Simultaneous sine and cosine, sharing range reduction.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Same behavior as sin/cos: kMaxAccuracy controls
+ *   range reduction precision. Default: 2 ULP each.
+ * @param x Input value in radians (all float domain).
+ * @param[out] out_sin Pointer to receive sin(x).
+ * @param[out] out_cos Pointer to receive cos(x).
+ * @note Faster than separate sin() + cos() calls due to shared range reduction
+ *   and polynomial evaluation. Compatible with all SIMD backends.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE void sincos(Flt x, Flt* out_sin, Flt* out_cos) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    SimdType_t<Flt> s, c;
+    sincos<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x), &s, &c);
+    *out_sin = s.v;
+    *out_cos = c.v;
+  } else {
+    Flt j;
+    if constexpr (AccuracyTraits::kMaxAccuracy) {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2medh = 7.54978942e-08f;
+      constexpr float kPi_2medl = 5.39030253e-15f;
+      constexpr float kPi_2lo = 3.28200367e-22f;
+      constexpr float k2_pi = 0.636619747f;
+      j = detail::rangeReduce3(x, k2_pi, kPi_2hi, kPi_2medh, kPi_2medl, kPi_2lo);
+    } else {
+      constexpr float kPi_2hi = 1.57079625f;
+      constexpr float kPi_2med = 7.54978942e-08f;
+      constexpr float kPi_2lo = 5.39032794e-15f;
+      constexpr float k2_pi = 0.636619747f;
+      j = detail::rangeReduce2(x, k2_pi, kPi_2hi, kPi_2med, kPi_2lo);
+    }
+    detail::sincos_pi_impl_both(x, j, out_sin, out_cos);
+  }
+}
+
+/**
+ * @brief Compute sin(pi * x) with exact range reduction.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored (range reduction is always exact).
+ * @param x Input value (all float domain). Exact at integers (returns 0) and
+ *   half-integers (returns ±1). ~2 ULP for general inputs.
+ * @return sin(pi * x). Compatible with all SIMD backends.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt sinpi(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return sinpi<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+  } else {
+    // Exact range reduction: j = round(2*x), r = x - j/2, t = r * pi.
+    constexpr float kMagic = FloatTraits<Flt>::kMagic; // 1.5 * 2^23
+    Flt j = (2.0f * x + kMagic) - kMagic; // round(2*x)
+    Flt r = x - j * 0.5f; // exact for |x| < 2^22
+    Flt t = r * kPi; // only error source
+    return detail::sincos_pi_impl(t, j, 0);
+  }
+}
+
+/**
+ * @brief Compute cos(pi * x) with exact range reduction.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored (range reduction is always exact).
+ * @param x Input value (all float domain). Exact at integers (returns ±1) and
+ *   half-integers (returns 0). ~2 ULP for general inputs.
+ * @return cos(pi * x). Compatible with all SIMD backends.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt cospi(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return cospi<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+  } else {
+    constexpr float kMagic = FloatTraits<Flt>::kMagic;
+    Flt j = (2.0f * x + kMagic) - kMagic;
+    Flt r = x - j * 0.5f;
+    Flt t = r * kPi;
+    return detail::sincos_pi_impl(t, j, 1);
+  }
+}
+
+/**
+ * @brief Simultaneous sin(pi*x) and cos(pi*x) with exact range reduction.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Accepted but ignored.
+ * @param x Input value (all float domain).
+ * @param[out] out_sin Pointer to receive sin(pi * x).
+ * @param[out] out_cos Pointer to receive cos(pi * x).
+ * @note Faster than separate sinpi() + cospi() calls. ~2 ULP each.
+ *   Compatible with all SIMD backends.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE void sincospi(Flt x, Flt* out_sin, Flt* out_cos) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    SimdType_t<Flt> s, c;
+    sincospi<SimdType_t<Flt>>(SimdType_t<Flt>(x), &s, &c);
+    *out_sin = s.v;
+    *out_cos = c.v;
+  } else {
+    constexpr float kMagic = FloatTraits<Flt>::kMagic;
+    Flt j = (2.0f * x + kMagic) - kMagic;
+    Flt r = x - j * 0.5f;
+    Flt t = r * kPi;
+    detail::sincos_pi_impl_both(t, j, out_sin, out_cos);
+  }
+}
+
+/**
  * @brief Tangent approximation.
  * @tparam Flt float or SIMD float type.
  * @tparam AccuracyTraits Default: 3 ULP in [-256K pi, 256K pi].

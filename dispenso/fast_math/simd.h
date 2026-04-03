@@ -17,27 +17,6 @@
 
 #pragma once
 
+// DefaultSimdFloat is defined in util.h (after SIMD backend includes).
+// This header just pulls in fast_math.h which includes util.h.
 #include <dispenso/fast_math/fast_math.h>
-
-namespace dispenso {
-namespace fast_math {
-
-// On AArch64, prefer native NEON over Highway — NEON has lower abstraction
-// overhead at the same 4-lane width. On x86, prefer Highway for runtime
-// dispatch to the widest available ISA (up to AVX-512).
-#if defined(__aarch64__)
-using DefaultSimdFloat = NeonFloat;
-#elif __has_include("hwy/highway.h")
-using DefaultSimdFloat = HwyFloat;
-#elif defined(__AVX512F__)
-using DefaultSimdFloat = Avx512Float;
-#elif defined(__AVX2__)
-using DefaultSimdFloat = AvxFloat;
-#elif defined(__SSE4_1__)
-using DefaultSimdFloat = SseFloat;
-#else
-using DefaultSimdFloat = float;
-#endif
-
-} // namespace fast_math
-} // namespace dispenso

@@ -321,3 +321,26 @@ DISPENSO_INLINE int32_t int_div_by_3(int32_t i) {
 #if __has_include("hwy/highway.h")
 #include <dispenso/fast_math/float_traits_hwy.h>
 #endif
+
+namespace dispenso {
+namespace fast_math {
+
+// Best available SIMD float type for the current platform.
+// Prefer native intrinsic wrappers over Highway for lower overhead.
+// Highway is a fallback for platforms without a native wrapper.
+#if defined(__aarch64__)
+using DefaultSimdFloat = NeonFloat;
+#elif defined(__AVX512F__)
+using DefaultSimdFloat = Avx512Float;
+#elif defined(__AVX2__)
+using DefaultSimdFloat = AvxFloat;
+#elif defined(__SSE4_1__)
+using DefaultSimdFloat = SseFloat;
+#elif __has_include("hwy/highway.h")
+using DefaultSimdFloat = HwyFloat;
+#else
+using DefaultSimdFloat = float;
+#endif
+
+} // namespace fast_math
+} // namespace dispenso

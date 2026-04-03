@@ -786,3 +786,47 @@ BENCHMARK(BM_fastm_ldexp);
 BENCHMARK(BM_tan);
 BENCHMARK(BM_fastm_tan);
 BENCHMARK(BM_fastm_tan_accurate);
+
+// --- sincos benchmarks ---
+
+void BM_sin_plus_cos(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::sinf(inputs[idx]) + ::cosf(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_sin_plus_cos(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::sin(inputs[idx]) + dispenso::fast_math::cos(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_sincos(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    float s, c;
+    dispenso::fast_math::sincos(inputs[idx], &s, &c);
+    sum += s + c;
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_sin_plus_cos);
+BENCHMARK(BM_fastm_sin_plus_cos);
+BENCHMARK(BM_fastm_sincos);
