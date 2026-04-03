@@ -1255,6 +1255,51 @@ TEST(SseTan, LargeMagnitude) {
   checkLaneByLane([](float x) { return dfm::tan(x); }, [](__m128 x) { return dfm::tan(x); }, input);
 }
 
+// --- hypot ---
+
+TEST(SseHypot, LaneByLane) {
+  __m128 x = make4(3.0f, 0.0f, 1e30f, -5.0f);
+  __m128 y = make4(4.0f, 1.0f, 1e30f, 12.0f);
+  __m128 result = dfm::hypot(x, y);
+  for (int i = 0; i < 4; ++i) {
+    double xd = static_cast<double>(lane(x, i));
+    double yd = static_cast<double>(lane(y, i));
+    float expected = static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    uint32_t dist = dfm::float_distance(expected, lane(result, i));
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+                        << " expected=" << expected << " actual=" << lane(result, i);
+  }
+}
+
+// -- hypot bounds --
+
+TEST(SseHypotBounds, InfNaN) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  // IEEE 754: hypot(inf, anything) = +inf, including hypot(inf, NaN).
+  __m128 x = make4(inf, -inf, nan, nan);
+  __m128 y = make4(3.0f, nan, inf, -inf);
+  __m128 result = dfm::hypot<__m128, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(std::isinf(lane(result, i)) && lane(result, i) > 0)
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+        << " result=" << lane(result, i);
+  }
+}
+
+TEST(SseHypotBounds, NaNFinite) {
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  // hypot(NaN, finite) = NaN when neither is inf.
+  __m128 x = make4(nan, 3.0f, nan, nan);
+  __m128 y = make4(3.0f, nan, 0.0f, nan);
+  __m128 result = dfm::hypot<__m128, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+        << " result=" << lane(result, i);
+  }
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

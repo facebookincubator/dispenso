@@ -673,6 +673,101 @@ void BM_ldexp_sse(benchmark::State& state) {
   consumeSum(sum);
 }
 
+// --- hypot ---
+
+const std::vector<__m128>& hypotSseInputs() {
+  static std::vector<__m128> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<__m128> inp;
+    float f = -100000.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm_set_ps(f + 3 * delta, f + 2 * delta, f + delta, f));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<float>& hypotScalarInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -100000.0f; inp.size() < kNumInputs; f += delta) {
+      inp.push_back(f);
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_hypot_scalar(benchmark::State& state) {
+  const auto& inputs = hypotScalarInputs();
+  const auto& inputs2 = sinScalarInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dfm::hypot(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_hypot_sse(benchmark::State& state) {
+  const auto& inputs = hypotSseInputs();
+  const auto& inputs2 = sinSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::hypot(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_hypot_scalar);
+BENCHMARK(BM_hypot_sse);
+
+void BM_hypot_sse_bounds(benchmark::State& state) {
+  const auto& inputs = hypotSseInputs();
+  const auto& inputs2 = sinSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::hypot<__m128, dfm::MaxAccuracyTraits>(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_hypot_sse_bounds);
+
+void BM_hypot_libc(benchmark::State& state) {
+  const auto& inputs = hypotSseInputs();
+  const auto& inputs2 = sinSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    // 4x scalar hypotf to match SSE lane count.
+    alignas(16) float x[4], y[4], r[4];
+    _mm_store_ps(x, inputs[idx]);
+    _mm_store_ps(y, inputs2[idx]);
+    r[0] = ::hypotf(x[0], y[0]);
+    r[1] = ::hypotf(x[1], y[1]);
+    r[2] = ::hypotf(x[2], y[2]);
+    r[3] = ::hypotf(x[3], y[3]);
+    sum = _mm_add_ps(sum, _mm_load_ps(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_hypot_libc);
+
 // Registrations.
 BENCHMARK(BM_sin_libc);
 BENCHMARK(BM_sin_scalar);

@@ -364,6 +364,10 @@ struct FloatTraits<SseFloat> {
     return _mm_sqrt_ps(x.v);
   }
 
+  static DISPENSO_INLINE SseFloat rcp(SseFloat x) {
+    return _mm_rcp_ps(x.v);
+  }
+
   static DISPENSO_INLINE SseFloat fma(SseFloat a, SseFloat b, SseFloat c) {
 #if defined(__FMA__)
     return _mm_fmadd_ps(a.v, b.v, c.v);

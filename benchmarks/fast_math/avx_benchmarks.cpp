@@ -708,6 +708,81 @@ void BM_ldexp_avx(benchmark::State& state) {
   consumeSum(sum);
 }
 
+// --- hypot ---
+
+const std::vector<__m256>& hypotAvxInputs() {
+  static std::vector<__m256> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<__m256> inp;
+    float f = -100000.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm256_set_ps(
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 8 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<float>& hypotScalarInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -100000.0f; inp.size() < kNumInputs; f += delta) {
+      inp.push_back(f);
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_hypot_scalar(benchmark::State& state) {
+  const auto& inputs = hypotScalarInputs();
+  const auto& inputs2 = sinScalarInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dfm::hypot(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_hypot_avx(benchmark::State& state) {
+  const auto& inputs = hypotAvxInputs();
+  const auto& inputs2 = sinAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::hypot(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+void BM_hypot_avx_bounds(benchmark::State& state) {
+  const auto& inputs = hypotAvxInputs();
+  const auto& inputs2 = sinAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::hypot<__m256, dfm::MaxAccuracyTraits>(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
 // Registrations.
 BENCHMARK(BM_sin_libc);
 BENCHMARK(BM_sin_scalar);
@@ -765,6 +840,10 @@ BENCHMARK(BM_frexp_avx);
 
 BENCHMARK(BM_ldexp_scalar);
 BENCHMARK(BM_ldexp_avx);
+
+BENCHMARK(BM_hypot_scalar);
+BENCHMARK(BM_hypot_avx);
+BENCHMARK(BM_hypot_avx_bounds);
 
 #else // !defined(__AVX2__)
 

@@ -613,7 +613,7 @@ TEST(Avx512Util, Signof) {
       -0.5f,
       1e10f,
       -1e10f,
-      1e-10f,
+      1e-20f,
       -1e-10f,
       100.0f,
       -100.0f,
@@ -939,7 +939,7 @@ TEST(Avx512Log, LaneByLane) {
       10.0f,
       0.1f,
       100.0f,
-      0.01f,
+      1e-20f,
       1000.0f,
       0.001f,
       1e4f,
@@ -982,7 +982,7 @@ TEST(Avx512Log10, LaneByLane) {
       100.0f,
       0.1f,
       1000.0f,
-      0.01f,
+      1e-20f,
       10000.0f,
       0.001f,
       1e5f,
@@ -1076,7 +1076,7 @@ TEST(Avx512Cbrt, LaneByLane) {
       2.0f,
       10.0f,
       100.0f,
-      0.01f,
+      1e-20f,
       0.1f,
       500.0f,
       42.0f);
@@ -1940,6 +1940,89 @@ TEST(Avx512Atan2Bounds, InfCases) {
     float expected = dfm::atan2<float, dfm::MaxAccuracyTraits>(y_buf[i], x_buf[i]);
     uint32_t dist = dfm::float_distance(expected, lane(result, i));
     EXPECT_LE(dist, 0u) << "Lane " << i << ": y=" << y_buf[i] << " x=" << x_buf[i];
+  }
+}
+
+// --- hypot ---
+
+TEST(Avx512Hypot, LaneByLane) {
+  alignas(64) float x_buf[kLanes] = {
+      3.0f,
+      0.0f,
+      1e30f,
+      -5.0f,
+      1.0f,
+      1e-20f,
+      -1e15f,
+      7.0f,
+      0.0f,
+      1e38f,
+      -3.0f,
+      100.0f,
+      1e-20f,
+      -1e25f,
+      12.0f,
+      0.5f};
+  alignas(64) float y_buf[kLanes] = {
+      4.0f,
+      1.0f,
+      1e30f,
+      12.0f,
+      1.0f,
+      1e-20f,
+      1e15f,
+      24.0f,
+      0.0f,
+      0.0f,
+      4.0f,
+      0.0f,
+      1e-20f,
+      1e25f,
+      5.0f,
+      0.5f};
+  __m512 x = _mm512_load_ps(x_buf);
+  __m512 y = _mm512_load_ps(y_buf);
+  __m512 result = dfm::hypot(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    double xd = static_cast<double>(x_buf[i]);
+    double yd = static_cast<double>(y_buf[i]);
+    float expected = static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    uint32_t dist = dfm::float_distance(expected, lane(result, i));
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": x=" << x_buf[i] << " y=" << y_buf[i]
+                        << " expected=" << expected << " actual=" << lane(result, i);
+  }
+}
+
+// -- hypot bounds --
+
+TEST(Avx512HypotBounds, InfNaN) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  alignas(64) float x_buf[kLanes] = {
+      inf, -inf, nan, nan, inf, 3.0f, -inf, nan, inf, nan, -inf, nan, 0.0f, inf, nan, -inf};
+  alignas(64) float y_buf[kLanes] = {
+      3.0f, nan, inf, -inf, inf, inf, 0.0f, -inf, nan, inf, nan, -inf, inf, -inf, inf, nan};
+  __m512 x = _mm512_load_ps(x_buf);
+  __m512 y = _mm512_load_ps(y_buf);
+  __m512 result = dfm::hypot<__m512, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isinf(lane(result, i)) && lane(result, i) > 0)
+        << "Lane " << i << ": x=" << x_buf[i] << " y=" << y_buf[i] << " result=" << lane(result, i);
+  }
+}
+
+TEST(Avx512HypotBounds, NaNFinite) {
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  alignas(64) float x_buf[kLanes] = {
+      nan, 3.0f, nan, nan, 0.0f, nan, -1.0f, nan, nan, 5.0f, nan, nan, nan, 0.0f, nan, 1e10f};
+  alignas(64) float y_buf[kLanes] = {
+      3.0f, nan, 0.0f, nan, nan, -5.0f, nan, nan, 1.0f, nan, nan, 0.0f, nan, nan, 1e-5f, nan};
+  __m512 x = _mm512_load_ps(x_buf);
+  __m512 y = _mm512_load_ps(y_buf);
+  __m512 result = dfm::hypot<__m512, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": x=" << x_buf[i] << " y=" << y_buf[i] << " result=" << lane(result, i);
   }
 }
 

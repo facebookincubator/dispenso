@@ -713,6 +713,87 @@ BENCHMARK(BM_frexp_avx512);
 BENCHMARK(BM_ldexp_scalar);
 BENCHMARK(BM_ldexp_avx512);
 
+// --- hypot ---
+
+const std::vector<__m512>& hypotAvx512Inputs() {
+  static std::vector<__m512> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<__m512> inp;
+    float f = -100000.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm512_set_ps(
+          f + 15 * delta,
+          f + 14 * delta,
+          f + 13 * delta,
+          f + 12 * delta,
+          f + 11 * delta,
+          f + 10 * delta,
+          f + 9 * delta,
+          f + 8 * delta,
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 16 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_hypot_avx512(benchmark::State& state) {
+  const auto& inputs = hypotAvx512Inputs();
+  const auto& inputs2 = sinAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm512_add_ps(sum, dfm::hypot(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+void BM_hypot_avx512_bounds(benchmark::State& state) {
+  const auto& inputs = hypotAvx512Inputs();
+  const auto& inputs2 = sinAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm512_add_ps(sum, dfm::hypot<__m512, dfm::MaxAccuracyTraits>(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+void BM_hypot_libc_avx512(benchmark::State& state) {
+  const auto& inputs = hypotAvx512Inputs();
+  const auto& inputs2 = sinAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    alignas(64) float x[16], y[16], r[16];
+    _mm512_store_ps(x, inputs[idx]);
+    _mm512_store_ps(y, inputs2[idx]);
+    for (int i = 0; i < 16; ++i) {
+      r[i] = ::hypotf(x[i], y[i]);
+    }
+    sum = _mm512_add_ps(sum, _mm512_load_ps(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_hypot_avx512);
+BENCHMARK(BM_hypot_avx512_bounds);
+BENCHMARK(BM_hypot_libc_avx512);
+
 #else // !defined(__AVX512F__)
 
 int main() {

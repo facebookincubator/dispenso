@@ -388,6 +388,10 @@ struct FloatTraits<HwyFloat> {
     return hn::Sqrt(x.v);
   }
 
+  static DISPENSO_INLINE HwyFloat rcp(HwyFloat x) {
+    return hn::ApproximateReciprocal(x.v);
+  }
+
   // Highway always has FMA.
   static DISPENSO_INLINE HwyFloat fma(HwyFloat a, HwyFloat b, HwyFloat c) {
     return hn::MulAdd(a.v, b.v, c.v);

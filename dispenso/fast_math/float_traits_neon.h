@@ -351,6 +351,10 @@ struct FloatTraits<NeonFloat> {
     return vsqrtq_f32(x.v);
   }
 
+  static DISPENSO_INLINE NeonFloat rcp(NeonFloat x) {
+    return vrecpeq_f32(x.v);
+  }
+
   // AArch64 always has FMA.
   static DISPENSO_INLINE NeonFloat fma(NeonFloat a, NeonFloat b, NeonFloat c) {
     return vfmaq_f32(c.v, a.v, b.v); // vfmaq_f32(acc, a, b) = acc + a*b

@@ -364,6 +364,10 @@ struct FloatTraits<AvxFloat> {
     return _mm256_sqrt_ps(x.v);
   }
 
+  static DISPENSO_INLINE AvxFloat rcp(AvxFloat x) {
+    return _mm256_rcp_ps(x.v);
+  }
+
   static DISPENSO_INLINE AvxFloat fma(AvxFloat a, AvxFloat b, AvxFloat c) {
 #if defined(__FMA__)
     return _mm256_fmadd_ps(a.v, b.v, c.v);

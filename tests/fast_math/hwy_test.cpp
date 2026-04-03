@@ -2174,6 +2174,77 @@ TEST(HwyTan, LargeMagnitude) {
       3);
 }
 
+// --- hypot ---
+
+TEST(HwyTranscendentals, Hypot) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {3.0f, 0.0f, 1e30f, -5.0f, 1.0f, 1e-20f, -1e15f, 7.0f};
+  float test_ys[] = {4.0f, 1.0f, 1e30f, 12.0f, 1.0f, 1e-20f, 1e15f, 24.0f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::hypot(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    double xd = static_cast<double>(x_vals[i]);
+    double yd = static_cast<double>(y_vals[i]);
+    float expected = static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i]
+                        << " expected=" << expected << " actual=" << actual;
+  }
+}
+
+// -- hypot bounds --
+
+TEST(HwyHypotBounds, InfNaN) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  float test_xs[] = {inf, -inf, nan, nan, inf, 3.0f, -inf, nan};
+  float test_ys[] = {3.0f, nan, inf, -inf, inf, inf, 0.0f, -inf};
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+  HwyFloat result = dfm::hypot<HwyVecF, dfm::MaxAccuracyTraits>(x, y);
+  for (size_t i = 0; i < N(); ++i) {
+    float actual = lane(result, i);
+    EXPECT_TRUE(std::isinf(actual) && actual > 0)
+        << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i] << " result=" << actual;
+  }
+}
+
+TEST(HwyHypotBounds, NaNFinite) {
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  float test_xs[] = {nan, 3.0f, nan, nan, 0.0f, nan, -1.0f, nan};
+  float test_ys[] = {3.0f, nan, 0.0f, nan, nan, -5.0f, nan, nan};
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+  HwyFloat result = dfm::hypot<HwyVecF, dfm::MaxAccuracyTraits>(x, y);
+  for (size_t i = 0; i < N(); ++i) {
+    float actual = lane(result, i);
+    EXPECT_TRUE(std::isnan(actual))
+        << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i] << " result=" << actual;
+  }
+}
+
 #else // !__has_include("hwy/highway.h")
 
 // Dummy test so the binary does something when Highway is not available.

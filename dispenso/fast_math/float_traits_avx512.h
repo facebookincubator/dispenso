@@ -422,6 +422,10 @@ struct FloatTraits<Avx512Float> {
     return _mm512_sqrt_ps(x.v);
   }
 
+  static DISPENSO_INLINE Avx512Float rcp(Avx512Float x) {
+    return _mm512_rcp14_ps(x.v);
+  }
+
   // AVX-512 always has FMA.
   static DISPENSO_INLINE Avx512Float fma(Avx512Float a, Avx512Float b, Avx512Float c) {
     return _mm512_fmadd_ps(a.v, b.v, c.v);

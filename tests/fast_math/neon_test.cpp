@@ -1251,4 +1251,48 @@ TEST(NeonMixed, MixedLog) {
       "mixed_log");
 }
 
+// --- hypot ---
+
+TEST(NeonTranscendentals, Hypot) {
+  float32x4_t x = make4(3.0f, 0.0f, 1e30f, -5.0f);
+  float32x4_t y = make4(4.0f, 1.0f, 1e30f, 12.0f);
+  auto result = dfm::hypot(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    double xd = static_cast<double>(lane(x, i));
+    double yd = static_cast<double>(lane(y, i));
+    float expected = static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+                        << " expected=" << expected << " actual=" << actual;
+  }
+}
+
+// -- hypot bounds --
+
+TEST(NeonHypotBounds, InfNaN) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  float32x4_t x = make4(inf, -inf, nan, nan);
+  float32x4_t y = make4(3.0f, nan, inf, -inf);
+  auto result = dfm::hypot<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    float actual = lane(result, i);
+    EXPECT_TRUE(std::isinf(actual) && actual > 0)
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i) << " result=" << actual;
+  }
+}
+
+TEST(NeonHypotBounds, NaNFinite) {
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  float32x4_t x = make4(nan, 3.0f, nan, nan);
+  float32x4_t y = make4(3.0f, nan, 0.0f, nan);
+  auto result = dfm::hypot<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    float actual = lane(result, i);
+    EXPECT_TRUE(std::isnan(actual))
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i) << " result=" << actual;
+  }
+}
+
 #endif // defined(__aarch64__)

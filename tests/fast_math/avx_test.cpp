@@ -1293,6 +1293,49 @@ TEST(AvxExp10Bounds, InfInputs) {
   }
 }
 
+// --- hypot ---
+
+TEST(AvxHypot, LaneByLane) {
+  __m256 x = make8(3.0f, 0.0f, 1e30f, -5.0f, 1.0f, 1e-20f, -1e15f, 7.0f);
+  __m256 y = make8(4.0f, 1.0f, 1e30f, 12.0f, 1.0f, 1e-20f, 1e15f, 24.0f);
+  __m256 result = dfm::hypot(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    double xd = static_cast<double>(lane(x, i));
+    double yd = static_cast<double>(lane(y, i));
+    float expected = static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    uint32_t dist = dfm::float_distance(expected, lane(result, i));
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+                        << " expected=" << expected << " actual=" << lane(result, i);
+  }
+}
+
+// -- hypot bounds --
+
+TEST(AvxHypotBounds, InfNaN) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  __m256 x = make8(inf, -inf, nan, nan, inf, 3.0f, -inf, nan);
+  __m256 y = make8(3.0f, nan, inf, -inf, inf, inf, 0.0f, -inf);
+  __m256 result = dfm::hypot<__m256, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isinf(lane(result, i)) && lane(result, i) > 0)
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+        << " result=" << lane(result, i);
+  }
+}
+
+TEST(AvxHypotBounds, NaNFinite) {
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  __m256 x = make8(nan, 3.0f, nan, nan, 0.0f, nan, -1.0f, nan);
+  __m256 y = make8(3.0f, nan, 0.0f, nan, nan, -5.0f, nan, nan);
+  __m256 result = dfm::hypot<__m256, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": x=" << lane(x, i) << " y=" << lane(y, i)
+        << " result=" << lane(result, i);
+  }
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

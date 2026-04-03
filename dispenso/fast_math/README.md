@@ -139,12 +139,21 @@ Inf, and NaN inputs.
 
 ### Other
 
-| Function | Signature | Max Error | Notes |
-|:---------|:----------|:----------|:------|
-| `sqrt` | `sqrt(x)` | 0 ULP | Delegates to hardware `sqrt` |
-| `cbrt` | `cbrt(x)` | 12 ULP (Default), 3 ULP (MaxAccuracy) | |
-| `frexp` | `frexp(x, &e)` | 0 | Bit-accurate |
-| `ldexp` | `ldexp(x, e)` | 0 | Bit-accurate |
+| Function | Signature | Domain | Max ULP (Default) | Max ULP (MaxAccuracy) |
+|:---------|:----------|:-------|:--:|:--:|
+| `sqrt` | `sqrt(x)` | all float | 0 | 0 |
+| `cbrt` | `cbrt(x)` | all float | 12 | 3 |
+| `hypot` | `hypot(x, y)` | all float | 1 | 1 |
+| `frexp` | `frexp(x, &e)` | all float | 0 | 0 |
+| `ldexp` | `ldexp(x, e)` | all float | 0 | 0 |
+
+`sqrt` delegates to hardware `sqrt`. `frexp` and `ldexp` are bit-accurate.
+
+`hypot` uses double-precision cast for scalar and dynamic exponent
+scaling with Newton refinement for SIMD (~1 ULP). Overflow-safe for all normal
+floats (up to ~2^126). With `kBoundsValues = true`, hypot correctly handles
+IEEE 754 boundary conditions: `hypot(±inf, y) = +inf` even when `y` is NaN,
+and `hypot(NaN, finite) = NaN`.
 
 ## Performance
 
@@ -168,6 +177,7 @@ more meaningful for comparison.
 | atan | 1.7x | log10 | 3.3x |
 | atan2 | 3.3x | cbrt | 5.6x |
 | frexp | 3.8x | ldexp | 5.8x |
+| hypot | 2.3x | | |
 
 #### SIMD Scaling (per-element throughput relative to scalar fast_math)
 
@@ -189,6 +199,7 @@ more meaningful for comparison.
 | cbrt | 2.9x | 5.7x | 7.0x | 7.1x |
 | frexp | 7.4x | 14.8x | 23.0x | 22.9x |
 | ldexp | 4.8x | 9.7x | 16.6x | 16.6x |
+| hypot | 3.6x | — | 9.9x | — |
 
 Highway dispatches to AVX-512 (16-lane) on this hardware.
 
@@ -212,7 +223,7 @@ and ~25% slower for sin/cos (contrib uses a different polynomial fit).
 |:---------|:-:|:---------|:-:|
 | sin | ~0% | log | 46% |
 | cos | ~0% | cbrt | 24% |
-| exp | 37% | | |
+| exp | 37% | hypot | 18% (SSE), 29% (AVX-512) |
 
 ### Mac ARM — Apple M4 Pro
 
@@ -230,6 +241,7 @@ and ~25% slower for sin/cos (contrib uses a different polynomial fit).
 | atan | 1.8x | log10 | 1.6x |
 | atan2 | 1.7x | cbrt | 2.6x |
 | frexp | 1.4x | ldexp | 2.0x |
+| hypot | 1.6x | | |
 
 Apple's libm is highly optimized for M-series silicon; the smaller speedups
 reflect a stronger baseline rather than slower fast_math.
@@ -254,6 +266,7 @@ reflect a stronger baseline rather than slower fast_math.
 | cbrt | 3.1x | 2.4x |
 | frexp | 4.0x | 4.3x |
 | ldexp | 4.0x | 4.0x |
+| hypot | 2.1x | — |
 
 Highway dispatches to NEON (4-lane) on AArch64. NEON backend is generally
 faster than Highway on ARM due to lower abstraction overhead.

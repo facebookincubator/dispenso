@@ -11,6 +11,12 @@
 #include <cmath>
 #include <cstdint>
 
+#if defined(__SSE__)
+#include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
 #include <dispenso/platform.h>
 
 namespace dispenso {
@@ -40,6 +46,16 @@ struct FloatTraits<float> {
 
   static DISPENSO_INLINE float sqrt(float x) {
     return std::sqrt(x);
+  }
+
+  static DISPENSO_INLINE float rcp(float x) {
+#if defined(__SSE__)
+    return _mm_cvtss_f32(_mm_rcp_ss(_mm_set_ss(x)));
+#elif defined(__aarch64__)
+    return vrecpes_f32(x);
+#else
+    return 1.0f / x;
+#endif
   }
 
   template <typename Arg>

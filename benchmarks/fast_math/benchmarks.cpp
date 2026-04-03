@@ -770,6 +770,69 @@ BENCHMARK(BM_atan2);
 BENCHMARK(BM_fastm_atan2);
 BENCHMARK(BM_fastm_atan2_bounds);
 
+// --- hypot benchmarks ---
+
+const std::vector<float>& hypotInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -100000.f; f <= 100000.f; f += delta) {
+      inp.push_back(f);
+    }
+    return inp;
+  }();
+
+  while (inputs.size() < kNumInputs) {
+    inputs.push_back(inputs.back());
+  }
+
+  return inputs;
+}
+
+void BM_hypot(benchmark::State& state) {
+  const auto& inputs = hypotInputs();
+  const auto& inputs2 = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::hypotf(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_hypot(benchmark::State& state) {
+  const auto& inputs = hypotInputs();
+  const auto& inputs2 = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::hypot(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_naive_hypot(benchmark::State& state) {
+  const auto& inputs = hypotInputs();
+  const auto& inputs2 = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    float x = inputs[idx];
+    float y = inputs2[idx];
+    sum += sqrtf(fmaf(x, x, y * y));
+    idx = (idx + 1) & kInputsMask;
+  }
+
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
 BENCHMARK(BM_cbrt);
 BENCHMARK(BM_fastm_cbrt);
 BENCHMARK(BM_fastm_cbrt_accurate);
@@ -816,6 +879,27 @@ BENCHMARK(BM_fastm_ldexp);
 BENCHMARK(BM_tan);
 BENCHMARK(BM_fastm_tan);
 BENCHMARK(BM_fastm_tan_accurate);
+
+BENCHMARK(BM_hypot);
+BENCHMARK(BM_fastm_hypot);
+BENCHMARK(BM_naive_hypot);
+
+void BM_fastm_hypot_bounds(benchmark::State& state) {
+  const auto& inputs = hypotInputs();
+  const auto& inputs2 = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::hypot<float, dispenso::fast_math::MaxAccuracyTraits>(
+        inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_fastm_hypot_bounds);
 
 // --- sincos benchmarks ---
 

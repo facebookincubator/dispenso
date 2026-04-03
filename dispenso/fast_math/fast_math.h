@@ -993,5 +993,73 @@ DISPENSO_INLINE Flt atan2(Flt y, Flt x) {
   }
 }
 
+/**
+ * @brief Hypotenuse: sqrt(x*x + y*y) with overflow protection.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: ~1 ULP for all normal floats.
+ *   kBoundsValues: handles inf/NaN per IEEE 754 (hypot(inf,NaN) = +inf).
+ *   kMaxAccuracy: accepted but has no additional effect.
+ * @param x First input (all float domain).
+ * @param y Second input (all float domain).
+ * @return sqrt(x*x + y*y). Compatible with all SIMD backends.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt hypot(Flt x, Flt y) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return hypot<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x), SimdType_t<Flt>(y)).v;
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      uint32_t ax = bit_cast<uint32_t>(x) & 0x7fffffffu;
+      uint32_t ay = bit_cast<uint32_t>(y) & 0x7fffffffu;
+      if (DISPENSO_EXPECT(ax == 0x7f800000u || ay == 0x7f800000u, 0)) {
+        return std::numeric_limits<float>::infinity();
+      }
+      if (DISPENSO_EXPECT(ax > 0x7f800000u || ay > 0x7f800000u, 0)) {
+        return std::numeric_limits<float>::quiet_NaN();
+      }
+    }
+    // Scalar: cast to double for correctly-rounded result.
+    double xd = static_cast<double>(x);
+    double yd = static_cast<double>(y);
+    return static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+  } else {
+    // SIMD: dynamically scale inputs based on their exponent to keep
+    // intermediates in normal float range.  Extracts the exponent of
+    // max(|x|,|y|), builds scale = 2^(127-E) so the scaled max is in [1,2).
+    // Clamp ensures the scale itself stays in normal range.
+    using IntT = IntType_t<Flt>;
+    using UintT = UintType_t<Flt>;
+    Flt abs_mask = bit_cast<Flt>(UintT(0x7fffffffu));
+    Flt max_abs = FloatTraits<Flt>::max(x & abs_mask, y & abs_mask);
+    // Clamp to [FLT_MIN, 2^126] so scale and unscale stay normal.
+    Flt clamped =
+        FloatTraits<Flt>::max(FloatTraits<Flt>::min(max_abs, Flt(0x1p126f)), Flt(0x1p-126f));
+    IntT clamped_exp = bit_cast<IntT>(clamped) & IntT(0x7f800000);
+    // scale = 2^(127-E), unscale = 2^(E-127).
+    Flt scale = bit_cast<Flt>(IntT(0x7f000000) - clamped_exp);
+    Flt xs = x * scale;
+    Flt ys = y * scale;
+    auto fma = FloatTraits<Flt>::fma;
+    Flt h = FloatTraits<Flt>::sqrt(fma(xs, xs, ys * ys));
+    // Newton refinement: h' = h + (xs²+ys²-h²) * rcp(2h)
+    Flt r = fma(xs, xs, fma(ys, ys, -(h * h)));
+    Flt rcp_2h = FloatTraits<Flt>::rcp(h + h + Flt(std::numeric_limits<float>::min()));
+    h = fma(r, rcp_2h, h);
+    Flt unscale = bit_cast<Flt>(clamped_exp);
+    h = h * unscale;
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      // IEEE 754: hypot(±inf, y) = +inf even when y is NaN.
+      // Inf inputs produce NaN through Newton refinement, so override here.
+      UintT ax = bit_cast<UintT>(x) & UintT(0x7fffffffu);
+      UintT ay = bit_cast<UintT>(y) & UintT(0x7fffffffu);
+      auto either_inf = (ax == UintT(0x7f800000u)) | (ay == UintT(0x7f800000u));
+      auto inf_mask = bool_as_mask<IntT>(either_inf);
+      h = FloatTraits<Flt>::conditional(inf_mask, bit_cast<Flt>(UintT(0x7f800000u)), h);
+    }
+    return h;
+  }
+}
+
 } // namespace fast_math
 } // namespace dispenso

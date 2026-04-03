@@ -597,6 +597,88 @@ void BM_ldexp_neon(benchmark::State& state) {
   consumeSum(sum);
 }
 
+// --- hypot ---
+
+const std::vector<float32x4_t>& hypotNeonInputs() {
+  static std::vector<float32x4_t> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<float32x4_t> inp;
+    float f = -100000.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      float buf[4] = {f, f + delta, f + 2 * delta, f + 3 * delta};
+      inp.emplace_back(vld1q_f32(buf));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<float>& hypotScalarInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 200000.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -100000.0f; inp.size() < kNumInputs; f += delta) {
+      inp.push_back(f);
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_hypot_scalar(benchmark::State& state) {
+  const auto& inputs = hypotScalarInputs();
+  const auto& inputs2 = sinScalarInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dfm::hypot(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_hypot_neon(benchmark::State& state) {
+  const auto& inputs = hypotNeonInputs();
+  const auto& inputs2 = sinNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::hypot(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_hypot_neon_bounds(benchmark::State& state) {
+  const auto& inputs = hypotNeonInputs();
+  const auto& inputs2 = sinNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum =
+        vaddq_f32(sum, dfm::hypot<float32x4_t, dfm::MaxAccuracyTraits>(inputs[idx], inputs2[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_hypot_libc(benchmark::State& state) {
+  const auto& inputs = hypotScalarInputs();
+  const auto& inputs2 = sinScalarInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::hypotf(inputs[idx], inputs2[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
 // Registrations.
 BENCHMARK(BM_sin_libc);
 BENCHMARK(BM_sin_scalar);
@@ -648,6 +730,11 @@ BENCHMARK(BM_frexp_neon);
 
 BENCHMARK(BM_ldexp_scalar);
 BENCHMARK(BM_ldexp_neon);
+
+BENCHMARK(BM_hypot_libc);
+BENCHMARK(BM_hypot_scalar);
+BENCHMARK(BM_hypot_neon);
+BENCHMARK(BM_hypot_neon_bounds);
 
 #else // !defined(__aarch64__)
 
