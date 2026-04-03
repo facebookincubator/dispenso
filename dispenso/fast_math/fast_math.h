@@ -296,8 +296,8 @@ DISPENSO_INLINE Flt cos(Flt x) {
  * @param x Input value in radians (all float domain).
  * @param[out] out_sin Pointer to receive sin(x).
  * @param[out] out_cos Pointer to receive cos(x).
- * @note Faster than separate sin() + cos() calls due to shared range reduction
- *   and polynomial evaluation. Compatible with all SIMD backends.
+ * @note Can be faster than separate sin() + cos() calls due to shared range
+ *   reduction and polynomial evaluation (SIMD). Compatible with all SIMD backends.
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE void sincos(Flt x, Flt* out_sin, Flt* out_cos) {

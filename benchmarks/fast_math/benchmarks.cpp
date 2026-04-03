@@ -830,3 +830,47 @@ void BM_fastm_sincos(benchmark::State& state) {
 BENCHMARK(BM_sin_plus_cos);
 BENCHMARK(BM_fastm_sin_plus_cos);
 BENCHMARK(BM_fastm_sincos);
+
+// --- sinpi / cospi / sincospi benchmarks ---
+
+void BM_fastm_sinpi(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::sinpi(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_cospi(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::cospi(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_sincospi(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    float s, c;
+    dispenso::fast_math::sincospi(inputs[idx], &s, &c);
+    sum += s + c;
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_fastm_sinpi);
+BENCHMARK(BM_fastm_cospi);
+BENCHMARK(BM_fastm_sincospi);
