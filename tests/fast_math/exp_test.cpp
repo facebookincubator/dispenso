@@ -44,7 +44,7 @@ TEST(Exp, RangeMedium) {
 
 TEST(Exp, RangeLarge) {
   uint32_t res = dispenso::fast_math::evalAccuracy(::expf, exp_accurate, 40.0f, 128.0f);
-  EXPECT_LE(res, 3u);
+  EXPECT_LE(res, 1u);
 }
 
 auto exp_bounds = dispenso::fast_math::exp<float, BoundsOnlyTraits>;
@@ -62,11 +62,11 @@ TEST(ExpLessAccurateWBounds, SpecialValues) {
 
 TEST(ExpLessAccurateWBounds, Range_m100_100) {
   uint32_t res = dispenso::fast_math::evalAccuracy(::expf, exp_bounds, -100.0f, 100.0f);
-  EXPECT_LE(res, 5u);
+  EXPECT_LE(res, 1u);
 }
 
 TEST(ExpLessAccurate, Range_m88_88) {
   uint32_t res =
       dispenso::fast_math::evalAccuracy(::expf, dispenso::fast_math::exp<float>, -88.0f, 88.0f);
-  EXPECT_LE(res, 5u);
+  EXPECT_LE(res, 3u);
 }

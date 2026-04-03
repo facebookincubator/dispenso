@@ -590,7 +590,7 @@ DISPENSO_INLINE Flt exp2(Flt x) {
 /**
  * @brief Natural exponential approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: 5 ULP. MaxAccuracy: 1 ULP (higher-order
+ * @tparam AccuracyTraits Default: 3 ULP. MaxAccuracy: 1 ULP (Sollya-optimized
  *   polynomial + Norbert Juffa's rounding technique).
  *   kBoundsValues: returns 0 for large negative, inf for large positive, NaN for NaN.
  * @param x Input value; [-89, 89] for normal output.
@@ -617,7 +617,13 @@ DISPENSO_INLINE Flt exp(Flt x) {
       IntT i = convert_to_int(j);
       // approximate r = exp(f) on interval [-log(2)/2, +log(2)/2]
       constexpr std::array<float, 7> ks = {
-          1.f, 1.f, 0.49999997f, 0.166665733f, 0.041665338f, 0.00836656243f, 0.00140835939f};
+          1.f,
+          1.f,
+          0x1.fffff8p-2f,
+          0x1.55548ep-3f,
+          0x1.555b98p-5f,
+          0x1.123bccp-7f,
+          0x1.6850e4p-10f};
       Flt y = ks[6];
       y = fma(y, f, ks[5]);
       y = fma(y, f, ks[4]);
@@ -660,9 +666,14 @@ DISPENSO_INLINE Flt exp(Flt x) {
 
       Flt powxi = bit_cast<Flt>(xi);
 
-      // approximate r = exp(f) on interval [0, 1]
+      // approximate r = exp(f) on interval [0, ln2]
       constexpr std::array<float, 6> ks = {
-          1.f, 1.0000006f, 0.499961555f, 0.16710797f, 0.0398967788f, 0.0111452239f};
+          0x1.fffffep-1f,
+          0x1.000086p0f,
+          0x1.ffd96ep-2f,
+          0x1.57481ep-3f,
+          0x1.3f3846p-5f,
+          0x1.8014dp-7f};
       Flt y = ks[5];
       y = fma(y, x, ks[4]);
       y = fma(y, x, ks[3]);

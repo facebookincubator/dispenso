@@ -119,7 +119,7 @@ Polynomial coefficients stay as scalar `float` arrays — the implicit
 
 | Function | Signature | Domain | Max ULP (Default) | Max ULP (MaxAccuracy) |
 |:---------|:----------|:-------|:--:|:--:|
-| `exp` | `exp(x)` | [-89, 89] | 5 | 1 |
+| `exp` | `exp(x)` | [-89, 89] | 3 | 1 |
 | `exp2` | `exp2(x)` | [-127, 128] | 1 | 1 |
 | `exp10` | `exp10(x)` | [-40, 40] | 3 | 3 |
 
