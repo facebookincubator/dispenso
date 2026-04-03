@@ -238,7 +238,7 @@ DISPENSO_INLINE Flt acos(Flt x) {
 /**
  * @brief Arc sine approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 4 ULP.
+ * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 2 ULP.
  * @param x Input value in [-1, 1].
  * @return Arc sine of @p x in radians. Compatible with all SIMD backends.
  */
@@ -567,13 +567,13 @@ DISPENSO_INLINE Flt exp2(Flt x) {
     auto fma = FloatTraits<Flt>::fma;
 
     constexpr std::array<float, 7> ks = {
-        1.000000002530745f,
-        0.6931469327588555f,
-        0.2402304544124029f,
-        0.05548063019650077f,
-        0.00968418631036627f,
-        0.001239133183698219f,
-        2.186578477026809e-4f};
+        0x1p0f,
+        0x1.62e42cp-1f,
+        0x1.ebfd38p-3f,
+        0x1.c68b2ep-5f,
+        0x1.3cfb6p-7f,
+        0x1.4748aep-10f,
+        0x1.c41242p-13f};
 
     Flt y = ks[6];
     y = fma(y, x, ks[5]);
@@ -689,7 +689,7 @@ DISPENSO_INLINE Flt exp(Flt x) {
 /**
  * @brief Base-10 exponential approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: 3 ULP. kBoundsValues: handles NaN.
+ * @tparam AccuracyTraits Default: 2 ULP. kBoundsValues: handles NaN.
  * @param x Input value; [-38, 38] for normal output.
  * @return 10^x. Compatible with all SIMD backends.
  */
@@ -725,7 +725,13 @@ DISPENSO_INLINE Flt exp10(Flt x) {
     Flt powxi = bit_cast<Flt>(xi);
     auto fma = FloatTraits<Flt>::fma;
     constexpr std::array<float, 7> ks = {
-        1.f, 2.30258512f, 2.65094399f, 2.03472686f, 1.17230284f, 0.524341643f, 0.266741097f};
+        0x1p0f,
+        0x1.26bb18p1f,
+        0x1.53534cp1f,
+        0x1.0459f6p1f,
+        0x1.2d9da2p0f,
+        0x1.024feap-1f,
+        0x1.293a54p-2f};
     Flt y = ks[6];
     y = fma(y, x, ks[5]);
     y = fma(y, x, ks[4]);

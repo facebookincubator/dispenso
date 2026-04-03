@@ -234,10 +234,16 @@ DISPENSO_INLINE Flt asin_pt5_1(Flt x) {
   auto fma = FloatTraits<Flt>::fma;
   constexpr float kPi_2hi = 1.57079637050628662109375f;
   constexpr float kPi_2lo = -4.37113900018624283e-8f;
-  constexpr std::array<float, 5> ks = {
-      -1.570233464f, 0.21018889546f, -0.07465200126f, 0.024976193904f, -0.0044932682067f};
+  constexpr std::array<float, 6> ks = {
+      -0x1.92136p0f,
+      0x1.b3f124p-3f,
+      -0x1.5085b4p-4f,
+      0x1.21893cp-5f,
+      -0x1.7a2022p-7f,
+      0x1.ee9b5ep-10f};
 
-  Flt y = ks[4];
+  Flt y = ks[5];
+  y = fma(y, x, ks[4]);
   y = fma(y, x, ks[3]);
   y = fma(y, x, ks[2]);
   y = fma(y, x, ks[1]);

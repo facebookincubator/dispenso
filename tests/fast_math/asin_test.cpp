@@ -30,6 +30,5 @@ TEST(Asin, SpecialVals) {
 TEST(Asin, Range) {
   uint32_t ulps =
       dispenso::fast_math::evalAccuracy(asinf, dispenso::fast_math::asin<float>, -1.0f, 1.0f);
-
-  EXPECT_LE(ulps, 4);
+  EXPECT_LE(ulps, 2);
 }

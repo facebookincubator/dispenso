@@ -29,11 +29,11 @@ TEST(Exp10, SpecialValues) {
 
 TEST(Exp10, Range) {
   uint32_t res = dispenso::fast_math::evalAccuracy(groundTruth, exp10_accurate, -40.0f, 40.0f);
-  EXPECT_LE(res, 3u);
+  EXPECT_LE(res, 2u);
 }
 
 TEST(Exp10LessAccurate, RangeMedium) {
   uint32_t res = dispenso::fast_math::evalAccuracy(
       groundTruth, dispenso::fast_math::exp10<float>, -37.0f, 38.0f);
-  EXPECT_LE(res, 3u);
+  EXPECT_LE(res, 2u);
 }

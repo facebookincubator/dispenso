@@ -111,7 +111,7 @@ Polynomial coefficients stay as scalar `float` arrays — the implicit
 | Function | Signature | Domain | Max ULP |
 |:---------|:----------|:-------|:--:|
 | `acos` | `acos(x)` | [-1, 1] | 3 |
-| `asin` | `asin(x)` | [-1, 1] | 4 |
+| `asin` | `asin(x)` | [-1, 1] | 2 |
 | `atan` | `atan(x)` | all float | 3 |
 | `atan2` | `atan2(y, x)` | all float | 3 (Default), 3 (MaxAccuracy, +Inf handling) |
 
@@ -121,7 +121,7 @@ Polynomial coefficients stay as scalar `float` arrays — the implicit
 |:---------|:----------|:-------|:--:|:--:|
 | `exp` | `exp(x)` | [-89, 89] | 3 | 1 |
 | `exp2` | `exp2(x)` | [-127, 128] | 1 | 1 |
-| `exp10` | `exp10(x)` | [-40, 40] | 3 | 3 |
+| `exp10` | `exp10(x)` | [-40, 40] | 2 | 2 |
 
 With `kBoundsValues = true`, exp/exp2/exp10 correctly handle NaN, +/-Inf, and
 out-of-range inputs (returning 0 for large negative, Inf for large positive).
