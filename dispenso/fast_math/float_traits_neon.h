@@ -515,6 +515,11 @@ DISPENSO_INLINE NeonInt32 nonnormal(NeonFloat f) {
   return nonnormal(bit_cast<NeonInt32>(f));
 }
 
+// any_true: reduce SIMD mask to scalar bool (true if any lane is set).
+DISPENSO_INLINE bool any_true(NeonInt32 mask) {
+  return vmaxvq_u32(vreinterpretq_u32_s32(mask.v)) != 0;
+}
+
 DISPENSO_INLINE NeonFloat signof(NeonFloat x) {
   NeonUint32 xi = bit_cast<NeonUint32>(x);
   return bit_cast<NeonFloat>((xi & 0x80000000u) | FloatTraits<NeonFloat>::kOne);

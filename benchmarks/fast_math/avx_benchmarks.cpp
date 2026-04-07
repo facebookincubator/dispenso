@@ -845,6 +845,114 @@ BENCHMARK(BM_hypot_scalar);
 BENCHMARK(BM_hypot_avx);
 BENCHMARK(BM_hypot_avx_bounds);
 
+// --- pow ---
+
+const std::vector<__m256>& powBaseAvxInputs() {
+  static std::vector<__m256> inputs = []() {
+    float delta = 99.99f / kNumInputs;
+    std::vector<__m256> inp;
+    float f = 0.01f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm256_set_ps(
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 8 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<__m256>& powExpAvxInputs() {
+  static std::vector<__m256> inputs = []() {
+    float delta = 16.0f / kNumInputs;
+    std::vector<__m256> inp;
+    float f = -8.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm256_set_ps(
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 8 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_pow_libc_avx(benchmark::State& state) {
+  const auto& bases = powBaseAvxInputs();
+  const auto& exps = powExpAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    alignas(32) float x[8], y[8], r[8];
+    _mm256_store_ps(x, bases[idx]);
+    _mm256_store_ps(y, exps[idx]);
+    for (int i = 0; i < 8; ++i) {
+      r[i] = ::powf(x[i], y[i]);
+    }
+    sum = _mm256_add_ps(sum, _mm256_load_ps(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+void BM_pow_avx(benchmark::State& state) {
+  const auto& bases = powBaseAvxInputs();
+  const auto& exps = powExpAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::pow(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+void BM_pow_avx_accurate(benchmark::State& state) {
+  const auto& bases = powBaseAvxInputs();
+  const auto& exps = powExpAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::pow<__m256, dfm::MaxAccuracyTraits>(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+void BM_pow_avx_scalar_exp(benchmark::State& state) {
+  const auto& bases = powBaseAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::pow(bases[idx], 2.5f));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_pow_libc_avx);
+BENCHMARK(BM_pow_avx);
+BENCHMARK(BM_pow_avx_accurate);
+BENCHMARK(BM_pow_avx_scalar_exp);
+
 #else // !defined(__AVX2__)
 
 int main() {

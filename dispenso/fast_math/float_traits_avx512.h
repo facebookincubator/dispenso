@@ -597,6 +597,11 @@ DISPENSO_INLINE Avx512Mask nonnormal(Avx512Float f) {
   return nonnormal(bit_cast<Avx512Int32>(f));
 }
 
+// any_true: reduce mask to scalar bool (Avx512Mask wraps __mmask16).
+DISPENSO_INLINE bool any_true(Avx512Mask mask) {
+  return mask.m != 0;
+}
+
 DISPENSO_INLINE Avx512Float signof(Avx512Float x) {
   Avx512Uint32 xi = bit_cast<Avx512Uint32>(x);
   return bit_cast<Avx512Float>((xi & 0x80000000u) | FloatTraits<Avx512Float>::kOne);

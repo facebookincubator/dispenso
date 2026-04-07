@@ -1295,4 +1295,153 @@ TEST(NeonHypotBounds, NaNFinite) {
   }
 }
 
+// ---- pow ----
+
+static float gt_pow(float x, float y) {
+  return static_cast<float>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+
+TEST(NeonPow, LaneByLane) {
+  float32x4_t x = make4(2.0f, 3.0f, 4.0f, 0.5f);
+  float32x4_t y = make4(3.0f, 2.0f, 0.5f, -1.0f);
+  auto result = dfm::pow(x, y);
+  EXPECT_EQ(lane(result, 0), 8.0f);
+  EXPECT_EQ(lane(result, 1), 9.0f);
+  EXPECT_EQ(lane(result, 2), 2.0f);
+  EXPECT_EQ(lane(result, 3), 2.0f);
+}
+
+TEST(NeonPow, NegativeBase) {
+  float32x4_t x = make4(-2.0f, -1.0f, -3.0f, -0.5f);
+  float32x4_t y = make4(3.0f, 2.0f, 5.0f, -1.0f);
+  auto result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                        << ") expected=" << expected << " got=" << actual;
+  }
+}
+
+TEST(NeonPow, NegBaseNonInt) {
+  float32x4_t x = make4(-2.0f, -1.0f, -0.5f, -3.0f);
+  float32x4_t y = make4(0.5f, 1.5f, 2.7f, -0.5f);
+  auto result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i) << ") should be NaN, got "
+        << lane(result, i);
+  }
+}
+
+TEST(NeonPow, YZero) {
+  float32x4_t x = make4(2.0f, -3.0f, 0.0f, 100.0f);
+  float32x4_t y = vdupq_n_f32(0.0f);
+  auto result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i;
+  }
+}
+
+TEST(NeonPow, ScalarExp) {
+  float32x4_t x = make4(1.0f, 2.0f, 3.0f, 4.0f);
+  auto result = dfm::pow(x, 2.0f);
+  for (int i = 0; i < kLanes; ++i) {
+    float xi = lane(x, i);
+    EXPECT_EQ(lane(result, i), xi * xi) << "Lane " << i;
+  }
+}
+
+TEST(NeonPow, ScalarExpGeneral) {
+  float32x4_t x = make4(2.0f, 4.0f, 8.0f, 16.0f);
+  auto result = dfm::pow(x, 2.5f);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), 2.5f);
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", 2.5) expected=" << expected
+                        << " got=" << actual;
+  }
+}
+
+TEST(NeonPowBounds, Specials) {
+  constexpr float kInf = std::numeric_limits<float>::infinity();
+  constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+  float32x4_t x = make4(0.0f, -0.0f, kInf, kNaN);
+  float32x4_t y = make4(2.0f, 3.0f, -1.0f, 0.0f);
+  auto result = dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+
+  EXPECT_EQ(lane(result, 0), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 0)));
+
+  EXPECT_EQ(lane(result, 1), -0.0f);
+  EXPECT_TRUE(std::signbit(lane(result, 1)));
+
+  EXPECT_EQ(lane(result, 2), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 2)));
+
+  EXPECT_EQ(lane(result, 3), 1.0f); // pow(NaN, 0) = 1
+}
+
+TEST(NeonPowBounds, InfExp) {
+  constexpr float kInf = std::numeric_limits<float>::infinity();
+  float32x4_t x = make4(0.5f, 2.0f, -1.0f, -1.0f);
+  float32x4_t y = make4(-kInf, -kInf, kInf, -kInf);
+  auto result = dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+  EXPECT_EQ(lane(result, 0), kInf);
+  EXPECT_EQ(lane(result, 1), 0.0f);
+  EXPECT_EQ(lane(result, 2), 1.0f);
+  EXPECT_EQ(lane(result, 3), 1.0f);
+}
+
+TEST(NeonPowBounds, Subnormal) {
+  float32x4_t x = make4(1.0e-40f, 1.0e-42f, 1.0e-44f, std::numeric_limits<float>::denorm_min());
+  float32x4_t y = make4(2.0f, 0.5f, -1.0f, 3.0f);
+  auto result = dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    if (std::isinf(expected)) {
+      EXPECT_TRUE(std::isinf(actual))
+          << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i) << ") expected inf";
+    } else if (expected == 0.0f) {
+      EXPECT_EQ(actual, 0.0f) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                              << ") expected 0";
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                          << ") expected=" << expected << " got=" << actual;
+    }
+  }
+}
+
+TEST(NeonPowBounds, SubnormalScalarY) {
+  float32x4_t x = make4(1.0e-40f, 1.0e-42f, 1.0e-44f, std::numeric_limits<float>::denorm_min());
+  auto result = dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(x, 2.0f);
+
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), 2.0f);
+    float actual = lane(result, i);
+    if (expected == 0.0f) {
+      EXPECT_EQ(actual, 0.0f) << "Lane " << i;
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", 2) expected=" << expected
+                          << " got=" << actual;
+    }
+  }
+}
+
+TEST(NeonPowBounds, XOne) {
+  constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+  float32x4_t x = vdupq_n_f32(1.0f);
+  float32x4_t y = make4(0.0f, kNaN, -1.0f, 42.0f);
+  auto result = dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i;
+  }
+}
+
 #endif // defined(__aarch64__)

@@ -53,9 +53,6 @@ TEST(SinCos, AccuracyVsLibc) {
   constexpr float kRange = 128.0f * kPi;
   constexpr float kDelta = 2.0f * kRange / kSteps;
 
-  uint32_t max_sin_ulps = 0;
-  uint32_t max_cos_ulps = 0;
-
   for (int i = 0; i < kSteps; ++i) {
     float x = -kRange + static_cast<float>(i) * kDelta;
     float s, c;
@@ -66,9 +63,6 @@ TEST(SinCos, AccuracyVsLibc) {
 
     uint32_t sin_dist = dfm::float_distance(gt_s, s);
     uint32_t cos_dist = dfm::float_distance(gt_c, c);
-
-    max_sin_ulps = std::max(max_sin_ulps, sin_dist);
-    max_cos_ulps = std::max(max_cos_ulps, cos_dist);
 
     EXPECT_LE(sin_dist, 2u) << "sin at x=" << x << " expected=" << gt_s << " actual=" << s;
     EXPECT_LE(cos_dist, 2u) << "cos at x=" << x << " expected=" << gt_c << " actual=" << c;

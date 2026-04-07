@@ -1336,6 +1336,101 @@ TEST(AvxHypotBounds, NaNFinite) {
   }
 }
 
+// --- pow ---
+
+static float gt_pow(float x, float y) {
+  return static_cast<float>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+
+TEST(AvxPow, LaneByLane) {
+  __m256 base = make8(2.0f, 3.0f, 4.0f, 0.5f, 8.0f, 10.0f, 0.25f, 100.0f);
+  __m256 exp = make8(3.0f, 2.0f, 0.5f, -1.0f, 1.0f / 3.0f, 0.0f, -2.0f, 0.5f);
+  __m256 result = dfm::pow(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(base, i), lane(exp, i));
+    uint32_t dist = dfm::float_distance(expected, lane(result, i));
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": base=" << lane(base, i) << " exp=" << lane(exp, i)
+                        << " expected=" << expected << " actual=" << lane(result, i);
+  }
+}
+
+TEST(AvxPow, NegativeBase) {
+  __m256 base = make8(-2.0f, -1.0f, -3.0f, -0.5f, -4.0f, -8.0f, -2.0f, -1.0f);
+  __m256 exp = make8(3.0f, 2.0f, 5.0f, -1.0f, 2.0f, 3.0f, 4.0f, 0.0f);
+  __m256 result = dfm::pow(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(base, i), lane(exp, i));
+    if (std::isnan(expected)) {
+      EXPECT_TRUE(std::isnan(lane(result, i))) << "Lane " << i;
+    } else {
+      uint32_t dist = dfm::float_distance(expected, lane(result, i));
+      EXPECT_LE(dist, 3u) << "Lane " << i << ": base=" << lane(base, i) << " exp=" << lane(exp, i)
+                          << " expected=" << expected << " actual=" << lane(result, i);
+    }
+  }
+}
+
+TEST(AvxPow, NegBaseNonInt) {
+  __m256 base = make8(-2.0f, -1.0f, -3.0f, -0.5f, -4.0f, -8.0f, -2.0f, -1.0f);
+  __m256 exp = make8(0.5f, 1.5f, 2.5f, 0.3f, -0.5f, -1.5f, 0.1f, -0.7f);
+  __m256 result = dfm::pow(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": base=" << lane(base, i) << " exp=" << lane(exp, i)
+        << " result=" << lane(result, i);
+  }
+}
+
+TEST(AvxPow, YZero) {
+  __m256 base = make8(0.0f, 1.0f, -1.0f, 100.0f, -100.0f, 0.5f, -0.5f, 42.0f);
+  __m256 exp = _mm256_setzero_ps();
+  __m256 result = dfm::pow(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f)
+        << "Lane " << i << ": base=" << lane(base, i) << " expected=1.0"
+        << " actual=" << lane(result, i);
+  }
+}
+
+TEST(AvxPow, ScalarExp) {
+  __m256 base = make8(1.0f, 2.0f, 3.0f, 4.0f, 0.5f, 10.0f, 0.1f, 7.0f);
+  __m256 exp = _mm256_set1_ps(2.0f);
+  __m256 result = dfm::pow(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    float b = lane(base, i);
+    float expected = b * b;
+    uint32_t dist = dfm::float_distance(expected, lane(result, i));
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": base=" << b << " expected=" << expected
+                        << " actual=" << lane(result, i);
+  }
+}
+
+// -- pow bounds --
+
+TEST(AvxPowBounds, Specials) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  __m256 base = make8(0.0f, -0.0f, inf, nan, 1.0f, -1.0f, 0.5f, 2.0f);
+  __m256 exp = make8(2.0f, 3.0f, -1.0f, 0.0f, nan, inf, inf, -inf);
+  __m256 result = dfm::pow<__m256, dfm::MaxAccuracyTraits>(base, exp);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(base, i), lane(exp, i));
+    float actual = lane(result, i);
+    if (std::isnan(expected)) {
+      EXPECT_TRUE(std::isnan(actual)) << "Lane " << i << ": base=" << lane(base, i)
+                                      << " exp=" << lane(exp, i) << " actual=" << actual;
+    } else if (std::isinf(expected)) {
+      EXPECT_TRUE(std::isinf(actual)) << "Lane " << i << ": base=" << lane(base, i)
+                                      << " exp=" << lane(exp, i) << " actual=" << actual;
+      EXPECT_EQ(std::signbit(expected), std::signbit(actual)) << "Lane " << i;
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 2u) << "Lane " << i << ": base=" << lane(base, i) << " exp=" << lane(exp, i)
+                          << " expected=" << expected << " actual=" << actual;
+    }
+  }
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

@@ -54,6 +54,26 @@ foreach(TEST_FILE ${FAST_MATH_TEST_FILES})
   set_target_properties(${TEST_NAME} PROPERTIES FOLDER tests/fast_math)
 endforeach()
 
+# Standalone evaluation tools (not gtests — no eval.cpp, no gtest linkage).
+foreach(EVAL_FILE
+    ${CMAKE_CURRENT_SOURCE_DIR}/ulp_eval.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/pow_ulp_eval.cpp)
+  if(NOT EXISTS ${EVAL_FILE})
+    continue()
+  endif()
+  get_filename_component(EVAL_NAME ${EVAL_FILE} NAME_WE)
+  set(EVAL_NAME "fast_math_${EVAL_NAME}")
+  add_executable(${EVAL_NAME} ${EVAL_FILE})
+  target_compile_features(${EVAL_NAME} PRIVATE cxx_std_17)
+  target_compile_options(${EVAL_NAME} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W3>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+    ${FAST_MATH_EXTRA_FLAGS}
+  )
+  target_link_libraries(${EVAL_NAME} dispenso ${FAST_MATH_EXTRA_LIBS})
+  set_target_properties(${EVAL_NAME} PROPERTIES FOLDER tests/fast_math)
+endforeach()
+
 # SIMD backend tests: no eval.cpp dependency.
 foreach(TEST_FILE ${SIMD_TEST_FILES})
   set(TEST_NAME)

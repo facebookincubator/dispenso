@@ -2026,6 +2026,307 @@ TEST(Avx512HypotBounds, NaNFinite) {
   }
 }
 
+// ---- pow ----
+
+// Ground truth: double-precision pow, rounded to float.
+static float gt_pow(float x, float y) {
+  return static_cast<float>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+
+TEST(Avx512Pow, LaneByLane) {
+  __m512 x = make16(
+      2.0f,
+      3.0f,
+      4.0f,
+      0.5f,
+      8.0f,
+      10.0f,
+      0.25f,
+      100.0f,
+      1.0f,
+      0.1f,
+      5.0f,
+      7.0f,
+      2.0f,
+      3.0f,
+      4.0f,
+      16.0f);
+  __m512 y = make16(
+      3.0f,
+      2.0f,
+      0.5f,
+      -1.0f,
+      1.0f / 3.0f,
+      0.0f,
+      -2.0f,
+      0.5f,
+      1.0f,
+      -1.0f,
+      2.0f,
+      3.0f,
+      -2.0f,
+      -3.0f,
+      0.5f,
+      0.25f);
+  __m512 result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                        << ") expected=" << expected << " got=" << actual;
+  }
+}
+
+TEST(Avx512Pow, NegativeBase) {
+  __m512 x = make16(
+      -2.0f,
+      -1.0f,
+      -3.0f,
+      -0.5f,
+      -4.0f,
+      -5.0f,
+      -10.0f,
+      -0.25f,
+      -7.0f,
+      -8.0f,
+      -0.1f,
+      -100.0f,
+      -2.0f,
+      -3.0f,
+      -1.0f,
+      -6.0f);
+  __m512 y = make16(
+      3.0f,
+      2.0f,
+      5.0f,
+      -1.0f,
+      2.0f,
+      3.0f,
+      -2.0f,
+      4.0f,
+      1.0f,
+      -3.0f,
+      -1.0f,
+      2.0f,
+      4.0f,
+      -1.0f,
+      6.0f,
+      2.0f);
+  __m512 result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 3u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                        << ") expected=" << expected << " got=" << actual;
+  }
+}
+
+TEST(Avx512Pow, NegBaseNonInt) {
+  // pow(negative, non-integer) -> NaN.
+  __m512 x = make16(
+      -2.0f,
+      -1.0f,
+      -0.5f,
+      -3.0f,
+      -4.0f,
+      -0.1f,
+      -10.0f,
+      -7.0f,
+      -5.0f,
+      -0.25f,
+      -8.0f,
+      -100.0f,
+      -6.0f,
+      -0.3f,
+      -9.0f,
+      -1.5f);
+  __m512 y = make16(
+      0.5f,
+      1.5f,
+      2.7f,
+      -0.5f,
+      0.3f,
+      -1.1f,
+      0.9f,
+      2.5f,
+      -0.7f,
+      1.3f,
+      -2.1f,
+      0.1f,
+      3.3f,
+      -0.9f,
+      1.7f,
+      0.4f);
+  __m512 result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i) << ") should be NaN, got "
+        << lane(result, i);
+  }
+}
+
+TEST(Avx512Pow, YZero) {
+  // pow(x, 0) = 1 for all x.
+  __m512 x = make16(
+      2.0f,
+      -3.0f,
+      0.0f,
+      100.0f,
+      -0.5f,
+      1.0f,
+      -1.0f,
+      42.0f,
+      0.001f,
+      -0.001f,
+      1e10f,
+      -1e10f,
+      0.5f,
+      -0.5f,
+      7.0f,
+      -7.0f);
+  __m512 y = _mm512_setzero_ps();
+  __m512 result = dfm::pow(x, y);
+  for (int i = 0; i < kLanes; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i;
+  }
+}
+
+TEST(Avx512Pow, ScalarExp) {
+  // pow(vec, scalar_y) = vec*vec for y=2.
+  __m512 x = make16(
+      1.0f,
+      2.0f,
+      3.0f,
+      4.0f,
+      5.0f,
+      6.0f,
+      7.0f,
+      8.0f,
+      0.5f,
+      0.25f,
+      0.1f,
+      10.0f,
+      100.0f,
+      0.01f,
+      9.0f,
+      16.0f);
+  __m512 result = dfm::pow(x, 2.0f);
+  for (int i = 0; i < kLanes; ++i) {
+    float xi = lane(x, i);
+    EXPECT_EQ(lane(result, i), xi * xi) << "Lane " << i;
+  }
+}
+
+TEST(Avx512PowBounds, Specials) {
+  constexpr float kInf = std::numeric_limits<float>::infinity();
+  constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+  // Test IEEE 754 special-value behavior for pow.
+  // Lane 0: pow(0, 2)      = 0    (positive zero)
+  // Lane 1: pow(-0, 3)     = -0   (negative zero, odd exponent)
+  // Lane 2: pow(inf, -1)   = 0    (positive zero)
+  // Lane 3: pow(NaN, 0)    = 1    (any^0 = 1)
+  // Lane 4: pow(1, NaN)    = 1    (1^any = 1)
+  // Lane 5: pow(-1, inf)   = 1    (|base|=1, inf exp)
+  // Lane 6: pow(-1, -inf)  = 1    (|base|=1, -inf exp)
+  // Lane 7: pow(0.5, -inf) = inf
+  // Lane 8: pow(2, -inf)   = 0
+  // Lane 9: pow(0, 0)      = 1    (0^0 = 1 by convention)
+  // Lane 10: pow(inf, 2)   = inf
+  // Lane 11: pow(-inf, 3)  = -inf (odd exponent preserves sign)
+  // Lane 12: pow(-inf, 2)  = inf  (even exponent loses sign)
+  // Lane 13: pow(inf, -2)  = 0
+  // Lane 14: pow(0, -1)    = inf  (1/0 = inf)
+  // Lane 15: pow(1, 100)   = 1
+  __m512 x = make16(
+      0.0f,
+      -0.0f,
+      kInf,
+      kNaN,
+      1.0f,
+      -1.0f,
+      -1.0f,
+      0.5f,
+      2.0f,
+      0.0f,
+      kInf,
+      -kInf,
+      -kInf,
+      kInf,
+      0.0f,
+      1.0f);
+  __m512 y = make16(
+      2.0f,
+      3.0f,
+      -1.0f,
+      0.0f,
+      kNaN,
+      kInf,
+      -kInf,
+      -kInf,
+      -kInf,
+      0.0f,
+      2.0f,
+      3.0f,
+      2.0f,
+      -2.0f,
+      -1.0f,
+      100.0f);
+  __m512 result = dfm::pow<__m512, dfm::MaxAccuracyTraits>(x, y);
+
+  // Lane 0: pow(0, 2) = 0
+  EXPECT_EQ(lane(result, 0), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 0)));
+
+  // Lane 1: pow(-0, 3) = -0
+  EXPECT_EQ(lane(result, 1), -0.0f);
+  EXPECT_TRUE(std::signbit(lane(result, 1)));
+
+  // Lane 2: pow(inf, -1) = 0
+  EXPECT_EQ(lane(result, 2), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 2)));
+
+  // Lane 3: pow(NaN, 0) = 1
+  EXPECT_EQ(lane(result, 3), 1.0f);
+
+  // Lane 4: pow(1, NaN) = 1
+  EXPECT_EQ(lane(result, 4), 1.0f);
+
+  // Lane 5: pow(-1, inf) = 1
+  EXPECT_EQ(lane(result, 5), 1.0f);
+
+  // Lane 6: pow(-1, -inf) = 1
+  EXPECT_EQ(lane(result, 6), 1.0f);
+
+  // Lane 7: pow(0.5, -inf) = inf
+  EXPECT_EQ(lane(result, 7), kInf);
+
+  // Lane 8: pow(2, -inf) = 0
+  EXPECT_EQ(lane(result, 8), 0.0f);
+
+  // Lane 9: pow(0, 0) = 1
+  EXPECT_EQ(lane(result, 9), 1.0f);
+
+  // Lane 10: pow(inf, 2) = inf
+  EXPECT_EQ(lane(result, 10), kInf);
+
+  // Lane 11: pow(-inf, 3) = -inf
+  EXPECT_EQ(lane(result, 11), -kInf);
+
+  // Lane 12: pow(-inf, 2) = inf
+  EXPECT_EQ(lane(result, 12), kInf);
+
+  // Lane 13: pow(inf, -2) = 0
+  EXPECT_EQ(lane(result, 13), 0.0f);
+
+  // Lane 14: pow(0, -1) = inf
+  EXPECT_EQ(lane(result, 14), kInf);
+
+  // Lane 15: pow(1, 100) = 1
+  EXPECT_EQ(lane(result, 15), 1.0f);
+}
+
 #else // !defined(__AVX512F__)
 
 TEST(Avx512, Unavailable) {

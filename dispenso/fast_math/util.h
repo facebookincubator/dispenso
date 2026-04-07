@@ -331,9 +331,29 @@ DISPENSO_INLINE T bool_apply_or_zero(BoolT b, T val) {
   return bit_cast<T>(bool_as_mask<IntType_t<T>>(b) & bit_cast<IntType_t<T>>(val));
 }
 
+// True if x is an integer. Safe for all float values including large, inf, NaN.
+// All floats with |x| >= 2^23 are integers (mantissa has no fractional bits).
+// For |x| < 2^23, floor_small(x) is valid (no int overflow).
+template <typename Flt>
+DISPENSO_INLINE BoolType_t<Flt> float_is_int(Flt x) {
+  auto ax = fabs(x);
+  return (ax >= Flt(8388608.0f)) | (floor_small(x) == x);
+}
+
+// True if x is an odd integer.
+// For |x| >= 2^24: ULP >= 2, so only even integers are representable → always false.
+template <typename Flt>
+DISPENSO_INLINE BoolType_t<Flt> float_is_odd(Flt x) {
+  if constexpr (std::is_same_v<Flt, float>) {
+    return float_is_int(x) && !float_is_int(x * 0.5f);
+  } else {
+    return float_is_int(x) & !float_is_int(x * Flt(0.5f));
+  }
+}
+
 // Fast integer division by 3 using multiply-and-shift. Used in cbrt magic constant computation.
 DISPENSO_INLINE int32_t int_div_by_3(int32_t i) {
-  return ((uint64_t(i) * 0x55555556) >> 32);
+  return static_cast<int32_t>((uint64_t(i) * 0x55555556) >> 32);
 }
 
 } // namespace fast_math

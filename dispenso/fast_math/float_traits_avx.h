@@ -523,6 +523,11 @@ DISPENSO_INLINE AvxInt32 nonnormal(AvxFloat f) {
   return nonnormal(bit_cast<AvxInt32>(f));
 }
 
+// any_true: reduce SIMD mask to scalar bool (true if any lane is set).
+DISPENSO_INLINE bool any_true(AvxInt32 mask) {
+  return _mm256_movemask_ps(_mm256_castsi256_ps(mask.v)) != 0;
+}
+
 DISPENSO_INLINE AvxFloat signof(AvxFloat x) {
   AvxUint32 xi = bit_cast<AvxUint32>(x);
   return bit_cast<AvxFloat>((xi & 0x80000000u) | FloatTraits<AvxFloat>::kOne);

@@ -736,6 +736,100 @@ BENCHMARK(BM_hypot_scalar);
 BENCHMARK(BM_hypot_neon);
 BENCHMARK(BM_hypot_neon_bounds);
 
+// --- pow ---
+
+const std::vector<float32x4_t>& powBaseNeonInputs() {
+  static std::vector<float32x4_t> inputs = []() {
+    float delta = 99.99f / kNumInputs;
+    std::vector<float32x4_t> inp;
+    float f = 0.01f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      float vals[4] = {f, f + delta, f + 2 * delta, f + 3 * delta};
+      inp.emplace_back(vld1q_f32(vals));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<float32x4_t>& powExpNeonInputs() {
+  static std::vector<float32x4_t> inputs = []() {
+    float delta = 16.0f / kNumInputs;
+    std::vector<float32x4_t> inp;
+    float f = -8.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      float vals[4] = {f, f + delta, f + 2 * delta, f + 3 * delta};
+      inp.emplace_back(vld1q_f32(vals));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_pow_libc_neon(benchmark::State& state) {
+  const auto& bases = powBaseNeonInputs();
+  const auto& exps = powExpNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    alignas(16) float x[4], y[4], r[4];
+    vst1q_f32(x, bases[idx]);
+    vst1q_f32(y, exps[idx]);
+    for (int i = 0; i < 4; ++i) {
+      r[i] = ::powf(x[i], y[i]);
+    }
+    sum = vaddq_f32(sum, vld1q_f32(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_neon(benchmark::State& state) {
+  const auto& bases = powBaseNeonInputs();
+  const auto& exps = powExpNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::pow(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_neon_accurate(benchmark::State& state) {
+  const auto& bases = powBaseNeonInputs();
+  const auto& exps = powExpNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::pow<float32x4_t, dfm::MaxAccuracyTraits>(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_neon_scalar_exp(benchmark::State& state) {
+  const auto& bases = powBaseNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::pow(bases[idx], 2.5f));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_pow_libc_neon);
+BENCHMARK(BM_pow_neon);
+BENCHMARK(BM_pow_neon_accurate);
+BENCHMARK(BM_pow_neon_scalar_exp);
+
 #else // !defined(__aarch64__)
 
 int main() {

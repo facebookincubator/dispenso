@@ -826,6 +826,99 @@ BENCHMARK(BM_frexp_sse);
 BENCHMARK(BM_ldexp_scalar);
 BENCHMARK(BM_ldexp_sse);
 
+// --- pow ---
+
+const std::vector<__m128>& powBaseSseInputs() {
+  static std::vector<__m128> inputs = []() {
+    float delta = 99.99f / kNumInputs;
+    std::vector<__m128> inp;
+    float f = 0.01f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm_set_ps(f + 3 * delta, f + 2 * delta, f + delta, f));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<__m128>& powExpSseInputs() {
+  static std::vector<__m128> inputs = []() {
+    float delta = 16.0f / kNumInputs;
+    std::vector<__m128> inp;
+    float f = -8.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm_set_ps(f + 3 * delta, f + 2 * delta, f + delta, f));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_pow_sse(benchmark::State& state) {
+  const auto& bases = powBaseSseInputs();
+  const auto& exps = powExpSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::pow(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_sse_accurate(benchmark::State& state) {
+  const auto& bases = powBaseSseInputs();
+  const auto& exps = powExpSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::pow<__m128, dfm::MaxAccuracyTraits>(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_sse_scalar_exp(benchmark::State& state) {
+  const auto& bases = powBaseSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::pow(bases[idx], 2.5f));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+void BM_pow_libc_sse(benchmark::State& state) {
+  const auto& bases = powBaseSseInputs();
+  const auto& exps = powExpSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    alignas(16) float x[4], y[4], r[4];
+    _mm_store_ps(x, bases[idx]);
+    _mm_store_ps(y, exps[idx]);
+    r[0] = ::powf(x[0], y[0]);
+    r[1] = ::powf(x[1], y[1]);
+    r[2] = ::powf(x[2], y[2]);
+    r[3] = ::powf(x[3], y[3]);
+    sum = _mm_add_ps(sum, _mm_load_ps(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_pow_libc_sse);
+BENCHMARK(BM_pow_sse);
+BENCHMARK(BM_pow_sse_accurate);
+BENCHMARK(BM_pow_sse_scalar_exp);
+
 #else // !defined(__SSE4_1__)
 
 // If SSE4.1 is not available, provide a minimal main.

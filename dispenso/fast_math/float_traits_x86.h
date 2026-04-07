@@ -523,6 +523,11 @@ DISPENSO_INLINE SseInt32 nonnormal(SseFloat f) {
   return nonnormal(bit_cast<SseInt32>(f));
 }
 
+// any_true: reduce SIMD mask to scalar bool (true if any lane is set).
+DISPENSO_INLINE bool any_true(SseInt32 mask) {
+  return _mm_movemask_ps(_mm_castsi128_ps(mask.v)) != 0;
+}
+
 DISPENSO_INLINE SseFloat signof(SseFloat x) {
   SseUint32 xi = bit_cast<SseUint32>(x);
   return bit_cast<SseFloat>((xi & 0x80000000u) | FloatTraits<SseFloat>::kOne);

@@ -2245,6 +2245,159 @@ TEST(HwyHypotBounds, NaNFinite) {
   }
 }
 
+// ---- pow ----
+
+static float gt_pow(float x, float y) {
+  return static_cast<float>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+
+TEST(HwyPow, Basic) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {2.0f, 3.0f, 10.0f, 0.5f, 1.0f, 100.0f, 0.1f, 7.0f};
+  float test_ys[] = {3.0f, 2.0f, 0.5f, 4.0f, 100.0f, 0.25f, 3.0f, 1.5f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::pow(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    float expected = gt_pow(x_vals[i], y_vals[i]);
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 4u) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i]
+                        << " expected=" << expected << " actual=" << actual;
+  }
+}
+
+TEST(HwyPow, NegativeBase) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {-2.0f, -3.0f, -1.0f, -10.0f, -0.5f, -4.0f, -2.0f, -5.0f};
+  float test_ys[] = {3.0f, 2.0f, 5.0f, 4.0f, 3.0f, 2.0f, 4.0f, 1.0f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::pow(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    float expected = gt_pow(x_vals[i], y_vals[i]);
+    float actual = lane(result, i);
+    // Check sign correctness.
+    EXPECT_EQ(std::signbit(expected), std::signbit(actual))
+        << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i] << " expected=" << expected
+        << " actual=" << actual;
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 3u) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i]
+                        << " expected=" << expected << " actual=" << actual;
+  }
+}
+
+TEST(HwyPow, NegBaseNonInt) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {-2.0f, -3.0f, -1.0f, -10.0f, -0.5f, -4.0f, -2.0f, -5.0f};
+  float test_ys[] = {0.5f, 1.5f, 2.3f, 0.1f, 0.7f, 3.3f, -0.5f, 1.1f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::pow(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": pow(" << x_vals[i] << ", " << y_vals[i] << ") should be NaN, got "
+        << lane(result, i);
+  }
+}
+
+TEST(HwyPow, YZero) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {2.0f, -3.0f, 0.0f, 100.0f, -1.0f, 0.5f, 42.0f, -0.1f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = 0.0f;
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::pow(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i << ": pow(" << x_vals[i] << ", 0) should be 1";
+  }
+}
+
+TEST(HwyPow, ScalarExp) {
+  HWY_ALIGN float x_vals[kMaxLanes];
+  float test_xs[] = {2.0f, 3.0f, 0.5f, 10.0f, 1.0f, 4.0f, 0.1f, 7.0f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+  }
+  HwyFloat x = loadF(x_vals);
+
+  HwyFloat result = dfm::pow(x, 2.0f);
+
+  for (size_t i = 0; i < N(); ++i) {
+    float expected = gt_pow(x_vals[i], 2.0f);
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 4u) << "Lane " << i << ": x=" << x_vals[i] << " expected=" << expected
+                        << " actual=" << actual;
+  }
+}
+
+TEST(HwyPowBounds, Specials) {
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  HWY_ALIGN float x_vals[kMaxLanes];
+  HWY_ALIGN float y_vals[kMaxLanes];
+  float test_xs[] = {0.0f, -0.0f, inf, nan, 1.0f, -1.0f, inf, -inf};
+  float test_ys[] = {2.0f, 3.0f, 2.0f, 5.0f, nan, 2.0f, -1.0f, 3.0f};
+
+  for (size_t i = 0; i < N(); ++i) {
+    x_vals[i] = test_xs[i % 8];
+    y_vals[i] = test_ys[i % 8];
+  }
+  HwyVecF x = loadF(x_vals);
+  HwyVecF y = loadF(y_vals);
+
+  HwyFloat result = dfm::pow<HwyVecF, dfm::MaxAccuracyTraits>(x, y);
+
+  for (size_t i = 0; i < N(); ++i) {
+    float expected = dfm::pow<float, dfm::MaxAccuracyTraits>(x_vals[i], y_vals[i]);
+    float actual = lane(result, i);
+    if (std::isnan(expected)) {
+      EXPECT_TRUE(std::isnan(actual)) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i];
+    } else if (std::isinf(expected)) {
+      EXPECT_TRUE(std::isinf(actual)) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i];
+      EXPECT_EQ(std::signbit(expected), std::signbit(actual))
+          << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i];
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 0u) << "Lane " << i << ": x=" << x_vals[i] << " y=" << y_vals[i]
+                          << " expected=" << expected << " actual=" << actual;
+    }
+  }
+}
+
 #else // !__has_include("hwy/highway.h")
 
 // Dummy test so the binary does something when Highway is not available.

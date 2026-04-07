@@ -70,6 +70,53 @@ Prioritized by demand in real-time graphics, physics, and ML inference workloads
 | `fmod(x, y)`, `remainder(x, y)` | Modular arithmetic. Less clear speedup opportunity vs libc — these are integer-like. |
 | `lgamma(x)`, `tgamma(x)` | Gamma functions. Very niche. |
 
+### Future: GPU Device Functions (CUDA / HIP)
+
+The tableless double-precision pow core (`pow_double_poly_core`) and its building
+blocks (`DoubleVec`, `exp2_split`, `logarithmSep`) are pure arithmetic with no
+platform-specific intrinsics — they use only `+`, `-`, `*`, `fma`, and
+widening/narrowing conversions. This makes them natural candidates for GPU device
+functions (`__device__`).
+
+**Motivation**: GPU shader math libraries (CUDA `__powf`, HIP `__ocml_pow_f32`)
+trade accuracy for speed. A <1 ULP pow on-device would serve:
+- Physically-based rendering (PBR) and tone mapping
+- ML inference with numerical sensitivity (small-exponent power laws)
+- Scientific computing where double is too slow but single needs accuracy
+
+**Approach — double-float (df64)**: Consumer GPUs have 1/32 double-precision
+throughput (only datacenter GPUs like A100/H100 have 1/2). A true `double`
+detour would be a net loss on most hardware. Instead, use **double-float**
+arithmetic: carry extended precision as a `(hi, lo)` pair of `float` values,
+using single-precision FMA for error-free transforms. This runs at full `float`
+throughput on all GPUs.
+
+The existing `log2_ext` in `fast_math_impl.h` is essentially a double-float
+algorithm (extended-precision log2 with FMA error tracking), but it was designed
+for CPU SIMD where the division and extra ops are tolerable. A GPU df64 version
+would:
+- Use the same `logarithmSep` range reduction (pure float/uint32)
+- Evaluate `log2(m)` as a df64 polynomial (hi+lo pair, FMA error tracking)
+- Multiply by `y` in df64 (Dekker splitting or FMA-based TwoProduct)
+- Feed the result to `exp2` (existing float exp2 + EFT correction)
+
+This avoids double entirely while achieving similar accuracy (~46 mantissa
+bits in the y*log2(x) product). The CPU `DoubleVec` approach is the right
+reference for algorithm structure, but the GPU implementation would substitute
+df64 pairs for actual doubles.
+
+**Key considerations**:
+- `__fma_rn` (round-to-nearest FMA) is available on all CUDA architectures
+  (sm_20+). HIP has `__fma`. Critical for df64 error-free transforms.
+- Float↔double conversions are free on datacenter GPUs; on consumer GPUs the
+  double path is prohibitive — df64 sidesteps this entirely.
+- The `pow_double_hybrid_core` table-based path could also work on GPU
+  (L1/shared memory lookups are fast), adapting gathers to `__ldg` or shared
+  memory preload. Worth benchmarking against pure-polynomial df64.
+- On datacenter GPUs with fast double (A100: 1/2 rate, H100: 1/2 rate), the
+  existing `DoubleVec<float>` scalar-double approach may win outright — worth
+  benchmarking both paths and dispatching based on `__CUDA_ARCH__`.
+
 ### Not planned
 
 | Function | Reason |

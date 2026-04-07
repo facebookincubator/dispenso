@@ -1300,6 +1300,167 @@ TEST(SseHypotBounds, NaNFinite) {
   }
 }
 
+// ---- pow ----
+
+// Ground truth: double-precision pow, rounded to float.
+static float gt_pow(float x, float y) {
+  return static_cast<float>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+
+TEST(SsePow, LaneByLane) {
+  // pow({2, 3, 4, 0.5}, {3, 2, 0.5, -1}) = {8, 9, 2, 2}
+  __m128 x = make4(2.0f, 3.0f, 4.0f, 0.5f);
+  __m128 y = make4(3.0f, 2.0f, 0.5f, -1.0f);
+  __m128 result = dfm::pow(x, y);
+  EXPECT_EQ(lane(result, 0), 8.0f);
+  EXPECT_EQ(lane(result, 1), 9.0f);
+  EXPECT_EQ(lane(result, 2), 2.0f);
+  EXPECT_EQ(lane(result, 3), 2.0f);
+}
+
+TEST(SsePow, NegativeBase) {
+  // pow({-2, -1, -3, -0.5}, {3, 2, 5, -1}) = {-8, 1, -243, -2}
+  __m128 x = make4(-2.0f, -1.0f, -3.0f, -0.5f);
+  __m128 y = make4(3.0f, 2.0f, 5.0f, -1.0f);
+  __m128 result = dfm::pow(x, y);
+  for (int i = 0; i < 4; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 2u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                        << ") expected=" << expected << " got=" << actual;
+  }
+}
+
+TEST(SsePow, NegBaseNonInt) {
+  // pow(negative, non-integer) → NaN.
+  __m128 x = make4(-2.0f, -1.0f, -0.5f, -3.0f);
+  __m128 y = make4(0.5f, 1.5f, 2.7f, -0.5f);
+  __m128 result = dfm::pow(x, y);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(std::isnan(lane(result, i)))
+        << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i) << ") should be NaN, got "
+        << lane(result, i);
+  }
+}
+
+TEST(SsePow, YZero) {
+  // pow(x, 0) = 1 for all x.
+  __m128 x = make4(2.0f, -3.0f, 0.0f, 100.0f);
+  __m128 y = _mm_setzero_ps();
+  __m128 result = dfm::pow(x, y);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i;
+  }
+}
+
+TEST(SsePow, ScalarExp) {
+  // pow(vec, scalar_y)
+  __m128 x = make4(1.0f, 2.0f, 3.0f, 4.0f);
+  __m128 result = dfm::pow(x, 2.0f);
+  for (int i = 0; i < 4; ++i) {
+    float xi = lane(x, i);
+    EXPECT_EQ(lane(result, i), xi * xi) << "Lane " << i;
+  }
+}
+
+TEST(SsePow, ScalarExpGeneral) {
+  // pow(vec, scalar_y) with general y.
+  __m128 x = make4(2.0f, 4.0f, 8.0f, 16.0f);
+  __m128 result = dfm::pow(x, 2.5f);
+  for (int i = 0; i < 4; ++i) {
+    float expected = gt_pow(lane(x, i), 2.5f);
+    float actual = lane(result, i);
+    uint32_t dist = dfm::float_distance(expected, actual);
+    EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", 2.5) expected=" << expected
+                        << " got=" << actual;
+  }
+}
+
+TEST(SsePowBounds, Specials) {
+  constexpr float kInf = std::numeric_limits<float>::infinity();
+  constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+  // pow({0, -0, inf, NaN}, {2, 3, -1, 0}) → {0, -0, 0, 1}
+  __m128 x = make4(0.0f, -0.0f, kInf, kNaN);
+  __m128 y = make4(2.0f, 3.0f, -1.0f, 0.0f);
+  __m128 result = dfm::pow<__m128, dfm::MaxAccuracyTraits>(x, y);
+
+  EXPECT_EQ(lane(result, 0), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 0)));
+
+  EXPECT_EQ(lane(result, 1), -0.0f);
+  EXPECT_TRUE(std::signbit(lane(result, 1)));
+
+  EXPECT_EQ(lane(result, 2), 0.0f);
+  EXPECT_FALSE(std::signbit(lane(result, 2)));
+
+  EXPECT_EQ(lane(result, 3), 1.0f); // pow(NaN, 0) = 1
+}
+
+TEST(SsePowBounds, InfExp) {
+  constexpr float kInf = std::numeric_limits<float>::infinity();
+  // pow({0.5, 2, -1, -1}, {-inf, -inf, inf, -inf}) → {inf, 0, 1, 1}
+  __m128 x = make4(0.5f, 2.0f, -1.0f, -1.0f);
+  __m128 y = make4(-kInf, -kInf, kInf, -kInf);
+  __m128 result = dfm::pow<__m128, dfm::MaxAccuracyTraits>(x, y);
+  EXPECT_EQ(lane(result, 0), kInf);
+  EXPECT_EQ(lane(result, 1), 0.0f);
+  EXPECT_EQ(lane(result, 2), 1.0f);
+  EXPECT_EQ(lane(result, 3), 1.0f);
+}
+
+TEST(SsePowBounds, Subnormal) {
+  // Subnormal bases with the hybrid core (4-lane, MaxAccuracy).
+  __m128 x = make4(1.0e-40f, 1.0e-42f, 1.0e-44f, std::numeric_limits<float>::denorm_min());
+  __m128 y = make4(2.0f, 0.5f, -1.0f, 3.0f);
+  __m128 result = dfm::pow<__m128, dfm::MaxAccuracyTraits>(x, y);
+
+  for (int i = 0; i < 4; ++i) {
+    float expected = gt_pow(lane(x, i), lane(y, i));
+    float actual = lane(result, i);
+    if (std::isinf(expected)) {
+      EXPECT_TRUE(std::isinf(actual))
+          << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i) << ") expected inf";
+    } else if (expected == 0.0f) {
+      EXPECT_EQ(actual, 0.0f) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                              << ") expected 0";
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", " << lane(y, i)
+                          << ") expected=" << expected << " got=" << actual;
+    }
+  }
+}
+
+TEST(SsePowBounds, SubnormalScalarY) {
+  // Subnormal bases with scalar-y path (4-lane, MaxAccuracy).
+  __m128 x = make4(1.0e-40f, 1.0e-42f, 1.0e-44f, std::numeric_limits<float>::denorm_min());
+  __m128 result = dfm::pow<__m128, dfm::MaxAccuracyTraits>(x, 2.0f);
+
+  for (int i = 0; i < 4; ++i) {
+    float expected = gt_pow(lane(x, i), 2.0f);
+    float actual = lane(result, i);
+    if (expected == 0.0f) {
+      EXPECT_EQ(actual, 0.0f) << "Lane " << i;
+    } else {
+      uint32_t dist = dfm::float_distance(expected, actual);
+      EXPECT_LE(dist, 4u) << "Lane " << i << ": pow(" << lane(x, i) << ", 2) expected=" << expected
+                          << " got=" << actual;
+    }
+  }
+}
+
+TEST(SsePowBounds, XOne) {
+  constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+  // pow(1, y) = 1 for all y, including NaN.
+  __m128 x = _mm_set1_ps(1.0f);
+  __m128 y = make4(0.0f, kNaN, -1.0f, 42.0f);
+  __m128 result = dfm::pow<__m128, dfm::MaxAccuracyTraits>(x, y);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_EQ(lane(result, i), 1.0f) << "Lane " << i;
+  }
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

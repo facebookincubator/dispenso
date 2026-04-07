@@ -794,6 +794,129 @@ BENCHMARK(BM_hypot_avx512);
 BENCHMARK(BM_hypot_avx512_bounds);
 BENCHMARK(BM_hypot_libc_avx512);
 
+// --- pow ---
+
+const std::vector<__m512>& powBaseAvx512Inputs() {
+  static std::vector<__m512> inputs = []() {
+    float delta = 99.99f / kNumInputs;
+    std::vector<__m512> inp;
+    float f = 0.01f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm512_set_ps(
+          f + 15 * delta,
+          f + 14 * delta,
+          f + 13 * delta,
+          f + 12 * delta,
+          f + 11 * delta,
+          f + 10 * delta,
+          f + 9 * delta,
+          f + 8 * delta,
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 16 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+const std::vector<__m512>& powExpAvx512Inputs() {
+  static std::vector<__m512> inputs = []() {
+    float delta = 16.0f / kNumInputs;
+    std::vector<__m512> inp;
+    float f = -8.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm512_set_ps(
+          f + 15 * delta,
+          f + 14 * delta,
+          f + 13 * delta,
+          f + 12 * delta,
+          f + 11 * delta,
+          f + 10 * delta,
+          f + 9 * delta,
+          f + 8 * delta,
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 16 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_pow_avx512(benchmark::State& state) {
+  const auto& bases = powBaseAvx512Inputs();
+  const auto& exps = powExpAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm512_add_ps(sum, dfm::pow(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+void BM_pow_avx512_accurate(benchmark::State& state) {
+  const auto& bases = powBaseAvx512Inputs();
+  const auto& exps = powExpAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm512_add_ps(sum, dfm::pow<__m512, dfm::MaxAccuracyTraits>(bases[idx], exps[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+void BM_pow_avx512_scalar_exp(benchmark::State& state) {
+  const auto& bases = powBaseAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm512_add_ps(sum, dfm::pow(bases[idx], 2.5f));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+void BM_pow_libc_avx512(benchmark::State& state) {
+  const auto& bases = powBaseAvx512Inputs();
+  const auto& exps = powExpAvx512Inputs();
+  size_t idx = 0;
+  __m512 sum = _mm512_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    alignas(64) float x[16], y[16], r[16];
+    _mm512_store_ps(x, bases[idx]);
+    _mm512_store_ps(y, exps[idx]);
+    for (int32_t j = 0; j < 16; ++j)
+      r[j] = ::powf(x[j], y[j]);
+    sum = _mm512_add_ps(sum, _mm512_load_ps(r));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 16);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_pow_libc_avx512);
+BENCHMARK(BM_pow_avx512);
+BENCHMARK(BM_pow_avx512_accurate);
+BENCHMARK(BM_pow_avx512_scalar_exp);
+
 #else // !defined(__AVX512F__)
 
 int main() {

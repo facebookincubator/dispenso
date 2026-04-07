@@ -988,3 +988,81 @@ void BM_fastm_sincospi(benchmark::State& state) {
 BENCHMARK(BM_fastm_sinpi);
 BENCHMARK(BM_fastm_cospi);
 BENCHMARK(BM_fastm_sincospi);
+
+// --- pow benchmarks ---
+
+const std::vector<float>& powBaseInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 99.99f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = 0.01f; f <= 100.0f; f += delta) {
+      inp.push_back(f);
+    }
+    while (inp.size() < kNumInputs) {
+      inp.push_back(inp.back());
+    }
+    return inp;
+  }();
+
+  return inputs;
+}
+
+const std::vector<float>& powExpInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 16.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -8.0f; f <= 8.0f; f += delta) {
+      inp.push_back(f);
+    }
+    while (inp.size() < kNumInputs) {
+      inp.push_back(inp.back());
+    }
+    return inp;
+  }();
+
+  return inputs;
+}
+
+void BM_pow(benchmark::State& state) {
+  const auto& bases = powBaseInputs();
+  const auto& exps = powExpInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::powf(bases[idx], exps[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_pow(benchmark::State& state) {
+  const auto& bases = powBaseInputs();
+  const auto& exps = powExpInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::pow(bases[idx], exps[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_pow_accurate(benchmark::State& state) {
+  const auto& bases = powBaseInputs();
+  const auto& exps = powExpInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::pow<float, dispenso::fast_math::MaxAccuracyTraits>(
+        bases[idx], exps[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_pow);
+BENCHMARK(BM_fastm_pow);
+BENCHMARK(BM_fastm_pow_accurate);

@@ -581,6 +581,12 @@ DISPENSO_INLINE HwyInt32 nonnormal(HwyFloat f) {
   return nonnormal(bit_cast<HwyInt32>(f));
 }
 
+// any_true: reduce SIMD mask to scalar bool (true if any lane is set).
+DISPENSO_INLINE bool any_true(HwyInt32 mask) {
+  hn::ScalableTag<int32_t> d;
+  return !hn::AllFalse(d, hn::Ne(mask.v, hn::Zero(d)));
+}
+
 DISPENSO_INLINE HwyFloat signof(HwyFloat x) {
   HwyUint32 xi = bit_cast<HwyUint32>(x);
   return bit_cast<HwyFloat>((xi & 0x80000000u) | FloatTraits<HwyFloat>::kOne);
