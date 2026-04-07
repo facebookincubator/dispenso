@@ -953,6 +953,78 @@ BENCHMARK(BM_pow_avx);
 BENCHMARK(BM_pow_avx_accurate);
 BENCHMARK(BM_pow_avx_scalar_exp);
 
+// --- expm1 ---
+
+void BM_expm1_avx(benchmark::State& state) {
+  const auto& inputs = sinAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::expm1(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_expm1_avx);
+
+// --- log1p ---
+
+void BM_log1p_avx(benchmark::State& state) {
+  const auto& inputs = sinAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    // Use fabs to keep inputs positive (log1p needs x > -1).
+    __m256 ax = _mm256_andnot_ps(_mm256_set1_ps(-0.0f), inputs[idx]);
+    sum = _mm256_add_ps(sum, dfm::log1p(ax));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_log1p_avx);
+
+// --- tanh ---
+
+const std::vector<__m256>& tanhAvxInputs() {
+  static std::vector<__m256> inputs = []() {
+    float delta = 10.0f / kNumInputs;
+    std::vector<__m256> inp;
+    float f = -5.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm256_set_ps(
+          f + 7 * delta,
+          f + 6 * delta,
+          f + 5 * delta,
+          f + 4 * delta,
+          f + 3 * delta,
+          f + 2 * delta,
+          f + delta,
+          f));
+      f += 8 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_tanh_avx(benchmark::State& state) {
+  const auto& inputs = tanhAvxInputs();
+  size_t idx = 0;
+  __m256 sum = _mm256_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm256_add_ps(sum, dfm::tanh(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 8);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_tanh_avx);
+
 #else // !defined(__AVX2__)
 
 int main() {

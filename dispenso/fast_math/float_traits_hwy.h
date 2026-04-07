@@ -536,10 +536,15 @@ DISPENSO_INLINE HwyFloat clamp_allow_nan<HwyFloat>(HwyFloat x, HwyFloat mn, HwyF
 
 template <>
 DISPENSO_INLINE HwyFloat clamp_no_nan<HwyFloat>(HwyFloat x, HwyFloat mn, HwyFloat mx) {
-  // NaN suppressed: if x is NaN, result is mn.
-  auto is_nan = hn::Not(hn::Eq(x.v, x.v));
+  // Highway's Min/Max follow IEEE 754-2019 minimum/maximum semantics: if
+  // either operand is NaN, the result is NaN. But we want NaN-suppressing
+  // behavior (like x86 minps/maxps): if x is NaN, result should be mn.
+  // Clamp(x) = Max(mn, Min(x, mx)). With NaN x:
+  //   Min(NaN, mx) = NaN → Max(mn, NaN) = NaN. Wrong — we want mn.
+  // Fix: use ordered comparison to detect NaN lanes and blend.
   auto clamped = hn::Max(mn.v, hn::Min(x.v, mx.v));
-  return hn::IfThenElse(is_nan, mn.v, clamped);
+  auto x_valid = hn::Eq(x.v, x.v); // false for NaN lanes
+  return hn::IfThenElse(x_valid, clamped, mn.v);
 }
 
 template <>

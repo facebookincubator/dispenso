@@ -1127,8 +1127,21 @@ BENCHMARK(BM_fastm_log1p);
 
 // --- tanh benchmarks ---
 
+// [-5, 5] covers near-zero (polynomial), transition, and saturation regions.
+const std::vector<float>& tanhInputs() {
+  static std::vector<float> inputs = []() {
+    float delta = 10.0f / kNumInputs;
+    std::vector<float> inp;
+    for (float f = -5.0f; inp.size() < kNumInputs; f += delta) {
+      inp.push_back(f);
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
 void BM_tanh(benchmark::State& state) {
-  const auto& inputs = sinInputs();
+  const auto& inputs = tanhInputs();
   size_t idx = 0;
   float sum = 0.0f;
   for (auto UNUSED_VAR : state) {
@@ -1140,7 +1153,7 @@ void BM_tanh(benchmark::State& state) {
 }
 
 void BM_fastm_tanh(benchmark::State& state) {
-  const auto& inputs = sinInputs();
+  const auto& inputs = tanhInputs();
   size_t idx = 0;
   float sum = 0.0f;
   for (auto UNUSED_VAR : state) {

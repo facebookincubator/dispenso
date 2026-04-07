@@ -1806,13 +1806,17 @@ DISPENSO_INLINE Flt pow(Flt x, float y) {
 /**
  * @brief Compute exp(x) - 1 with precision near zero.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: ~2 ULP. kBoundsValues: handles NaN/inf.
+ * @tparam AccuracyTraits Default: ~2 ULP (1-step CW + degree-4 poly).
+ *   MaxAccuracy: 1 ULP (2-step CW + degree-5 poly).
+ *   kBoundsValues: 1 ULP + handles NaN/inf.
  * @param x Input value (all float domain).
  * @return exp(x) - 1. Compatible with all SIMD backends.
  *
- * For |x| < 0.5: direct polynomial avoids catastrophic cancellation from
- * subtracting 1 from exp(x) ≈ 1. For |x| >= 0.5: exp(x) - 1 is safe since
- * the result is well-separated from 0.
+ * Uses Cody-Waite range reduction: x = n*ln2 + r, |r| <= ln2/2.
+ * Then expm1(x) = 2^n * expm1(r) + (2^n - 1), where expm1(r) is computed
+ * via a Sollya fpminimax polynomial. Avoids the catastrophic cancellation of
+ * exp(x) - 1 near zero, and provides uniform accuracy across the entire
+ * domain (no polynomial/fallback transition).
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt expm1(Flt x) {
@@ -1820,46 +1824,95 @@ DISPENSO_INLINE Flt expm1(Flt x) {
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return expm1<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
   } else {
+    using IntT = IntType_t<Flt>;
+    using UintT = UintType_t<Flt>;
     auto fma_fn = FloatTraits<Flt>::fma;
 
-    // Direct polynomial for expm1(x) on [-0.5, 0.5]:
-    //   expm1(x) = x + x²/2 + x³/6 + ... ≈ x + x² * p(x)
-    // where p(x) = c2 + x*(c3 + x*(c4 + ... + x*c8)).
-    // Degree-8 Taylor truncation: max absolute error ~5e-9 on [-0.5, 0.5],
-    // well within 1 float ULP of the result.
-    constexpr float c2 = 0x1p-1f; // 1/2
-    constexpr float c3 = static_cast<float>(1.0 / 6.0); // 1/6
-    constexpr float c4 = static_cast<float>(1.0 / 24.0); // 1/24
-    constexpr float c5 = static_cast<float>(1.0 / 120.0); // 1/120
-    constexpr float c6 = static_cast<float>(1.0 / 720.0); // 1/720
-    constexpr float c7 = static_cast<float>(1.0 / 5040.0); // 1/5040
-    constexpr float c8 = static_cast<float>(1.0 / 40320.0); // 1/40320
+    // Cody-Waite range reduction: x = n*ln2 + r, |r| <= ln2/2.
+    // 2-step CW is required for all accuracy levels because the
+    // reconstruction 2^n * expm1(r) amplifies reduction error by 2^n.
+    constexpr float k1_ln2 = k1_Ln2;
+    constexpr float kLn2hi = 6.93145752e-1f;
+    constexpr float kLn2lo = 1.42860677e-6f;
+    Flt r = x;
+    Flt jf = detail::rangeReduce(r, k1_ln2, kLn2hi, kLn2lo);
+    IntT n = convert_to_int(jf);
 
-    Flt p = c8;
-    p = fma_fn(p, x, Flt(c7));
-    p = fma_fn(p, x, Flt(c6));
-    p = fma_fn(p, x, Flt(c5));
-    p = fma_fn(p, x, Flt(c4));
-    p = fma_fn(p, x, Flt(c3));
-    p = fma_fn(p, x, Flt(c2));
-    Flt poly_r = fma_fn(p, x * x, x); // expm1(x) ≈ x + x² * p(x)
+    Flt em1_r;
+
+    if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+      // Degree-5 Sollya fpminimax((exp(x)-1-x)/x^2, 5, [|SG...|], [-ln2/2, ln2/2]):
+      //   sup-norm error < 2^-29 (~0.03 ULP at r = ln2/2).
+      constexpr float c2 = 0x1p-1f; // 0.5 (exact)
+      constexpr float c3 = 0x1.555556p-3f;
+      constexpr float c4 = 0x1.555502p-5f;
+      constexpr float c5 = 0x1.110ff2p-7f;
+      constexpr float c6 = 0x1.6d2ep-10f;
+      constexpr float c7 = 0x1.a26762p-13f;
+
+      Flt p = c7;
+      p = fma_fn(p, r, Flt(c6));
+      p = fma_fn(p, r, Flt(c5));
+      p = fma_fn(p, r, Flt(c4));
+      p = fma_fn(p, r, Flt(c3));
+      p = fma_fn(p, r, Flt(c2));
+      em1_r = fma_fn(p, r * r, r);
+    } else {
+      // Degree-4 Sollya fpminimax((exp(x)-1-x)/x^2, 4, [|SG...|], [-ln2/2, ln2/2]):
+      //   sup-norm error < 2^-24 (~1.2 ULP at r = ln2/2).
+      constexpr float c2 = 0x1p-1f; // 0.5 (exact)
+      constexpr float c3 = 0x1.5554dep-3f;
+      constexpr float c4 = 0x1.55556cp-5f;
+      constexpr float c5 = 0x1.120abep-7f;
+      constexpr float c6 = 0x1.6ca992p-10f;
+
+      Flt p = c6;
+      p = fma_fn(p, r, Flt(c5));
+      p = fma_fn(p, r, Flt(c4));
+      p = fma_fn(p, r, Flt(c3));
+      p = fma_fn(p, r, Flt(c2));
+      em1_r = fma_fn(p, r * r, r);
+    }
+
+    // Reconstruction: expm1(x) = 2^n * expm1(r) + (2^n - 1).
+    // 2^n is exact for integer n. 2^n - 1 is exact for |n| <= 23.
+    // For |n| > 24, 2^n - 1 = 2^n in float, so expm1 ≈ exp which is correct.
+    // Use fma for precision: fma(2^n, expm1(r), 2^n - 1).
+    Flt two_n = bit_cast<Flt>(UintT(n + 127) << 23);
+    Flt two_n_m1 = two_n - 1.0f;
+    Flt result = fma_fn(two_n, em1_r, two_n_m1);
 
     if constexpr (std::is_same_v<Flt, float>) {
-      // Scalar: branch on magnitude.
-      if (std::fabs(x) < 0.5f)
-        return poly_r;
-      // For x < -17: expm1(x) rounds to -1 in float (exp(x) < ULP(1) = 2^-24).
-      // Also avoids the exp Default path's integer overflow for x < -88.
-      if (x < -17.0f)
+      // For n == 0 (|x| < ln2/2 ≈ 0.347): return polynomial directly.
+      if (n == 0)
+        return em1_r;
+      // For x < -25*ln2 ≈ -17.3: expm1(x) rounds to -1 in float.
+      if (x < -17.5f)
         return -1.0f;
-      return exp<float, AccuracyTraits>(x) - 1.0f;
+      // For x > 89: exp(x) overflows, expm1(x) = inf.
+      if (x > 89.0f)
+        return std::numeric_limits<float>::infinity();
+      // NaN propagation: rangeReduce maps NaN to finite r, producing a
+      // garbage result.  x - x is 0 for finite, NaN for NaN.
+      if constexpr (AccuracyTraits::kBoundsValues)
+        return result + (x - x);
+      return result;
     } else {
-      // SIMD: compute both paths, blend per lane.
-      // Clamp to > -17 before exp to avoid Default exp's integer overflow.
-      Flt x_exp = FloatTraits<Flt>::max(x, Flt(-17.0f));
-      Flt exp_r = exp<Flt, AccuracyTraits>(x_exp) - 1.0f;
-      auto small = fabs(x) < 0.5f;
-      return FloatTraits<Flt>::conditional(small, poly_r, exp_r);
+      // SIMD: blend n==0 path (direct polynomial) with reconstruction.
+      auto zero_n = (n == IntT(0));
+      result = FloatTraits<Flt>::conditional(zero_n, em1_r, result);
+      // Clamp: x < -17.5 → -1, x > 89 → inf.
+      result = FloatTraits<Flt>::conditional(x < -17.5f, Flt(-1.0f), result);
+      constexpr float kInf = std::numeric_limits<float>::infinity();
+      result = FloatTraits<Flt>::conditional(x > 89.0f, Flt(kInf), result);
+
+      if constexpr (AccuracyTraits::kBoundsValues) {
+        // NaN propagation: range reduction maps NaN to finite values.
+        auto is_nan = (bit_cast<UintT>(x) & UintT(0x7fffffffu)) > UintT(0x7f800000u);
+        result = FloatTraits<Flt>::conditional(is_nan, x, result);
+      }
+
+      return result;
     }
   }
 }
@@ -1871,9 +1924,10 @@ DISPENSO_INLINE Flt expm1(Flt x) {
  * @param x Input value in (-1, +inf).
  * @return log(1 + x). Compatible with all SIMD backends.
  *
- * Uses the compensated-addition trick: u = 1 + x, c = x - (u - 1) captures
- * the rounding error of the addition. Then log1p(x) = log(u) + c/u, which
- * avoids the catastrophic cancellation that log(1 + x) would suffer near x = 0.
+ * For |x| < 0.25: direct Sollya polynomial avoids the log() call (~1 ULP).
+ * For |x| >= 0.25: compensated-addition trick: u = 1 + x, c = x - (u - 1)
+ * captures the rounding error. Then log(u) is computed inline via the same
+ * range reduction as log() (logarithmSep), and the result is log(u) + c/u.
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt log1p(Flt x) {
@@ -1881,18 +1935,84 @@ DISPENSO_INLINE Flt log1p(Flt x) {
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return log1p<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
   } else {
+    auto fma_fn = FloatTraits<Flt>::fma;
+
+    // Direct polynomial for log1p(x) on [-0.25, 0.25]:
+    //   log1p(x) = x - x²/2 + x³/3 - ... ≈ x + x² * q(x)
+    // Sollya fpminimax((log(1+x)-x)/x^2, 6, [|SG...|], [-0.25, 0.25]):
+    //   sup-norm error < 2^-23; at x=0.25 → ~0.25 ULP polynomial error.
+    constexpr float q0 = -0x1p-1f; // -0.5 (exact)
+    constexpr float q1 = 0x1.555632p-2f;
+    constexpr float q2 = -0x1.000112p-2f;
+    constexpr float q3 = 0x1.98bfaap-3f;
+    constexpr float q4 = -0x1.5472d2p-3f;
+    constexpr float q5 = 0x1.3f347cp-3f;
+    constexpr float q6 = -0x1.1957b2p-3f;
+
+    Flt q = q6;
+    q = fma_fn(q, x, Flt(q5));
+    q = fma_fn(q, x, Flt(q4));
+    q = fma_fn(q, x, Flt(q3));
+    q = fma_fn(q, x, Flt(q2));
+    q = fma_fn(q, x, Flt(q1));
+    q = fma_fn(q, x, Flt(q0));
+    Flt poly_r = fma_fn(q, x * x, x); // log1p(x) ≈ x + x² * q(x)
+
+    if constexpr (std::is_same_v<Flt, float>) {
+      // Scalar: branch on magnitude.
+      if (std::fabs(x) < 0.25f)
+        return poly_r;
+    }
+
     // Compensated addition: u = float(1 + x), c = rounding error.
     // log(1 + x) = log(u + c) = log(u) + log(1 + c/u) ≈ log(u) + c/u.
-    // For very small |x|: u = 1, c = x, log(1) = 0, result = x. Correct.
     Flt u = Flt(1.0f) + x;
     Flt c = x - (u - 1.0f);
-    Flt result = log<Flt, AccuracyTraits>(u) + c / u;
 
-    // Bounds handling is inherited from log():
-    //   log1p(-1) → log(0) = -inf.
-    //   log1p(x < -1) → log(negative) = NaN.
-    //   log1p(NaN) → log(NaN) = NaN.
-    //   log1p(+inf) → log(+inf) = +inf.
+    // Inline log(u): range-reduce u via logarithmSep, evaluate polynomial.
+    auto [xi, i, m] = detail::logarithmSep<Flt, AccuracyTraits>(u);
+    m = m - 1.0f;
+
+    // log(1+m) polynomial for m in [sqrt(0.5)-1, sqrt(2.0)-1].
+    // Same coefficients as log(), evaluated via Estrin's scheme to reduce
+    // the critical FMA chain from 8 to 4 dependent steps.
+    // p(m) = m + m² * (ks2 + m*ks3 + m²*ks4 + ... + m⁷*ks9)
+    constexpr float ks2 = -0.499999911f;
+    constexpr float ks3 = 0.333337069f;
+    constexpr float ks4 = -0.250024557f;
+    constexpr float ks5 = 0.199700251f;
+    constexpr float ks6 = -0.165455937f;
+    constexpr float ks7 = 0.148145974f;
+    constexpr float ks8 = -0.14482744f;
+    constexpr float ks9 = 0.0924733654f;
+
+    // Estrin: evaluate pairs, then quads, then combine.
+    Flt m2 = m * m;
+    Flt m4 = m2 * m2;
+    Flt P23 = fma_fn(Flt(ks3), m, Flt(ks2));
+    Flt P45 = fma_fn(Flt(ks5), m, Flt(ks4));
+    Flt P67 = fma_fn(Flt(ks7), m, Flt(ks6));
+    Flt P89 = fma_fn(Flt(ks9), m, Flt(ks8));
+    Flt Q2345 = fma_fn(P45, m2, P23);
+    Flt Q6789 = fma_fn(P89, m2, P67);
+    Flt inner = fma_fn(Q6789, m4, Q2345);
+    Flt y = fma_fn(inner, m2, m); // p(m) = m + m² * inner
+
+    y = fma_fn(i, kLn2, y);
+
+    // Add compensation: log1p(x) = log(u) + c/u.
+    Flt result = y + c / u;
+
+    if constexpr (!std::is_same_v<Flt, float>) {
+      // SIMD: blend polynomial for small |x|, compensated log otherwise.
+      auto small = fabs(x) < 0.25f;
+      result = FloatTraits<Flt>::conditional(small, poly_r, result);
+    }
+
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      // log1p(-1) → -inf, log1p(x < -1) → NaN, log1p(NaN) → NaN.
+      result = detail::logarithmBounds(u, result, xi);
+    }
 
     return result;
   }
@@ -1901,23 +2021,44 @@ DISPENSO_INLINE Flt log1p(Flt x) {
 /**
  * @brief Hyperbolic tangent approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: ~5 ULP. kBoundsValues: handles NaN.
+ * @tparam AccuracyTraits Default: ~2 ULP. kBoundsValues: handles NaN.
  * @param x Input value (all float domain).
  * @return tanh(x) in [-1, 1]. Compatible with all SIMD backends.
  *
- * Implemented as expm1(2x) / (expm1(2x) + 2), which avoids cancellation
- * near zero (expm1(2x) ≈ 2x, so result ≈ x).
- * Input clamped to [-10, 10] since tanh(10) = 1.0f exactly in float,
- * and the clamp prevents expm1 overflow for large |x|.
+ * tanh(x) = expm1(2x) / (expm1(2x) + 2).
+ * The range-reduced expm1 preserves precision near zero (expm1(2x) ≈ 2x),
+ * so this formula naturally gives tanh(x) ≈ x for small x without a
+ * separate polynomial. Input clamped to [-10, 10] since tanh(10) = 1.0f
+ * exactly in float, and the clamp prevents expm1 overflow for large |x|.
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt tanh(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return tanh<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    // Scalar: Sollya fpminimax polynomial for |x| < 1.0 (degree 6 in u = x²).
+    // tanh(x) = x * (1 + u * Q(u)), where Q is fitted to tanh(x)/x - 1.
+    // Error: ~0.52 ULP at the boundary. 6 FMAs.
+    float ax = std::fabs(x);
+    if (!(ax >= 1.0f)) { // !(>=) so NaN enters polynomial path and propagates
+      constexpr float t1 = -0x1.555482p-2f;
+      constexpr float t2 = 0x1.10ef12p-3f;
+      constexpr float t3 = -0x1.b66cecp-5f;
+      constexpr float t4 = 0x1.4e3a6ap-6f;
+      constexpr float t5 = -0x1.9c954p-8f;
+      constexpr float t6 = 0x1.189ec2p-10f;
+      float u = x * x;
+      float poly =
+          std::fma(std::fma(std::fma(std::fma(std::fma(t6, u, t5), u, t4), u, t3), u, t2), u, t1);
+      return x * std::fma(poly, u, 1.0f);
+    }
+    // Large |x|: use expm1 formula (no cancellation, result far from 0).
+    float x_safe = ax < 10.0f ? x : (x < 0.0f ? -10.0f : 10.0f);
+    float em1 = expm1<float, AccuracyTraits>(x_safe + x_safe);
+    return em1 / (em1 + 2.0f);
   } else {
-    // Clamp to [-10, 10]: tanh(±10) rounds to ±1 in float (tanh(10) ≈ 1 - 8e-9,
-    // below ULP(1) = 1.2e-7). Clamping also prevents expm1(2x) overflow.
+    // SIMD: pure expm1 formula (branchless, uniform across all lanes).
     Flt x_safe = clamp_no_nan(x, Flt(-10.0f), Flt(10.0f));
     Flt em1 = expm1<Flt, AccuracyTraits>(x_safe + x_safe);
     Flt result = em1 / (em1 + 2.0f);

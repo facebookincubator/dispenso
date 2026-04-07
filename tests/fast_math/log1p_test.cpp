@@ -30,21 +30,21 @@ TEST(Log1p, NearZero) {
     float expected = gt_log1p(x);
     float result = dfm::log1p(x);
     uint32_t dist = dfm::float_distance(expected, result);
-    EXPECT_LE(dist, 3u) << "log1p(" << x << "): expected=" << expected << " got=" << result;
+    EXPECT_LE(dist, 2u) << "log1p(" << x << "): expected=" << expected << " got=" << result;
   }
 }
 
 TEST(Log1p, RangeSmall) {
   uint32_t ulps = dfm::evalAccuracy(gt_log1p, dfm::log1p<float>, -0.5f, 0.5f);
-  EXPECT_LE(ulps, 3u);
+  EXPECT_LE(ulps, 2u);
 }
 
 TEST(Log1p, RangeMedium) {
   uint32_t ulps = dfm::evalAccuracy(gt_log1p, dfm::log1p<float>, -0.99f, 100.0f);
-  EXPECT_LE(ulps, 3u);
+  EXPECT_LE(ulps, 2u);
 }
 
 TEST(Log1p, RangeLarge) {
   uint32_t ulps = dfm::evalAccuracy(gt_log1p, dfm::log1p<float>, -0.99f, 1e10f);
-  EXPECT_LE(ulps, 3u);
+  EXPECT_LE(ulps, 2u);
 }

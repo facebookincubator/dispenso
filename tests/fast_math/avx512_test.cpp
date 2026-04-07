@@ -2327,6 +2327,87 @@ TEST(Avx512PowBounds, Specials) {
   EXPECT_EQ(lane(result, 15), 1.0f);
 }
 
+// --- expm1 ---
+
+TEST(Avx512Expm1, LaneByLane) {
+  __m512 input = make16(
+      0.0f,
+      0.001f,
+      -0.001f,
+      0.1f,
+      -0.1f,
+      0.5f,
+      -0.5f,
+      1.0f,
+      -1.0f,
+      5.0f,
+      -5.0f,
+      1e-7f,
+      -1e-7f,
+      10.0f,
+      -10.0f,
+      0.01f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](__m512 x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+// --- log1p ---
+
+TEST(Avx512Log1p, LaneByLane) {
+  __m512 input = make16(
+      0.0f,
+      0.001f,
+      0.01f,
+      0.1f,
+      0.5f,
+      1.0f,
+      10.0f,
+      100.0f,
+      1e-7f,
+      1e-4f,
+      1e-2f,
+      5.0f,
+      50.0f,
+      1000.0f,
+      1e6f,
+      1e10f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](__m512 x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+// --- tanh ---
+
+TEST(Avx512Tanh, LaneByLane) {
+  __m512 input = make16(
+      0.0f,
+      0.5f,
+      -0.5f,
+      1.0f,
+      -1.0f,
+      2.0f,
+      -2.0f,
+      5.0f,
+      -5.0f,
+      0.01f,
+      -0.01f,
+      1e-7f,
+      -1e-7f,
+      10.0f,
+      -10.0f,
+      0.1f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](__m512 x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
 #else // !defined(__AVX512F__)
 
 TEST(Avx512, Unavailable) {

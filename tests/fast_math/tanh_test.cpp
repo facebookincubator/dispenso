@@ -38,16 +38,16 @@ TEST(Tanh, NearZero) {
     float expected = gt_tanh(x);
     float result = dfm::tanh(x);
     uint32_t dist = dfm::float_distance(expected, result);
-    EXPECT_LE(dist, 3u) << "tanh(" << x << "): expected=" << expected << " got=" << result;
+    EXPECT_LE(dist, 2u) << "tanh(" << x << "): expected=" << expected << " got=" << result;
   }
 }
 
 TEST(Tanh, RangeSmall) {
   uint32_t ulps = dfm::evalAccuracy(gt_tanh, dfm::tanh<float>, -1.0f, 1.0f);
-  EXPECT_LE(ulps, 5u);
+  EXPECT_LE(ulps, 2u);
 }
 
 TEST(Tanh, RangeFull) {
   uint32_t ulps = dfm::evalAccuracy(gt_tanh, dfm::tanh<float>, -10.0f, 10.0f);
-  EXPECT_LE(ulps, 5u);
+  EXPECT_LE(ulps, 2u);
 }

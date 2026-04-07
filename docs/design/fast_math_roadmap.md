@@ -8,10 +8,12 @@ This document tracks planned features and improvements for the fast_math sublibr
 
 | Category | Functions |
 |----------|-----------|
-| Trigonometric | sin, cos, tan, asin, acos, atan, atan2 |
-| Exponential | exp, exp2, exp10 |
-| Logarithmic | log, log2, log10 |
-| Other | cbrt, sqrt, frexp, ldexp |
+| Trigonometric | sin, cos, sincos, sinpi, cospi, sincospi, tan, asin, acos, atan, atan2 |
+| Exponential | exp, exp2, exp10, expm1 |
+| Logarithmic | log, log1p, log2, log10 |
+| Hyperbolic | tanh |
+| Power | pow, sqrt, cbrt, hypot |
+| Other | frexp, ldexp |
 
 All functions are templated on float type and support:
 - Scalar `float`

@@ -919,6 +919,69 @@ BENCHMARK(BM_pow_sse);
 BENCHMARK(BM_pow_sse_accurate);
 BENCHMARK(BM_pow_sse_scalar_exp);
 
+// --- expm1 ---
+
+void BM_expm1_sse(benchmark::State& state) {
+  const auto& inputs = sinSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::expm1(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_expm1_sse);
+
+// --- log1p ---
+
+void BM_log1p_sse(benchmark::State& state) {
+  const auto& inputs = sinSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    __m128 ax = _mm_andnot_ps(_mm_set1_ps(-0.0f), inputs[idx]);
+    sum = _mm_add_ps(sum, dfm::log1p(ax));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_log1p_sse);
+
+// --- tanh ---
+
+const std::vector<__m128>& tanhSseInputs() {
+  static std::vector<__m128> inputs = []() {
+    float delta = 10.0f / kNumInputs;
+    std::vector<__m128> inp;
+    float f = -5.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      inp.emplace_back(_mm_set_ps(f + 3 * delta, f + 2 * delta, f + delta, f));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_tanh_sse(benchmark::State& state) {
+  const auto& inputs = tanhSseInputs();
+  size_t idx = 0;
+  __m128 sum = _mm_setzero_ps();
+  for (auto UNUSED_VAR : state) {
+    sum = _mm_add_ps(sum, dfm::tanh(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_tanh_sse);
+
 #else // !defined(__SSE4_1__)
 
 // If SSE4.1 is not available, provide a minimal main.

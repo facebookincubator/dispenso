@@ -1444,4 +1444,60 @@ TEST(NeonPowBounds, XOne) {
   }
 }
 
+// --- expm1 ---
+
+TEST(NeonExpm1, LaneByLane) {
+  float32x4_t input = make4(0.0f, 0.001f, -0.5f, 1.0f);
+  checkLaneByLane(
+      input,
+      [](float32x4_t x) { return dfm::expm1(x); },
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      "expm1",
+      2);
+}
+
+TEST(NeonExpm1, NearZero) {
+  float32x4_t input = make4(1e-7f, -1e-7f, 1e-4f, -1e-4f);
+  checkLaneByLane(
+      input,
+      [](float32x4_t x) { return dfm::expm1(x); },
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      "expm1_near0",
+      2);
+}
+
+// --- log1p ---
+
+TEST(NeonLog1p, LaneByLane) {
+  float32x4_t input = make4(0.001f, 0.5f, 1.0f, 10.0f);
+  checkLaneByLane(
+      input,
+      [](float32x4_t x) { return dfm::log1p(x); },
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      "log1p",
+      2);
+}
+
+// --- tanh ---
+
+TEST(NeonTanh, LaneByLane) {
+  float32x4_t input = make4(0.0f, 0.5f, -1.0f, 5.0f);
+  checkLaneByLane(
+      input,
+      [](float32x4_t x) { return dfm::tanh(x); },
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      "tanh",
+      2);
+}
+
+TEST(NeonTanh, NearZero) {
+  float32x4_t input = make4(1e-7f, -1e-7f, 0.01f, -0.01f);
+  checkLaneByLane(
+      input,
+      [](float32x4_t x) { return dfm::tanh(x); },
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      "tanh_near0",
+      2);
+}
+
 #endif // defined(__aarch64__)

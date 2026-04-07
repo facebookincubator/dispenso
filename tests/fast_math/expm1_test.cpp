@@ -41,10 +41,10 @@ TEST(Expm1, RangeSmall) {
 
 TEST(Expm1, RangeMedium) {
   uint32_t ulps = dfm::evalAccuracy(gt_expm1, dfm::expm1<float>, -10.0f, 10.0f);
-  EXPECT_LE(ulps, 4u);
+  EXPECT_LE(ulps, 2u);
 }
 
 TEST(Expm1, RangeLarge) {
   uint32_t ulps = dfm::evalAccuracy(gt_expm1, dfm::expm1<float>, -88.0f, 88.0f);
-  EXPECT_LE(ulps, 4u);
+  EXPECT_LE(ulps, 2u);
 }

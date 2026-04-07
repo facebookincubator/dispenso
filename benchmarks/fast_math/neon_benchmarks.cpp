@@ -830,6 +830,68 @@ BENCHMARK(BM_pow_neon);
 BENCHMARK(BM_pow_neon_accurate);
 BENCHMARK(BM_pow_neon_scalar_exp);
 
+// --- expm1 ---
+
+void BM_expm1_neon(benchmark::State& state) {
+  const auto& inputs = sinNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::expm1(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+// --- log1p ---
+
+void BM_log1p_neon(benchmark::State& state) {
+  const auto& inputs = sinNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    float32x4_t ax = vabsq_f32(inputs[idx]);
+    sum = vaddq_f32(sum, dfm::log1p(ax));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+// --- tanh ---
+
+const std::vector<float32x4_t>& tanhNeonInputs() {
+  static std::vector<float32x4_t> inputs = []() {
+    float delta = 10.0f / kNumInputs;
+    std::vector<float32x4_t> inp;
+    float f = -5.0f;
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      float buf[4] = {f, f + delta, f + 2 * delta, f + 3 * delta};
+      inp.emplace_back(vld1q_f32(buf));
+      f += 4 * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_tanh_neon(benchmark::State& state) {
+  const auto& inputs = tanhNeonInputs();
+  size_t idx = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
+  for (auto UNUSED_VAR : state) {
+    sum = vaddq_f32(sum, dfm::tanh(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * 4);
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_expm1_neon);
+BENCHMARK(BM_log1p_neon);
+BENCHMARK(BM_tanh_neon);
+
 #else // !defined(__aarch64__)
 
 int main() {

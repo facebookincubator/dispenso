@@ -2398,6 +2398,90 @@ TEST(HwyPowBounds, Specials) {
   }
 }
 
+// --- expm1 ---
+
+TEST(HwyTranscendentals, Expm1) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = -5.0f + 10.0f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+TEST(HwyTranscendentals, Expm1NearZero) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = -0.01f + 0.02f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+// --- log1p ---
+
+TEST(HwyTranscendentals, Log1p) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = 0.001f + 10.0f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+TEST(HwyTranscendentals, Log1pNearZero) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = -0.5f + 1.0f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+// --- tanh ---
+
+TEST(HwyTranscendentals, Tanh) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = -5.0f + 10.0f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
+TEST(HwyTranscendentals, TanhNearZero) {
+  HWY_ALIGN float vals[kMaxLanes];
+  for (size_t i = 0; i < N(); ++i) {
+    vals[i] = -0.01f + 0.02f * static_cast<float>(i) / static_cast<float>(N());
+  }
+  HwyVecF input = loadF(vals);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](HwyVecF x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
 #else // !__has_include("hwy/highway.h")
 
 // Dummy test so the binary does something when Highway is not available.

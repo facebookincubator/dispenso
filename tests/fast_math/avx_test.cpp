@@ -1431,6 +1431,39 @@ TEST(AvxPowBounds, Specials) {
   }
 }
 
+// --- expm1 ---
+
+TEST(AvxExpm1, LaneByLane) {
+  __m256 input = make8(0.0f, 0.001f, -0.5f, 1.0f, -1.0f, 0.1f, -0.1f, 5.0f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](__m256 x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+// --- log1p ---
+
+TEST(AvxLog1p, LaneByLane) {
+  __m256 input = make8(0.0f, 0.001f, 0.5f, 1.0f, 10.0f, 100.0f, 1e-6f, 1e-3f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](__m256 x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+// --- tanh ---
+
+TEST(AvxTanh, LaneByLane) {
+  __m256 input = make8(0.0f, 0.5f, -0.5f, 1.0f, -1.0f, 5.0f, -5.0f, 0.01f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](__m256 x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

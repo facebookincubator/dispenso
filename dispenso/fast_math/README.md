@@ -122,20 +122,30 @@ Polynomial coefficients stay as scalar `float` arrays — the implicit
 | `exp` | `exp(x)` | [-89, 89] | 3 | 1 |
 | `exp2` | `exp2(x)` | [-127, 128] | 1 | 1 |
 | `exp10` | `exp10(x)` | [-40, 40] | 2 | 2 |
+| `expm1` | `expm1(x)` | all float | 2 | 1 |
 
 With `kBoundsValues = true`, exp/exp2/exp10 correctly handle NaN, +/-Inf, and
 out-of-range inputs (returning 0 for large negative, Inf for large positive).
+
+`expm1` computes exp(x) - 1 with precision near zero using Cody-Waite range
+reduction and Sollya-optimized polynomials. For x < -17, returns -1 exactly
+(exp(x) is below float ULP of 1).
 
 ### Logarithmic
 
 | Function | Signature | Domain | Max ULP (Default) | Max ULP (MaxAccuracy) |
 |:---------|:----------|:-------|:--:|:--:|
 | `log` | `log(x)` | (0, +Inf) | 2 | 2 |
+| `log1p` | `log1p(x)` | (-1, +Inf) | 2 | 2 |
 | `log2` | `log2(x)` | (0, +Inf) | 1 | 1 |
 | `log10` | `log10(x)` | (0, +Inf) | 3 | 3 |
 
 With `kBoundsValues = true`, log/log2/log10 correctly handle 0, denormals,
 Inf, and NaN inputs.
+
+`log1p` computes log(1 + x) with precision near zero using compensated
+addition: captures the rounding error of 1 + x and applies a first-order
+correction. Bounds handling inherited from log.
 
 ### Other
 
@@ -144,6 +154,8 @@ Inf, and NaN inputs.
 | `sqrt` | `sqrt(x)` | all float | 0 | 0 |
 | `cbrt` | `cbrt(x)` | all float | 12 | 3 |
 | `hypot` | `hypot(x, y)` | all float | 1 | 1 |
+| `pow` | `pow(x, y)` | all float | 1 | 1 |
+| `tanh` | `tanh(x)` | all float | 2 | 2 |
 | `frexp` | `frexp(x, &e)` | all float | 0 | 0 |
 | `ldexp` | `ldexp(x, e)` | all float | 0 | 0 |
 
@@ -154,6 +166,15 @@ scaling with Newton refinement for SIMD (~1 ULP). Overflow-safe for all normal
 floats (up to ~2^126). With `kBoundsValues = true`, hypot correctly handles
 IEEE 754 boundary conditions: `hypot(±inf, y) = +inf` even when `y` is NaN,
 and `hypot(NaN, finite) = NaN`.
+
+`pow` uses double-precision arithmetic internally for ~1 ULP across all SIMD
+backends. Scalar uses a table-based double core; SIMD uses width-dependent
+dispatch (table-assisted for ≤4 lanes, fully tableless for ≥8 lanes).
+With `kBoundsValues = true`, handles all IEEE 754 special cases (negative
+base, zero, inf, NaN, subnormals).
+
+`tanh` uses `expm1(2x) / (expm1(2x) + 2)` with a Sollya-optimized polynomial
+fast-path for scalar |x| < 1. Saturates to ±1 for |x| > 10.
 
 ## Performance
 
@@ -177,7 +198,9 @@ more meaningful for comparison.
 | atan | 1.7x | log10 | 3.3x |
 | atan2 | 3.3x | cbrt | 5.6x |
 | frexp | 3.8x | ldexp | 5.8x |
-| hypot | 2.3x | | |
+| hypot | 2.3x | pow | 1.2x |
+| expm1 | 2.4x | log1p | 1.4x |
+| tanh | 3.0x | | |
 
 #### SIMD Scaling (per-element throughput relative to scalar fast_math)
 
@@ -200,6 +223,10 @@ more meaningful for comparison.
 | frexp | 7.4x | 14.8x | 23.0x | 22.9x |
 | ldexp | 4.8x | 9.7x | 16.6x | 16.6x |
 | hypot | 3.6x | — | 9.9x | — |
+| pow | — | 3.6x | 7.2x | — |
+| expm1 | 2.7x | 5.4x | 10.4x | 9.4x |
+| log1p | 3.0x | 6.0x | 12.5x | 12.4x |
+| tanh | 3.0x | 6.1x | 12.2x | 10.1x |
 
 Highway dispatches to AVX-512 (16-lane) on this hardware.
 

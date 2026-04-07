@@ -1461,6 +1461,66 @@ TEST(SsePowBounds, XOne) {
   }
 }
 
+// --- expm1 ---
+
+TEST(SseExpm1, LaneByLane) {
+  __m128 input = make4(0.0f, 0.001f, -0.5f, 1.0f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+TEST(SseExpm1, NearZero) {
+  __m128 input = make4(1e-7f, -1e-7f, 1e-4f, -1e-4f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::expm1(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::expm1(x); },
+      input,
+      2);
+}
+
+// --- log1p ---
+
+TEST(SseLog1p, LaneByLane) {
+  __m128 input = make4(0.0f, 0.001f, 0.5f, 10.0f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+TEST(SseLog1p, NearZero) {
+  __m128 input = make4(1e-7f, -1e-7f, 1e-4f, -1e-4f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::log1p(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::log1p(x); },
+      input,
+      2);
+}
+
+// --- tanh ---
+
+TEST(SseTanh, LaneByLane) {
+  __m128 input = make4(0.0f, 0.5f, -1.0f, 5.0f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
+TEST(SseTanh, NearZero) {
+  __m128 input = make4(1e-7f, -1e-7f, 0.01f, -0.01f);
+  checkLaneByLane(
+      [](float x) { return static_cast<float>(::tanh(static_cast<double>(x))); },
+      [](__m128 x) { return dfm::tanh(x); },
+      input,
+      2);
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

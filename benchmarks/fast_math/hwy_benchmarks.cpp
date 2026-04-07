@@ -1030,6 +1030,77 @@ BENCHMARK(BM_hypot_scalar);
 BENCHMARK(BM_hypot_hwy);
 BENCHMARK(BM_hypot_hwy_bounds);
 
+// --- expm1 ---
+
+void BM_expm1_hwy(benchmark::State& state) {
+  const auto& inputs = sinHwyInputs();
+  size_t idx = 0;
+  const HwyFloatTag d;
+  HwyVecF sum = hn::Zero(d);
+  for (auto UNUSED_VAR : state) {
+    sum = hn::Add(sum, dfm::expm1(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
+  consumeSum(sum);
+}
+
+// --- log1p ---
+
+void BM_log1p_hwy(benchmark::State& state) {
+  const auto& inputs = sinHwyInputs();
+  size_t idx = 0;
+  const HwyFloatTag d;
+  HwyVecF sum = hn::Zero(d);
+  for (auto UNUSED_VAR : state) {
+    HwyVecF ax = hn::Abs(inputs[idx]);
+    sum = hn::Add(sum, dfm::log1p(ax));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
+  consumeSum(sum);
+}
+
+// --- tanh ---
+
+const std::vector<HwyVecF>& tanhHwyInputs() {
+  static std::vector<HwyVecF> inputs = []() {
+    const HwyFloatTag d;
+    const size_t N = hn::Lanes(d);
+    float delta = 10.0f / kNumInputs;
+    std::vector<HwyVecF> inp;
+    float f = -5.0f;
+    constexpr size_t kMaxLanes = HWY_MAX_BYTES / sizeof(float);
+    HWY_ALIGN float buf[kMaxLanes];
+    for (size_t i = 0; i < kNumInputs; ++i) {
+      for (size_t j = 0; j < N; ++j) {
+        buf[j] = f + static_cast<float>(j) * delta;
+      }
+      inp.emplace_back(hn::Load(d, buf));
+      f += static_cast<float>(N) * delta;
+    }
+    return inp;
+  }();
+  return inputs;
+}
+
+void BM_tanh_hwy(benchmark::State& state) {
+  const auto& inputs = tanhHwyInputs();
+  size_t idx = 0;
+  const HwyFloatTag d;
+  HwyVecF sum = hn::Zero(d);
+  for (auto UNUSED_VAR : state) {
+    sum = hn::Add(sum, dfm::tanh(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(hn::Lanes(HwyFloatTag())));
+  consumeSum(sum);
+}
+
+BENCHMARK(BM_expm1_hwy);
+BENCHMARK(BM_log1p_hwy);
+BENCHMARK(BM_tanh_hwy);
+
 #else // !__has_include("hwy/highway.h")
 
 int main() {
