@@ -187,6 +187,9 @@ static float gt_expm1(float x) {
 static float gt_log1p(float x) {
   return static_cast<float>(std::log1p(static_cast<double>(x)));
 }
+static float gt_tanh(float x) {
+  return static_cast<float>(std::tanh(static_cast<double>(x)));
+}
 
 // Bands for exp functions — [-89, 89] covers the non-overflow range.
 static Band kExpBands[] = {
@@ -217,6 +220,15 @@ static Band kLog1pBands[] = {
     {100.0f, 1e10f, "100 to 1e10"},
     {1e10f, 1e30f, "1e10 to 1e30"},
     {1e30f, 1e38f, "1e30 to 1e38"},
+};
+
+// Bands for tanh — saturates to ±1 at ~±9.
+static Band kTanhBands[] = {
+    {0.0f, 0.001f, "0 to 0.001"},
+    {0.001f, 0.1f, "0.001 to 0.1"},
+    {0.1f, 1.0f, "0.1 to 1"},
+    {1.0f, 5.0f, "1 to 5"},
+    {5.0f, 10.0f, "5 to 10"},
 };
 
 int main() {
@@ -253,6 +265,8 @@ int main() {
   eval("expm1", gt_expm1, dfm::expm1<float>, kExpm1Bands);
   printf("\n");
   eval("log1p", gt_log1p, dfm::log1p<float>, kLog1pBands);
+  printf("\n");
+  eval("tanh", gt_tanh, dfm::tanh<float>, kTanhBands);
 
   return 0;
 }

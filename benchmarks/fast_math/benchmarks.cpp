@@ -1124,3 +1124,32 @@ void BM_fastm_log1p(benchmark::State& state) {
 
 BENCHMARK(BM_log1p);
 BENCHMARK(BM_fastm_log1p);
+
+// --- tanh benchmarks ---
+
+void BM_tanh(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::tanhf(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_tanh(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::tanh(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_tanh);
+BENCHMARK(BM_fastm_tanh);

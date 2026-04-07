@@ -1898,5 +1898,40 @@ DISPENSO_INLINE Flt log1p(Flt x) {
   }
 }
 
+/**
+ * @brief Hyperbolic tangent approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: ~5 ULP. kBoundsValues: handles NaN.
+ * @param x Input value (all float domain).
+ * @return tanh(x) in [-1, 1]. Compatible with all SIMD backends.
+ *
+ * Implemented as expm1(2x) / (expm1(2x) + 2), which avoids cancellation
+ * near zero (expm1(2x) ≈ 2x, so result ≈ x).
+ * Input clamped to [-10, 10] since tanh(10) = 1.0f exactly in float,
+ * and the clamp prevents expm1 overflow for large |x|.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt tanh(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return tanh<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    // Clamp to [-10, 10]: tanh(±10) rounds to ±1 in float (tanh(10) ≈ 1 - 8e-9,
+    // below ULP(1) = 1.2e-7). Clamping also prevents expm1(2x) overflow.
+    Flt x_safe = clamp_no_nan(x, Flt(-10.0f), Flt(10.0f));
+    Flt em1 = expm1<Flt, AccuracyTraits>(x_safe + x_safe);
+    Flt result = em1 / (em1 + 2.0f);
+
+    if constexpr (AccuracyTraits::kBoundsValues) {
+      // NaN propagation: clamp_no_nan may map NaN to a finite value.
+      using UintT = UintType_t<Flt>;
+      auto is_nan = (bit_cast<UintT>(x) & UintT(0x7fffffffu)) > UintT(0x7f800000u);
+      result = FloatTraits<Flt>::conditional(is_nan, x, result);
+    }
+
+    return result;
+  }
+}
+
 } // namespace fast_math
 } // namespace dispenso
