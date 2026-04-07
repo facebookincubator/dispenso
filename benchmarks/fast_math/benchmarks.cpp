@@ -1066,3 +1066,32 @@ void BM_fastm_pow_accurate(benchmark::State& state) {
 BENCHMARK(BM_pow);
 BENCHMARK(BM_fastm_pow);
 BENCHMARK(BM_fastm_pow_accurate);
+
+// --- expm1 benchmarks ---
+
+void BM_expm1(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::expm1f(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_expm1(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::expm1(inputs[idx]);
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_expm1);
+BENCHMARK(BM_fastm_expm1);

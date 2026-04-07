@@ -176,6 +176,9 @@ static float gt_log10(float x) {
 static float gt_cbrt(float x) {
   return ::cbrtf(x);
 }
+static float gt_expm1(float x) {
+  return static_cast<float>(std::expm1(static_cast<double>(x)));
+}
 
 // Bands for exp functions — [-89, 89] covers the non-overflow range.
 static Band kExpBands[] = {
@@ -183,6 +186,15 @@ static Band kExpBands[] = {
     {1.0f, 10.0f, "1 to 10"},
     {10.0f, 40.0f, "10 to 40"},
     {40.0f, 89.0f, "40 to 89"},
+};
+
+// Bands for expm1 — focus on near-zero precision, cap at 40 to avoid overflow.
+static Band kExpm1Bands[] = {
+    {0.0f, 0.001f, "0 to 0.001"},
+    {0.001f, 0.1f, "0.001 to 0.1"},
+    {0.1f, 1.0f, "0.1 to 1"},
+    {1.0f, 10.0f, "1 to 10"},
+    {10.0f, 40.0f, "10 to 40"},
 };
 
 int main() {
@@ -214,6 +226,9 @@ int main() {
 
   printf("\n=== Other ===\n");
   eval("cbrt", gt_cbrt, dfm::cbrt<float>, kPositiveBands);
+
+  printf("\n=== Precision-near-zero ===\n");
+  eval("expm1", gt_expm1, dfm::expm1<float>, kExpm1Bands);
 
   return 0;
 }

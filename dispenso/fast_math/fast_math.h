@@ -1803,5 +1803,66 @@ DISPENSO_INLINE Flt pow(Flt x, float y) {
   }
 }
 
+/**
+ * @brief Compute exp(x) - 1 with precision near zero.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: ~2 ULP. kBoundsValues: handles NaN/inf.
+ * @param x Input value (all float domain).
+ * @return exp(x) - 1. Compatible with all SIMD backends.
+ *
+ * For |x| < 0.5: direct polynomial avoids catastrophic cancellation from
+ * subtracting 1 from exp(x) ≈ 1. For |x| >= 0.5: exp(x) - 1 is safe since
+ * the result is well-separated from 0.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt expm1(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return expm1<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    auto fma_fn = FloatTraits<Flt>::fma;
+
+    // Direct polynomial for expm1(x) on [-0.5, 0.5]:
+    //   expm1(x) = x + x²/2 + x³/6 + ... ≈ x + x² * p(x)
+    // where p(x) = c2 + x*(c3 + x*(c4 + ... + x*c8)).
+    // Degree-8 Taylor truncation: max absolute error ~5e-9 on [-0.5, 0.5],
+    // well within 1 float ULP of the result.
+    constexpr float c2 = 0x1p-1f; // 1/2
+    constexpr float c3 = static_cast<float>(1.0 / 6.0); // 1/6
+    constexpr float c4 = static_cast<float>(1.0 / 24.0); // 1/24
+    constexpr float c5 = static_cast<float>(1.0 / 120.0); // 1/120
+    constexpr float c6 = static_cast<float>(1.0 / 720.0); // 1/720
+    constexpr float c7 = static_cast<float>(1.0 / 5040.0); // 1/5040
+    constexpr float c8 = static_cast<float>(1.0 / 40320.0); // 1/40320
+
+    Flt p = c8;
+    p = fma_fn(p, x, Flt(c7));
+    p = fma_fn(p, x, Flt(c6));
+    p = fma_fn(p, x, Flt(c5));
+    p = fma_fn(p, x, Flt(c4));
+    p = fma_fn(p, x, Flt(c3));
+    p = fma_fn(p, x, Flt(c2));
+    Flt poly_r = fma_fn(p, x * x, x); // expm1(x) ≈ x + x² * p(x)
+
+    if constexpr (std::is_same_v<Flt, float>) {
+      // Scalar: branch on magnitude.
+      if (std::fabs(x) < 0.5f)
+        return poly_r;
+      // For x < -17: expm1(x) rounds to -1 in float (exp(x) < ULP(1) = 2^-24).
+      // Also avoids the exp Default path's integer overflow for x < -88.
+      if (x < -17.0f)
+        return -1.0f;
+      return exp<float, AccuracyTraits>(x) - 1.0f;
+    } else {
+      // SIMD: compute both paths, blend per lane.
+      // Clamp to > -17 before exp to avoid Default exp's integer overflow.
+      Flt x_exp = FloatTraits<Flt>::max(x, Flt(-17.0f));
+      Flt exp_r = exp<Flt, AccuracyTraits>(x_exp) - 1.0f;
+      auto small = fabs(x) < 0.5f;
+      return FloatTraits<Flt>::conditional(small, poly_r, exp_r);
+    }
+  }
+}
+
 } // namespace fast_math
 } // namespace dispenso
