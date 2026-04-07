@@ -245,31 +245,65 @@ DISPENSO_INLINE Flt tan_pi_2_impl(Flt x, Flt j) {
   return r;
 }
 
-template <typename Flt>
+template <typename Flt, typename AccuracyTraits>
 DISPENSO_INLINE Flt asin_0_pt5(Flt x) {
-  // Polynomial constants from glibc asinf impl.
-  // asin(x) = x + x * x² * P(x²).
+  // asin(x) = x + x * x² * P(x²), where P approximates (asin(x)-x)/x³ on [0, 0.5].
   auto x2 = x * x;
-  auto px =
-      dispenso::fast_math::hornerEval(
-          x2, 4.216630880e-2f, 2.417951451e-2f, 4.547037598e-2f, 7.495297643e-2f, 1.666675248e-1f) *
-      x2;
+  Flt px;
+  if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+    // Sollya fpminimax((asin(x)-x)/x^3, [|0,2,4,6,8,10|], [|SG...|], [1b-50, 0.5]):
+    //   sup-norm error < 2^-27.
+    px = dispenso::fast_math::hornerEval(
+             x2,
+             0x1.1a258cp-5f,
+             0x1.10abf6p-6f,
+             0x1.ff9494p-6f,
+             0x1.6d4032p-5f,
+             0x1.3334c8p-4f,
+             0x1.555554p-3f) *
+        x2;
+  } else {
+    // Sollya fpminimax((asin(x)-x)/x^3, [|0,2,4,6,8|], [|SG...|], [1b-50, 0.5]):
+    //   sup-norm error < 2^-24.
+    px = dispenso::fast_math::hornerEval(
+             x2, 0x1.3926d2p-5f, 0x1.b1e3acp-6f, 0x1.70bf2ap-5f, 0x1.332688p-4f, 0x1.55555ep-3f) *
+        x2;
+  }
   return x + x * px;
 }
 
-template <typename Flt>
+template <typename Flt, typename AccuracyTraits>
 DISPENSO_INLINE Flt asin_pt5_1(Flt x) {
+  // asin(x) = pi/2 + sqrt(1-x) * P(x), where P approximates (asin(x)-pi/2)/sqrt(1-x)
+  // on [0.5, 1].
   constexpr float kPi_2hi = 1.57079637050628662109375f;
   constexpr float kPi_2lo = -4.37113900018624283e-8f;
 
-  Flt y = dispenso::fast_math::hornerEval(
-      x,
-      0x1.ee9b5ep-10f,
-      -0x1.7a2022p-7f,
-      0x1.21893cp-5f,
-      -0x1.5085b4p-4f,
-      0x1.b3f124p-3f,
-      -0x1.92136p0f);
+  Flt y;
+  if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+    // Sollya fpminimax((asin(x)-pi/2)/sqrt(1-x), 6, [|SG...|], [0.5, 1-1b-23]):
+    //   sup-norm error < 2^-32.
+    y = dispenso::fast_math::hornerEval(
+        x,
+        -0x1.b7070cp-11f,
+        0x1.72345p-8f,
+        -0x1.2f2922p-6f,
+        0x1.59358ep-5f,
+        -0x1.5f9f5p-4f,
+        0x1.b6199ap-3f,
+        -0x1.921b8p0f);
+  } else {
+    // Sollya fpminimax((asin(x)-pi/2)/sqrt(1-x), 5, [|SG...|], [0.5, 1-1b-23]):
+    //   sup-norm error < 2^-28.
+    y = dispenso::fast_math::hornerEval(
+        x,
+        0x1.edfaacp-10f,
+        -0x1.79d524p-7f,
+        0x1.216da6p-5f,
+        -0x1.507bb6p-4f,
+        0x1.b3ef5cp-3f,
+        -0x1.921358p0f);
+  }
 
   // Use compensating sum for better rounding.
   return kPi_2hi + FloatTraits<Flt>::fma(FloatTraits<Flt>::sqrt(1.0f - x), y, kPi_2lo);
@@ -338,23 +372,45 @@ DISPENSO_INLINE Flt logarithmBounds(Flt x, Flt y, IntType_t<Flt> xi) {
   return y;
 }
 
-template <typename Flt>
+template <typename Flt, typename AccuracyTraits>
 DISPENSO_INLINE Flt atan_poly(Flt x) {
-  // Degree-10 polynomial: atan(x) ≈ x * P(x).
+  // atan(x) ≈ x * P(x), where P approximates atan(x)/x on [0, 1].
   // Horner (not Estrin): Estrin regresses atan ULP from 3 to 4 and is slower
-  // on scalar due to register pressure from the degree-10 x-power tree.
-  Flt y = dispenso::fast_math::hornerEval(
-      x,
-      0.02159089781343937f,
-      -0.131040632724762f,
-      0.3223767280578613f,
-      -0.3689180314540863f,
-      0.09664592146873474f,
-      0.1743806153535843f,
-      0.004009631462395191f,
-      -0.3336564600467682f,
-      9.442386726732366e-06f,
-      1.0f);
+  // on scalar due to register pressure from the x-power tree.
+  Flt y;
+  if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+    // Sollya fpminimax(atan(x)/x, 11, [|SG...|], [1b-50, 1]):
+    //   sup-norm error < 2^-31.
+    y = dispenso::fast_math::hornerEval(
+        x,
+        -0x1.1592cap-6f,
+        0x1.a09c1cp-4f,
+        -0x1.f68112p-3f,
+        0x1.150f26p-2f,
+        -0x1.e2e56p-5f,
+        -0x1.0e262ep-3f,
+        -0x1.d8f3p-15f,
+        0x1.98c9aap-3f,
+        0x1.352e9p-14f,
+        -0x1.5556b2p-2f,
+        0x1.f2bd6p-24f,
+        0x1p0f);
+  } else {
+    // Sollya fpminimax(atan(x)/x, 9, [|SG...|], [1b-50, 1]):
+    //   sup-norm error < 2^-26.
+    y = dispenso::fast_math::hornerEval(
+        x,
+        0x1.1f76cap-6f,
+        -0x1.cc3324p-4f,
+        0x1.252662p-2f,
+        -0x1.530ee2p-2f,
+        0x1.2ca298p-4f,
+        0x1.76789ap-3f,
+        0x1.29d66ep-9f,
+        -0x1.557c3cp-2f,
+        0x1.c39d04p-19f,
+        0x1p0f);
+  }
   return y * x;
 }
 

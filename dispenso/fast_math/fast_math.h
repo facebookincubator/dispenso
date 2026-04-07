@@ -723,7 +723,7 @@ DISPENSO_INLINE Flt ldexp(Flt x, IntType_t<Flt> e) {
 /**
  * @brief Arc cosine approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 4 ULP.
+ * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy: 2 ULP (degree-8 polynomial).
  * @param x Input value in [-1, 1].
  * @return Arc cosine of @p x in radians. Compatible with all SIMD backends.
  */
@@ -731,7 +731,7 @@ template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt acos(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
-    return acos<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+    return acos<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
   } else {
     BoolType_t<Flt> xneg = x < 0.0f;
     // abs
@@ -739,17 +739,37 @@ DISPENSO_INLINE Flt acos(Flt x) {
     xi &= 0x7fffffff;
     x = bit_cast<Flt>(xi);
 
+    // acos(x) = sqrt(1-x) * P(x), where P approximates acos(x)/sqrt(1-x) on [0, 1).
     // Horner (not Estrin): Estrin regresses acos ULP from 3 to 4.
-    Flt y = dispenso::fast_math::hornerEval(
-        x,
-        -0.001334964530542493f,
-        0.006957028061151505f,
-        -0.0175294354557991f,
-        0.03122001513838768f,
-        -0.05029246956110001f,
-        0.08899597078561783f,
-        -0.2145989686250687f,
-        1.570796251296997f);
+    Flt y;
+    if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
+      // Sollya fpminimax(acos(x)/sqrt(1-x), 8, [|SG...|], [0, 1-1b-23]):
+      //   sup-norm error < 2^-25.
+      y = dispenso::fast_math::hornerEval(
+          x,
+          0x1.d129f2p-11f,
+          -0x1.3ca11ap-8f,
+          0x1.9a3376p-7f,
+          -0x1.6a1a08p-6f,
+          0x1.10b838p-5f,
+          -0x1.a0365ep-5f,
+          0x1.6cce04p-4f,
+          -0x1.b7820cp-3f,
+          0x1.921fb6p0f);
+    } else {
+      // Sollya fpminimax(acos(x)/sqrt(1-x), 7, [|SG...|], [0, 1-1b-23]):
+      //   sup-norm error < 2^-24.
+      y = dispenso::fast_math::hornerEval(
+          x,
+          -0x1.39a988p-10f,
+          0x1.a50fdp-8f,
+          -0x1.120206p-6f,
+          0x1.f5a1e2p-6f,
+          -0x1.9a1efp-5f,
+          0x1.6c5d48p-4f,
+          -0x1.b77e7ep-3f,
+          0x1.921fb4p0f);
+    }
 
     auto sqrt1mx = FloatTraits<Flt>::sqrt(1.0f - x);
     return FloatTraits<Flt>::conditional(
@@ -760,7 +780,7 @@ DISPENSO_INLINE Flt acos(Flt x) {
 /**
  * @brief Arc sine approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 2 ULP.
+ * @tparam AccuracyTraits Default: 2 ULP. kMaxAccuracy: 1 ULP (higher-degree polynomials).
  * @param x Input value in [-1, 1].
  * @return Arc sine of @p x in radians. Compatible with all SIMD backends.
  */
@@ -768,7 +788,7 @@ template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt asin(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
-    return asin<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+    return asin<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
   } else {
     using IntT = IntType_t<Flt>;
 
@@ -780,15 +800,15 @@ DISPENSO_INLINE Flt asin(Flt x) {
     Flt ret;
     if constexpr (std::is_same_v<Flt, float>) {
       if (xi > 0x3f000000) { // x > 0.5
-        ret = detail::asin_pt5_1(x);
+        ret = detail::asin_pt5_1<Flt, AccuracyTraits>(x);
 
       } else {
-        ret = detail::asin_0_pt5(x);
+        ret = detail::asin_0_pt5<Flt, AccuracyTraits>(x);
       }
     } else {
       // Use compensating sum for better rounding.
-      auto y = detail::asin_pt5_1(x);
-      auto z = detail::asin_0_pt5(x);
+      auto y = detail::asin_pt5_1<Flt, AccuracyTraits>(x);
+      auto z = detail::asin_0_pt5<Flt, AccuracyTraits>(x);
       ret = FloatTraits<Flt>::conditional(xi > 0x3f000000, y, z); // choose between correct estimate
     }
     return bit_cast<Flt>(sgnbit | bit_cast<IntT>(ret));
@@ -1042,7 +1062,7 @@ DISPENSO_INLINE Flt tan(Flt x) {
 /**
  * @brief Arc tangent approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Accepted but ignored (uniform implementation); 3 ULP.
+ * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy: 2 ULP (degree-11 polynomial).
  * @param x Input value (all float domain).
  * @return Arc tangent of @p x in radians. Compatible with all SIMD backends.
  */
@@ -1050,7 +1070,7 @@ template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt atan(Flt x) {
   assert_float_type<Flt>();
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
-    return atan<SimdType_t<Flt>>(SimdType_t<Flt>(x)).v;
+    return atan<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
   } else {
     using IntT = IntType_t<Flt>;
 
@@ -1070,7 +1090,7 @@ DISPENSO_INLINE Flt atan(Flt x) {
       x = FloatTraits<Flt>::conditional(flip, 1.0f / x, x);
     }
 
-    auto y = detail::atan_poly(x);
+    auto y = detail::atan_poly<Flt, AccuracyTraits>(x);
 
     y = FloatTraits<Flt>::conditional(flip, kPi_2 - y, y);
 
@@ -1417,7 +1437,7 @@ DISPENSO_INLINE Flt log10(Flt x) {
 /**
  * @brief Two-argument arc tangent approximation.
  * @tparam Flt float or SIMD float type.
- * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy has no additional effect.
+ * @tparam AccuracyTraits Default: 3 ULP. kMaxAccuracy: 2 ULP (degree-11 polynomial).
  *   kBoundsValues: handles the case where both arguments are inf.
  * @param y Y coordinate (all float domain).
  * @param x X coordinate (all float domain).
@@ -1461,7 +1481,7 @@ DISPENSO_INLINE Flt atan2(Flt y, Flt x) {
 
     Flt y_x = bool_apply_or_zero(someNonzero, num / den);
 
-    auto z = detail::atan_poly(y_x);
+    auto z = detail::atan_poly<Flt, AccuracyTraits>(y_x);
 
     z = FloatTraits<Flt>::conditional(flip, kPi_2 - z, z);
 
