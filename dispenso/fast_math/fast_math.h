@@ -1864,5 +1864,39 @@ DISPENSO_INLINE Flt expm1(Flt x) {
   }
 }
 
+/**
+ * @brief Compute log(1 + x) with precision near zero.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: ~2 ULP. kBoundsValues: handles x = -1 (→ -inf), NaN.
+ * @param x Input value in (-1, +inf).
+ * @return log(1 + x). Compatible with all SIMD backends.
+ *
+ * Uses the compensated-addition trick: u = 1 + x, c = x - (u - 1) captures
+ * the rounding error of the addition. Then log1p(x) = log(u) + c/u, which
+ * avoids the catastrophic cancellation that log(1 + x) would suffer near x = 0.
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt log1p(Flt x) {
+  assert_float_type<Flt>();
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return log1p<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else {
+    // Compensated addition: u = float(1 + x), c = rounding error.
+    // log(1 + x) = log(u + c) = log(u) + log(1 + c/u) ≈ log(u) + c/u.
+    // For very small |x|: u = 1, c = x, log(1) = 0, result = x. Correct.
+    Flt u = Flt(1.0f) + x;
+    Flt c = x - (u - 1.0f);
+    Flt result = log<Flt, AccuracyTraits>(u) + c / u;
+
+    // Bounds handling is inherited from log():
+    //   log1p(-1) → log(0) = -inf.
+    //   log1p(x < -1) → log(negative) = NaN.
+    //   log1p(NaN) → log(NaN) = NaN.
+    //   log1p(+inf) → log(+inf) = +inf.
+
+    return result;
+  }
+}
+
 } // namespace fast_math
 } // namespace dispenso

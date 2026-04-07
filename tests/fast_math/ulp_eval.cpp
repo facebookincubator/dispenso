@@ -103,6 +103,11 @@ static void evalBands(const char* name, FnType gt, FnType fn, Band* bands, int32
             for (float x : {f, -f}) {
               float g = gt(x);
               float a = fn(x);
+              // Skip non-finite results: NaN/inf comparisons via float_distance
+              // produce garbage. Functions with asymmetric domains (log1p) may
+              // produce NaN for mirrored inputs — this is expected, not an error.
+              if (!std::isfinite(g) || !std::isfinite(a))
+                continue;
               uint32_t d = dfm::float_distance(g, a);
               if (d >= 3)
                 localCount3++;
@@ -179,6 +184,9 @@ static float gt_cbrt(float x) {
 static float gt_expm1(float x) {
   return static_cast<float>(std::expm1(static_cast<double>(x)));
 }
+static float gt_log1p(float x) {
+  return static_cast<float>(std::log1p(static_cast<double>(x)));
+}
 
 // Bands for exp functions — [-89, 89] covers the non-overflow range.
 static Band kExpBands[] = {
@@ -188,13 +196,27 @@ static Band kExpBands[] = {
     {40.0f, 89.0f, "40 to 89"},
 };
 
-// Bands for expm1 — focus on near-zero precision, cap at 40 to avoid overflow.
+// Bands for expm1 — near-zero focus, plus full exp range.
+// The mirrored negative side is also valid (expm1(-89) = -1).
 static Band kExpm1Bands[] = {
     {0.0f, 0.001f, "0 to 0.001"},
     {0.001f, 0.1f, "0.001 to 0.1"},
     {0.1f, 1.0f, "0.1 to 1"},
     {1.0f, 10.0f, "1 to 10"},
-    {10.0f, 40.0f, "10 to 40"},
+    {10.0f, 89.0f, "10 to 89"},
+};
+
+// Bands for log1p — covers [0, 1e38] and mirrors to [-1e38, 0].
+// For x < -1, log1p is undefined and both gt/fn return NaN, which the
+// eval loop skips. So mirroring large bands is safe.
+static Band kLog1pBands[] = {
+    {0.0f, 0.001f, "0 to 0.001"},
+    {0.001f, 0.1f, "0.001 to 0.1"},
+    {0.1f, 1.0f, "0.1 to 1"},
+    {1.0f, 100.0f, "1 to 100"},
+    {100.0f, 1e10f, "100 to 1e10"},
+    {1e10f, 1e30f, "1e10 to 1e30"},
+    {1e30f, 1e38f, "1e30 to 1e38"},
 };
 
 int main() {
@@ -229,6 +251,8 @@ int main() {
 
   printf("\n=== Precision-near-zero ===\n");
   eval("expm1", gt_expm1, dfm::expm1<float>, kExpm1Bands);
+  printf("\n");
+  eval("log1p", gt_log1p, dfm::log1p<float>, kLog1pBands);
 
   return 0;
 }

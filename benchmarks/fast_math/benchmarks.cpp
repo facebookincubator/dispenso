@@ -1095,3 +1095,32 @@ void BM_fastm_expm1(benchmark::State& state) {
 
 BENCHMARK(BM_expm1);
 BENCHMARK(BM_fastm_expm1);
+
+// --- log1p benchmarks ---
+
+void BM_log1p(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += ::log1pf(std::fabs(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+void BM_fastm_log1p(benchmark::State& state) {
+  const auto& inputs = sinInputs();
+  size_t idx = 0;
+  float sum = 0.0f;
+  for (auto UNUSED_VAR : state) {
+    sum += dispenso::fast_math::log1p(std::fabs(inputs[idx]));
+    idx = (idx + 1) & kInputsMask;
+  }
+  state.SetItemsProcessed(state.iterations());
+  std::cout << sum << std::endl;
+}
+
+BENCHMARK(BM_log1p);
+BENCHMARK(BM_fastm_log1p);
