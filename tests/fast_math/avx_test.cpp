@@ -638,7 +638,7 @@ TEST(AvxAsin, Sweep) {
         [](float x) { return static_cast<float>(::asin(static_cast<double>(x))); },
         [](__m256 x) { return dfm::asin(x); },
         makeSeq(b, delta),
-        4);
+        3);
   }
 }
 

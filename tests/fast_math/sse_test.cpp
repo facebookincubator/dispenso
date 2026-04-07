@@ -1126,7 +1126,7 @@ TEST(SseAsin, Sweep) {
         [](float x) { return static_cast<float>(::asin(static_cast<double>(x))); },
         [](__m128 x) { return dfm::asin(x); },
         input,
-        4);
+        3);
   }
 }
 

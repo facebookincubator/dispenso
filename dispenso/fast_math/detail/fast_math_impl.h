@@ -72,28 +72,20 @@ DISPENSO_INLINE Flt ldexpImpl(UintType_t<Flt> hx, IntType_t<Flt> e) {
 
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt cos_pi_4(Flt x2) {
-  auto fma = FloatTraits<Flt>::fma;
-  /* Approximate cosine on [-PI/4,+PI/4] with maximum error of 0.87444 ulp */
-  Flt c = 2.44677067e-5f; //  0x1.9a8000p-16
-  c = fma(c, x2, -1.38877297e-3f); // -0x1.6c0efap-10
-  c = fma(c, x2, 4.16666567e-2f); //  0x1.555550p-5
-  c = fma(c, x2, -5.00000000e-1f); // -0x1.000000p-1
-  c = fma(c, x2, 1.00000000e+0f); //  1.00000000p+0
-  return c;
+  // Approximate cosine on [-PI/4,+PI/4], max error 0.87444 ULP.
+  // Polynomial in x²: c0 + c1*x² + c2*x⁴ + c3*x⁶ + c4*x⁸.
+  return dispenso::fast_math::hornerEval(
+      x2, 2.44677067e-5f, -1.38877297e-3f, 4.16666567e-2f, -5.00000000e-1f, 1.00000000e+0f);
 }
 
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt sin_pi_4(Flt x2, Flt x) {
-  auto fma = FloatTraits<Flt>::fma;
-  /* Approximate sine on [-PI/4,+PI/4] */
-  /* Sollya fpminimax(sin(x) - x, [|3,5,7,9|], [|SG...|], [-pi/4;pi/4], absolute) */
-  Flt s = 2.78547373e-6f;
-  s = fma(s, x2, -1.98483889e-4f);
-  s = fma(s, x2, 8.33336823e-3f);
-  s = fma(s, x2, -1.66666672e-1f);
-  auto t = x * x2;
-  s = fma(s, t, x);
-  return s;
+  // Approximate sine on [-PI/4,+PI/4].
+  // Sollya fpminimax(sin(x) - x, [|3,5,7,9|], [|SG...|], [-pi/4;pi/4], absolute).
+  // Odd polynomial: sin(x) = x + x³ * P(x²).
+  Flt s = dispenso::fast_math::hornerEval(
+      x2, 2.78547373e-6f, -1.98483889e-4f, 8.33336823e-3f, -1.66666672e-1f);
+  return FloatTraits<Flt>::fma(s, x * x2, x);
 }
 
 // Wider-domain sin/cos polynomials for pi-reduction (no quadrant blending needed).
@@ -102,15 +94,10 @@ DISPENSO_INLINE Flt sin_pi_4(Flt x2, Flt x) {
 // Absolute error: 3.2e-10 (31.5 bits)
 template <typename Flt>
 DISPENSO_INLINE Flt sin_pi_2(Flt x2, Flt x) {
-  auto fma = FloatTraits<Flt>::fma;
-  Flt s = -0x1.ab55a8p-26f;
-  s = fma(s, x2, 0x1.725326p-19f);
-  s = fma(s, x2, -0x1.a0205p-13f);
-  s = fma(s, x2, 0x1.11112ep-7f);
-  s = fma(s, x2, -0x1.555556p-3f);
-  auto t = x * x2;
-  s = fma(s, t, x);
-  return s;
+  // Odd polynomial: sin(x) = x + x³ * P(x²).
+  Flt s = dispenso::fast_math::hornerEval(
+      x2, -0x1.ab55a8p-26f, 0x1.725326p-19f, -0x1.a0205p-13f, 0x1.11112ep-7f, -0x1.555556p-3f);
+  return FloatTraits<Flt>::fma(s, x * x2, x);
 }
 
 template <typename Flt>
@@ -260,36 +247,32 @@ DISPENSO_INLINE Flt tan_pi_2_impl(Flt x, Flt j) {
 
 template <typename Flt>
 DISPENSO_INLINE Flt asin_0_pt5(Flt x) {
-  // Polynomial constants from glibc asinf impl
-  constexpr std::array<float, 5> ks = {
-      1.666675248e-1f, 7.495297643e-2f, 4.547037598e-2f, 2.417951451e-2f, 4.216630880e-2f};
+  // Polynomial constants from glibc asinf impl.
+  // asin(x) = x + x * x² * P(x²).
   auto x2 = x * x;
-  auto px = ((((ks[4] * x2 + ks[3]) * x2 + ks[2]) * x2 + ks[1]) * x2 + ks[0]) * x2;
+  auto px =
+      dispenso::fast_math::hornerEval(
+          x2, 4.216630880e-2f, 2.417951451e-2f, 4.547037598e-2f, 7.495297643e-2f, 1.666675248e-1f) *
+      x2;
   return x + x * px;
 }
 
 template <typename Flt>
 DISPENSO_INLINE Flt asin_pt5_1(Flt x) {
-  auto fma = FloatTraits<Flt>::fma;
   constexpr float kPi_2hi = 1.57079637050628662109375f;
   constexpr float kPi_2lo = -4.37113900018624283e-8f;
-  constexpr std::array<float, 6> ks = {
-      -0x1.92136p0f,
-      0x1.b3f124p-3f,
-      -0x1.5085b4p-4f,
-      0x1.21893cp-5f,
-      -0x1.7a2022p-7f,
-      0x1.ee9b5ep-10f};
 
-  Flt y = ks[5];
-  y = fma(y, x, ks[4]);
-  y = fma(y, x, ks[3]);
-  y = fma(y, x, ks[2]);
-  y = fma(y, x, ks[1]);
-  y = fma(y, x, ks[0]);
+  Flt y = dispenso::fast_math::hornerEval(
+      x,
+      0x1.ee9b5ep-10f,
+      -0x1.7a2022p-7f,
+      0x1.21893cp-5f,
+      -0x1.5085b4p-4f,
+      0x1.b3f124p-3f,
+      -0x1.92136p0f);
 
   // Use compensating sum for better rounding.
-  return kPi_2hi + fma(FloatTraits<Flt>::sqrt(1.0f - x), y, kPi_2lo);
+  return kPi_2hi + FloatTraits<Flt>::fma(FloatTraits<Flt>::sqrt(1.0f - x), y, kPi_2lo);
 }
 
 template <typename Flt, typename AccuracyTraits>
@@ -357,29 +340,21 @@ DISPENSO_INLINE Flt logarithmBounds(Flt x, Flt y, IntType_t<Flt> xi) {
 
 template <typename Flt>
 DISPENSO_INLINE Flt atan_poly(Flt x) {
-  constexpr std::array<float, 11> ks = {
-      0,
-      1,
-      9.442386726732366e-06f,
-      -0.3336564600467682f,
-      0.004009631462395191f,
-      0.1743806153535843f,
-      0.09664592146873474f,
-      -0.3689180314540863f,
-      0.3223767280578613f,
+  // Degree-10 polynomial: atan(x) ≈ x * P(x).
+  // Horner (not Estrin): Estrin regresses atan ULP from 3 to 4 and is slower
+  // on scalar due to register pressure from the degree-10 x-power tree.
+  Flt y = dispenso::fast_math::hornerEval(
+      x,
+      0.02159089781343937f,
       -0.131040632724762f,
-      0.02159089781343937f};
-  auto fma = FloatTraits<Flt>::fma;
-  Flt y = ks[10];
-  y = fma(y, x, ks[9]);
-  y = fma(y, x, ks[8]);
-  y = fma(y, x, ks[7]);
-  y = fma(y, x, ks[6]);
-  y = fma(y, x, ks[5]);
-  y = fma(y, x, ks[4]);
-  y = fma(y, x, ks[3]);
-  y = fma(y, x, ks[2]);
-  y = fma(y, x, ks[1]);
+      0.3223767280578613f,
+      -0.3689180314540863f,
+      0.09664592146873474f,
+      0.1743806153535843f,
+      0.004009631462395191f,
+      -0.3336564600467682f,
+      9.442386726732366e-06f,
+      1.0f);
   return y * x;
 }
 

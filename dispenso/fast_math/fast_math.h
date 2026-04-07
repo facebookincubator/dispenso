@@ -739,28 +739,21 @@ DISPENSO_INLINE Flt acos(Flt x) {
     xi &= 0x7fffffff;
     x = bit_cast<Flt>(xi);
 
-    static constexpr std::array<float, 8> ks = {
-        1.570796251296997f,
-        -0.2145989686250687f,
-        0.08899597078561783f,
-        -0.05029246956110001f,
-        0.03122001513838768f,
-        -0.0175294354557991f,
+    // Horner (not Estrin): Estrin regresses acos ULP from 3 to 4.
+    Flt y = dispenso::fast_math::hornerEval(
+        x,
+        -0.001334964530542493f,
         0.006957028061151505f,
-        -0.001334964530542493f};
-
-    auto fma = FloatTraits<Flt>::fma;
-    Flt y = ks[7];
-    y = fma(y, x, ks[6]);
-    y = fma(y, x, ks[5]);
-    y = fma(y, x, ks[4]);
-    y = fma(y, x, ks[3]);
-    y = fma(y, x, ks[2]);
-    y = fma(y, x, ks[1]);
-    y = fma(y, x, ks[0]);
+        -0.0175294354557991f,
+        0.03122001513838768f,
+        -0.05029246956110001f,
+        0.08899597078561783f,
+        -0.2145989686250687f,
+        1.570796251296997f);
 
     auto sqrt1mx = FloatTraits<Flt>::sqrt(1.0f - x);
-    return FloatTraits<Flt>::conditional(xneg, fma(y, -sqrt1mx, Flt(kPi)), y * sqrt1mx);
+    return FloatTraits<Flt>::conditional(
+        xneg, FloatTraits<Flt>::fma(y, -sqrt1mx, Flt(kPi)), y * sqrt1mx);
   }
 }
 
@@ -1132,24 +1125,15 @@ DISPENSO_INLINE Flt exp2(Flt x) {
 
     Flt powxi = bit_cast<Flt>(xi);
 
-    auto fma = FloatTraits<Flt>::fma;
-
-    constexpr std::array<float, 7> ks = {
-        0x1p0f,
-        0x1.62e42cp-1f,
-        0x1.ebfd38p-3f,
-        0x1.c68b2ep-5f,
-        0x1.3cfb6p-7f,
+    Flt y = dispenso::fast_math::hornerEval(
+        x,
+        0x1.c41242p-13f,
         0x1.4748aep-10f,
-        0x1.c41242p-13f};
-
-    Flt y = ks[6];
-    y = fma(y, x, ks[5]);
-    y = fma(y, x, ks[4]);
-    y = fma(y, x, ks[3]);
-    y = fma(y, x, ks[2]);
-    y = fma(y, x, ks[1]);
-    y = fma(y, x, ks[0]);
+        0x1.3cfb6p-7f,
+        0x1.c68b2ep-5f,
+        0x1.ebfd38p-3f,
+        0x1.62e42cp-1f,
+        0x1p0f);
 
     return powxi * y;
   }
@@ -1172,7 +1156,6 @@ DISPENSO_INLINE Flt exp(Flt x) {
   } else {
     using IntT = IntType_t<Flt>;
     using UintT = UintType_t<Flt>;
-    auto fma = FloatTraits<Flt>::fma;
     constexpr float k1_ln2 = k1_Ln2;
     constexpr float kLn2hi = 6.93145752e-1f;
     constexpr float kLn2lo = 1.42860677e-6f;
@@ -1184,21 +1167,15 @@ DISPENSO_INLINE Flt exp(Flt x) {
       Flt j = detail::rangeReduce(f, k1_ln2, kLn2hi, kLn2lo);
       IntT i = convert_to_int(j);
       // approximate r = exp(f) on interval [-log(2)/2, +log(2)/2]
-      constexpr std::array<float, 7> ks = {
-          1.f,
-          1.f,
-          0x1.fffff8p-2f,
-          0x1.55548ep-3f,
-          0x1.555b98p-5f,
+      Flt y = dispenso::fast_math::hornerEval(
+          f,
+          0x1.6850e4p-10f,
           0x1.123bccp-7f,
-          0x1.6850e4p-10f};
-      Flt y = ks[6];
-      y = fma(y, f, ks[5]);
-      y = fma(y, f, ks[4]);
-      y = fma(y, f, ks[3]);
-      y = fma(y, f, ks[2]);
-      y = fma(y, f, ks[1]);
-      y = fma(y, f, ks[0]);
+          0x1.555b98p-5f,
+          0x1.55548ep-3f,
+          0x1.fffff8p-2f,
+          1.f,
+          1.f);
       // exp(x) = 2**i * y (with rounding)
       auto ipos = i > IntT(0);
       UintT ia = FloatTraits<Flt>::conditional(ipos, UintT(0u), UintT(0x83000000u));
@@ -1235,19 +1212,14 @@ DISPENSO_INLINE Flt exp(Flt x) {
       Flt powxi = bit_cast<Flt>(xi);
 
       // approximate r = exp(f) on interval [0, ln2]
-      constexpr std::array<float, 6> ks = {
-          0x1.fffffep-1f,
-          0x1.000086p0f,
-          0x1.ffd96ep-2f,
-          0x1.57481ep-3f,
+      Flt y = dispenso::fast_math::hornerEval(
+          x,
+          0x1.8014dp-7f,
           0x1.3f3846p-5f,
-          0x1.8014dp-7f};
-      Flt y = ks[5];
-      y = fma(y, x, ks[4]);
-      y = fma(y, x, ks[3]);
-      y = fma(y, x, ks[2]);
-      y = fma(y, x, ks[1]);
-      y = fma(y, x, ks[0]);
+          0x1.57481ep-3f,
+          0x1.ffd96ep-2f,
+          0x1.000086p0f,
+          0x1.fffffep-1f);
 
       return powxi * y;
     }
@@ -1291,22 +1263,15 @@ DISPENSO_INLINE Flt exp10(Flt x) {
     xi <<= 23;
 
     Flt powxi = bit_cast<Flt>(xi);
-    auto fma = FloatTraits<Flt>::fma;
-    constexpr std::array<float, 7> ks = {
-        0x1p0f,
-        0x1.26bb18p1f,
-        0x1.53534cp1f,
-        0x1.0459f6p1f,
-        0x1.2d9da2p0f,
+    Flt y = dispenso::fast_math::hornerEval(
+        x,
+        0x1.293a54p-2f,
         0x1.024feap-1f,
-        0x1.293a54p-2f};
-    Flt y = ks[6];
-    y = fma(y, x, ks[5]);
-    y = fma(y, x, ks[4]);
-    y = fma(y, x, ks[3]);
-    y = fma(y, x, ks[2]);
-    y = fma(y, x, ks[1]);
-    y = fma(y, x, ks[0]);
+        0x1.2d9da2p0f,
+        0x1.0459f6p1f,
+        0x1.53534cp1f,
+        0x1.26bb18p1f,
+        0x1p0f);
 
     return powxi * y;
   }
@@ -1331,18 +1296,21 @@ DISPENSO_INLINE Flt log2(Flt x) {
     m = m - 1.0f;
 
     // Compute log2(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
-    Flt y = -1.09985352e-1f;
-    auto fma = FloatTraits<Flt>::fma;
-    y = fma(y, m, 1.86182275e-1f);
-    y = fma(y, m, -1.91066533e-1f);
-    y = fma(y, m, 2.04593703e-1f);
-    y = fma(y, m, -2.39627063e-1f);
-    y = fma(y, m, 2.88573444e-1f);
-    y = fma(y, m, -3.60695332e-1f);
-    y = fma(y, m, 4.80897635e-1f);
-    y = fma(y, m, -7.21347392e-1f);
-    y = fma(y, m, 4.42695051e-1f);
-    y = fma(y, m, m); // simplify due to constants 0 and 1
+    // Degree-9 polynomial with c0=0 absorbed: the Horner chain evaluates c9..c1,
+    // then fma(y, m, m) applies the final y*m + m (since c0=0, c1 is folded into +m).
+    Flt y = dispenso::fast_math::hornerEval(
+        m,
+        -1.09985352e-1f,
+        1.86182275e-1f,
+        -1.91066533e-1f,
+        2.04593703e-1f,
+        -2.39627063e-1f,
+        2.88573444e-1f,
+        -3.60695332e-1f,
+        4.80897635e-1f,
+        -7.21347392e-1f,
+        4.42695051e-1f);
+    y = FloatTraits<Flt>::fma(y, m, m); // c0=0 absorbed: y*m + m
 
     y = y + i;
 
@@ -1374,29 +1342,21 @@ DISPENSO_INLINE Flt log(Flt x) {
     m = m - 1.0f;
 
     // Compute log(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
-    auto fma = FloatTraits<Flt>::fma;
-    constexpr std::array<float, 10> ks = {
-        0.f,
-        1.f,
-        -0.499999911f,
-        0.333337069f,
-        -0.250024557f,
-        0.199700251f,
-        -0.165455937f,
-        0.148145974f,
+    // Degree-9 polynomial with c0=0, c1=1 absorbed: y = P(m)*m² + m.
+    // P(m) evaluates c9..c2 (8 coefficients), then fma(P, m², m) applies c1=1 and c0=0.
+    Flt y = dispenso::fast_math::hornerEval(
+        m,
+        0.0924733654f,
         -0.14482744f,
-        0.0924733654f};
-    Flt y = ks[9];
-    y = fma(y, m, ks[8]);
-    y = fma(y, m, ks[7]);
-    y = fma(y, m, ks[6]);
-    y = fma(y, m, ks[5]);
-    y = fma(y, m, ks[4]);
-    y = fma(y, m, ks[3]);
-    y = fma(y, m, ks[2]);
-    y = fma(y, m * m, m); // simplify due to constants 0 and 1
+        0.148145974f,
+        -0.165455937f,
+        0.199700251f,
+        -0.250024557f,
+        0.333337069f,
+        -0.499999911f);
+    y = FloatTraits<Flt>::fma(y, m * m, m); // c0=0, c1=1 absorbed
 
-    y = fma(i, kLn2, y);
+    y = FloatTraits<Flt>::fma(i, kLn2, y);
 
     /* Check for and handle special cases */
     if constexpr (AccuracyTraits::kBoundsValues) {
@@ -1427,27 +1387,20 @@ DISPENSO_INLINE Flt log10(Flt x) {
 
     // Compute log10(1+m) for m in [sqrt(0.5)-1, sqrt(2.0)-1]
     auto fma = FloatTraits<Flt>::fma;
-    constexpr std::array<float, 10> ks = {
-        0.f,
-        0.434294462f,
-        -0.217147425f,
-        0.144770443f,
-        -0.108560629f,
-        0.086600922f,
-        -0.0723559037f,
-        0.0659840927f,
-        -0.0601400957f,
-        0.0326662175f};
-    Flt y = ks[9];
-    y = fma(y, m, ks[8]);
-    y = fma(y, m, ks[7]);
-    y = fma(y, m, ks[6]);
-    y = fma(y, m, ks[5]);
-    y = fma(y, m, ks[4]);
-    y = fma(y, m, ks[3]);
-    y = fma(y, m, ks[2]);
-    y = fma(y, m, ks[1]);
-    y = fma(y, m, ks[0]);
+    // Degree-9 polynomial with c0=0 absorbed: y = P(m) * m, where
+    // P(m) = c9*m^8 + ... + c1 (9 coefficients).
+    Flt y = dispenso::fast_math::hornerEval(
+                m,
+                0.0326662175f,
+                -0.0601400957f,
+                0.0659840927f,
+                -0.0723559037f,
+                0.086600922f,
+                -0.108560629f,
+                0.144770443f,
+                -0.217147425f,
+                0.434294462f) *
+        m;
 
     constexpr float kLog10of2 = 0.30102999566398f;
     y = fma(i, kLog10of2, y);
@@ -1843,34 +1796,20 @@ DISPENSO_INLINE Flt expm1(Flt x) {
     if constexpr (AccuracyTraits::kMaxAccuracy || AccuracyTraits::kBoundsValues) {
       // Degree-5 Sollya fpminimax((exp(x)-1-x)/x^2, 5, [|SG...|], [-ln2/2, ln2/2]):
       //   sup-norm error < 2^-29 (~0.03 ULP at r = ln2/2).
-      constexpr float c2 = 0x1p-1f; // 0.5 (exact)
-      constexpr float c3 = 0x1.555556p-3f;
-      constexpr float c4 = 0x1.555502p-5f;
-      constexpr float c5 = 0x1.110ff2p-7f;
-      constexpr float c6 = 0x1.6d2ep-10f;
-      constexpr float c7 = 0x1.a26762p-13f;
-
-      Flt p = c7;
-      p = fma_fn(p, r, Flt(c6));
-      p = fma_fn(p, r, Flt(c5));
-      p = fma_fn(p, r, Flt(c4));
-      p = fma_fn(p, r, Flt(c3));
-      p = fma_fn(p, r, Flt(c2));
+      Flt p = dispenso::fast_math::hornerEval(
+          r,
+          0x1.a26762p-13f,
+          0x1.6d2ep-10f,
+          0x1.110ff2p-7f,
+          0x1.555502p-5f,
+          0x1.555556p-3f,
+          0x1p-1f);
       em1_r = fma_fn(p, r * r, r);
     } else {
       // Degree-4 Sollya fpminimax((exp(x)-1-x)/x^2, 4, [|SG...|], [-ln2/2, ln2/2]):
       //   sup-norm error < 2^-24 (~1.2 ULP at r = ln2/2).
-      constexpr float c2 = 0x1p-1f; // 0.5 (exact)
-      constexpr float c3 = 0x1.5554dep-3f;
-      constexpr float c4 = 0x1.55556cp-5f;
-      constexpr float c5 = 0x1.120abep-7f;
-      constexpr float c6 = 0x1.6ca992p-10f;
-
-      Flt p = c6;
-      p = fma_fn(p, r, Flt(c5));
-      p = fma_fn(p, r, Flt(c4));
-      p = fma_fn(p, r, Flt(c3));
-      p = fma_fn(p, r, Flt(c2));
+      Flt p = dispenso::fast_math::hornerEval(
+          r, 0x1.6ca992p-10f, 0x1.120abep-7f, 0x1.55556cp-5f, 0x1.5554dep-3f, 0x1p-1f);
       em1_r = fma_fn(p, r * r, r);
     }
 
@@ -1941,21 +1880,15 @@ DISPENSO_INLINE Flt log1p(Flt x) {
     //   log1p(x) = x - x²/2 + x³/3 - ... ≈ x + x² * q(x)
     // Sollya fpminimax((log(1+x)-x)/x^2, 6, [|SG...|], [-0.25, 0.25]):
     //   sup-norm error < 2^-23; at x=0.25 → ~0.25 ULP polynomial error.
-    constexpr float q0 = -0x1p-1f; // -0.5 (exact)
-    constexpr float q1 = 0x1.555632p-2f;
-    constexpr float q2 = -0x1.000112p-2f;
-    constexpr float q3 = 0x1.98bfaap-3f;
-    constexpr float q4 = -0x1.5472d2p-3f;
-    constexpr float q5 = 0x1.3f347cp-3f;
-    constexpr float q6 = -0x1.1957b2p-3f;
-
-    Flt q = q6;
-    q = fma_fn(q, x, Flt(q5));
-    q = fma_fn(q, x, Flt(q4));
-    q = fma_fn(q, x, Flt(q3));
-    q = fma_fn(q, x, Flt(q2));
-    q = fma_fn(q, x, Flt(q1));
-    q = fma_fn(q, x, Flt(q0));
+    Flt q = dispenso::fast_math::hornerEval(
+        x,
+        -0x1.1957b2p-3f,
+        0x1.3f347cp-3f,
+        -0x1.5472d2p-3f,
+        0x1.98bfaap-3f,
+        -0x1.000112p-2f,
+        0x1.555632p-2f,
+        -0x1p-1f);
     Flt poly_r = fma_fn(q, x * x, x); // log1p(x) ≈ x + x² * q(x)
 
     if constexpr (std::is_same_v<Flt, float>) {
@@ -1974,29 +1907,20 @@ DISPENSO_INLINE Flt log1p(Flt x) {
     m = m - 1.0f;
 
     // log(1+m) polynomial for m in [sqrt(0.5)-1, sqrt(2.0)-1].
-    // Same coefficients as log(), evaluated via Estrin's scheme to reduce
-    // the critical FMA chain from 8 to 4 dependent steps.
-    // p(m) = m + m² * (ks2 + m*ks3 + m²*ks4 + ... + m⁷*ks9)
-    constexpr float ks2 = -0.499999911f;
-    constexpr float ks3 = 0.333337069f;
-    constexpr float ks4 = -0.250024557f;
-    constexpr float ks5 = 0.199700251f;
-    constexpr float ks6 = -0.165455937f;
-    constexpr float ks7 = 0.148145974f;
-    constexpr float ks8 = -0.14482744f;
-    constexpr float ks9 = 0.0924733654f;
-
-    // Estrin: evaluate pairs, then quads, then combine.
-    Flt m2 = m * m;
-    Flt m4 = m2 * m2;
-    Flt P23 = fma_fn(Flt(ks3), m, Flt(ks2));
-    Flt P45 = fma_fn(Flt(ks5), m, Flt(ks4));
-    Flt P67 = fma_fn(Flt(ks7), m, Flt(ks6));
-    Flt P89 = fma_fn(Flt(ks9), m, Flt(ks8));
-    Flt Q2345 = fma_fn(P45, m2, P23);
-    Flt Q6789 = fma_fn(P89, m2, P67);
-    Flt inner = fma_fn(Q6789, m4, Q2345);
-    Flt y = fma_fn(inner, m2, m); // p(m) = m + m² * inner
+    // Same coefficients as log(). Degree-9 with c0=0, c1=1 absorbed.
+    // p(m) = m + m² * P(m). polyEval uses Estrin on CPU (~27% faster),
+    // Horner on GPU (better for in-order pipelines).
+    Flt inner = dispenso::fast_math::polyEval(
+        m,
+        0.0924733654f,
+        -0.14482744f,
+        0.148145974f,
+        -0.165455937f,
+        0.199700251f,
+        -0.250024557f,
+        0.333337069f,
+        -0.499999911f);
+    Flt y = fma_fn(inner, m * m, m); // c0=0, c1=1 absorbed
 
     y = fma_fn(i, kLn2, y);
 

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <tuple>
 
 #if defined(__SSE__) || defined(__AVX__)
 #include <immintrin.h>
@@ -354,6 +355,119 @@ DISPENSO_INLINE BoolType_t<Flt> float_is_odd(Flt x) {
 // Fast integer division by 3 using multiply-and-shift. Used in cbrt magic constant computation.
 DISPENSO_INLINE int32_t int_div_by_3(int32_t i) {
   return static_cast<int32_t>((uint64_t(i) * 0x55555556) >> 32);
+}
+
+// ---------------------------------------------------------------------------
+// Polynomial evaluation: hornerEval, estrinEval, polyEval
+// ---------------------------------------------------------------------------
+//
+// All take coefficients in HIGH-to-LOW order (highest degree first):
+//   polyEval(x, cn, cn-1, ..., c1, c0) = cn*x^n + cn-1*x^(n-1) + ... + c1*x + c0
+//
+// This matches the natural Horner evaluation order and the existing hand-written
+// FMA chains in fast_math. For odd/even polynomial forms like tanh(x) = x*(1+x²*Q(x²)),
+// compose as: x * (1 + x2 * polyEval(x2, qn, ..., q1, q0)).
+
+namespace detail {
+
+// --- Horner evaluation ---
+// Sequential FMA chain, optimal for low-ILP targets (GPU, scalar, narrow SIMD).
+// Degree N polynomial = N FMAs.
+
+template <typename Flt>
+DISPENSO_INLINE Flt hornerImpl(Flt, Flt accum) {
+  return accum;
+}
+
+template <typename Flt, typename... Cs>
+DISPENSO_INLINE Flt hornerImpl(Flt x, Flt accum, Flt next, Cs... rest) {
+  return hornerImpl(x, FloatTraits<Flt>::fma(accum, x, next), rest...);
+}
+
+// --- Estrin evaluation ---
+// Tree-reduces paired coefficients at each level, cutting critical-path depth
+// from N to ceil(log2(N+1)) at the cost of extra multiplies for x powers.
+// Better for wide SIMD with high ILP (AVX, AVX-512).
+//
+// Generic peel-and-recurse via tuples. At each level:
+//   1. Pair adjacent values: (a,b) → fma(a, xp, b)
+//   2. Carry unpaired odd element
+//   3. Recurse with xp² and the paired results
+//
+// All tuple operations (make_tuple, tuple_cat, apply) are eliminated by the
+// optimizer — verified to produce identical assembly to hand-written FMA trees
+// with clang 21, GCC 11, and GCC 15 at -O2.
+
+template <typename Flt>
+struct EstrinImpl {
+  // Base cases
+  DISPENSO_INLINE static Flt reduce(Flt, std::tuple<Flt> done) {
+    return std::get<0>(done);
+  }
+
+  DISPENSO_INLINE static Flt reduce(Flt xp, std::tuple<Flt, Flt> done) {
+    return FloatTraits<Flt>::fma(std::get<0>(done), xp, std::get<1>(done));
+  }
+
+  // General: unpack tuple, pair all elements at this level, recurse
+  template <typename... Done>
+  DISPENSO_INLINE static Flt reduce(Flt xp, std::tuple<Done...> done) {
+    return std::apply([xp](auto... ds) { return pairLevel(xp, std::tuple<>{}, ds...); }, done);
+  }
+
+  // Done pairing at this level — recurse with xp²
+  template <typename... Paired>
+  DISPENSO_INLINE static Flt pairLevel(Flt xp, std::tuple<Paired...> paired) {
+    return reduce(xp * xp, paired);
+  }
+
+  // Odd leftover — carry forward unpaired
+  template <typename... Paired>
+  DISPENSO_INLINE static Flt pairLevel(Flt xp, std::tuple<Paired...> paired, Flt a) {
+    return reduce(xp * xp, std::tuple_cat(paired, std::make_tuple(a)));
+  }
+
+  // Peel two from front, pair via FMA, accumulate into paired tuple
+  template <typename... Paired, typename... Rest>
+  DISPENSO_INLINE static Flt
+  pairLevel(Flt xp, std::tuple<Paired...> paired, Flt a, Flt b, Rest... rest) {
+    return pairLevel(
+        xp, std::tuple_cat(paired, std::make_tuple(FloatTraits<Flt>::fma(a, xp, b))), rest...);
+  }
+};
+
+} // namespace detail
+
+// Horner evaluation: hornerEval(x, cn, cn-1, ..., c0) = ((cn*x + cn-1)*x + ...)*x + c0
+// Coefficients HIGH-to-LOW (highest degree first).
+// Flt is deduced from x; coefficients are converted to Flt internally.
+template <typename Flt, typename C0, typename... Cs>
+DISPENSO_INLINE Flt hornerEval(Flt x, C0 cn, Cs... rest) {
+  return detail::hornerImpl(x, Flt(cn), Flt(rest)...);
+}
+
+// Estrin evaluation: same semantics as hornerEval, but uses tree-reduction
+// for lower critical-path depth (ceil(log2(N)) vs N dependent FMAs).
+// Coefficients HIGH-to-LOW.
+template <typename Flt, typename C0, typename... Cs>
+DISPENSO_INLINE Flt estrinEval(Flt x, C0 cn, Cs... rest) {
+  return detail::EstrinImpl<Flt>::reduce(x, std::make_tuple(Flt(cn), Flt(rest)...));
+}
+
+// Platform-adaptive polynomial evaluation.
+// Uses Estrin on CPU (tree reduction for ILP on wide SIMD), Horner on GPU
+// (sequential FMA chain, no wasted registers on in-order pipelines).
+// Use polyEval only at call sites where Estrin has been measured beneficial.
+// Use hornerEval directly for accuracy-sensitive polynomials where Estrin's
+// different rounding order would regress ULP.
+// Coefficients HIGH-to-LOW: polyEval(x, cn, ..., c0).
+template <typename Flt, typename C0, typename... Cs>
+DISPENSO_INLINE Flt polyEval(Flt x, C0 cn, Cs... rest) {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+  return hornerEval(x, cn, rest...);
+#else
+  return estrinEval(x, cn, rest...);
+#endif
 }
 
 } // namespace fast_math
