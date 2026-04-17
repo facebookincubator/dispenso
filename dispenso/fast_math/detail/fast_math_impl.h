@@ -344,25 +344,25 @@ template <typename Flt>
 DISPENSO_INLINE Flt logarithmBounds(Flt x, Flt y, IntType_t<Flt> xi) {
   using IntT = IntType_t<Flt>;
   using UintT = UintType_t<Flt>;
-  // The NaN/negative detection below requires unsigned comparison: negative float
-  // bit patterns have the sign bit set, making them large unsigned values that
-  // exceed 0x7f800000.  Scalar C++ does this implicitly (the literal 0xff8fffff
-  // exceeds INT_MAX, so the expression promotes to unsigned), but SIMD integer
-  // comparison intrinsics are always signed.  Using UintT explicitly makes both
-  // paths correct and documents the intent.
+  // Negative-input detection uses unsigned comparison: negative float bit
+  // patterns have the sign bit set, making them large unsigned values.  Scalar
+  // C++ promotes to unsigned implicitly, but SIMD integer comparison intrinsics
+  // are always signed, so we use UintT explicitly for the SIMD path.
+  //
+  // Condition 3 (negative detection) uses > 0x80000000u (not >= ) so that -0.0f
+  // (bit pattern 0x80000000) is excluded — IEEE 754 requires log(-0) = -inf,
+  // which is already handled by condition 1 (x == 0.0f).
   if constexpr (std::is_same_v<Flt, float>) {
     if (xi < 0x00800000 || xi >= 0x7f800000) {
       int orbits = bool_apply_or_zero<int>(x == 0.0f, 0xff800000);
       orbits |= bool_apply_or_zero<int>((xi & 0x7f800000) == 0x7f800000, xi);
-      orbits |= bool_apply_or_zero<int>(
-          (static_cast<uint32_t>(xi) & 0xff8fffffu) > 0x7f800000u, 0x7f8fffff);
+      orbits |= bool_apply_or_zero<int>(static_cast<uint32_t>(xi) > 0x80000000u, 0x7f8fffff);
       y = orbits ? bit_cast<float>(orbits) : y;
     }
   } else {
     IntT orbits = bool_apply_or_zero<IntT>(x == 0.0f, 0xff800000);
     orbits |= bool_apply_or_zero<IntT>((xi & 0x7f800000) == 0x7f800000, xi);
-    orbits |= bool_apply_or_zero<IntT>(
-        (bit_cast<UintT>(xi) & UintT(0xff8fffff)) > UintT(0x7f800000), 0x7f8fffff);
+    orbits |= bool_apply_or_zero<IntT>(bit_cast<UintT>(xi) > UintT(0x80000000), 0x7f8fffff);
     // Use a proper mask (all-ones/all-zeros) for conditional, since blendv
     // only checks bit 31.  Raw orbits values like 0x7F800000 (+inf) have bit 31
     // clear and would be incorrectly treated as "false".

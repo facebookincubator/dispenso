@@ -1206,18 +1206,16 @@ DISPENSO_INLINE Flt exp(Flt x) {
       if constexpr (AccuracyTraits::kBoundsValues) {
         if constexpr (std::is_same_v<float, Flt>) {
           auto zero = (x < -89.0f);
-          if ((zero || x > 89.0f)) {
-            IntT xi = bit_cast<IntT>(x);
-            auto inf = xi == 0x7f800000;
-            Flt orbits = bit_cast<Flt>(bool_apply_or_zero(inf, 0x7f800000));
-            y = FloatTraits<Flt>::conditional(zero | inf, orbits, y);
+          auto overflow = (x > 89.0f);
+          if ((zero || overflow)) {
+            Flt orbits = bit_cast<Flt>(bool_apply_or_zero(overflow, 0x7f800000));
+            y = FloatTraits<Flt>::conditional(zero | overflow, orbits, y);
           }
         } else {
-          IntT xi = bit_cast<IntT>(x);
           auto zero = (x < -89.0f);
-          auto inf = xi == IntT(0x7f800000);
-          IntT orbits = bool_apply_or_zero<IntT>(inf, IntT(0x7f800000));
-          auto mask = bool_as_mask<IntT>(zero) | bool_as_mask<IntT>(inf);
+          auto overflow = (x > 89.0f);
+          IntT orbits = bool_apply_or_zero<IntT>(overflow, IntT(0x7f800000));
+          auto mask = bool_as_mask<IntT>(zero) | bool_as_mask<IntT>(overflow);
           y = FloatTraits<Flt>::conditional(mask, bit_cast<Flt>(orbits), y);
         }
       }
