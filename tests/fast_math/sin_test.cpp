@@ -7,9 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 auto sin_accurate = dispenso::fast_math::sin<float, dispenso::fast_math::MaxAccuracyTraits>;
 // MacOS seems to have a slightly busted sin and sinf, but sinl seems to agree with other platforms.
@@ -89,3 +92,42 @@ TEST(SinLessAccurate, Range32768Pi) {
 
   EXPECT_LE(result, kSinUlpsLarge);
 }
+
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt sin_max(Flt x) {
+  return dfm::sin<Flt, dfm::MaxAccuracyTraits>(x);
+}
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+FAST_MATH_ACCURACY_TESTS(SinDefaultAll, gt_sin, dfm::sin, -32768 * kPi, 32768 * kPi, kSinUlpsLarge)
+FAST_MATH_ACCURACY_TESTS(
+    SinMaxAccAll,
+    gt_sin,
+    sin_max,
+    -(1 << 20) * kPi,
+    (1 << 20) * kPi,
+    kSinAccurateUlpsVeryLarge)
+
+// Special values tested across all SIMD backends.
+static const float kSinSpecials[] = {
+    0.0f,
+    -0.0f,
+    kPi,
+    -kPi,
+    kPi_2,
+    -kPi_2,
+    2.0f * kPi,
+    -2.0f * kPi,
+    100.0f,
+    -100.0f,
+    1000.0f,
+    -1000.0f,
+    1e-6f,
+    std::numeric_limits<float>::denorm_min(),
+    std::numeric_limits<float>::min(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(SinMaxAccSpecial, gt_sin, sin_max, kSinSpecials, kSinAccurateUlpsVeryLarge)
+FAST_MATH_SPECIAL_TESTS(SinDefaultSpecial, gt_sin, dfm::sin, kSinSpecials, kSinUlpsLarge)

@@ -267,6 +267,9 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
       float actual = out[i];
       if (std::isnan(expected)) {
         EXPECT_TRUE(std::isnan(actual)) << "input=" << buf[i] << " expected NaN, got " << actual;
+      } else if (std::isinf(expected)) {
+        EXPECT_EQ(expected, actual)
+            << "input=" << buf[i] << " expected=" << expected << " actual=" << actual;
       } else {
         uint32_t dist = float_distance(expected, actual);
         EXPECT_LE(dist, maxUlps) << "input=" << buf[i] << " expected=" << expected
@@ -358,6 +361,103 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
   FAST_MATH_AVX512_TEST(Suite, gt, func, lo, hi, maxUlps)                                      \
   FAST_MATH_NEON_TEST(Suite, gt, func, lo, hi, maxUlps)                                        \
   FAST_MATH_HWY_TEST(Suite, gt, func, lo, hi, maxUlps)
+
+// ---------------------------------------------------------------------------
+// FAST_MATH_SPECIAL_TESTS — test hand-picked special values across backends.
+// ---------------------------------------------------------------------------
+//
+// Usage:
+//   static const float kAtanSpecials[] = {0.0f, -1e7f, 1e7f, NaN, Inf, -Inf};
+//   FAST_MATH_SPECIAL_TESTS(AtanSpecial, ::atanf, dfm::atan, kAtanSpecials, 0)
+//
+// Uses checkLaneByLane to verify each output lane against scalar ground truth.
+// NaN inputs are checked for NaN output; finite inputs are checked within maxUlps.
+
+#if defined(__SSE4_1__)
+#define FAST_MATH_SSE_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite##Sse, SpecialVals) {                                    \
+    checkLaneByLane<__m128>(                                         \
+        gt,                                                          \
+        func<__m128>,                                                \
+        inputs,                                                      \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])),    \
+        maxUlps);                                                    \
+  }
+#else
+#define FAST_MATH_SSE_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
+#endif
+
+#if defined(__AVX2__)
+#define FAST_MATH_AVX_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite##Avx, SpecialVals) {                                    \
+    checkLaneByLane<__m256>(                                         \
+        gt,                                                          \
+        func<__m256>,                                                \
+        inputs,                                                      \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])),    \
+        maxUlps);                                                    \
+  }
+#else
+#define FAST_MATH_AVX_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
+#endif
+
+#if defined(__AVX512F__)
+#define FAST_MATH_AVX512_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite##Avx512, SpecialVals) {                                    \
+    checkLaneByLane<__m512>(                                            \
+        gt,                                                             \
+        func<__m512>,                                                   \
+        inputs,                                                         \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])),       \
+        maxUlps);                                                       \
+  }
+#else
+#define FAST_MATH_AVX512_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
+#endif
+
+#if defined(__aarch64__)
+#define FAST_MATH_NEON_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite##Neon, SpecialVals) {                                    \
+    checkLaneByLane<float32x4_t>(                                     \
+        gt,                                                           \
+        func<float32x4_t>,                                            \
+        inputs,                                                       \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])),     \
+        maxUlps);                                                     \
+  }
+#else
+#define FAST_MATH_NEON_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
+#endif
+
+#if __has_include("hwy/highway.h")
+#define FAST_MATH_HWY_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite##Hwy, SpecialVals) {                                    \
+    checkLaneByLane<dispenso::fast_math::HwyFloat>(                  \
+        gt,                                                          \
+        func<dispenso::fast_math::HwyFloat>,                         \
+        inputs,                                                      \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])),    \
+        maxUlps);                                                    \
+  }
+#else
+#define FAST_MATH_HWY_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
+#endif
+
+// Main macro: generates one special-values test per available backend.
+#define FAST_MATH_SPECIAL_TESTS(Suite, gt, func, inputs, maxUlps) \
+  TEST(Suite, SpecialScalar) {                                    \
+    checkLaneByLane<float>(                                       \
+        gt,                                                       \
+        func<float>,                                              \
+        inputs,                                                   \
+        static_cast<int32_t>(sizeof(inputs) / sizeof(inputs[0])), \
+        maxUlps);                                                 \
+  }                                                               \
+  FAST_MATH_SSE_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)    \
+  FAST_MATH_AVX_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)    \
+  FAST_MATH_AVX512_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
+  FAST_MATH_NEON_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)   \
+  FAST_MATH_HWY_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
 
 } // namespace testing
 } // namespace fast_math

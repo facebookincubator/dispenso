@@ -7,12 +7,15 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 #include <iomanip>
 #include <limits>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 auto cbrt_acc = dispenso::fast_math::cbrt<float, dispenso::fast_math::MaxAccuracyTraits>;
 
@@ -80,3 +83,75 @@ TEST(CbrtAccurate, RangeSmall) {
 
   EXPECT_LE(result, kCbrtOuterUlpsAcc);
 }
+
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt cbrt_max(Flt x) {
+  return dfm::cbrt<Flt, dfm::MaxAccuracyTraits>(x);
+}
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+FAST_MATH_ACCURACY_TESTS(
+    CbrtDefaultAll,
+    ::cbrtf,
+    dfm::cbrt,
+    -std::numeric_limits<float>::max(),
+    std::numeric_limits<float>::max(),
+    kCbrtOuterUlps)
+FAST_MATH_ACCURACY_TESTS(
+    CbrtMaxAccAll,
+    ::cbrtf,
+    cbrt_max,
+    -std::numeric_limits<float>::max(),
+    std::numeric_limits<float>::max(),
+    kCbrtOuterUlpsAcc)
+
+// Special values tested across all SIMD backends.
+// MaxAccuracy handles NaN/Inf.
+static const float kCbrtMaxAccSpecials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -1.0f,
+    8.0f,
+    -8.0f,
+    27.0f,
+    -27.0f,
+    64.0f,
+    125.0f,
+    0.125f,
+    0.001f,
+    1e-20f,
+    std::numeric_limits<float>::denorm_min(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(
+    CbrtMaxAccSpecial,
+    ::cbrtf,
+    cbrt_max,
+    kCbrtMaxAccSpecials,
+    kCbrtOuterUlpsAcc)
+
+// Default traits don't handle NaN/Inf — only test in-domain values.
+static const float kCbrtDefaultSpecials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -1.0f,
+    8.0f,
+    -8.0f,
+    27.0f,
+    -27.0f,
+    64.0f,
+    125.0f,
+    0.125f,
+    0.001f,
+    1000.0f,
+    -1000.0f};
+FAST_MATH_SPECIAL_TESTS(
+    CbrtDefaultSpecial,
+    ::cbrtf,
+    dfm::cbrt,
+    kCbrtDefaultSpecials,
+    kCbrtOuterUlps)

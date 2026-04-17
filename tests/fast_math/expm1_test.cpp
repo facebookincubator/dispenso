@@ -7,11 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 static float gt_expm1(float x) {
   return static_cast<float>(std::expm1(static_cast<double>(x)));
@@ -48,3 +49,28 @@ TEST(Expm1, RangeLarge) {
   uint32_t ulps = dfm::evalAccuracy(gt_expm1, dfm::expm1<float>, -88.0f, 88.0f);
   EXPECT_LE(ulps, 2u);
 }
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+constexpr uint32_t kExpm1MaxUlps = 2;
+FAST_MATH_ACCURACY_TESTS(Expm1All, gt_expm1, dfm::expm1, -88.0f, 88.0f, kExpm1MaxUlps)
+
+// Special values tested across all SIMD backends.
+static const float kExpm1Specials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -1.0f,
+    0.5f,
+    -0.5f,
+    0.001f,
+    -0.001f,
+    1e-4f,
+    -1e-4f,
+    1e-7f,
+    -1e-7f,
+    5.0f,
+    -5.0f,
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(Expm1Special, gt_expm1, dfm::expm1, kExpm1Specials, kExpm1MaxUlps)

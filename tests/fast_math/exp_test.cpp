@@ -7,9 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 struct BoundsOnlyTraits {
   static constexpr bool kMaxAccuracy = false;
@@ -70,3 +73,63 @@ TEST(ExpLessAccurate, Range_m88_88) {
       dispenso::fast_math::evalAccuracy(::expf, dispenso::fast_math::exp<float>, -88.0f, 88.0f);
   EXPECT_LE(res, 3u);
 }
+
+// Wrappers for traits variants — macro instantiates func<Flt>.
+template <typename Flt>
+Flt exp_max_fn(Flt x) {
+  return dfm::exp<Flt, dfm::MaxAccuracyTraits>(x);
+}
+
+template <typename Flt>
+Flt exp_bounds_fn(Flt x) {
+  return dfm::exp<Flt, BoundsOnlyTraits>(x);
+}
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+constexpr uint32_t kExpMaxAccMaxUlps = 1;
+constexpr uint32_t kExpBoundsMaxUlps = 1;
+constexpr uint32_t kExpDefaultMaxUlps = 3;
+FAST_MATH_ACCURACY_TESTS(ExpMaxAccAll, ::expf, exp_max_fn, -127.0f, 128.0f, kExpMaxAccMaxUlps)
+FAST_MATH_ACCURACY_TESTS(ExpBoundsAll, ::expf, exp_bounds_fn, -100.0f, 100.0f, kExpBoundsMaxUlps)
+FAST_MATH_ACCURACY_TESTS(ExpDefaultAll, ::expf, dfm::exp, -88.0f, 88.0f, kExpDefaultMaxUlps)
+
+// Special values tested across all SIMD backends.
+// MaxAccuracy handles NaN/Inf.
+static const float kExpMaxAccSpecials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -1.0f,
+    5.0f,
+    -5.0f,
+    10.0f,
+    -10.0f,
+    88.7f,
+    -88.7f,
+    1e-10f,
+    std::numeric_limits<float>::denorm_min(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(ExpMaxAccSpecial, ::expf, exp_max_fn, kExpMaxAccSpecials, kExpMaxAccMaxUlps)
+
+// BoundsOnly handles NaN/Inf and clamps out-of-range inputs.
+static const float kExpBoundsSpecials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -1.0f,
+    5.0f,
+    -5.0f,
+    89.0f,
+    -100.0f,
+    200.0f,
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(
+    ExpBoundsSpecial,
+    ::expf,
+    exp_bounds_fn,
+    kExpBoundsSpecials,
+    kExpBoundsMaxUlps)

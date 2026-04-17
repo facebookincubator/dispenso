@@ -58,3 +58,30 @@ TEST(Erf, NearZero) {
 
 // Exhaustive accuracy tests — scalar + all available SIMD backends, same threshold.
 FAST_MATH_ACCURACY_TESTS(Erf, gt_erf, dfm::erf, -4.0f, 4.0f, kErfMaxUlps)
+
+// Special values tested across all SIMD backends.
+static const float kErfSpecials[] = {
+    0.0f,
+    -0.0f,
+    0.5f,
+    -0.5f,
+    1.0f,
+    -1.0f,
+    2.0f,
+    -2.0f,
+    3.0f,
+    -3.0f,
+    4.0f,
+    -4.0f,
+    10.0f,
+    -10.0f,
+    100.0f,
+    -100.0f,
+    1e-7f,
+    -1e-7f,
+    0.01f,
+    -0.01f,
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(ErfSpecial, gt_erf, dfm::erf, kErfSpecials, kErfMaxUlps)

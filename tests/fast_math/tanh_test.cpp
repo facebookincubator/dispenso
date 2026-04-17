@@ -7,11 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 static float gt_tanh(float x) {
   return static_cast<float>(std::tanh(static_cast<double>(x)));
@@ -51,3 +52,28 @@ TEST(Tanh, RangeFull) {
   uint32_t ulps = dfm::evalAccuracy(gt_tanh, dfm::tanh<float>, -10.0f, 10.0f);
   EXPECT_LE(ulps, 2u);
 }
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+constexpr uint32_t kTanhMaxUlps = 2;
+FAST_MATH_ACCURACY_TESTS(TanhAll, gt_tanh, dfm::tanh, -10.0f, 10.0f, kTanhMaxUlps)
+
+// Special values tested across all SIMD backends.
+// tanh SIMD doesn't propagate NaN — only test in-domain values + saturation.
+static const float kTanhSpecials[] = {
+    0.0f,
+    -0.0f,
+    0.5f,
+    -0.5f,
+    1.0f,
+    -1.0f,
+    5.0f,
+    -5.0f,
+    10.0f,
+    -10.0f,
+    100.0f,
+    -100.0f,
+    0.01f,
+    -0.01f,
+    1e-7f,
+    -1e-7f};
+FAST_MATH_SPECIAL_TESTS(TanhSpecial, gt_tanh, dfm::tanh, kTanhSpecials, kTanhMaxUlps)

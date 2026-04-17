@@ -7,11 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 static float gt_log1p(float x) {
   return static_cast<float>(std::log1p(static_cast<double>(x)));
@@ -48,3 +49,29 @@ TEST(Log1p, RangeLarge) {
   uint32_t ulps = dfm::evalAccuracy(gt_log1p, dfm::log1p<float>, -0.99f, 1e10f);
   EXPECT_LE(ulps, 2u);
 }
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+constexpr uint32_t kLog1pMaxUlps = 2;
+FAST_MATH_ACCURACY_TESTS(Log1pAll, gt_log1p, dfm::log1p, -0.99f, 1e10f, kLog1pMaxUlps)
+
+// Special values tested across all SIMD backends.
+// log1p doesn't handle Inf — only test in-domain values.
+static const float kLog1pSpecials[] = {
+    0.0f,
+    -0.0f,
+    1.0f,
+    -0.5f,
+    0.5f,
+    10.0f,
+    100.0f,
+    0.001f,
+    -0.001f,
+    1e-4f,
+    -1e-4f,
+    1e-7f,
+    -1e-7f,
+    0.1f,
+    -0.1f,
+    1e-6f,
+    1e-3f};
+FAST_MATH_SPECIAL_TESTS(Log1pSpecial, gt_log1p, dfm::log1p, kLog1pSpecials, kLog1pMaxUlps)

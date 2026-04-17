@@ -7,9 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 auto cos_accurate = dispenso::fast_math::cos<float, dispenso::fast_math::MaxAccuracyTraits>;
 
@@ -92,3 +95,48 @@ TEST(CosLessAccurate, Range32768Pi) {
 
   EXPECT_LE(result, kCosUlpsVeryLarge);
 }
+
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt cos_max(Flt x) {
+  return dfm::cos<Flt, dfm::MaxAccuracyTraits>(x);
+}
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+FAST_MATH_ACCURACY_TESTS(
+    CosDefaultAll,
+    gt_cos,
+    dfm::cos,
+    -32768 * kPi,
+    32768 * kPi,
+    kCosUlpsVeryLarge)
+FAST_MATH_ACCURACY_TESTS(
+    CosMaxAccAll,
+    gt_cos,
+    cos_max,
+    -(1 << 20) * kPi,
+    (1 << 20) * kPi,
+    kCosAccurateUlpsVeryLarge)
+
+// Special values tested across all SIMD backends.
+static const float kCosSpecials[] = {
+    0.0f,
+    -0.0f,
+    kPi,
+    -kPi,
+    kPi_2,
+    -kPi_2,
+    2.0f * kPi,
+    -2.0f * kPi,
+    100.0f,
+    -100.0f,
+    1000.0f,
+    -1000.0f,
+    1e-6f,
+    std::numeric_limits<float>::denorm_min(),
+    std::numeric_limits<float>::min(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+FAST_MATH_SPECIAL_TESTS(CosMaxAccSpecial, gt_cos, cos_max, kCosSpecials, kCosAccurateUlpsVeryLarge)
+FAST_MATH_SPECIAL_TESTS(CosDefaultSpecial, gt_cos, dfm::cos, kCosSpecials, kCosUlpsVeryLarge)

@@ -7,9 +7,12 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 TEST(Exp2, SpecialValues) {
   constexpr auto kInf = std::numeric_limits<float>::infinity();
@@ -46,3 +49,13 @@ TEST(Exp2, RangeLarge) {
       dispenso::fast_math::evalAccuracy(gtfunc, dispenso::fast_math::exp2<float>, 0.0f, 128.0f);
   EXPECT_LE(res, 1u);
 }
+
+// Unified accuracy tests — scalar + all SIMD backends, same threshold.
+constexpr uint32_t kExp2MaxUlps = 1;
+FAST_MATH_ACCURACY_TESTS(Exp2All, gtfunc, dfm::exp2, -127.0f, 128.0f, kExp2MaxUlps)
+
+// Special values tested across all SIMD backends.
+// Default exp2 doesn't handle NaN/Inf — only test in-range values.
+static const float kExp2Specials[] =
+    {0.0f, -0.0f, 1.0f, -1.0f, 3.5f, -3.5f, 10.0f, -10.0f, 0.5f, 127.0f, -126.0f};
+FAST_MATH_SPECIAL_TESTS(Exp2Special, gtfunc, dfm::exp2, kExp2Specials, kExp2MaxUlps)
