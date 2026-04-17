@@ -459,6 +459,145 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
   FAST_MATH_NEON_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)   \
   FAST_MATH_HWY_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
 
+// ---------------------------------------------------------------------------
+// Two-argument functions: checkLaneByLane2 + FAST_MATH_SPECIAL_TESTS_2ARG
+// ---------------------------------------------------------------------------
+//
+// For functions like atan2(y,x), hypot(x,y), pow(base,exp) that take two
+// float arguments. Both aInputs and bInputs arrays must have the same length.
+// Parameters are named a/b (not x/y) because the mapping varies by function:
+// atan2 passes (y, x), hypot passes (x, y), pow passes (base, exp).
+//
+// Usage:
+//   static const float kAtan2Y[] = {0.0f, 1.0f, -1.0f, ...};
+//   static const float kAtan2X[] = {1.0f, 0.0f,  1.0f, ...};
+//   FAST_MATH_SPECIAL_TESTS_2ARG(Atan2Special, ::atan2f, dfm::atan2,
+//                                 kAtan2Y, kAtan2X, 3)
+
+// Packs numInputs pairs of (a[i], b[i]) into SIMD vectors and verifies
+// each output lane against gt(a[i], b[i]).
+template <typename Flt, typename GT, typename FN>
+void checkLaneByLane2(
+    GT gt,
+    FN fn,
+    const float* aInputs,
+    const float* bInputs,
+    int32_t numInputs,
+    uint32_t maxUlps) {
+  using Traits = SimdTestTraits<Flt>;
+  const int32_t N = Traits::laneCount();
+
+  alignas(64) float aBuf[kMaxSimdLanes];
+  alignas(64) float bBuf[kMaxSimdLanes];
+  alignas(64) float out[kMaxSimdLanes];
+
+  for (int32_t base = 0; base < numInputs; base += N) {
+    int32_t count = std::min(N, numInputs - base);
+    for (int32_t i = 0; i < count; ++i) {
+      aBuf[i] = aInputs[base + i];
+      bBuf[i] = bInputs[base + i];
+    }
+    for (int32_t i = count; i < N; ++i) {
+      aBuf[i] = aBuf[count - 1];
+      bBuf[i] = bBuf[count - 1];
+    }
+
+    Flt result = fn(Traits::load(aBuf), Traits::load(bBuf));
+    Traits::store(result, out);
+
+    for (int32_t i = 0; i < count; ++i) {
+      float expected = gt(aBuf[i], bBuf[i]);
+      float actual = out[i];
+      if (std::isnan(expected)) {
+        EXPECT_TRUE(std::isnan(actual))
+            << "inputs=(" << aBuf[i] << ", " << bBuf[i] << ") expected NaN, got " << actual;
+      } else if (std::isinf(expected)) {
+        EXPECT_EQ(expected, actual) << "inputs=(" << aBuf[i] << ", " << bBuf[i]
+                                    << ") expected=" << expected << " actual=" << actual;
+      } else {
+        uint32_t dist = float_distance(expected, actual);
+        EXPECT_LE(dist, maxUlps) << "inputs=(" << aBuf[i] << ", " << bBuf[i]
+                                 << ") expected=" << expected << " actual=" << actual
+                                 << " ulps=" << dist;
+      }
+    }
+  }
+}
+
+// Per-backend macros for two-argument special tests.
+
+#if defined(__SSE4_1__)
+#define FAST_MATH_SSE_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                       \
+  TEST(Suite##Sse, SpecialVals) {                                                                 \
+    checkLaneByLane2<__m128>(                                                                     \
+        gt, func<__m128>, aIn, bIn, static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])), maxUlps); \
+  }
+#else
+#define FAST_MATH_SSE_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+#endif
+
+#if defined(__AVX2__)
+#define FAST_MATH_AVX_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                       \
+  TEST(Suite##Avx, SpecialVals) {                                                                 \
+    checkLaneByLane2<__m256>(                                                                     \
+        gt, func<__m256>, aIn, bIn, static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])), maxUlps); \
+  }
+#else
+#define FAST_MATH_AVX_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+#endif
+
+#if defined(__AVX512F__)
+#define FAST_MATH_AVX512_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                    \
+  TEST(Suite##Avx512, SpecialVals) {                                                              \
+    checkLaneByLane2<__m512>(                                                                     \
+        gt, func<__m512>, aIn, bIn, static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])), maxUlps); \
+  }
+#else
+#define FAST_MATH_AVX512_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+#endif
+
+#if defined(__aarch64__)
+#define FAST_MATH_NEON_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps) \
+  TEST(Suite##Neon, SpecialVals) {                                           \
+    checkLaneByLane2<float32x4_t>(                                           \
+        gt,                                                                  \
+        func<float32x4_t>,                                                   \
+        aIn,                                                                 \
+        bIn,                                                                 \
+        static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])),                  \
+        maxUlps);                                                            \
+  }
+#else
+#define FAST_MATH_NEON_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+#endif
+
+#if __has_include("hwy/highway.h")
+#define FAST_MATH_HWY_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps) \
+  TEST(Suite##Hwy, SpecialVals) {                                           \
+    checkLaneByLane2<dispenso::fast_math::HwyFloat>(                        \
+        gt,                                                                 \
+        func<dispenso::fast_math::HwyFloat>,                                \
+        aIn,                                                                \
+        bIn,                                                                \
+        static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])),                 \
+        maxUlps);                                                           \
+  }
+#else
+#define FAST_MATH_HWY_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+#endif
+
+// Main macro: generates one two-arg special-values test per available backend.
+#define FAST_MATH_SPECIAL_TESTS_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                         \
+  TEST(Suite, SpecialScalar) {                                                                   \
+    checkLaneByLane2<float>(                                                                     \
+        gt, func<float>, aIn, bIn, static_cast<int32_t>(sizeof(aIn) / sizeof(aIn[0])), maxUlps); \
+  }                                                                                              \
+  FAST_MATH_SSE_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                            \
+  FAST_MATH_AVX_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                            \
+  FAST_MATH_AVX512_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                         \
+  FAST_MATH_NEON_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                           \
+  FAST_MATH_HWY_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
+
 } // namespace testing
 } // namespace fast_math
 } // namespace dispenso

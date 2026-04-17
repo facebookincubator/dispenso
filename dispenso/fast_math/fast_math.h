@@ -677,12 +677,18 @@ DISPENSO_INLINE Flt cbrt(Flt x) {
 }
 
 /**
+ * @brief Decompose a float into mantissa and exponent (bit-accurate for normals).
  * @tparam Flt float or SIMD float type.
  * @tparam AccuracyTraits Accepted but ignored; result is always bit-accurate.
  * @param x Input value.
  * @param eptr Pointer to receive the exponent.
- * @return Mantissa in [0.5, 1). Returns @p x unchanged for inf/NaN/zero.
- *   Compatible with all SIMD backends.
+ * @return Mantissa in [0.5, 1) for normal values. Returns @p x unchanged for
+ *   inf/NaN/zero/subnormal. Subnormals are passed through with *eptr = 0
+ *   rather than normalized into [0.5, 1) as std::frexp does. This means the
+ *   mantissa contract is violated for subnormals, but ldexp(frexp(x)) == x
+ *   still holds (the round-trip is an identity). Code that depends on a
+ *   normalized mantissa (e.g., counting significant bits) should not use
+ *   subnormal inputs.
  */
 template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
 DISPENSO_INLINE Flt frexp(Flt x, IntType_t<Flt>* eptr) {

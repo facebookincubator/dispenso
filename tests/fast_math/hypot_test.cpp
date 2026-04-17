@@ -11,11 +11,12 @@
 #include <limits>
 #include <random>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 // Ground truth: double-precision sqrt(x*x + y*y) cast to float.
 static float hypotRef(float x, float y) {
@@ -157,3 +158,60 @@ TEST(HypotBounds, NaNFinite) {
   EXPECT_TRUE(std::isnan(hypotBounds(3.0f, nan)));
   EXPECT_TRUE(std::isnan(hypotBounds(nan, nan)));
 }
+
+// Wrappers for traits variants — macro instantiates func<Flt>.
+template <typename Flt>
+Flt hypot_max(Flt x, Flt y) {
+  return dfm::hypot<Flt, dfm::MaxAccuracyTraits>(x, y);
+}
+
+// Default hypot — positive domain, no NaN/Inf handling needed.
+constexpr uint32_t kHypotUlps = 1;
+// clang-format off
+static const float kHypotDefaultX[] = {
+    3.0f, 0.0f, 0.0f, -3.0f, 0.0f, 1.0f,
+    1e-20f, 1e10f, 1e-30f, 100.0f, 0.001f};
+static const float kHypotDefaultY[] = {
+    4.0f, 4.0f, 0.0f, 0.0f, -4.0f, 1.0f,
+    1e-20f, 1e10f, 1e-30f, 200.0f, 0.002f};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    HypotDefaultSpecial,
+    hypotRef,
+    dfm::hypot,
+    kHypotDefaultX,
+    kHypotDefaultY,
+    kHypotUlps)
+
+// MaxAccuracy handles NaN/Inf (IEEE: hypot(±inf, NaN) = +inf).
+// clang-format off
+static const float kHypotMaxAccX[] = {
+    3.0f, 0.0f, 0.0f, -3.0f, 1.0f,
+    1e-20f, 1e10f, 100.0f,
+    std::numeric_limits<float>::infinity(),                              // inf wins over anything
+    -std::numeric_limits<float>::infinity(),
+    3.0f,                                                               // finite + inf
+    std::numeric_limits<float>::infinity(),                              // inf + NaN → inf
+    -std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::quiet_NaN(),                            // NaN + finite → NaN
+    3.0f,
+    std::numeric_limits<float>::quiet_NaN()};
+static const float kHypotMaxAccY[] = {
+    4.0f, 4.0f, 0.0f, 0.0f, 1.0f,
+    1e-20f, 1e10f, 200.0f,
+    3.0f,
+    3.0f,
+    std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::quiet_NaN(),
+    3.0f,
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::quiet_NaN()};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    HypotMaxAccSpecial,
+    ::hypotf,
+    hypot_max,
+    kHypotMaxAccX,
+    kHypotMaxAccY,
+    kHypotUlps)

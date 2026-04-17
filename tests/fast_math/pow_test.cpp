@@ -7,7 +7,7 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <cmath>
 #include <random>
@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 // Ground truth: double-precision pow, rounded to float.
 static float gt_pow(float x, float y) {
@@ -379,3 +380,71 @@ TEST(PowDouble, RandomWide) {
   }
   EXPECT_LE(maxUlps, 4u) << "PowDouble RandomWide max ULP";
 }
+
+// Wrappers for traits variants — macro instantiates func<Flt>.
+// Wrappers needed because pow has (Flt, Flt) and (Flt, float) overloads.
+template <typename Flt>
+Flt pow_default(Flt x, Flt y) {
+  return dfm::pow<Flt>(x, y);
+}
+
+template <typename Flt>
+Flt pow_max(Flt x, Flt y) {
+  return dfm::pow<Flt, dfm::MaxAccuracyTraits>(x, y);
+}
+
+// Default pow — positive bases, normal range.
+constexpr uint32_t kPowDefaultUlps = 4;
+// clang-format off
+static const float kPowDefaultX[] = {
+    2.0f, 3.0f, 4.0f, 0.5f,
+    2.0f, 10.0f, 100.0f, 0.01f,
+    1.0f, 0.5f, 2.0f};
+static const float kPowDefaultY[] = {
+    3.0f, 2.0f, 0.5f, -1.0f,
+    10.0f, -1.0f, 0.5f, 2.0f,
+    42.0f, -1.0f, 2.5f};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    PowDefaultSpecial,
+    gt_pow,
+    pow_default,
+    kPowDefaultX,
+    kPowDefaultY,
+    kPowDefaultUlps)
+
+// MaxAccuracy handles negative bases, zero, inf, NaN, subnormals.
+constexpr uint32_t kPowMaxAccUlps = 4;
+// clang-format off
+static const float kPowMaxAccX[] = {
+    2.0f, 3.0f, 4.0f, 0.5f,                                            // basic powers
+    -2.0f, -1.0f, -3.0f, -0.5f,                                        // neg base int exp
+    -2.0f, -1.0f,                                                       // neg base non-int → NaN
+    0.0f, -0.0f, 0.0f, -0.0f,                                          // zero base
+    std::numeric_limits<float>::infinity(),                              // inf base
+    -std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity(),
+    1.0f, 1.0f,                                                         // x=1 → always 1
+    2.0f, std::numeric_limits<float>::quiet_NaN(),                      // NaN
+    -1.0f, -1.0f,                                                       // pow(-1, ±inf) = 1
+    0.5f, 2.0f};                                                        // |x| vs inf exp
+static const float kPowMaxAccY[] = {
+    3.0f, 2.0f, 0.5f, -1.0f,
+    3.0f, 2.0f, 5.0f, -1.0f,
+    0.5f, 1.5f,
+    2.0f, 3.0f, -1.0f, -1.0f,
+    2.0f,
+    3.0f,
+    -1.0f,
+    42.0f, std::numeric_limits<float>::quiet_NaN(),
+    0.0f, 2.0f,
+    std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity()};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    PowMaxAccSpecial,
+    gt_pow,
+    pow_max,
+    kPowMaxAccX,
+    kPowMaxAccY,
+    kPowMaxAccUlps)

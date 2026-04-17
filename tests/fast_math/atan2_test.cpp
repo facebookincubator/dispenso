@@ -9,9 +9,12 @@
 
 #include <random>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
+
+namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 TEST(Atan2, SpecialVals) {
   constexpr float kInf = std::numeric_limits<float>::infinity();
@@ -128,3 +131,75 @@ TEST(Atan, RandomSamples) {
 
   EXPECT_LE(maxUlps, 3);
 }
+
+// Wrappers for traits variants — macro instantiates func<Flt>.
+template <typename Flt>
+Flt atan2_max(Flt y, Flt x) {
+  return dfm::atan2<Flt, dfm::MaxAccuracyTraits>(y, x);
+}
+
+// Default atan2 handles all edge cases (NaN, Inf, zero-sign).
+constexpr uint32_t kAtan2Ulps = 3;
+// clang-format off
+static const float kAtan2SpecialY[] = {
+    1.0f, -1.0f, 0.0f, 1.0f,                                           // basic quadrants
+    0.0f, -0.0f, 1.0f, -1.0f,                                          // axis values
+    0.0f, -0.0f, 0.0f, -0.0f,                                          // zero-zero combos
+    1e6f, 1.0f, 0.001f,                                                 // varied magnitudes
+    std::numeric_limits<float>::quiet_NaN(), 1.0f,                      // NaN
+    std::numeric_limits<float>::quiet_NaN(),
+    1.0f, -1.0f, std::numeric_limits<float>::infinity(),                // inf cases
+    -std::numeric_limits<float>::infinity()};
+static const float kAtan2SpecialX[] = {
+    1.0f, 1.0f, 1.0f, -1.0f,
+    -1.0f, -1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, -0.0f, -0.0f,
+    1.0f, 1e6f, 0.001f,
+    1.0f, std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
+    1.0f, 1.0f};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    Atan2DefaultSpecial,
+    ::atan2f,
+    dfm::atan2,
+    kAtan2SpecialY,
+    kAtan2SpecialX,
+    kAtan2Ulps)
+
+// MaxAccuracy additionally handles both-inf quadrant cases.
+// clang-format off
+static const float kAtan2MaxAccY[] = {
+    1.0f, -1.0f, 0.0f, 1.0f,                                           // basic quadrants
+    0.0f, -0.0f, 1.0f, -1.0f,                                          // axis values
+    0.0f, -0.0f, 0.0f, -0.0f,                                          // zero-zero combos
+    std::numeric_limits<float>::quiet_NaN(), 1.0f,                      // NaN
+    std::numeric_limits<float>::quiet_NaN(),
+    1.0f, -1.0f,                                                        // one-inf
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity(),                              // inf-inf quadrants
+    -std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+static const float kAtan2MaxAccX[] = {
+    1.0f, 1.0f, 1.0f, -1.0f,
+    -1.0f, -1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, -0.0f, -0.0f,
+    1.0f, std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::quiet_NaN(),
+    std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
+    1.0f, 1.0f,
+    std::numeric_limits<float>::infinity(),
+    std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity(),
+    -std::numeric_limits<float>::infinity()};
+// clang-format on
+FAST_MATH_SPECIAL_TESTS_2ARG(
+    Atan2MaxAccSpecial,
+    ::atan2f,
+    atan2_max,
+    kAtan2MaxAccY,
+    kAtan2MaxAccX,
+    kAtan2Ulps)
