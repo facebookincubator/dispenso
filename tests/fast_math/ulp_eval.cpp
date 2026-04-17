@@ -190,6 +190,9 @@ static float gt_log1p(float x) {
 static float gt_tanh(float x) {
   return static_cast<float>(std::tanh(static_cast<double>(x)));
 }
+static float gt_erf(float x) {
+  return static_cast<float>(std::erf(static_cast<double>(x)));
+}
 
 // Bands for exp functions — [-89, 89] covers the non-overflow range.
 static Band kExpBands[] = {
@@ -231,6 +234,16 @@ static Band kTanhBands[] = {
     {5.0f, 10.0f, "5 to 10"},
 };
 
+static Band kErfBands[] = {
+    {0.0f, 0.001f, "0 to 0.001"},
+    {0.001f, 0.1f, "0.001 to 0.1"},
+    {0.1f, 0.5f, "0.1 to 0.5"},
+    {0.5f, 1.0f, "0.5 to 1"},
+    {1.0f, 2.0f, "1 to 2"},
+    {2.0f, 3.0f, "2 to 3"},
+    {3.0f, 3.92f, "3 to 3.92"},
+};
+
 int main() {
   printf("=== Trigonometric ===\n");
   eval("sin", gt_sin, dfm::sin<float>, kTrigBands);
@@ -267,6 +280,8 @@ int main() {
   eval("log1p", gt_log1p, dfm::log1p<float>, kLog1pBands);
   printf("\n");
   eval("tanh", gt_tanh, dfm::tanh<float>, kTanhBands);
+  printf("\n");
+  eval("erf", gt_erf, dfm::erf<float>, kErfBands);
 
   return 0;
 }

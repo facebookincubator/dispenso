@@ -2018,5 +2018,148 @@ DISPENSO_INLINE Flt tanh(Flt x) {
   }
 }
 
+/**
+ * @brief Error function approximation.
+ * @tparam Flt float or SIMD float type.
+ * @tparam AccuracyTraits Default: ~2 ULP. Not used for bounds (NaN propagates naturally).
+ * @param x Input value (all float domain).
+ * @return erf(x) in [-1, 1]. Compatible with all SIMD backends.
+ *
+ * Abramowitz & Stegun 7.1.26-inspired t-substitution with Sollya-optimized
+ * coefficients. Uses p=0.45 (vs A&S's 0.3275911) for better polynomial fit.
+ *
+ * Two domains:
+ *   |x| < 0.875:  erf(x) = x * (c0 + x² * Q(x²)),  pure polynomial.
+ *   |x| ∈ [0.875, 3.92]:  erf(x) = 1 - t·P(t)·exp(-x²),  t = 1/(1+px).
+ *   |x| >= 3.92:  erf(x) = ±1  (saturated in float).
+ */
+template <typename Flt, typename AccuracyTraits = DefaultAccuracyTraits>
+DISPENSO_INLINE Flt erf(Flt x) {
+  assert_float_type<Flt>();
+  // AccuracyTraits accepted for API consistency; erf uses the same polynomial for all traits.
+  (void)sizeof(AccuracyTraits);
+  if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
+    return erf<SimdType_t<Flt>, AccuracyTraits>(SimdType_t<Flt>(x)).v;
+  } else if constexpr (std::is_same_v<Flt, float>) {
+    // Scalar path: branching for efficiency.
+    // Save sign and work with |x|; restore sign at end via bit-OR.
+    uint32_t sign = bit_cast<uint32_t>(x) & 0x80000000u;
+    float ax = dispenso::fast_math::fabs(x);
+    float result;
+    if (ax >= 3.92f) {
+      result = 1.0f;
+    } else if (!(ax < 0.875f)) { // !(< ) so NaN goes to erfc path and propagates
+      // erfc formula: erf(x) = 1 - t * P(t) * exp(-x²), t = 1/(1+p*x).
+      constexpr float p = 0.45f;
+      float t = 1.0f / std::fma(p, ax, 1.0f);
+
+      // Sollya fpminimax degree 5 P(t), float coefficients.
+      constexpr float c0 = 0x1.04873ep-2f;
+      constexpr float c1 = 0x1.f81fc6p-3f;
+      constexpr float c2 = 0x1.189f42p-2f;
+      constexpr float c3 = 0x1.15aaa6p-5f;
+      constexpr float c4 = 0x1.65d24ep-2f;
+      constexpr float c5 = -0x1.4432a4p-3f;
+      float poly = t *
+          std::fma(std::fma(std::fma(std::fma(std::fma(c5, t, c4), t, c3), t, c2), t, c1), t, c0);
+
+      // Inline exp(-x²) via Cody-Waite range reduction.
+      float u = ax * ax;
+      constexpr float kLog2e = 0x1.715476p+0f;
+      constexpr float kLn2hi = 0x1.62e400p-1f;
+      constexpr float kLn2lo = 0x1.7f7d1cp-20f;
+      float k = std::floor(u * kLog2e);
+      float f = std::fma(k, -kLn2hi, u);
+      f = std::fma(k, -kLn2lo, f);
+      // Degree-5 Horner for exp(-f), f in [0, ln2).
+      constexpr float e0 = 0x1.fffffep-1f, e1 = -0x1.ffff1ep-1f;
+      constexpr float e2 = 0x1.ffe314p-2f, e3 = -0x1.53f876p-3f;
+      constexpr float e4 = 0x1.462f16p-5f, e5 = -0x1.80e5b2p-8f;
+      float exp_neg_f =
+          std::fma(std::fma(std::fma(std::fma(std::fma(e5, f, e4), f, e3), f, e2), f, e1), f, e0);
+      int32_t ki = convert_to_int_trunc_safe(k);
+      float pow2_neg_k = bit_cast<float>((127 - ki) << 23);
+
+      result = 1.0f - pow2_neg_k * exp_neg_f * poly;
+    } else {
+      // Near-zero: erf(x) = x * (c0 + x² * Q(x²)).
+      // Sollya fpminimax degree 5 Q(u), float coefficients.
+      constexpr float c0 = 0x1.20dd76p+0f; // ≈ 2/√π
+      constexpr float q0 = -0x1.812746p-2f, q1 = 0x1.ce2ec6p-4f, q2 = -0x1.b81edep-6f;
+      constexpr float q3 = 0x1.556b48p-8f, q4 = -0x1.b0255p-11f, q5 = 0x1.7149c8p-14f;
+      float u = ax * ax;
+      float q =
+          std::fma(std::fma(std::fma(std::fma(std::fma(q5, u, q4), u, q3), u, q2), u, q1), u, q0);
+      result = ax * std::fma(q, u, c0);
+    }
+    return bit_cast<float>(bit_cast<uint32_t>(result) | sign);
+  } else {
+    // SIMD: branchless, compute both paths for all lanes and blend.
+    using UintT = UintType_t<Flt>;
+    using IntT = IntType_t<Flt>;
+    auto fma_fn = FloatTraits<Flt>::fma;
+
+    // clamp_allow_nan preserves NaN so it propagates through the computation.
+    Flt ax = clamp_allow_nan(fabs(x), Flt(0.0f), Flt(3.92f));
+
+    // --- Near-zero path: erf(x) = x * (c0 + x² * Q(x²)) ---
+    Flt u_near = ax * ax;
+    constexpr float c0_near = 0x1.20dd76p+0f;
+    Flt q_near = hornerEval(
+        u_near,
+        0x1.7149c8p-14f,
+        -0x1.b0255p-11f,
+        0x1.556b48p-8f,
+        -0x1.b81edep-6f,
+        0x1.ce2ec6p-4f,
+        -0x1.812746p-2f);
+    Flt near_result = ax * fma_fn(q_near, u_near, Flt(c0_near));
+
+    // --- erfc path: erf(x) = 1 - t * P(t) * exp(-x²) ---
+    constexpr float p = 0.45f;
+    Flt denom = fma_fn(Flt(p), ax, Flt(1.0f));
+    Flt t = Flt(1.0f) / denom;
+
+    Flt erfc_poly = t *
+        hornerEval(t,
+                   -0x1.4432a4p-3f,
+                   0x1.65d24ep-2f,
+                   0x1.15aaa6p-5f,
+                   0x1.189f42p-2f,
+                   0x1.f81fc6p-3f,
+                   0x1.04873ep-2f);
+
+    // Inline exp(-x²) via Cody-Waite range reduction.
+    Flt u = ax * ax;
+    constexpr float kLog2e = 0x1.715476p+0f;
+    constexpr float kLn2hi = 0x1.62e400p-1f;
+    constexpr float kLn2lo = 0x1.7f7d1cp-20f;
+    Flt k = floor_small(u * kLog2e);
+    Flt f = fma_fn(k, Flt(-kLn2hi), u);
+    f = fma_fn(k, Flt(-kLn2lo), f);
+    Flt exp_neg_f = hornerEval(
+        f,
+        -0x1.80e5b2p-8f,
+        0x1.462f16p-5f,
+        -0x1.53f876p-3f,
+        0x1.ffe314p-2f,
+        -0x1.ffff1ep-1f,
+        0x1.fffffep-1f);
+    IntT ki = convert_to_int(k);
+    Flt pow2_neg_k = bit_cast<Flt>(UintT((IntT(127) - ki) << 23));
+
+    Flt erfc_result = Flt(1.0f) - pow2_neg_k * exp_neg_f * erfc_poly;
+
+    // Blend: near-zero for |x| < 0.875, erfc otherwise.
+    auto small = ax < Flt(0.875f);
+    Flt result = FloatTraits<Flt>::conditional(small, near_result, erfc_result);
+
+    // Restore sign from original x (odd function). Result is non-negative, so OR stamps sign.
+    result = bit_cast<Flt>(bit_cast<UintT>(result) | (bit_cast<UintT>(x) & UintT(0x80000000u)));
+
+    return result;
+  }
+}
+
 } // namespace fast_math
 } // namespace dispenso

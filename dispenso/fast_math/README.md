@@ -156,6 +156,7 @@ correction. Bounds handling inherited from log.
 | `hypot` | `hypot(x, y)` | all float | 1 | 1 |
 | `pow` | `pow(x, y)` | all float | 1 | 1 |
 | `tanh` | `tanh(x)` | all float | 2 | 2 |
+| `erf` | `erf(x)` | all float | 2 | 2 |
 | `frexp` | `frexp(x, &e)` | all float | 0 | 0 |
 | `ldexp` | `ldexp(x, e)` | all float | 0 | 0 |
 
@@ -175,6 +176,12 @@ base, zero, inf, NaN, subnormals).
 
 `tanh` uses `expm1(2x) / (expm1(2x) + 2)` with a Sollya-optimized polynomial
 fast-path for scalar |x| < 1. Saturates to ±1 for |x| > 10.
+
+`erf` uses an Abramowitz & Stegun 7.1.26-inspired t-substitution with
+Sollya-optimized coefficients (p=0.45). Two domains: pure polynomial for
+|x| < 0.875, erfc formula with inline exp(-x²) for |x| ∈ [0.875, 3.92].
+NaN propagates naturally via `clamp_allow_nan` (no `kBoundsValues` overhead).
+Default and MaxAccuracy are identical.
 
 ## Performance
 
@@ -201,6 +208,7 @@ more meaningful for comparison.
 | hypot | 2.3x | pow | 1.2x |
 | expm1 | 2.4x | log1p | 1.4x |
 | tanh | 3.0x | | |
+| erf | 1.6x | | |
 
 #### SIMD Scaling (per-element throughput relative to scalar fast_math)
 
@@ -227,6 +235,7 @@ more meaningful for comparison.
 | expm1 | 2.7x | 5.4x | 10.4x | 9.4x |
 | log1p | 3.0x | 6.0x | 12.5x | 12.4x |
 | tanh | 3.0x | 6.1x | 12.2x | 10.1x |
+| erf | 2.4x | 5.1x | 5.5x | 4.9x |
 
 Highway dispatches to AVX-512 (16-lane) on this hardware.
 
