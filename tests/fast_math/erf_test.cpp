@@ -7,15 +7,18 @@
 
 #include <dispenso/fast_math/fast_math.h>
 
-#include "eval.h"
+#include "simd_test_utils.h"
 
 #include <gtest/gtest.h>
 
 namespace dfm = dispenso::fast_math;
+using namespace dispenso::fast_math::testing;
 
 static float gt_erf(float x) {
   return static_cast<float>(std::erf(static_cast<double>(x)));
 }
+
+constexpr uint32_t kErfMaxUlps = 2;
 
 TEST(Erf, SpecialValues) {
   EXPECT_EQ(dfm::erf(0.0f), 0.0f);
@@ -49,16 +52,9 @@ TEST(Erf, NearZero) {
     float expected = gt_erf(x);
     float result = dfm::erf(x);
     uint32_t dist = dfm::float_distance(expected, result);
-    EXPECT_LE(dist, 2u) << "erf(" << x << "): expected=" << expected << " got=" << result;
+    EXPECT_LE(dist, kErfMaxUlps) << "erf(" << x << "): expected=" << expected << " got=" << result;
   }
 }
 
-TEST(Erf, RangeSmall) {
-  uint32_t ulps = dfm::evalAccuracy(gt_erf, dfm::erf<float>, -1.0f, 1.0f);
-  EXPECT_LE(ulps, 2u);
-}
-
-TEST(Erf, RangeFull) {
-  uint32_t ulps = dfm::evalAccuracy(gt_erf, dfm::erf<float>, -4.0f, 4.0f);
-  EXPECT_LE(ulps, 2u);
-}
+// Exhaustive accuracy tests — scalar + all available SIMD backends, same threshold.
+FAST_MATH_ACCURACY_TESTS(Erf, gt_erf, dfm::erf, -4.0f, 4.0f, kErfMaxUlps)
