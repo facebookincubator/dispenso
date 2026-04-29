@@ -632,7 +632,6 @@ def generate_simple_for_charts(
     - Creates zoomed charts focused on competitive range
     - No max_threads comparison chart
     """
-    import numpy as np
 
     # Filter out auto_chunk and static_chunk - just keep base dispenso
     def should_keep(lib):
