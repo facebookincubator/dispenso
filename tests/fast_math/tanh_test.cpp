@@ -54,7 +54,7 @@ TEST(Tanh, RangeFull) {
 }
 
 // Unified accuracy tests — scalar + all SIMD backends, same threshold.
-constexpr uint32_t kTanhMaxUlps = 2;
+constexpr uint32_t kTanhMaxUlps = 2 + kMsvcUlpSlack;
 FAST_MATH_ACCURACY_TESTS(TanhAll, gt_tanh, dfm::tanh, -10.0f, 10.0f, kTanhMaxUlps)
 
 // Special values tested across all SIMD backends.

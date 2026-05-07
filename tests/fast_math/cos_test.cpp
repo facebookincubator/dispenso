@@ -38,11 +38,11 @@ TEST(Cos, SpecialValues) {
 
 constexpr uint32_t kCosAccurateUlps = 1;
 constexpr uint32_t kCosAccurateUlpsLarge = 1;
-constexpr uint32_t kCosAccurateUlpsVeryLarge = 2;
+constexpr uint32_t kCosAccurateUlpsVeryLarge = 2 + kMsvcUlpSlack;
 
 constexpr uint32_t kCosUlps = 1;
 constexpr uint32_t kCosUlpsLarge = 1;
-constexpr uint32_t kCosUlpsVeryLarge = 2;
+constexpr uint32_t kCosUlpsVeryLarge = 2 + kMsvcUlpSlack;
 
 TEST(Cos, RangePi) {
   auto result = dispenso::fast_math::evalAccuracy(gt_cos, cos_accurate, -kPi, kPi);

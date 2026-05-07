@@ -51,7 +51,7 @@ TEST(Expm1, RangeLarge) {
 }
 
 // Unified accuracy tests — scalar + all SIMD backends, same threshold.
-constexpr uint32_t kExpm1MaxUlps = 2;
+constexpr uint32_t kExpm1MaxUlps = 2 + kMsvcUlpSlack;
 FAST_MATH_ACCURACY_TESTS(Expm1All, gt_expm1, dfm::expm1, -88.0f, 88.0f, kExpm1MaxUlps)
 
 // Special values tested across all SIMD backends.

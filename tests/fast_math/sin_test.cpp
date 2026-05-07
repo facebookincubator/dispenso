@@ -36,10 +36,10 @@ TEST(Sin, SpecialValues) {
 }
 
 constexpr uint32_t kSinAccurateUlps = 1;
-constexpr uint32_t kSinAccurateUlpsVeryLarge = 2;
+constexpr uint32_t kSinAccurateUlpsVeryLarge = 2 + kMsvcUlpSlack;
 
 constexpr uint32_t kSinUlps = 1;
-constexpr uint32_t kSinUlpsLarge = 2;
+constexpr uint32_t kSinUlpsLarge = 2 + kMsvcUlpSlack;
 
 TEST(Sin, RangePi) {
   auto result = dispenso::fast_math::evalAccuracy(gt_sin, sin_accurate, -kPi, kPi);

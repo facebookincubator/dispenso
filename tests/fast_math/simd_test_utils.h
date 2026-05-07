@@ -48,6 +48,17 @@ namespace testing {
 // Maximum lane count we'll ever encounter (2048-bit vectors).
 constexpr int32_t kMaxSimdLanes = 64;
 
+// MSVC's UCRT std::math ground-truth functions and its AVX codegen (notably
+// FMA fusion choices) sometimes produce results that differ from
+// libstdc++/libc++ with Clang/GCC by one ULP. Tests express their accuracy
+// budget as `kXxxMaxUlps + kMsvcUlpSlack` so the same source compiles to
+// stricter bounds on Linux/macOS and tolerates the extra ULP on MSVC.
+#if defined(_MSC_VER)
+inline constexpr uint32_t kMsvcUlpSlack = 1;
+#else
+inline constexpr uint32_t kMsvcUlpSlack = 0;
+#endif
+
 // Primary template: scalar float.
 template <typename Flt>
 struct SimdTestTraits {

@@ -48,7 +48,7 @@ Flt exp10_max(Flt x) {
 }
 
 // Unified accuracy tests — scalar + all SIMD backends, same threshold.
-constexpr uint32_t kExp10MaxUlps = 2;
+constexpr uint32_t kExp10MaxUlps = 2 + kMsvcUlpSlack;
 FAST_MATH_ACCURACY_TESTS(Exp10MaxAccAll, groundTruth, exp10_max, -40.0f, 40.0f, kExp10MaxUlps)
 FAST_MATH_ACCURACY_TESTS(Exp10DefaultAll, groundTruth, dfm::exp10, -37.0f, 38.0f, kExp10MaxUlps)
 

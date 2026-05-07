@@ -18,7 +18,7 @@ static float gt_erf(float x) {
   return static_cast<float>(std::erf(static_cast<double>(x)));
 }
 
-constexpr uint32_t kErfMaxUlps = 2;
+constexpr uint32_t kErfMaxUlps = 2 + kMsvcUlpSlack;
 
 TEST(Erf, SpecialValues) {
   EXPECT_EQ(dfm::erf(0.0f), 0.0f);

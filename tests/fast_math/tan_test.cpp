@@ -24,8 +24,8 @@ TEST(Tan, SpecialValues) {
   EXPECT_EQ(dispenso::fast_math::tan(0.0f), 0.0f);
 }
 
-constexpr uint32_t kTanAccurateUlps = 3;
-constexpr uint32_t kTanAccurateUlpsLg = 4;
+constexpr uint32_t kTanAccurateUlps = 3 + kMsvcUlpSlack;
+constexpr uint32_t kTanAccurateUlpsLg = 4 + kMsvcUlpSlack;
 
 TEST(TanLessAccurate, Range8Pi) {
   auto result =
