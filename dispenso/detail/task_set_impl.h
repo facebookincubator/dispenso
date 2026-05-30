@@ -193,10 +193,23 @@ class TaskSetBase {
         ++i;
       } else {
         ssize_t room = taskSetLoadFactor_ - outstanding;
-        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
-        if (toEnqueue == 0) {
-          toEnqueue = 1;
+        if (room <= 0) {
+          // At the limit but not over — run one inline to let the pool drain,
+          // then re-check on the next iteration rather than force-enqueuing
+          // and pushing over the limit (which causes enqueue/inline thrashing).
+#if defined(__cpp_exceptions)
+          try {
+            gen(i)();
+          } catch (...) {
+            trySetCurrentException();
+          }
+#else
+          gen(i)();
+#endif // __cpp_exceptions
+          ++i;
+          continue;
         }
+        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
         outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
         size_t base = i;
         pool_.scheduleBulkEnqueue(
