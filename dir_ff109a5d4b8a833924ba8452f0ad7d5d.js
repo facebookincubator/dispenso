@@ -10,6 +10,7 @@ var dir_ff109a5d4b8a833924ba8452f0ad7d5d =
     [ "graph.h", "graph_8h.html", "graph_8h" ],
     [ "graph_executor.h", "graph__executor_8h.html", "graph__executor_8h" ],
     [ "latch.h", "latch_8h.html", "latch_8h" ],
+    [ "mpmc_ring_buffer.h", "mpmc__ring__buffer_8h.html", "mpmc__ring__buffer_8h" ],
     [ "once_function.h", "once__function_8h.html", "once__function_8h" ],
     [ "parallel_for.h", "parallel__for_8h.html", "parallel__for_8h" ],
     [ "pipeline.h", "pipeline_8h.html", "pipeline_8h" ],

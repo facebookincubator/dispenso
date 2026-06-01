@@ -26,6 +26,7 @@ var hierarchy =
     [ "dispenso::GraphT< N >", "classdispenso_1_1_graph_t.html", null ],
     [ "dispenso::ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", null ],
     [ "dispenso::Latch", "classdispenso_1_1_latch.html", null ],
+    [ "dispenso::MpmcRingBuffer< T, Capacity, RoundUpToPowerOfTwo >", "classdispenso_1_1_mpmc_ring_buffer.html", null ],
     [ "dispenso::NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", null ],
     [ "dispenso::Node", "classdispenso_1_1_node.html", [
       [ "dispenso::BiPropNode", "classdispenso_1_1_bi_prop_node.html", null ]

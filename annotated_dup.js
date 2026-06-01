@@ -19,6 +19,7 @@ var annotated_dup =
       [ "GraphT", "classdispenso_1_1_graph_t.html", "classdispenso_1_1_graph_t" ],
       [ "ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", "classdispenso_1_1_immediate_invoker" ],
       [ "Latch", "classdispenso_1_1_latch.html", "classdispenso_1_1_latch" ],
+      [ "MpmcRingBuffer", "classdispenso_1_1_mpmc_ring_buffer.html", "classdispenso_1_1_mpmc_ring_buffer" ],
       [ "NewThreadInvoker", "classdispenso_1_1_new_thread_invoker.html", "classdispenso_1_1_new_thread_invoker" ],
       [ "Node", "classdispenso_1_1_node.html", "classdispenso_1_1_node" ],
       [ "OnceFunction", "classdispenso_1_1_once_function.html", "classdispenso_1_1_once_function" ],
