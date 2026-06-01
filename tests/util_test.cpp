@@ -318,10 +318,10 @@ TEST(Util, OpResult) {
   DISPENSO_DISABLE_WARNING_PUSH
 #if defined(__clang__)
   DISPENSO_DISABLE_WARNING(-Wself-assign-overloaded)
-#endif
-#if defined(__clang__) || defined(__GNUC__)
   DISPENSO_DISABLE_WARNING(-Wself-move)
-#endif
+#elif defined(__GNUC__)
+  DISPENSO_DISABLE_WARNING(-Wself-move)
+#endif // disable warnings
   // clang-format on
   r7 = r7;
   EXPECT_TRUE(r7);
