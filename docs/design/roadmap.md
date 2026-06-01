@@ -26,7 +26,7 @@ This document tracks planned features and improvements for the dispenso library.
 
 | Feature | Description | Doc |
 |---------|-------------|-----|
-| Scalable allocator | Thread-caching allocator to eliminate malloc contention in concurrent growth (ConcurrentVector `parallel` is 3-5x faster with tcmalloc/jemalloc vs glibc) | - |
+| Scalable allocator | Custom allocator for containers like ConcurrentVector. System allocators show opposing strengths: tcmalloc is best for ConcurrentVector's geometrically-growing variable-size buffers under contention, while jemalloc is best for fixed-size small allocations (SBA's pattern) but worst for ConcurrentVector. A purpose-built allocator can optimize for dispenso's specific patterns rather than relying on any single system allocator. | - |
 | Parallel algorithms (Phase 2-3) | Search, count, copy, replace | [parallel_algorithms.md](parallel_algorithms.md) |
 | Barrier/Semaphore | C++20-style synchronization for C++14/17 | - |
 | ConcurrentQueue | Public API for blocking MPMC queue | - |
@@ -116,6 +116,71 @@ indexed access path on every element access.
 |-----------|-----|
 | dispenso::fast_math | [fast_math_roadmap.md](fast_math_roadmap.md) |
 
+## Investigation Items
+
+### SmallBufferAllocator vs System Malloc Performance
+
+**Context.** Benchmark comparison across glibc, tcmalloc, and jemalloc on a
+192-thread Threadripper PRO 7995WX reveals that SmallBufferAllocator (SBA) does
+not always outperform modern system allocators:
+
+| Scenario | glibc vs SBA | tcmalloc vs SBA | jemalloc vs SBA |
+|----------|-------------|-----------------|-----------------|
+| Small/1t | glibc 2x faster | tcmalloc 4x faster | jemalloc 1.6x faster |
+| Medium-Large/1t | SBA 4-7x faster than glibc | tcmalloc 1-3x faster | ~tied |
+| Small/16t | glibc 2x faster | tcmalloc 2.4x slower | jemalloc 2x faster |
+| Medium-Large/16t | SBA 3-53x faster than glibc | tcmalloc 2-22x slower | jemalloc 1.5-1.6x faster |
+
+**Key findings:**
+- jemalloc beats SBA in every scenario (0.5-0.7x), including under contention
+- tcmalloc is faster single-threaded but collapses under 16-thread contention
+  (22x slower than SBA at 32K allocs)
+- SBA's main value is vs glibc under medium/large contended workloads
+- Windows MSVC CRT malloc shows similar patterns to jemalloc (fast under contention)
+
+**TODO:**
+- Investigate whether SBA should detect jemalloc/mimalloc at build time and
+  defer to the system allocator for small allocations
+- Consider thread-local free lists (similar to jemalloc's tcache) to reduce
+  atomic contention in SBA's hot path
+- Test with mimalloc (not available on current test machine)
+- Note: jemalloc's advantage over SBA does not extend to ConcurrentVector's
+  parallel growth benchmarks, where jemalloc performs worst and tcmalloc best.
+  This suggests the optimal allocator strategy differs by allocation pattern
+  (fixed-size recycling vs geometrically-growing buffers), reinforcing the
+  case for a custom dispenso allocator rather than deferring to any single
+  system malloc.
+
+### PoolAllocator Thread-Local Optimization
+
+**Context.** The locked `PoolAllocator` is 3-4x slower on Windows (64-core Xeon)
+vs Linux (192-thread Threadripper), while the no-lock variant (`nl_pool_allocator`)
+shows only 1.1-1.2x difference. This points to atomic operations being the
+bottleneck, not the allocation logic itself.
+
+Single-threaded raw numbers (8192 allocs):
+- `nl_pool_allocator`: Linux 30-34K ns, Windows 34-37K ns (1.1x)
+- `pool_allocator` (locked): Linux 35-42K ns, Windows 152K ns (3.6-4.1x)
+
+**Proposed approach:** Thread-local free lists that batch allocations from the
+shared pool. Each thread maintains a small local free list (e.g. 64-256 entries).
+Allocate from local list first (no atomics). When empty, grab a batch from the
+shared pool (one atomic op for N allocations). When local list exceeds threshold,
+return a batch to the shared pool.
+
+This is the same pattern that makes jemalloc and tcmalloc fast for general
+allocation — amortizing synchronization cost across many allocations.
+
+### Nested parallel_for Benchmark Optimization Artifact
+
+**Context.** `nested_for_benchmark` serial benchmarks show near-zero times on
+Windows (0.00x and 0.01x ratio vs Linux), indicating the compiler is optimizing
+away the computation. The benchmark loop body needs `benchmark::DoNotOptimize`
+or equivalent to prevent dead code elimination.
+
+**TODO:** Add `benchmark::DoNotOptimize` to the serial benchmark loop in
+`nested_for_benchmark.cpp` to ensure the computation is not elided.
+
 ## Ideas / Backlog
 
 These are ideas that may be pursued based on community feedback:
@@ -139,3 +204,14 @@ These are ideas that may be pursued based on community feedback:
   - Topology query API: expose NUMA node count, core-to-node mapping, and inter-node distances (Linux: `/sys/devices/system/node/` or `libnuma`; Windows: `GetLogicalProcessorInformationEx`)
   - Per-NUMA-node thread pools: opt-in pool construction affinitized to a specific node, composable with existing TaskSet/Future APIs
   - NUMA-aware allocator: STL-compatible allocator for node-local allocation (`mbind`/`numa_alloc_onnode` on Linux, `VirtualAllocExNuma` on Windows), paired with first-touch initialization guidance
+
+### Fork-Join Scheduling & Thread Groups (post-1.5)
+
+Full design document: [fork_join_scheduling.md](fork_join_scheduling.md)
+
+**Summary.** Add per-thread bounded MPMC rings (Vyukov algorithm), thread
+groups with per-group EpochWaiters, and cache-topology-aware group assignment
+to enable fork-join-style scheduling for `parallel_for`.  Closes the ~5x IPC
+gap vs OMP on locality-sensitive patterns by ensuring deterministic
+thread-to-chunk affinity across iterations.  All existing semantics (TaskSet,
+Futures, Pipelines, deadlock prevention) are preserved.
