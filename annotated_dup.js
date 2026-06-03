@@ -4,6 +4,7 @@ var annotated_dup =
       [ "AsyncRequest", "classdispenso_1_1_async_request.html", "classdispenso_1_1_async_request" ],
       [ "BiPropNode", "classdispenso_1_1_bi_prop_node.html", "classdispenso_1_1_bi_prop_node" ],
       [ "CacheAligned", "classdispenso_1_1_cache_aligned.html", "classdispenso_1_1_cache_aligned" ],
+      [ "ChaseLevDeque", "classdispenso_1_1_chase_lev_deque.html", "classdispenso_1_1_chase_lev_deque" ],
       [ "CompletionEvent", "classdispenso_1_1_completion_event.html", "classdispenso_1_1_completion_event" ],
       [ "ConcurrentObjectArena", "structdispenso_1_1_concurrent_object_arena.html", "structdispenso_1_1_concurrent_object_arena" ],
       [ "ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", "classdispenso_1_1_concurrent_task_set" ],

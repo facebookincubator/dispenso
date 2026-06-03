@@ -1,5 +1,6 @@
 var group__group__util =
 [
+    [ "chase_lev_deque.h", "chase__lev__deque_8h.html", null ],
     [ "mpmc_ring_buffer.h", "mpmc__ring__buffer_8h.html", null ],
     [ "platform.h", "platform_8h.html", null ],
     [ "priority.h", "priority_8h.html", null ],

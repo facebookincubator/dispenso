@@ -2,6 +2,7 @@ var hierarchy =
 [
     [ "dispenso::AsyncRequest< T >", "classdispenso_1_1_async_request.html", null ],
     [ "dispenso::CacheAligned< T >", "classdispenso_1_1_cache_aligned.html", null ],
+    [ "dispenso::ChaseLevDeque< T, Capacity >", "classdispenso_1_1_chase_lev_deque.html", null ],
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
