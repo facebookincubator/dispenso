@@ -768,6 +768,10 @@ void parallel_for(
  * <code>void(size_t index)</code> or <code>void(size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
+#if DISPENSO_HAS_CONCEPTS
+template <typename TaskSetT, std::integral IntegerA, std::integral IntegerB, typename F>
+  requires std::invocable<F, IntegerA>
+#else
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -776,6 +780,7 @@ template <
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
     std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
     std::enable_if_t<detail::CanInvoke<F(IntegerA)>::value, bool> = true>
+#endif
 void parallel_for(
     TaskSetT& taskSet,
     IntegerA start,
@@ -797,6 +802,10 @@ void parallel_for(
 }
 
 /** @overload */
+#if DISPENSO_HAS_CONCEPTS
+template <typename TaskSetT, std::integral IntegerA, std::integral IntegerB, typename F>
+  requires std::invocable<F, IntegerA, IntegerB>
+#else
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -805,6 +814,7 @@ template <
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
     std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true,
     std::enable_if_t<detail::CanInvoke<F(IntegerA, IntegerB)>::value, bool> = true>
+#endif
 void parallel_for(
     TaskSetT& taskSet,
     IntegerA start,
@@ -825,12 +835,16 @@ void parallel_for(
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
+#if DISPENSO_HAS_CONCEPTS
+template <std::integral IntegerA, std::integral IntegerB, typename F>
+#else
 template <
     typename IntegerA,
     typename IntegerB,
     typename F,
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
     std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+#endif
 void parallel_for(IntegerA start, IntegerB end, F&& f, ParForOptions options = {}) {
   TaskSet taskSet(globalThreadPool());
   options.wait = true;
@@ -855,6 +869,16 @@ void parallel_for(IntegerA start, IntegerB end, F&& f, ParForOptions options = {
  * <code>void(State &s, size_t begin, size_t end)</code>.
  * @param options See ParForOptions for details.
  **/
+#if DISPENSO_HAS_CONCEPTS
+template <
+    typename TaskSetT,
+    std::integral IntegerA,
+    std::integral IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen>
+  requires std::invocable<F, typename StateContainer::reference, IntegerA>
+#else
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -867,6 +891,7 @@ template <
     std::enable_if_t<
         detail::CanInvoke<F(typename StateContainer::reference, IntegerA)>::value,
         bool> = true>
+#endif
 void parallel_for(
     TaskSetT& taskSet,
     StateContainer& states,
@@ -891,6 +916,16 @@ void parallel_for(
 }
 
 /** @overload */
+#if DISPENSO_HAS_CONCEPTS
+template <
+    typename TaskSetT,
+    std::integral IntegerA,
+    std::integral IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen>
+  requires std::invocable<F, typename StateContainer::reference, IntegerA, IntegerB>
+#else
 template <
     typename TaskSetT,
     typename IntegerA,
@@ -903,6 +938,7 @@ template <
     std::enable_if_t<
         detail::CanInvoke<F(typename StateContainer::reference, IntegerA, IntegerB)>::value,
         bool> = true>
+#endif
 void parallel_for(
     TaskSetT& taskSet,
     StateContainer& states,
@@ -934,6 +970,14 @@ void parallel_for(
  * @param options See ParForOptions for details.  <code>options.wait</code> will always be reset
  *to true.
  **/
+#if DISPENSO_HAS_CONCEPTS
+template <
+    std::integral IntegerA,
+    std::integral IntegerB,
+    typename F,
+    typename StateContainer,
+    typename StateGen>
+#else
 template <
     typename IntegerA,
     typename IntegerB,
@@ -942,6 +986,7 @@ template <
     typename StateGen,
     std::enable_if_t<std::is_integral<IntegerA>::value, bool> = true,
     std::enable_if_t<std::is_integral<IntegerB>::value, bool> = true>
+#endif
 void parallel_for(
     StateContainer& states,
     const StateGen& defaultState,

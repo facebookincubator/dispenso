@@ -344,8 +344,14 @@ class Node {
 
  protected:
   /** Construct a Node with a functor. @param f The functor to execute when the node runs. */
+#if DISPENSO_HAS_CONCEPTS
+  template <class F>
+    requires(!std::derived_from<std::remove_cvref_t<F>, Node>)
+  Node(F&& f) : numIncompletePredecessors_(0) {
+#else
   template <class F, class X = std::enable_if_t<!std::is_base_of<Node, F>::value, void>>
   Node(F&& f) : numIncompletePredecessors_(0) {
+#endif
     using FNoRef = typename std::remove_reference<F>::type;
 
     constexpr size_t kFuncSize = static_cast<size_t>(detail::nextPow2(sizeof(FNoRef)));
@@ -412,8 +418,14 @@ class BiPropNode : public Node {
   }
 
  private:
+#if DISPENSO_HAS_CONCEPTS
+  template <class T>
+    requires(!std::derived_from<std::remove_cvref_t<T>, BiPropNode>)
+  BiPropNode(T&& f) : Node(std::forward<T>(f)) {}
+#else
   template <class T, class X = std::enable_if_t<!std::is_base_of<BiPropNode, T>::value, void>>
   BiPropNode(T&& f) : Node(std::forward<T>(f)) {}
+#endif
   inline void removeFromBiPropSet() {
     if (biPropSet_ != nullptr) {
       auto it = std::find(biPropSet_->begin(), biPropSet_->end(), this);
