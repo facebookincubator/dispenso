@@ -98,6 +98,20 @@ constexpr size_t kCacheLineSize = 64;
 #endif
 
 /**
+ * @def DISPENSO_CACHELINE_ALIGNED
+ * @brief Cache-line alignment specifier for use on class/struct definitions.
+ *
+ * Expands to `alignas(kCacheLineSize)`. Prefer this over a bare
+ * `class alignas(kCacheLineSize) Foo` on type definitions: cyclomatic-complexity
+ * analyzers (lizard/abacus) misparse `class alignas(...) Foo` as a function named
+ * `alignas` and fold the entire class body into one bogus high-CCN "function".
+ * Routing through a macro hides the `alignas(...)` token so the type parses
+ * normally. (Bare `alignas(kCacheLineSize)` on member variables is fine -- the
+ * misparse only happens on type definitions.)
+ **/
+#define DISPENSO_CACHELINE_ALIGNED alignas(kCacheLineSize)
+
+/**
  * @def DISPENSO_THREAD_LOCAL
  * @brief A macro that can be used when declaring a lightweight thread-local variable.
  **/
@@ -221,6 +235,39 @@ struct AlignedFreeDeleter<void> {
     detail::alignedFree(ptr);
   }
 };
+
+// Array deleter for aligned allocations. Destructor loop is elided by
+// the compiler for trivially destructible types.
+template <typename T>
+struct AlignedArrayFreeDeleter {
+  size_t count;
+  void operator()(T* ptr) {
+    for (size_t i = 0; i < count; ++i) {
+      ptr[i].~T();
+    }
+    detail::alignedFree(ptr);
+  }
+};
+
+// Allocate a value-initialized array of T with alignof(T) alignment.
+// Constructor/destructor loops are elided for trivial types.
+template <typename T>
+std::unique_ptr<T[], AlignedArrayFreeDeleter<T>> makeAlignedArray(size_t n) {
+  void* raw = detail::alignedMalloc(sizeof(T) * n, alignof(T));
+  T* arr = static_cast<T*>(raw);
+  for (size_t i = 0; i < n; ++i) {
+    new (&arr[i]) T();
+  }
+  return std::unique_ptr<T[], AlignedArrayFreeDeleter<T>>(arr, AlignedArrayFreeDeleter<T>{n});
+}
+
+// Allocate a single object of T with alignof(T) alignment.
+template <typename T, class... Args>
+std::unique_ptr<T, AlignedFreeDeleter<T>> makeAligned(Args&&... args) {
+  void* raw = detail::alignedMalloc(sizeof(T), alignof(T));
+  T* obj = new (raw) T(std::forward<Args>(args)...);
+  return std::unique_ptr<T, AlignedFreeDeleter<T>>(obj);
+}
 
 template <typename T, class... Args>
 std::shared_ptr<T> make_shared(Args&&... args) {

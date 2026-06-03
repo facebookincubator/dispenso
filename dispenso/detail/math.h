@@ -142,5 +142,40 @@ inline uint32_t log2(uint32_t v) {
 }
 #endif // 32-bit
 
+// --- countTrailingZeros (64-bit) ---
+// Returns the number of trailing zero bits in v. Undefined for v == 0.
+
+#if (defined(__GNUC__) || defined(__clang__))
+inline int32_t countTrailingZeros(uint64_t v) {
+  return __builtin_ctzll(v);
+}
+#elif defined(_WIN64)
+inline int32_t countTrailingZeros(uint64_t v) {
+  unsigned long index;
+  _BitScanForward64(&index, v);
+  return static_cast<int32_t>(index);
+}
+#elif defined(_WIN32)
+inline int32_t countTrailingZeros(uint64_t v) {
+  unsigned long index;
+  uint32_t lo = static_cast<uint32_t>(v);
+  if (lo != 0) {
+    _BitScanForward(&index, lo);
+    return static_cast<int32_t>(index);
+  }
+  _BitScanForward(&index, static_cast<uint32_t>(v >> 32));
+  return static_cast<int32_t>(index + 32);
+}
+#else
+inline int32_t countTrailingZeros(uint64_t v) {
+  int32_t count = 0;
+  while ((v & 1) == 0) {
+    v >>= 1;
+    ++count;
+  }
+  return count;
+}
+#endif
+
 } // namespace detail
 } // namespace dispenso

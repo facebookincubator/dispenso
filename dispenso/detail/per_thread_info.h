@@ -12,12 +12,13 @@
 namespace dispenso {
 namespace detail {
 
-struct alignas(kCacheLineSize) PerThreadInfo {
+struct DISPENSO_CACHELINE_ALIGNED PerThreadInfo {
   void* pool = nullptr;
   void* producer = nullptr;
   int parForRecursionLevel = 0;
   // Index into ThreadPool's per-thread ring array, or -1 if not a pool thread.
   int32_t ringIndex = -1;
+  uint32_t stealTarget = 0; // Round-robin target for steal ring distribution
 };
 
 class ParForRecursion {
@@ -42,6 +43,7 @@ class PerPoolPerThreadInfo {
     i.pool = pool;
     i.producer = producer;
     i.ringIndex = ringIndex;
+    i.stealTarget = ringIndex >= 0 ? static_cast<uint32_t>(ringIndex + 1) : 0;
   }
 
   static void* producer(void* pool) {
@@ -61,6 +63,10 @@ class PerPoolPerThreadInfo {
 
   static bool isPoolRecursive(void* pool) {
     return info().pool == pool;
+  }
+
+  static uint32_t& stealTarget() {
+    return info().stealTarget;
   }
 
   static ParForRecursion parForRecurse() {

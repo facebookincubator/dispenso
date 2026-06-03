@@ -17,6 +17,7 @@
 #pragma once
 
 #include <dispenso/detail/rw_lock_impl.h>
+#include <dispenso/platform.h>
 
 namespace dispenso {
 namespace detail {
@@ -122,13 +123,16 @@ class DistributedRWLockImpl {
 
  private:
   // Expose the protected two-phase methods from RWLockImpl via a derived Slot.
-  struct alignas(kCacheLineSize) Slot : public RWLockImpl {
+  struct DISPENSO_CACHELINE_ALIGNED Slot : public RWLockImpl {
     using RWLockImpl::setWriteBit;
     using RWLockImpl::tryWriteBit;
     using RWLockImpl::waitForReaderDrain;
   };
 
-  Slot slots_[N];
+  // Heap-allocated to avoid bloating sizeof(DistributedRWLockImpl).
+  // With N=128 and kCacheLineSize=64, the array is 8KB — too large for
+  // objects that may live on the stack (e.g. ThreadPool in benchmarks).
+  decltype(detail::makeAlignedArray<Slot>(0)) slots_{detail::makeAlignedArray<Slot>(N)};
 };
 
 } // namespace detail

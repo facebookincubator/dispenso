@@ -61,8 +61,9 @@ struct ConcurrentObjectArena {
    *
    * @param minBuffSize The minimum size of the internal buffer. If given
    * size is not power of 2 the closest bigger power of two would be chosen.
+   * @param initialSize The number of elements to construct initially (default 0).
    **/
-  explicit ConcurrentObjectArena(const Index minBuffSize)
+  explicit ConcurrentObjectArena(const Index minBuffSize, const Index initialSize = 0)
       : kLog2BuffSize(
             ::detail::log2i(minBuffSize) +
             ((Index{1} << ::detail::log2i(minBuffSize)) == minBuffSize ? 0 : 1)),
@@ -75,6 +76,9 @@ struct ConcurrentObjectArena {
         buffersPos_(0) {
     allocateBuffer();
     allocatedSize_.store(kBufferSize, std::memory_order_relaxed);
+    if (initialSize > 0) {
+      grow_by(initialSize);
+    }
   }
 
   /**

@@ -25,16 +25,39 @@
 
 #include <moodycamel/concurrentqueue.h>
 
+#include <dispenso/concurrent_object_arena.h>
 #include <dispenso/cpu_set.h>
-#include <dispenso/detail/distributed_rw_lock_impl.h>
-#include <dispenso/detail/epoch_waiter.h>
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/mpmc_ring_buffer.h>
 #include <dispenso/once_function.h>
 #include <dispenso/platform.h>
+#include <dispenso/thread_pool_wake.h>
 #include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
+
+namespace detail {
+// Relaxed atomic load with TSAN happens-after annotation.
+// Semantically equivalent to memory_order_consume (which compilers promote to
+// acquire). On real hardware, address-dependent loads are naturally ordered —
+// you can't dereference a pointer before loading it. The relaxed load avoids
+// the acquire fence cost on weakly-ordered architectures (ARM: ldr vs ldar).
+// The TSAN annotation establishes the happens-before edge that the C++ abstract
+// machine requires but hardware provides for free via dependency ordering.
+template <typename T>
+T* consumeLoad(std::atomic<T*>& ptr) {
+  T* p = ptr.load(std::memory_order_relaxed);
+  DISPENSO_TSAN_ANNOTATE_HAPPENS_AFTER(&ptr);
+  return p;
+}
+} // namespace detail
+
+namespace detail {
+template <typename Result>
+class FutureBase;
+template <typename Result>
+class FutureImplBase;
+} // namespace detail
 
 #if !defined(DISPENSO_WAKEUP_ENABLE)
 #if defined(_WIN32) || defined(__linux__) || defined(__MACH__)
@@ -72,7 +95,7 @@ struct ForceQueuingTag {};
  * stealing by related types (e.g. TaskSet, Future, etc...), which prevents deadlock when waiting
  * for pool-recursive tasks.
  */
-class alignas(kCacheLineSize) ThreadPool {
+class DISPENSO_CACHELINE_ALIGNED ThreadPool {
  public:
   /**
    * Construct a thread pool.
@@ -190,14 +213,11 @@ class alignas(kCacheLineSize) ThreadPool {
 
     ~PerThreadData();
 
-   public:
     alignas(kCacheLineSize) std::thread thread_;
     std::atomic<bool> running_{true};
   };
 
-  DISPENSO_DLL_ACCESS uint32_t wait(uint32_t priorEpoch);
-  DISPENSO_DLL_ACCESS void wake();
-  DISPENSO_DLL_ACCESS void wakeN(ssize_t n);
+  DISPENSO_DLL_ACCESS uint32_t waitOnThread(int32_t threadIdx, uint32_t priorEpoch);
 
   void setSignalingWake(bool enable, uint32_t sleepDurationUs) {
     std::lock_guard<std::mutex> lk(threadsMutex_);
@@ -219,11 +239,38 @@ class alignas(kCacheLineSize) ThreadPool {
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
   bool tryExecuteNextFromRings(size_t& startRing);
 
+  // Core scheduling: central queue + bulk-like wake (default, throughput-oriented).
+  DISPENSO_INLINE void scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token);
+
+  // Placed scheduling: proactive wake → steal ring → central queue.
+  // Higher per-call cost but better latency for individual tasks (futures, pipelines).
+  DISPENSO_INLINE void scheduleImplPlaced(OnceFunction task, moodycamel::ProducerToken* token);
+
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f);
 
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
+
+  template <typename F>
+  void schedulePlaced(moodycamel::ProducerToken& token, F&& f);
+
+  template <typename F>
+  void schedulePlaced(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag);
+
+  // Placed scheduling: public-like API but private — only for internal dispenso callers.
+  template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
+  void schedulePlaced(F&& f);
+
+  template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
+  void schedulePlaced(F&& f, ForceQueuingTag);
+
+  // Bulk placed scheduling: chunked submit through the steal-ring path. Internal only —
+  // exposed via ConcurrentTaskSet's scheduleBulk under TaskCost::kHeavy routing.
+  template <typename Generator>
+  void scheduleBulkPlaced(size_t count, Generator&& gen);
 
   // Core bulk enqueue: unconditionally stage, enqueue, and wake for a chunk of tasks.
   // Caller is responsible for load factor checks. Count should be small (e.g. <= 2*numThreads).
@@ -232,22 +279,20 @@ class alignas(kCacheLineSize) ThreadPool {
   void
   scheduleBulkEnqueue(size_t count, Generator&& gen, moodycamel::ProducerToken* token = nullptr);
 
-  // The non-atomic read of two separate atomics (numSleeping_ and workRemaining_) can
-  // race, potentially causing a missed wake in rare cases. This is benign: the epoch
-  // waiter's sleep timeout (sleepLengthUs_) provides a safety net, so a missed wake only
-  // delays wakeup by up to that duration, never causes a hang. Subsequent schedule()
-  // calls will trigger wakes.
+  // Wake enough threads to handle pending work. Uses PoolWakeState's budget-
+  // limited cascade for efficient parallel waking.
+  // Missed wakes are benign: the EpochWaiter's sleep timeout provides a safety
+  // net, so a missed wake only delays wakeup by up to that duration.
   void conditionallyWake() {
-    if (enableEpochWaiter_.load(std::memory_order_acquire)) {
-      ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
+    auto* ws = detail::consumeLoad(wakeState_);
+    if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+      int32_t sleeping = ws->totalSleeping();
       if (sleeping > 0) {
-        // Only wake if there's more pending work than awake threads can handle.
-        // Don't count the caller — it may be a pool thread that will continue
-        // dequeuing its own work, not processing what it just submitted.
-        ssize_t awake = numThreads_.load(std::memory_order_relaxed) - sleeping;
         ssize_t pending = workRemaining_.load(std::memory_order_relaxed);
+        ssize_t numT = numThreads_.load(std::memory_order_relaxed);
+        ssize_t awake = numT - static_cast<ssize_t>(sleeping);
         if (pending > awake) {
-          wake();
+          ws->claimAndWakeOne();
         }
       }
     }
@@ -269,6 +314,39 @@ class alignas(kCacheLineSize) ThreadPool {
   // 16 slots matches kAuto's oversubscription factor and fits in one cache line group.
   using Ring = MpmcRingBuffer<OnceFunction, 16>;
 
+  // Steal ring configuration.
+  // Slots per thread: base capacity before sharing multiplier.
+  static constexpr size_t kStealSlotsPerThread = 4;
+  // Sharing factor: threads per steal ring (aligned with wake group size).
+  static constexpr size_t kStealRingSharing = 16;
+  static constexpr size_t kStealRingCapacity = kStealSlotsPerThread * kStealRingSharing;
+  using StealRing = MpmcRingBuffer<OnceFunction, kStealRingCapacity>;
+
+  // Enqueue a task to the central concurrent queue with optional producer token.
+  // Handles TSAN annotations. Used by scheduleBulkToRings for overflow tasks.
+  // moodycamel::ConcurrentQueue::enqueue returns false only on allocation
+  // failure; we propagate that as std::bad_alloc so callers don't silently
+  // drop work (which would deadlock TaskSet::wait via inflated outstanding
+  // counts). Out-of-memory recovery from individual small allocs is not
+  // tractable in general; throwing lets the application unwind or terminate.
+  DISPENSO_INLINE void enqueueToCentralQueue(OnceFunction task, moodycamel::ProducerToken* token) {
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+    bool enqueued;
+    if (token) {
+      enqueued = work_.enqueue(*token, std::move(task));
+    } else {
+      enqueued = work_.enqueue(std::move(task));
+    }
+    DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+    if (DISPENSO_EXPECT(!enqueued, false)) {
+#if defined(__cpp_exceptions)
+      throw std::bad_alloc();
+#else
+      std::abort();
+#endif
+    }
+  }
+
   // Push task i to ring i (linear layout) for fork-join scheduling.
   // Tasks that don't fit in their ring go to central queue via fallbackToken.
   // Handles workRemaining_ accounting and waking (one batch wake at the end).
@@ -277,15 +355,26 @@ class alignas(kCacheLineSize) ThreadPool {
   void scheduleBulkToRings(size_t count, Generator&& gen, moodycamel::ProducerToken* fallbackToken);
 
   // Shared work-finding logic for both loop variants. Checks own ring,
-  // steals from group peers, then falls back to central queue.
+  // central queue, and steal ring as third tier.
   // Returns true if work was found and executed.
-  DISPENSO_INLINE bool tryFindAndExecuteWork(size_t ringIndex, moodycamel::ConsumerToken& ctoken);
+  // preferRing: sticky hint — true = try ring first, false = try central queue first.
+  DISPENSO_INLINE bool tryFindAndExecuteWork(
+      Ring& myRing,
+      StealRing& myStealRing,
+      moodycamel::ConsumerToken& ctoken,
+      bool& preferRing,
+      bool checkQueue = true);
 
   // Number of tasks each thread accumulates before flushing workRemaining_.
   // This batching reduces atomic contention in threadLoop, but inflates
   // workRemaining_ by up to kWorkBatchSize * numThreads, so poolLoadFactor_
   // must be reduced accordingly for accurate load-shedding in schedule().
   static constexpr int kWorkBatchSize = 8;
+
+  // Minimum spinning threads before we skip waking a sleeper. If fewer than
+  // this many threads are spinning, we wake a sleeper to ensure coverage.
+  // Higher = more aggressive waking; lower = trust spinners more.
+  static constexpr int32_t kSpinnerWakeThreshold = 2;
 
   mutable std::mutex threadsMutex_;
   std::deque<PerThreadData> threads_;
@@ -298,40 +387,78 @@ class alignas(kCacheLineSize) ThreadPool {
 
   moodycamel::ConcurrentQueue<OnceFunction> work_;
 
-  alignas(kCacheLineSize) std::atomic<ssize_t> numSleeping_{0};
+  // Approximate flag indicating the central queue may have work. Set (store
+  // true) after enqueue, cleared (store false) when try_dequeue finds the queue
+  // empty. Used to gate try_dequeue in tryFindAndExecuteWork: a relaxed load
+  // replaces the expensive try_dequeue CAS when the queue is known empty,
+  // eliminating CAS contention from idle spinning threads. No atomic RMW —
+  // only plain stores and loads — so no contention on the flag itself.
+  // Brief false-negatives (flag cleared while an enqueue is in flight) are
+  // bounded to one spin iteration and self-correcting.
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
 
-  alignas(kCacheLineSize) detail::EpochWaiter epochWaiter_;
   alignas(kCacheLineSize) std::atomic<bool> enableEpochWaiter_{kDefaultWakeupEnable};
   std::atomic<uint32_t> sleepLengthUs_{kDefaultSleepLenUs};
 
-  // Per-thread rings for fork-join scheduling. Allocated as a contiguous array
-  // indexed by thread pool index. Threads check own ring first in the steal order.
-  // Protected by ringsLock_: readers (thread loops, scheduleBulkToRings) acquire
-  // shared; resize grow path acquires exclusive before reallocating.
-  std::unique_ptr<Ring[]> rings_;
-  std::atomic<size_t> numRings_{0};
-  detail::DistributedRWLockImpl<128> ringsLock_;
+  // Per-thread wake infrastructure: EpochWaiters, sleep masks, budget cascade.
+  // Atomic pointer — schedule paths load with relaxed ordering.
+  //
+  // Retired PoolWakeState objects are kept alive for the lifetime of the pool
+  // (grow-only graveyard); they are intentionally NOT freed at resize. schedule()
+  // reads wakeState_ lock-free (no threadsMutex_) and dereferences it (e.g.
+  // ws->totalSleeping()), so freeing a retired generation while a concurrent
+  // schedule() may still hold that pointer is a use-after-free. resize() joins all
+  // *pool* threads before swapping wakeState_, but external (non-pool) schedule()
+  // callers race the swap, so a retired object must outlive any such in-flight
+  // reader. Without a safe-reclamation protocol, never freeing during operation is
+  // the only correct option (an earlier bounded variant that freed old
+  // generations was reverted after TSAN caught exactly this free-vs-read race).
+  //
+  // Cost: one PoolWakeState (~O(numThreads)) is retained per resize() until the
+  // pool is destroyed. resize() is expected to be rare, so this is bounded in
+  // practice; only a process performing hundreds of thousands of resizes would
+  // accumulate meaningful memory. See docs/design/roadmap.md ("Bounded
+  // PoolWakeState reclamation") for the planned asymmetric-fence / hazard-pointer
+  // scheme to bound this without taxing the schedule() hot path.
+  std::atomic<PoolWakeState*> wakeState_{nullptr};
+  std::vector<decltype(detail::makeAligned<PoolWakeState>(0))> wakeStateGraveyard_;
 
-  // Get a lock slot for the calling thread. Pool threads use their ring index
-  // for best distribution; external threads use CPU ID as a hint.
-  size_t ringLockSlot() const {
-    int32_t ri = detail::PerPoolPerThreadInfo::ringIndex(const_cast<ThreadPool*>(this));
-    if (ri >= 0) {
-      return static_cast<size_t>(ri);
-    }
-    int32_t cpu = CpuSet::currentHardwareThread();
-    return cpu >= 0 ? static_cast<size_t>(cpu) : 0;
-  }
+  // Per-thread rings for fork-join scheduling. ConcurrentObjectArena provides
+  // stable pointers (grow-only, never freed), eliminating the need for a resize
+  // lock on the schedule path. Threads check own ring first in the steal order.
+  ConcurrentObjectArena<Ring> rings_;
+  std::atomic<size_t> numRings_{0};
+
+  // Steal rings for non-locality work distribution.
+  // Populated by schedule() (both proactive wake and no-sleeper paths).
+  // Consumed in tryFindAndExecuteWork (third tier) and outer thread loop.
+  //
+  // stealRingSharing_: threads per steal ring (16 = per-group sharing).
+  //   Ring capacity = slots_per_thread (4) * sharing_factor (16) = 64.
+  ConcurrentObjectArena<StealRing> stealRings_;
+  std::atomic<size_t> numStealRings_{0};
+  size_t stealRingSharing_{kStealRingSharing};
+
+  // Threads not currently in their inner work loop (spinning or sleeping).
+  // Incremented when a thread exhausts work (exits inner loop with nothing found).
+  // Decremented when a thread finds work (enters inner loop) or at thread exit.
+  // Updated at burst boundaries (not per-task), so contention is low.
+  // Used by schedule paths to skip wake calls when spinners exist.
+  alignas(kCacheLineSize) std::atomic<int32_t> numNotWorking_{0};
 
 #if defined DISPENSO_DEBUG
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskSets_{0};
-#endif // NDEBUG
+#endif // DISPENSO_DEBUG
 
   friend class ConcurrentTaskSet;
   friend class TaskSet;
   friend class TaskSetBase;
+
+  template <typename Result>
+  friend class detail::FutureBase;
+  template <typename Result>
+  friend class detail::FutureImplBase;
 };
 
 /**
@@ -378,13 +505,7 @@ inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
     return;
   }
   workRemaining_.fetch_add(1, std::memory_order_release);
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-  bool enqueued = work_.enqueue({std::forward<F>(f)});
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-  (void)(enqueued); // unused
-  assert(enqueued);
-
-  conditionallyWake();
+  scheduleImpl({std::forward<F>(f)}, nullptr);
 }
 
 template <typename F>
@@ -407,11 +528,106 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQ
     return;
   }
   workRemaining_.fetch_add(1, std::memory_order_release);
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-  bool enqueued = work_.enqueue(token, {std::forward<F>(f)});
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-  (void)(enqueued); // unused
-  assert(enqueued);
+  scheduleImpl({std::forward<F>(f)}, &token);
+}
+
+template <typename F>
+DISPENSO_REQUIRES(OnceCallableFunc<F>)
+inline void ThreadPool::schedulePlaced(F&& f) {
+  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
+  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
+  quickLoadFactor += quickLoadFactor / 2;
+  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
+      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+    f();
+  } else {
+    schedulePlaced(std::forward<F>(f), ForceQueuingTag());
+  }
+}
+
+template <typename F>
+DISPENSO_REQUIRES(OnceCallableFunc<F>)
+inline void ThreadPool::schedulePlaced(F&& f, ForceQueuingTag) {
+  if (auto* token =
+          static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this))) {
+    schedulePlaced(*token, std::forward<F>(f), ForceQueuingTag());
+    return;
+  }
+
+  if (!numThreads_.load(std::memory_order_relaxed)) {
+    f();
+    return;
+  }
+  workRemaining_.fetch_add(1, std::memory_order_release);
+  scheduleImplPlaced({std::forward<F>(f)}, nullptr);
+}
+
+template <typename F>
+inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f) {
+  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
+  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
+  quickLoadFactor += quickLoadFactor / 2;
+  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
+      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+    f();
+  } else {
+    schedulePlaced(token, std::forward<F>(f), ForceQueuingTag());
+  }
+}
+
+template <typename F>
+inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag) {
+  if (!numThreads_.load(std::memory_order_relaxed)) {
+    f();
+    return;
+  }
+  workRemaining_.fetch_add(1, std::memory_order_release);
+  scheduleImplPlaced({std::forward<F>(f)}, &token);
+}
+
+DISPENSO_INLINE void ThreadPool::scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token) {
+  // Use the same central-queue path as scheduleBulkEnqueue for consistency
+  // and to avoid per-call overhead of steal-ring probing + proactive wake.
+  enqueueToCentralQueue(std::move(task), token);
+
+  // Wake logic matching scheduleBulkEnqueue's single-task case:
+  // wake one sleeper if any exist and spinners can't cover.
+  auto* ws = detail::consumeLoad(wakeState_);
+  if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+    int32_t sleeping = ws->totalSleeping();
+    if (sleeping > 0) {
+      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);
+      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);
+      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);
+      if (effectiveSpinners < 1) {
+        ws->claimAndWakeOne();
+      }
+    }
+  }
+}
+
+DISPENSO_INLINE void ThreadPool::scheduleImplPlaced(
+    OnceFunction task,
+    moodycamel::ProducerToken* token) {
+  // Proactive wake: claim a sleeping thread and push to its steal ring.
+  auto* ws = detail::consumeLoad(wakeState_);
+  if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+    int32_t sleeping = ws->totalSleeping();
+    if (sleeping > 0 &&
+        numNotWorking_.load(std::memory_order_relaxed) - sleeping < kSpinnerWakeThreshold) {
+      int32_t wokeThread = ws->claimAndWakeOne();
+      if (wokeThread >= 0) {
+        size_t stealIdx = static_cast<size_t>(wokeThread) / stealRingSharing_;
+        if (stealIdx < numStealRings_.load(std::memory_order_relaxed) &&
+            stealRings_[stealIdx].try_push(std::move(task))) {
+          return;
+        }
+      }
+    }
+  }
+
+  // Central queue fallback.
+  enqueueToCentralQueue(std::move(task), token);
 
   conditionallyWake();
 }
@@ -439,21 +655,14 @@ inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToke
 
 inline bool ThreadPool::tryExecuteNextFromRings(size_t& startRing) {
   OnceFunction task;
-  size_t lockSlot = ringLockSlot();
-  ringsLock_.lock_shared(lockSlot);
   size_t n = numRings_.load(std::memory_order_relaxed);
-  bool found = false;
-  for (size_t i = 0; i < n && !found; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     size_t idx = (startRing + i) % n;
     if (rings_[idx].try_pop(task)) {
       startRing = idx;
-      found = true;
+      executeNext(std::move(task));
+      return true;
     }
-  }
-  ringsLock_.unlock_shared(lockSlot);
-  if (found) {
-    executeNext(std::move(task));
-    return true;
   }
   startRing = 0;
   return false;
@@ -465,29 +674,60 @@ inline void ThreadPool::executeNext(OnceFunction next) {
 }
 
 DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
-    size_t ringIndex,
-    moodycamel::ConsumerToken& ctoken) {
+    Ring& myRing,
+    StealRing& myStealRing,
+    moodycamel::ConsumerToken& ctoken,
+    bool& preferRing,
+    bool checkQueue) {
   OnceFunction task;
 
-  // 1. Own ring (under distributed read lock to protect against resize reallocation)
-  ringsLock_.lock_shared(ringIndex);
-  bool fromRing = rings_[ringIndex].try_pop(task);
-  ringsLock_.unlock_shared(ringIndex);
-  if (fromRing) {
-    task();
-    return true;
-  }
-
-  // 2. TODO(bbudge): Steal from same-group rings (random sample).
-  //    For now, skip group stealing until thread groups are wired in.
-
-  // 3. Central queue (existing path)
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-  bool got = work_.try_dequeue(ctoken, task);
-  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-  if (got) {
-    task();
-    return true;
+  // Sticky strategy: try the source that last had work first.
+  if (preferRing) {
+    // Own ring (cached reference — avoids ConcurrentObjectArena indirection)
+    bool fromRing = myRing.try_pop(task);
+    if (fromRing) {
+      task();
+      return true;
+    }
+    // Ring empty — try central queue (gated by checkQueue to reduce
+    // try_dequeue CAS contention from idle spinning threads).
+    if (checkQueue) {
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+      bool got = work_.try_dequeue(ctoken, task);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+      if (got) {
+        preferRing = false;
+        task();
+        return true;
+      }
+    }
+    // Ring-preferred path: both ring and queue empty. Check steal ring so
+    // proactive-wake work is found immediately without an extra outer-loop
+    // round-trip. Only on the ring-preferred path — the queue-preferred path
+    // (futures/pipelines) skips this to avoid touching steal ring cache lines
+    // on every inner-loop miss.
+    if (!myStealRing.empty() && myStealRing.try_pop(task)) {
+      task();
+      return true;
+    }
+  } else {
+    // Prefer central queue (gated by checkQueue).
+    if (checkQueue) {
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+      bool got = work_.try_dequeue(ctoken, task);
+      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+      if (got) {
+        task();
+        return true;
+      }
+    }
+    // Central queue empty — try ring, and if it has work, switch preference
+    bool fromRing = myRing.try_pop(task);
+    if (fromRing) {
+      preferRing = true;
+      task();
+      return true;
+    }
   }
 
   return false;
@@ -501,18 +741,16 @@ void ThreadPool::scheduleBulkToRings(
   if (count == 0) {
     return;
   }
+  assert(count <= numRings_.load(std::memory_order_relaxed));
 
   // Increment before enqueuing, consistent with schedule() and scheduleBulkEnqueue().
   // This ensures threads that wake and find work in a ring see a positive workRemaining_,
   // preventing premature re-sleep or incorrect load-balancing decisions.
   workRemaining_.fetch_add(static_cast<ssize_t>(count), std::memory_order_release);
 
-  // Hold distributed read lock while accessing rings to protect against resize reallocation.
-  size_t lockSlot = ringLockSlot();
-  ringsLock_.lock_shared(lockSlot);
+  // No lock needed: ConcurrentObjectArena rings have stable pointers.
 
   // Linear layout: task i goes to ring i (1 task per ring, kStatic pattern).
-  // The caller guarantees count <= numRings (via scheduleBulkImpl's guard).
   // Tasks that don't fit in their ring overflow to central queue.
   size_t ringCount = numRings_.load(std::memory_order_relaxed);
   size_t tasksPerRing = (count + ringCount - 1) / ringCount;
@@ -523,16 +761,7 @@ void ThreadPool::scheduleBulkToRings(
     for (size_t ring = 0; ring < count && ring < ringCount; ++ring) {
       OnceFunction task = gen(ring);
       if (!rings_[ring].try_push(std::move(task))) {
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-        bool enqueued;
-        if (fallbackToken) {
-          enqueued = work_.enqueue(*fallbackToken, std::move(task));
-        } else {
-          enqueued = work_.enqueue(std::move(task));
-        }
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-        (void)enqueued;
-        assert(enqueued);
+        enqueueToCentralQueue(std::move(task), fallbackToken);
       }
     }
   } else {
@@ -551,47 +780,24 @@ void ThreadPool::scheduleBulkToRings(
 
       size_t pushed = rings_[ring].try_push_batch(staged, toStage);
 
-      // Overflow: staged tasks that didn't fit + any remaining in block
+      // Overflow: staged tasks that didn't fit
       for (size_t j = pushed; j < toStage; ++j) {
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-        bool enqueued;
-        if (fallbackToken) {
-          enqueued = work_.enqueue(*fallbackToken, std::move(staged[j]));
-        } else {
-          enqueued = work_.enqueue(std::move(staged[j]));
-        }
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-        (void)enqueued;
-        assert(enqueued);
+        enqueueToCentralQueue(std::move(staged[j]), fallbackToken);
       }
 
       // Tasks beyond ring capacity that weren't staged go straight to central queue
       for (size_t j = taskIdx + toStage; j < blockEnd; ++j) {
-        OnceFunction task = gen(j);
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-        bool enqueued;
-        if (fallbackToken) {
-          enqueued = work_.enqueue(*fallbackToken, std::move(task));
-        } else {
-          enqueued = work_.enqueue(std::move(task));
-        }
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-        (void)enqueued;
-        assert(enqueued);
+        enqueueToCentralQueue(gen(j), fallbackToken);
       }
       taskIdx += blockSize;
     }
   }
 
-  ringsLock_.unlock_shared(lockSlot);
-
-  // Wake threads
-  if (enableEpochWaiter_.load(std::memory_order_acquire)) {
-    ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
-    ssize_t toWake = std::min(sleeping, static_cast<ssize_t>(count));
-    if (toWake > 0) {
-      wakeN(toWake);
-    }
+  // Wake only the threads whose rings received work (threads 0..count-1).
+  // This avoids waking threads with empty rings, which would spin wastefully.
+  auto* ws = detail::consumeLoad(wakeState_);
+  if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+    ws->wakeRange(static_cast<int32_t>(count));
   }
 }
 
@@ -645,12 +851,31 @@ void ThreadPool::scheduleBulkEnqueue(
   (void)(enqueued);
   assert(enqueued);
 
-  // Wake appropriate threads
-  if (enableEpochWaiter_.load(std::memory_order_acquire)) {
-    ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
-    ssize_t toWake = std::min(sleeping, static_cast<ssize_t>(count));
-    if (toWake > 0) {
-      wakeN(toWake);
+  // Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.
+  // Spinning threads (numNotWorking - totalSleeping) will find enqueued work
+  // naturally, so only wake enough sleepers to cover the deficit beyond the
+  // spinner threshold.
+  auto* ws = detail::consumeLoad(wakeState_);
+  if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+    int32_t sleeping = ws->totalSleeping();
+    if (sleeping > 0) {
+      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);
+      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);
+      // Only count spinners beyond the threshold as "covering" tasks
+      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);
+      int32_t toWake = std::max(int32_t{0}, static_cast<int32_t>(count) - effectiveSpinners);
+      toWake = std::min(toWake, sleeping);
+      if (toWake <= ws->branchFactor()) {
+        // Small N: direct claim+wake, no cascade overhead
+        for (int32_t i = 0; i < toWake; ++i) {
+          if (ws->claimAndWakeOne() < 0) {
+            break;
+          }
+        }
+      } else {
+        // Large N: budget cascade for parallel fan-out
+        ws->wakeN(toWake);
+      }
     }
   }
 }
@@ -672,9 +897,6 @@ void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
 
   // Process in chunks, interleaving enqueue and inline execution based on load.
   size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
-  if (chunkSize < 1) {
-    chunkSize = 1;
-  }
   size_t i = 0;
   while (i < count) {
     ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
@@ -692,6 +914,46 @@ void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
       }
       size_t base = i;
       scheduleBulkEnqueue(toEnqueue, [&gen, base](size_t j) { return gen(base + j); });
+      i += toEnqueue;
+    }
+  }
+}
+
+template <typename Generator>
+void ThreadPool::scheduleBulkPlaced(size_t count, Generator&& gen) {
+  if (count == 0) {
+    return;
+  }
+
+  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);
+  if (!numPool) {
+    for (size_t i = 0; i < count; ++i) {
+      gen(i)();
+    }
+    return;
+  }
+
+  // Process in chunks, interleaving placed-enqueue and inline execution based on load.
+  size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
+  size_t i = 0;
+  while (i < count) {
+    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
+    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);
+    if (curWork > loadFactor) {
+      gen(i)();
+      ++i;
+    } else {
+      ssize_t room = loadFactor - curWork;
+      size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+      if (toEnqueue == 0) {
+        toEnqueue = 1;
+      }
+      // Batch the workRemaining bump for the whole chunk; placed path will
+      // wake per-task as needed via scheduleImplPlaced's claimAndWakeOne.
+      workRemaining_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_release);
+      for (size_t j = 0; j < toEnqueue; ++j) {
+        scheduleImplPlaced({gen(i + j)}, nullptr);
+      }
       i += toEnqueue;
     }
   }
