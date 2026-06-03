@@ -5,11 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <chrono>
+#include <future>
 #include <list>
 #include <vector>
 
 #include <dispenso/concurrent_vector.h>
 #include <dispenso/parallel_for.h>
+#include <dispenso/task_set.h>
 #include <gtest/gtest.h>
 
 TEST(ChunkedFor, SimpleLoop) {
@@ -355,4 +358,48 @@ TEST(ChunkedFor, LoopWithVectorStateReuse) {
 }
 TEST(ChunkedFor, LoopWithListStateReuse) {
   loopWithStateImplReuseState<std::list<int64_t>>();
+}
+
+// Regression test: nested TaskSet + parallel_for with ring scheduling.
+// TaskSet::wait() must drain per-thread rings, not just the central queue.
+// Without the fix, scheduleBulkToRings puts work into rings but wait()
+// only checks the central queue — all workers block in wait() while ring
+// tasks are stranded, causing deadlock.
+TEST(ChunkedFor, NestedTaskSetParallelForRingDeadlock) {
+  constexpr int kThreads = 8;
+  constexpr int kInnerSize = kThreads;
+
+  auto future = std::async(std::launch::async, [=]() {
+    dispenso::ThreadPool pool(kThreads);
+    dispenso::ConcurrentTaskSet outerSet(pool);
+
+    std::atomic<int> completed{0};
+
+    for (int t = 0; t < kThreads; ++t) {
+      outerSet.schedule([&pool, &completed, kInnerSize]() {
+        dispenso::ConcurrentTaskSet innerSet(pool);
+        std::atomic<int> innerCount{0};
+
+        dispenso::parallel_for(
+            innerSet,
+            dispenso::makeChunkedRange(0, kInnerSize, dispenso::ParForChunking::kStatic),
+            [&innerCount](int i, int end) {
+              for (; i < end; ++i) {
+                innerCount.fetch_add(1, std::memory_order_relaxed);
+              }
+            });
+
+        innerSet.wait();
+        EXPECT_EQ(innerCount.load(), kInnerSize);
+        completed.fetch_add(1, std::memory_order_relaxed);
+      });
+    }
+
+    outerSet.wait();
+    EXPECT_EQ(completed.load(), kThreads);
+  });
+
+  auto waitStatus = future.wait_for(std::chrono::seconds(10));
+  EXPECT_EQ(waitStatus, std::future_status::ready)
+      << "Deadlock: TaskSet::wait() does not drain per-thread rings";
 }

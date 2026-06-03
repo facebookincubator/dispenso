@@ -35,6 +35,7 @@
 
 // Synchronization primitives
 #include <dispenso/completion_event.h>
+#include <dispenso/distributed_rw_lock.h>
 #include <dispenso/latch.h>
 #include <dispenso/rw_lock.h>
 

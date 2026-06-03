@@ -7,6 +7,16 @@
 
 #include <dispenso/cpu_set.h>
 
+#if defined(DISPENSO_CPUSET_WINDOWS)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif // DISPENSO_CPUSET_WINDOWS
+
 #ifdef __linux__
 #include <dirent.h>
 #include <fcntl.h>
@@ -22,6 +32,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <map>

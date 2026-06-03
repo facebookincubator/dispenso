@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <dispenso/task_set.h>
 #include <dispenso/thread_pool.h>
 
 #include <atomic>
@@ -646,5 +647,74 @@ TEST(ThreadPool, RepeatedCreationDestruction) {
   for (int i = 0; i < 50; ++i) {
     dispenso::ThreadPool pool(16);
     EXPECT_EQ(pool.numThreads(), 16);
+  }
+}
+
+TEST(ThreadPool, ResizeGrowConcurrentBulk) {
+  // Regression test: resize() growing the pool reallocates the ring array.
+  // Without the distributed RW lock protecting rings_, the ring fast path
+  // (scheduleBulkToRings) and thread loops (tryFindAndExecuteWork) hold
+  // dangling Ring& references after reallocation — use-after-free under ASAN.
+  //
+  // The ring fast path is reachable only via TaskSet::scheduleBulk
+  // (-> scheduleBulkImpl -> scheduleBulkToRings) when count <= numPool.
+  // ThreadPool::scheduleBulk goes through scheduleBulkEnqueue (central queue)
+  // and never touches rings, so we must use a TaskSet here.
+  //
+  // The race window is:
+  //   Thread A: ringsLock_.lock_shared(slot) → rings_[i].try_push(task)
+  //   Thread B: ringsLock_.lock()            → rings_ = make_unique<Ring[]>(n)
+  // Without the lock, Thread A's rings_[i] becomes a dangling reference.
+  constexpr int kBulkIters = 500;
+
+  for (int trial = 0; trial < 3; ++trial) {
+    std::atomic<int> count{0};
+    std::atomic<int> scheduled{0};
+    std::atomic<bool> done{false};
+    std::atomic<bool> schedulerStarted{false};
+    {
+      dispenso::ThreadPool pool(4);
+
+      // Thread that continuously schedules bulk work via TaskSet — this is
+      // the only call site that exercises scheduleBulkToRings.
+      std::thread bulkScheduler([&]() {
+        dispenso::TaskSet taskSet(pool);
+        schedulerStarted.store(true, std::memory_order_release);
+        for (int i = 0; i < kBulkIters && !done.load(std::memory_order_relaxed); ++i) {
+          // Match batch size to current pool size so that count <= numPool
+          // and scheduleBulkImpl picks the ring fast path.
+          size_t batch = static_cast<size_t>(pool.numThreads());
+          if (batch == 0) {
+            batch = 1;
+          }
+          taskSet.scheduleBulk(batch, [&count](size_t) {
+            return [&count]() { count.fetch_add(1, std::memory_order_relaxed); };
+          });
+          scheduled.fetch_add(static_cast<int>(batch), std::memory_order_relaxed);
+          std::this_thread::yield();
+        }
+        // wait() must return — the shrink path drains rings of stopped threads
+        // back to the central queue, so outstandingTaskCount_ reaches zero even
+        // if shrink races with scheduleBulkToRings.
+        taskSet.wait();
+      });
+
+      // Wait for the bulk scheduler to start before resizing.
+      while (!schedulerStarted.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+      }
+
+      // Strictly increasing resize pattern so every iteration crosses the
+      // n > numRings_ threshold and triggers a real ring reallocation.
+      for (int i = 0; i < 20; ++i) {
+        pool.resize(8 + i * 2);
+      }
+
+      done.store(true, std::memory_order_relaxed);
+      bulkScheduler.join();
+    } // pool destructor drains all outstanding ring + central-queue work
+
+    EXPECT_GT(scheduled.load(), 0);
+    EXPECT_EQ(count.load(), scheduled.load());
   }
 }

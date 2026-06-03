@@ -75,91 +75,109 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 #if defined DISPENSO_DEBUG
   assert(poolLoadMultiplier > 0);
 #endif // DISPENSO_DEBUG
-  for (size_t i = 0; i < static_cast<size_t>(numThreads_); ++i) {
+
+  size_t adjustedN = static_cast<size_t>(numThreads_);
+  // Allocate per-thread rings
+  if (adjustedN > 0) {
+    rings_ = std::make_unique<Ring[]>(adjustedN);
+    numRings_.store(adjustedN, std::memory_order_release);
+  }
+
+  for (size_t i = 0; i < adjustedN; ++i) {
     threads_.emplace_back();
-    threads_.back().setThread(std::thread([this, &back = threads_.back()]() { threadLoop(back); }));
+    int32_t ringIdx = static_cast<int32_t>(i);
+    if (enableEpochWaiter_) {
+      threads_.back().setThread(std::thread([this, &back = threads_.back(), ringIdx]() {
+        threadLoopWake(back, ringIdx);
+      }));
+    } else {
+      threads_.back().setThread(std::thread([this, &back = threads_.back(), ringIdx]() {
+        threadLoopPoll(back, ringIdx);
+      }));
+    }
   }
 }
 
 ThreadPool::PerThreadData::~PerThreadData() {}
 
-void ThreadPool::threadLoop(PerThreadData& data) {
-  // On Windows, wake syscalls (WakeByAddressSingle) are expensive per-thread
-  // kernel transitions, so spin longer before sleeping to avoid costly
-  // sleep/wake cycles.
+// On Windows, wake syscalls (WakeByAddressSingle) are expensive per-thread
+// kernel transitions, so spin longer before sleeping to avoid costly
+// sleep/wake cycles.
 #if defined(_WIN32)
-  static constexpr int kBackoffYield = 100;
-  static constexpr int kBackoffSleep = kBackoffYield + 20;
+static constexpr int kBackoffYield = 100;
+static constexpr int kBackoffSleep = kBackoffYield + 20;
 #else
-  static constexpr int kBackoffYield = 50;
-  static constexpr int kBackoffSleep = kBackoffYield + 5;
+static constexpr int kBackoffYield = 50;
+static constexpr int kBackoffSleep = kBackoffYield + 5;
 #endif
 
+void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
   moodycamel::ConsumerToken ctoken(work_);
   moodycamel::ProducerToken ptoken(work_);
 
-  OnceFunction next;
+  int failCount = 0;
+  detail::PerPoolPerThreadInfo::registerPool(this, &ptoken, ringIndex);
+  uint32_t epoch = epochWaiter_.current();
+  size_t myRingIndex = static_cast<size_t>(ringIndex);
+
+  while (data.running()) {
+    int localWorkDone = 0;
+    while (tryFindAndExecuteWork(myRingIndex, ctoken)) {
+      ++localWorkDone;
+      if (localWorkDone >= kWorkBatchSize) {
+        workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+        localWorkDone = 0;
+      }
+      failCount = 0;
+    }
+    if (localWorkDone > 0) {
+      workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+    }
+
+    ++failCount;
+
+    detail::cpuRelax();
+    if (failCount > kBackoffSleep) {
+      numSleeping_.fetch_add(1, std::memory_order_acq_rel);
+      epoch = wait(epoch);
+      numSleeping_.fetch_sub(1, std::memory_order_acq_rel);
+      failCount = 0;
+    } else if (failCount > kBackoffYield) {
+      std::this_thread::yield();
+    }
+  }
+}
+
+void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
+  moodycamel::ConsumerToken ctoken(work_);
+  moodycamel::ProducerToken ptoken(work_);
 
   int failCount = 0;
-  detail::PerPoolPerThreadInfo::registerPool(this, &ptoken);
+  detail::PerPoolPerThreadInfo::registerPool(this, &ptoken, ringIndex);
   uint32_t epoch = epochWaiter_.current();
+  size_t myRingIndex = static_cast<size_t>(ringIndex);
 
-  if (enableEpochWaiter_) {
-    while (data.running()) {
-      int localWorkDone = 0;
-      while (true) {
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-        bool got = work_.try_dequeue(ctoken, next);
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-        if (!got) {
-          break;
-        }
-        OnceFunction task(std::move(next));
-        task();
-        ++localWorkDone;
-        if (localWorkDone >= kWorkBatchSize) {
-          workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
-          localWorkDone = 0;
-        }
-        failCount = 0;
-      }
-      if (localWorkDone > 0) {
+  while (data.running()) {
+    int localWorkDone = 0;
+    while (tryFindAndExecuteWork(myRingIndex, ctoken)) {
+      failCount = 0;
+      ++localWorkDone;
+      if (localWorkDone >= kWorkBatchSize) {
         workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
-      }
-
-      ++failCount;
-
-      detail::cpuRelax();
-      if (failCount > kBackoffSleep) {
-        numSleeping_.fetch_add(1, std::memory_order_acq_rel);
-        epoch = wait(epoch);
-        numSleeping_.fetch_sub(1, std::memory_order_acq_rel);
-        failCount = 0;
-      } else if (failCount > kBackoffYield) {
-        std::this_thread::yield();
+        localWorkDone = 0;
       }
     }
-  } else {
-    while (data.running()) {
-      while (true) {
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
-        bool got = work_.try_dequeue(ctoken, next);
-        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-        if (!got) {
-          break;
-        }
-        executeNext(std::move(next));
-        failCount = 0;
-      }
+    if (localWorkDone > 0) {
+      workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+    }
 
-      ++failCount;
+    ++failCount;
 
-      detail::cpuRelax();
-      if (failCount > kBackoffSleep) {
-        epoch = wait(epoch);
-      } else if (failCount > kBackoffYield) {
-        std::this_thread::yield();
-      }
+    detail::cpuRelax();
+    if (failCount > kBackoffSleep) {
+      epoch = wait(epoch);
+    } else if (failCount > kBackoffYield) {
+      std::this_thread::yield();
     }
   }
 }
@@ -171,21 +189,67 @@ void ThreadPool::resizeLocked(ssize_t sn) {
   size_t n = static_cast<size_t>(sn);
 
   if (n < threads_.size()) {
+    // Mark all excess threads as stopped first, then wake them all at once.
+    // See destructor comment for rationale (one-at-a-time wake is fragile).
+    ssize_t excessCount = static_cast<ssize_t>(threads_.size()) - static_cast<ssize_t>(n);
     for (size_t i = n; i < threads_.size(); ++i) {
       threads_[i].stop();
     }
-
+    if (excessCount > 0) {
+      wakeN(excessCount);
+    }
+    // Join from back to front
     while (threads_.size() > n) {
-      wake();
       threads_.back().thread_.join();
       threads_.pop_back();
     }
 
+    // Drain rings of stopped threads back to the central queue under exclusive
+    // ringsLock_. Without this, tasks placed via scheduleBulkToRings into rings
+    // [n, numRings_) would be stranded with no consumer, causing TaskSet::wait()
+    // to hang on outstandingTaskCount_ never reaching zero.
+    size_t oldRingCount = numRings_.load(std::memory_order_relaxed);
+    if (n < oldRingCount) {
+      ringsLock_.lock();
+      for (size_t i = n; i < oldRingCount; ++i) {
+        OnceFunction task;
+        while (rings_[i].try_pop(task)) {
+          work_.enqueue(std::move(task));
+        }
+      }
+      numRings_.store(n, std::memory_order_release);
+      ringsLock_.unlock();
+    }
+
   } else if (n > threads_.size()) {
+    // Grow rings array if needed — acquire exclusive lock to prevent concurrent
+    // ring access from thread loops (tryFindAndExecuteWork) and scheduleBulkToRings.
+    if (n > numRings_.load(std::memory_order_relaxed)) {
+      ringsLock_.lock();
+      // Drain old rings to central queue before freeing
+      size_t oldCount = numRings_.load(std::memory_order_relaxed);
+      for (size_t i = 0; i < oldCount; ++i) {
+        OnceFunction task;
+        while (rings_[i].try_pop(task)) {
+          work_.enqueue(std::move(task));
+        }
+      }
+      rings_ = std::make_unique<Ring[]>(n);
+      numRings_.store(n, std::memory_order_release);
+      ringsLock_.unlock();
+    }
     for (size_t i = threads_.size(); i < n; ++i) {
       threads_.emplace_back();
-      threads_.back().setThread(
-          std::thread([this, &back = threads_.back()]() { threadLoop(back); }));
+      int32_t ringIdx = static_cast<int32_t>(i);
+      if (enableEpochWaiter_.load(std::memory_order_acquire)) {
+        threads_.back().setThread(std::thread([this, &back = threads_.back(), ringIdx]() {
+          threadLoopWake(back, ringIdx);
+        }));
+      } else {
+        threads_.back().setThread(std::thread([this, &back = threads_.back(), ringIdx]() {
+          threadLoopPoll(back, ringIdx);
+        }));
+      }
     }
   }
   poolLoadFactor_.store(static_cast<ssize_t>(n * poolLoadMultiplier_), std::memory_order_relaxed);
@@ -209,11 +273,10 @@ ThreadPool::~ThreadPool() {
   std::unique_lock<std::mutex> lk(threadsMutex_, std::try_to_lock);
   assert(lk.owns_lock());
 
-  // Mark all threads as stopped first, then wake them all at once. The previous
-  // approach (stop + wake one at a time) was fragile: a wake() could reach an
-  // already-awake thread while another thread remained sleeping, forcing it to
-  // wait for the epoch timeout (e.g. 30ms) to notice the stop flag. Under TSAN
-  // this caused severe slowdowns in ThreadPool destruction.
+  // Mark all threads as stopped first, then wake them all at once.
+  // One-at-a-time stop+wake is fragile: a wake() can reach an already-awake
+  // thread while another remains sleeping, forcing it to wait for the epoch
+  // timeout to notice the stop flag.
   for (auto& t : threads_) {
     t.stop();
   }
@@ -230,7 +293,17 @@ ThreadPool::~ThreadPool() {
   }
   threads_.clear();
 
+  // Drain central queue
   while (tryExecuteNext()) {
+  }
+
+  // Drain any remaining ring work (threads already joined, no lock needed)
+  size_t ringCount = numRings_.load(std::memory_order_relaxed);
+  for (size_t i = 0; i < ringCount; ++i) {
+    OnceFunction task;
+    while (rings_[i].try_pop(task)) {
+      task();
+    }
   }
 }
 ThreadPool& globalThreadPool() {

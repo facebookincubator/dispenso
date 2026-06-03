@@ -135,7 +135,12 @@ class TaskSetBase {
   template <typename F>
   auto packageTaskNoIncrement(F&& f) {
     return [this, f = std::move(f)]() mutable {
-      detail::pushThreadTaskSet(this);
+      // Same conditional guard as packageTask: skip push/pop if this TaskSet
+      // is already the current parent (self-recursive bulk scheduling).
+      bool pushed = (parentTaskSet() != this);
+      if (pushed) {
+        detail::pushThreadTaskSet(this);
+      }
       if (!canceled_.load(std::memory_order_acquire)) {
 #if defined(__cpp_exceptions)
         try {
@@ -147,7 +152,9 @@ class TaskSetBase {
         f();
 #endif // __cpp_exceptions
       }
-      detail::popThreadTaskSet();
+      if (pushed) {
+        detail::popThreadTaskSet();
+      }
       outstandingTaskCount_.fetch_sub(1, std::memory_order_release);
     };
   }
@@ -159,6 +166,27 @@ class TaskSetBase {
     }
 
     ssize_t numPool = pool_.numThreads();
+
+    // Fork-join fast path: when count <= numPool (kStatic pattern — one task
+    // per thread), push task i directly to ring i for deterministic
+    // thread-to-chunk affinity. This is the key optimization for closing the
+    // IPC gap with OMP on locality-sensitive parallel_for.
+    //
+    // Skip this path when:
+    // - No rings allocated (pool has 0 threads or rings not initialized)
+    // - Pool is recursive (nested parallel_for — throttle via load factor)
+    // - Already overloaded (outstanding > taskSetLoadFactor_)
+    if (count <= static_cast<size_t>(numPool) &&
+        pool_.numRings_.load(std::memory_order_relaxed) >= count &&
+        !detail::PerPoolPerThreadInfo::isParForRecursive(&pool_) &&
+        outstandingTaskCount_.load(std::memory_order_relaxed) <= taskSetLoadFactor_) {
+      outstandingTaskCount_.fetch_add(static_cast<ssize_t>(count), std::memory_order_acquire);
+      pool_.scheduleBulkToRings(
+          count, [this, &gen](size_t j) { return packageTaskNoIncrement(gen(j)); }, token);
+      return;
+    }
+
+    // Standard path: interleave enqueue and inline execution based on load.
     size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
     if (chunkSize < 1) {
       chunkSize = 1;

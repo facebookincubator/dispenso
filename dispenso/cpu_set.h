@@ -40,13 +40,6 @@
 #include <sched.h>
 #elif defined(_WIN32)
 #define DISPENSO_CPUSET_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
 #endif // supported os
 
 // Note: Windows uses SetThreadGroupAffinity for binding and

@@ -25,8 +25,11 @@
 
 #include <moodycamel/concurrentqueue.h>
 
+#include <dispenso/cpu_set.h>
+#include <dispenso/detail/distributed_rw_lock_impl.h>
 #include <dispenso/detail/epoch_waiter.h>
 #include <dispenso/detail/per_thread_info.h>
+#include <dispenso/mpmc_ring_buffer.h>
 #include <dispenso/once_function.h>
 #include <dispenso/platform.h>
 #include <dispenso/tsan_annotations.h>
@@ -209,10 +212,12 @@ class alignas(kCacheLineSize) ThreadPool {
 
   void executeNext(OnceFunction work);
 
-  DISPENSO_DLL_ACCESS void threadLoop(PerThreadData& threadData);
+  DISPENSO_DLL_ACCESS void threadLoopWake(PerThreadData& threadData, int32_t ringIndex);
+  DISPENSO_DLL_ACCESS void threadLoopPoll(PerThreadData& threadData, int32_t ringIndex);
 
   bool tryExecuteNext();
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
+  bool tryExecuteNextFromRings(size_t& startRing);
 
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f);
@@ -260,6 +265,22 @@ class alignas(kCacheLineSize) ThreadPool {
 #endif // __cplusplus
 
  private:
+  // Per-thread ring buffer type for fork-join scheduling.
+  // 16 slots matches kAuto's oversubscription factor and fits in one cache line group.
+  using Ring = MpmcRingBuffer<OnceFunction, 16>;
+
+  // Push task i to ring i (linear layout) for fork-join scheduling.
+  // Tasks that don't fit in their ring go to central queue via fallbackToken.
+  // Handles workRemaining_ accounting and waking (one batch wake at the end).
+  // outstandingTaskCount_ must be managed by the caller.
+  template <typename Generator>
+  void scheduleBulkToRings(size_t count, Generator&& gen, moodycamel::ProducerToken* fallbackToken);
+
+  // Shared work-finding logic for both loop variants. Checks own ring,
+  // steals from group peers, then falls back to central queue.
+  // Returns true if work was found and executed.
+  DISPENSO_INLINE bool tryFindAndExecuteWork(size_t ringIndex, moodycamel::ConsumerToken& ctoken);
+
   // Number of tasks each thread accumulates before flushing workRemaining_.
   // This batching reduces atomic contention in threadLoop, but inflates
   // workRemaining_ by up to kWorkBatchSize * numThreads, so poolLoadFactor_
@@ -284,6 +305,25 @@ class alignas(kCacheLineSize) ThreadPool {
   alignas(kCacheLineSize) detail::EpochWaiter epochWaiter_;
   alignas(kCacheLineSize) std::atomic<bool> enableEpochWaiter_{kDefaultWakeupEnable};
   std::atomic<uint32_t> sleepLengthUs_{kDefaultSleepLenUs};
+
+  // Per-thread rings for fork-join scheduling. Allocated as a contiguous array
+  // indexed by thread pool index. Threads check own ring first in the steal order.
+  // Protected by ringsLock_: readers (thread loops, scheduleBulkToRings) acquire
+  // shared; resize grow path acquires exclusive before reallocating.
+  std::unique_ptr<Ring[]> rings_;
+  std::atomic<size_t> numRings_{0};
+  detail::DistributedRWLockImpl<128> ringsLock_;
+
+  // Get a lock slot for the calling thread. Pool threads use their ring index
+  // for best distribution; external threads use CPU ID as a hint.
+  size_t ringLockSlot() const {
+    int32_t ri = detail::PerPoolPerThreadInfo::ringIndex(const_cast<ThreadPool*>(this));
+    if (ri >= 0) {
+      return static_cast<size_t>(ri);
+    }
+    int32_t cpu = CpuSet::currentHardwareThread();
+    return cpu >= 0 ? static_cast<size_t>(cpu) : 0;
+  }
 
 #if defined DISPENSO_DEBUG
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskSets_{0};
@@ -397,9 +437,162 @@ inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToke
   return false;
 }
 
+inline bool ThreadPool::tryExecuteNextFromRings(size_t& startRing) {
+  OnceFunction task;
+  size_t lockSlot = ringLockSlot();
+  ringsLock_.lock_shared(lockSlot);
+  size_t n = numRings_.load(std::memory_order_relaxed);
+  bool found = false;
+  for (size_t i = 0; i < n && !found; ++i) {
+    size_t idx = (startRing + i) % n;
+    if (rings_[idx].try_pop(task)) {
+      startRing = idx;
+      found = true;
+    }
+  }
+  ringsLock_.unlock_shared(lockSlot);
+  if (found) {
+    executeNext(std::move(task));
+    return true;
+  }
+  startRing = 0;
+  return false;
+}
+
 inline void ThreadPool::executeNext(OnceFunction next) {
   next();
   workRemaining_.fetch_add(-1, std::memory_order_relaxed);
+}
+
+DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
+    size_t ringIndex,
+    moodycamel::ConsumerToken& ctoken) {
+  OnceFunction task;
+
+  // 1. Own ring (under distributed read lock to protect against resize reallocation)
+  ringsLock_.lock_shared(ringIndex);
+  bool fromRing = rings_[ringIndex].try_pop(task);
+  ringsLock_.unlock_shared(ringIndex);
+  if (fromRing) {
+    task();
+    return true;
+  }
+
+  // 2. TODO(bbudge): Steal from same-group rings (random sample).
+  //    For now, skip group stealing until thread groups are wired in.
+
+  // 3. Central queue (existing path)
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+  bool got = work_.try_dequeue(ctoken, task);
+  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+  if (got) {
+    task();
+    return true;
+  }
+
+  return false;
+}
+
+template <typename Generator>
+void ThreadPool::scheduleBulkToRings(
+    size_t count,
+    Generator&& gen,
+    moodycamel::ProducerToken* fallbackToken) {
+  if (count == 0) {
+    return;
+  }
+
+  // Increment before enqueuing, consistent with schedule() and scheduleBulkEnqueue().
+  // This ensures threads that wake and find work in a ring see a positive workRemaining_,
+  // preventing premature re-sleep or incorrect load-balancing decisions.
+  workRemaining_.fetch_add(static_cast<ssize_t>(count), std::memory_order_release);
+
+  // Hold distributed read lock while accessing rings to protect against resize reallocation.
+  size_t lockSlot = ringLockSlot();
+  ringsLock_.lock_shared(lockSlot);
+
+  // Linear layout: task i goes to ring i (1 task per ring, kStatic pattern).
+  // The caller guarantees count <= numRings (via scheduleBulkImpl's guard).
+  // Tasks that don't fit in their ring overflow to central queue.
+  size_t ringCount = numRings_.load(std::memory_order_relaxed);
+  size_t tasksPerRing = (count + ringCount - 1) / ringCount;
+
+  size_t taskIdx = 0;
+  if (tasksPerRing <= 1) {
+    // Fast path for kStatic (1 task per ring): no staging array needed.
+    for (size_t ring = 0; ring < count && ring < ringCount; ++ring) {
+      OnceFunction task = gen(ring);
+      if (!rings_[ring].try_push(std::move(task))) {
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool enqueued;
+        if (fallbackToken) {
+          enqueued = work_.enqueue(*fallbackToken, std::move(task));
+        } else {
+          enqueued = work_.enqueue(std::move(task));
+        }
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        (void)enqueued;
+        assert(enqueued);
+      }
+    }
+  } else {
+    // Batched path for kAuto (multiple tasks per ring).
+    constexpr size_t kMaxStage = Ring::capacity();
+    for (size_t ring = 0; ring < ringCount && taskIdx < count; ++ring) {
+      size_t blockEnd = std::min(taskIdx + tasksPerRing, count);
+      size_t blockSize = blockEnd - taskIdx;
+
+      // Stage tasks for this ring
+      size_t toStage = std::min(blockSize, kMaxStage);
+      OnceFunction staged[kMaxStage];
+      for (size_t j = 0; j < toStage; ++j) {
+        staged[j] = gen(taskIdx + j);
+      }
+
+      size_t pushed = rings_[ring].try_push_batch(staged, toStage);
+
+      // Overflow: staged tasks that didn't fit + any remaining in block
+      for (size_t j = pushed; j < toStage; ++j) {
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool enqueued;
+        if (fallbackToken) {
+          enqueued = work_.enqueue(*fallbackToken, std::move(staged[j]));
+        } else {
+          enqueued = work_.enqueue(std::move(staged[j]));
+        }
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        (void)enqueued;
+        assert(enqueued);
+      }
+
+      // Tasks beyond ring capacity that weren't staged go straight to central queue
+      for (size_t j = taskIdx + toStage; j < blockEnd; ++j) {
+        OnceFunction task = gen(j);
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
+        bool enqueued;
+        if (fallbackToken) {
+          enqueued = work_.enqueue(*fallbackToken, std::move(task));
+        } else {
+          enqueued = work_.enqueue(std::move(task));
+        }
+        DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
+        (void)enqueued;
+        assert(enqueued);
+      }
+      taskIdx += blockSize;
+    }
+  }
+
+  ringsLock_.unlock_shared(lockSlot);
+
+  // Wake threads
+  if (enableEpochWaiter_.load(std::memory_order_acquire)) {
+    ssize_t sleeping = numSleeping_.load(std::memory_order_acquire);
+    ssize_t toWake = std::min(sleeping, static_cast<ssize_t>(count));
+    if (toWake > 0) {
+      wakeN(toWake);
+    }
+  }
 }
 
 namespace detail {

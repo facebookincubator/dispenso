@@ -81,8 +81,16 @@ bool ConcurrentTaskSet::wait() {
   // The deadlock scenario mentioned goes as follows:  N threads in the
   // ThreadPool.  Each thread is running code that is using TaskSets.  No
   // progress could be made without stealing.
+
+  // Work may be in the central queue or in per-thread rings (via
+  // scheduleBulkToRings). Drain each source fully before switching.
+  size_t startRing = 0;
   while (outstandingTaskCount_.load(std::memory_order_acquire)) {
-    if (!pool_.tryExecuteNext()) {
+    while (pool_.tryExecuteNext()) {
+    }
+    while (pool_.tryExecuteNextFromRings(startRing)) {
+    }
+    if (outstandingTaskCount_.load(std::memory_order_acquire)) {
       std::this_thread::yield();
     }
   }
@@ -91,8 +99,13 @@ bool ConcurrentTaskSet::wait() {
 }
 
 bool ConcurrentTaskSet::tryWait(size_t maxToExecute) {
-  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExecute--) {
-    if (!pool_.tryExecuteNext()) {
+  size_t startRing = 0;
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExecute) {
+    if (pool_.tryExecuteNext()) {
+      --maxToExecute;
+    } else if (pool_.tryExecuteNextFromRings(startRing)) {
+      --maxToExecute;
+    } else {
       break;
     }
   }
@@ -116,11 +129,19 @@ bool TaskSet::wait() {
   // The deadlock scenario mentioned goes as follows:  N threads in the
   // ThreadPool.  Each thread is running code that is using TaskSets.  No
   // progress could be made without stealing.
+
+  // First drain our own producer token (work we enqueued)
   while (pool_.tryExecuteNextFromProducerToken(token_)) {
   }
 
+  // Then drain central queue, rings, repeat until done.
+  size_t startRing = 0;
   while (outstandingTaskCount_.load(std::memory_order_acquire)) {
-    if (!pool_.tryExecuteNext()) {
+    while (pool_.tryExecuteNext()) {
+    }
+    while (pool_.tryExecuteNextFromRings(startRing)) {
+    }
+    if (outstandingTaskCount_.load(std::memory_order_acquire)) {
       std::this_thread::yield();
     }
   }
@@ -130,8 +151,10 @@ bool TaskSet::wait() {
 
 bool TaskSet::tryWait(size_t maxToExecute) {
   ssize_t maxToExe = static_cast<ssize_t>(maxToExecute);
-  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe--) {
-    if (!pool_.tryExecuteNextFromProducerToken(token_)) {
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe) {
+    if (pool_.tryExecuteNextFromProducerToken(token_)) {
+      --maxToExe;
+    } else {
       break;
     }
   }
@@ -140,11 +163,14 @@ bool TaskSet::tryWait(size_t maxToExecute) {
   // exceptions are checked, then an exception is propagated, and then we return whether all items
   // have been completed, thus dropping the exception.
 
-  maxToExe = std::max<ssize_t>(0, maxToExe);
-
-  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe--) {
-    if (!pool_.tryExecuteNext()) {
-      std::this_thread::yield();
+  size_t startRing = 0;
+  while (outstandingTaskCount_.load(std::memory_order_acquire) && maxToExe) {
+    if (pool_.tryExecuteNext()) {
+      --maxToExe;
+    } else if (pool_.tryExecuteNextFromRings(startRing)) {
+      --maxToExe;
+    } else {
+      break;
     }
   }
 
