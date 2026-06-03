@@ -200,10 +200,12 @@ These are ideas that may be pursued based on community feedback:
   - Investigate: (1) whether a lower threshold (e.g., `n < sleeping/16`) balances thundering herd vs parallel wake benefit, (2) whether the spin constants should be tuned independently, (3) steady-state single-task patterns where WakeAll wakes unnecessary threads
   - Requires Windows benchmarking access to validate
 - NUMA and topology awareness (phased):
+  - **NUMA-aware thread grouping**: `buildThreadGroups()` currently groups by L3 cache topology only. On multi-socket systems where NUMA node boundaries don't align with L3 boundaries (e.g., Intel Sub-NUMA Clustering), groups may span NUMA nodes. Add an option to respect NUMA boundaries in addition to L3 boundaries, so that memory allocated by threads in a group stays node-local.
   - Windows processor group support for >64 threads (less critical as newer Windows versions handle this automatically)
   - Topology query API: expose NUMA node count, core-to-node mapping, and inter-node distances (Linux: `/sys/devices/system/node/` or `libnuma`; Windows: `GetLogicalProcessorInformationEx`)
   - Per-NUMA-node thread pools: opt-in pool construction affinitized to a specific node, composable with existing TaskSet/Future APIs
   - NUMA-aware allocator: STL-compatible allocator for node-local allocation (`mbind`/`numa_alloc_onnode` on Linux, `VirtualAllocExNuma` on Windows), paired with first-touch initialization guidance
+  - **>1024-CPU support in `CpuSet`**: `CpuSet` currently represents CPU IDs in `[0, 1024)` (Linux/FreeBSD `cpu_set_t` / `CPU_SETSIZE`; a 1024-bit array on Windows/macOS); IDs at or beyond that are ignored gracefully (no UB), so CPUs `>= 1024` just aren't bound or grouped. Raise the limit when hardware approaches it: dynamic `cpu_set_t` via `CPU_ALLOC` + the `*_S` ops on Linux, a wider bitset elsewhere. `CpuSet`s are allocated only at startup, so the cost is low (e.g. a `thread_local` scratch set avoids per-call allocation).
 
 ### Fork-Join Scheduling & Thread Groups (post-1.5)
 

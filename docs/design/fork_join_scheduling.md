@@ -15,7 +15,8 @@ existing semantics.
 - [Component 2: Thread Groups](#component-2-thread-groups)
 - [Component 3: Topology Detection (CpuSet)](#component-3-topology-detection-cpuset)
 - [Component 4: Scheduling Paths](#component-4-scheduling-paths)
-- [Component 5: Wake Strategy](#component-5-wake-strategy)
+- [Component 5: ThreadPool Loop Refactoring](#component-5-threadpool-loop-refactoring)
+- [Component 6: Wake Strategy](#component-6-wake-strategy)
 - [Steal Order](#steal-order)
 - [Platform Support](#platform-support)
 - [Commit Plan](#commit-plan)
@@ -413,7 +414,151 @@ while (outstandingTaskCount_ > 0) {
 }
 ```
 
-## Component 5: Wake Strategy
+## Component 5: ThreadPool Loop Refactoring
+
+### Current Structure
+
+The current `threadLoop` contains two copies of the work loop, selected by
+`enableEpochWaiter_` at the top:
+
+```cpp
+void ThreadPool::threadLoop(PerThreadData& data) {
+    // ... setup (consumer token, producer token, PerThreadInfo registration) ...
+
+    if (enableEpochWaiter_) {
+        while (data.running()) {
+            // Dequeue + execute (with batch counting)
+            // Backoff: cpuRelax -> yield -> numSleeping++ / epochWaiter sleep / numSleeping--
+        }
+    } else {
+        while (data.running()) {
+            // Dequeue + execute (slightly different structure)
+            // Backoff: cpuRelax -> yield -> timed sleep (no numSleeping tracking)
+        }
+    }
+}
+```
+
+The mode check is done once before the loop to avoid a branch on every
+iteration. However, the dequeue + execute logic is duplicated.
+
+### Refactored Structure
+
+With per-thread rings, the work-finding logic becomes more complex (own ring,
+group steal, central queue). To keep this maintainable without duplicating the
+new logic across both mode branches, we split into three functions:
+
+```cpp
+// Shared work-finding and execution. DISPENSO_INLINE ensures no call
+// overhead in the hot path. Returns true if work was found and executed.
+DISPENSO_INLINE bool tryFindAndExecuteWork(
+    MpmcRingBuffer<OnceFunction>& myRing,
+    PoolThreadGroup& myGroup,
+    moodycamel::ConsumerToken& ctoken,
+    moodycamel::ConcurrentQueue<OnceFunction>& work) {
+  OnceFunction task;
+
+  // 1. Own ring (highest locality)
+  if (myRing.try_pop(task)) { task(); return true; }
+
+  // 2. Steal from same-group rings (random sample)
+  // ... try 2-4 random peers in myGroup ...
+
+  // 3. Central queue (existing path)
+  if (work.try_dequeue(ctoken, task)) { task(); return true; }
+
+  return false;
+}
+
+// Wake mode: tracks numSleeping, uses EpochWaiter for signaled sleep
+void ThreadPool::threadLoopWake(PerThreadData& data) {
+  // ... setup ...
+  while (data.running()) {
+    int localWorkDone = 0;
+    while (tryFindAndExecuteWork(myRing, myGroup, ctoken, work_)) {
+      ++localWorkDone;
+      if (localWorkDone >= kWorkBatchSize) {
+        workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+        localWorkDone = 0;
+      }
+      failCount = 0;
+    }
+    if (localWorkDone > 0) {
+      workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
+    }
+    ++failCount;
+    cpuRelax();
+    if (failCount > kBackoffSleep) {
+      myGroup.numSleeping.fetch_add(1, std::memory_order_acq_rel);
+      epoch = myGroup.waiter.waitFor(epoch, sleepLengthUs_);
+      myGroup.numSleeping.fetch_sub(1, std::memory_order_acq_rel);
+      failCount = 0;
+    } else if (failCount > kBackoffYield) {
+      std::this_thread::yield();
+    }
+  }
+}
+
+// Poll mode: no numSleeping tracking, timed sleep only
+void ThreadPool::threadLoopPoll(PerThreadData& data) {
+  // ... setup ...
+  while (data.running()) {
+    while (tryFindAndExecuteWork(myRing, myGroup, ctoken, work_)) {
+      failCount = 0;
+    }
+    ++failCount;
+    cpuRelax();
+    if (failCount > kBackoffSleep) {
+      epoch = myGroup.waiter.waitFor(epoch, sleepLengthUs_);
+      // No numSleeping bookkeeping -- poll mode doesn't track sleeping
+    } else if (failCount > kBackoffYield) {
+      std::this_thread::yield();
+    }
+  }
+}
+```
+
+The thread constructor dispatches once:
+
+```cpp
+if (enableEpochWaiter_) {
+    thread = std::thread(&ThreadPool::threadLoopWake, this, std::ref(data));
+} else {
+    thread = std::thread(&ThreadPool::threadLoopPoll, this, std::ref(data));
+}
+```
+
+### Mode Interaction with Fork-Join
+
+The per-thread ring and steal order are **mode-agnostic** -- the same
+`tryFindAndExecuteWork` is called regardless of mode. The only mode-dependent
+behavior is how the thread sleeps and who wakes it:
+
+| Mode | Sleep mechanism | Wake mechanism | Ring checking |
+|------|----------------|----------------|---------------|
+| **Wake** (`enableEpochWaiter_=true`) | `group.waiter.waitFor(epoch, sleepLengthUs_)` with `numSleeping` tracking | Explicit `wakeGroup()` via `conditionallyWake()` | Same steal order |
+| **Poll** (`enableEpochWaiter_=true`, long sleep) | `group.waiter.waitFor(epoch, sleepLengthUs_)` without `numSleeping` tracking | Timeout-only (self-wake every `sleepLengthUs_`) | Same steal order |
+| **Full spin** (`sleepLengthUs_=0`) | `group.waiter.current()` returns immediately | Never sleeps, never needs waking | Same steal order |
+
+In poll mode, if work is pushed to thread T's ring while T is in its timed
+sleep, T won't see it until the sleep expires (up to `sleepLengthUs_`). This
+is identical to the current behavior with the central queue -- it's the
+inherent latency cost of poll mode.
+
+In full spin mode, no EpochWaiter is used at all. Threads continuously spin
+through own ring -> group rings -> central queue. This is actually better than
+current full-spin because threads check more sources for work on each iteration.
+
+### Benefits of the Refactoring
+
+1. **Single source of truth** for the steal order (`tryFindAndExecuteWork`)
+2. **No duplication** of the ring-checking logic across modes
+3. **`DISPENSO_INLINE`** eliminates call overhead -- compiler inlines into both
+   loop variants, producing the same code as if the logic were duplicated
+4. **Easier to modify** steal order or add new work sources in the future
+5. **Mode dispatch at thread creation** -- no per-iteration branch
+
+## Component 6: Wake Strategy
 
 ### Per-Group EpochWaiter
 
@@ -477,21 +622,20 @@ cross-group steal scenarios.
 
 Implementation is layered so each commit is independently useful and testable:
 
-| # | Commit | Dependencies | Independently useful? |
-|---|--------|-------------|----------------------|
-| 1 | `MpmcRingBuffer` header + tests | None | Yes (general-purpose MPMC queue) |
-| 2 | `CpuSet` (Linux) + topology detection | None | Yes (users can bind threads manually) |
-| 3 | Per-thread rings in ThreadPool | #1 | Yes (cache affinity for kStatic) |
-| 4 | Thread groups + per-group EpochWaiter | #1, #2 | Yes (targeted waking) |
-| 5 | kStatic targeted scheduling | #3, #4 | Yes (primary perf win) |
-| 6 | kAuto best-effort ring scheduling | #3, #4 | Yes (incremental locality win) |
-| 7 | `CpuSet` (Windows) | #2 | Yes (Windows topology support) |
-| 8 | `CpuSet` (macOS best-effort) | #2 | Yes (topology query, no binding) |
+| # | Commit | Dependencies | Status |
+|---|--------|-------------|--------|
+| 1 | `MpmcRingBuffer` header + tests | None | **Done** |
+| 2 | `CpuSet` (Linux) + topology + thread group building | None | **Done** |
+| 3 | `CpuSet` (Windows) | #2 | **Done** |
+| 4 | Per-thread rings + thread loop refactoring in ThreadPool | #1, #2 | Next |
+| 5 | Thread groups + per-group EpochWaiter | #4 | After #4 |
+| 6 | kStatic targeted scheduling | #4, #5 | After #5 |
+| 7 | kAuto best-effort ring scheduling | #4, #5 | After #5 |
 
-Commits 1-2 are independent foundations that can land and be reviewed in
-parallel. Commit 3 delivers the primary performance improvement (closing the
-IPC gap with OMP). Commits 4-6 are incremental optimizations. Commits 7-8
-extend platform coverage.
+Commits 4-5 can potentially be combined if the changes are tightly coupled.
+Commit 4 delivers the primary performance improvement (closing the IPC gap
+with OMP via ring affinity). Commits 5-7 are incremental optimizations for
+wake granularity and scheduling policy.
 
 ### Dependency Requirements
 

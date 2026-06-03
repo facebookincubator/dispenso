@@ -1,0 +1,770 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include <dispenso/cpu_set.h>
+
+#include <algorithm>
+#include <set>
+#include <thread>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+using dispenso::CpuSet;
+
+// =============================================================================
+// CPU List Parsing Tests
+// =============================================================================
+
+TEST(CpuSet, ParseSingleCpu) {
+  std::string line = "5";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_FALSE(set.contains(0));
+  EXPECT_FALSE(set.contains(4));
+  EXPECT_FALSE(set.contains(6));
+  EXPECT_EQ(set.count(), 1);
+}
+
+TEST(CpuSet, ParseSimpleRange) {
+  std::string line = "0-3";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  for (int i = 0; i <= 3; ++i) {
+    EXPECT_TRUE(set.contains(i)) << "Missing CPU " << i;
+  }
+  EXPECT_FALSE(set.contains(4));
+  EXPECT_EQ(set.count(), 4);
+}
+
+TEST(CpuSet, ParseCommaSeparatedValues) {
+  std::string line = "1,2";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  EXPECT_TRUE(set.contains(1));
+  EXPECT_TRUE(set.contains(2));
+  EXPECT_FALSE(set.contains(0));
+  EXPECT_FALSE(set.contains(3));
+  EXPECT_EQ(set.count(), 2);
+}
+
+TEST(CpuSet, ParseMixedRangesAndValues) {
+  std::string line = "0-3,8-11,16";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  EXPECT_EQ(set.count(), 9);
+  for (int i = 0; i <= 3; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+  for (int i = 4; i <= 7; ++i) {
+    EXPECT_FALSE(set.contains(i));
+  }
+  for (int i = 8; i <= 11; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+  EXPECT_FALSE(set.contains(15));
+  EXPECT_TRUE(set.contains(16));
+  EXPECT_FALSE(set.contains(17));
+}
+
+TEST(CpuSet, ParseNonContiguousRanges) {
+  // Typical dual-socket with SMT: node0 = 0-63,128-191
+  std::string line = "0-63,128-191";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  EXPECT_EQ(set.count(), 128);
+  for (int i = 0; i <= 63; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+  for (int i = 64; i <= 127; ++i) {
+    EXPECT_FALSE(set.contains(i));
+  }
+  for (int i = 128; i <= 191; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+}
+
+TEST(CpuSet, ParseWithSpaces) {
+  // sysfs files sometimes have trailing whitespace
+  std::string line = "1, 2";
+  auto set = dispenso::detail::parseLinuxCpuList(line.data());
+  EXPECT_TRUE(set.contains(1));
+  // Note: atoi(" 2") returns 2, so this should work
+  EXPECT_TRUE(set.contains(2));
+}
+
+TEST(CpuSet, ParseEmptyString) {
+  auto set = dispenso::detail::parseLinuxCpuList("");
+  EXPECT_EQ(set.count(), 0);
+}
+
+TEST(CpuSet, ParseNonNumericInput) {
+  auto set = dispenso::detail::parseLinuxCpuList("abc");
+  EXPECT_EQ(set.count(), 0);
+}
+
+TEST(CpuSet, ParseTrailingComma) {
+  auto set = dispenso::detail::parseLinuxCpuList("1,");
+  EXPECT_EQ(set.count(), 1);
+  EXPECT_TRUE(set.contains(1));
+}
+
+// =============================================================================
+// CpuSet Manipulation Tests
+// =============================================================================
+
+TEST(CpuSet, DefaultConstructionIsEmpty) {
+  CpuSet set;
+  EXPECT_EQ(set.count(), 0);
+  EXPECT_FALSE(set.contains(0));
+}
+
+TEST(CpuSet, AddAndContains) {
+  CpuSet set;
+  set.add(5);
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_FALSE(set.contains(4));
+  EXPECT_FALSE(set.contains(6));
+  EXPECT_EQ(set.count(), 1);
+}
+
+TEST(CpuSet, AddRange) {
+  CpuSet set;
+  set.addRange(4, 8);
+  EXPECT_EQ(set.count(), 4);
+  EXPECT_FALSE(set.contains(3));
+  EXPECT_TRUE(set.contains(4));
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_TRUE(set.contains(6));
+  EXPECT_TRUE(set.contains(7));
+  EXPECT_FALSE(set.contains(8));
+}
+
+TEST(CpuSet, Remove) {
+  CpuSet set;
+  set.addRange(0, 4);
+  set.remove(2);
+  EXPECT_EQ(set.count(), 3);
+  EXPECT_TRUE(set.contains(0));
+  EXPECT_TRUE(set.contains(1));
+  EXPECT_FALSE(set.contains(2));
+  EXPECT_TRUE(set.contains(3));
+}
+
+TEST(CpuSet, RemoveRange) {
+  CpuSet set;
+  set.addRange(0, 8);
+  set.removeRange(2, 6);
+  EXPECT_EQ(set.count(), 4);
+  EXPECT_TRUE(set.contains(0));
+  EXPECT_TRUE(set.contains(1));
+  EXPECT_FALSE(set.contains(2));
+  EXPECT_FALSE(set.contains(5));
+  EXPECT_TRUE(set.contains(6));
+  EXPECT_TRUE(set.contains(7));
+}
+
+TEST(CpuSet, Clear) {
+  CpuSet set;
+  set.addRange(0, 16);
+  EXPECT_EQ(set.count(), 16);
+  set.clear();
+  EXPECT_EQ(set.count(), 0);
+  EXPECT_FALSE(set.contains(0));
+}
+
+TEST(CpuSet, AddDuplicate) {
+  CpuSet set;
+  set.add(5);
+  set.add(5);
+  EXPECT_EQ(set.count(), 1);
+  EXPECT_TRUE(set.contains(5));
+}
+
+TEST(CpuSet, RemoveAbsent) {
+  CpuSet set;
+  set.add(5);
+  set.remove(3); // Not in set — should be harmless
+  EXPECT_EQ(set.count(), 1);
+  EXPECT_TRUE(set.contains(5));
+}
+
+TEST(CpuSet, WordBoundary) {
+  // CPU 63 and 64 cross the uint64_t word boundary on non-Linux platforms.
+  // On Linux cpu_set_t this also crosses an internal word boundary.
+  CpuSet set;
+  set.add(63);
+  set.add(64);
+  EXPECT_EQ(set.count(), 2);
+  EXPECT_TRUE(set.contains(63));
+  EXPECT_TRUE(set.contains(64));
+  EXPECT_FALSE(set.contains(62));
+  EXPECT_FALSE(set.contains(65));
+
+  set.remove(63);
+  EXPECT_EQ(set.count(), 1);
+  EXPECT_FALSE(set.contains(63));
+  EXPECT_TRUE(set.contains(64));
+}
+
+TEST(CpuSet, CountAfterMixedOperations) {
+  CpuSet set;
+  set.addRange(0, 10);
+  EXPECT_EQ(set.count(), 10);
+  set.removeRange(3, 7);
+  EXPECT_EQ(set.count(), 6);
+  set.add(5);
+  EXPECT_EQ(set.count(), 7);
+  set.add(5); // Duplicate
+  EXPECT_EQ(set.count(), 7);
+  set.remove(0);
+  EXPECT_EQ(set.count(), 6);
+}
+
+// =============================================================================
+// Out-of-Range CPU ID Tests
+// =============================================================================
+
+TEST(CpuSet, OutOfRangeCpuIdsAreIgnored) {
+  CpuSet set;
+  set.add(-1);
+  EXPECT_EQ(set.count(), 0);
+  EXPECT_FALSE(set.contains(-1));
+
+  set.add(1024);
+  EXPECT_EQ(set.count(), 0);
+  EXPECT_FALSE(set.contains(1024));
+
+  set.add(99999);
+  EXPECT_EQ(set.count(), 0);
+
+  set.addRange(-5, 3);
+  EXPECT_EQ(set.count(), 3);
+  for (int32_t i = 0; i < 3; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+
+  set.remove(-1);
+  set.remove(1024);
+  EXPECT_EQ(set.count(), 3);
+
+  set.clear();
+
+  set.addRange(1020, 1030);
+  EXPECT_EQ(set.count(), 4);
+  for (int32_t i = 1020; i < 1024; ++i) {
+    EXPECT_TRUE(set.contains(i));
+  }
+  EXPECT_FALSE(set.contains(1024));
+}
+
+// =============================================================================
+// availableCount Tests
+// =============================================================================
+
+TEST(CpuSet, AvailableCountIsPositive) {
+  int32_t available = CpuSet::availableCount();
+  EXPECT_GE(available, 1);
+  EXPECT_LE(available, CpuSet::all().count());
+}
+
+// =============================================================================
+// Topology Query Tests
+// =============================================================================
+
+TEST(CpuSet, TotalNumaNodesIsPositive) {
+  EXPECT_GE(CpuSet::totalNumaNodes(), 1);
+}
+
+TEST(CpuSet, NodeSetsAreNonEmpty) {
+  int32_t numNodes = CpuSet::totalNumaNodes();
+  for (int32_t i = 0; i < numNodes; ++i) {
+    const auto& nodeSet = CpuSet::node(i);
+    EXPECT_GT(nodeSet.count(), 0) << "NUMA node " << i << " has no CPUs";
+  }
+}
+
+TEST(CpuSet, AllSetCoversAllNodeSets) {
+  const auto& allSet = CpuSet::all();
+  int32_t totalCpus = 0;
+  int32_t numNodes = CpuSet::totalNumaNodes();
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+
+  for (int32_t n = 0; n < numNodes; ++n) {
+    const auto& nodeSet = CpuSet::node(n);
+    for (int32_t i = 0; i < maxCpu; ++i) {
+      if (nodeSet.contains(i)) {
+        EXPECT_TRUE(allSet.contains(i)) << "CPU " << i << " in node " << n << " but not in all()";
+        ++totalCpus;
+      }
+    }
+  }
+  EXPECT_EQ(allSet.count(), totalCpus);
+}
+
+TEST(CpuSet, CurrentHardwareThreadIsValid) {
+  int32_t cpu = CpuSet::currentHardwareThread();
+#if defined(__linux__) || defined(_WIN32)
+  // Linux (sched_getcpu) and Windows (GetCurrentProcessorNumberEx) both report
+  // a valid hardware thread that must be a member of the full CPU set.
+  EXPECT_GE(cpu, 0);
+  EXPECT_TRUE(CpuSet::all().contains(cpu));
+#elif defined(__APPLE__)
+  // macOS may return a valid CPU via _os_cpu_number, or -1 if unavailable
+  EXPECT_GE(cpu, -1);
+  if (cpu >= 0) {
+    EXPECT_TRUE(CpuSet::all().contains(cpu));
+  }
+#else
+  // On unsupported platforms, currentHardwareThread() returns -1
+  EXPECT_EQ(cpu, -1);
+#endif
+}
+
+// =============================================================================
+// Cache Topology Tests
+// =============================================================================
+
+TEST(CpuSet, L2GroupsAreNonEmpty) {
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+#if defined(__linux__) || defined(_WIN32)
+  EXPECT_GT(l2Groups.size(), 0u) << "No L2 cache groups detected";
+
+  // Each group should have at least 1 CPU
+  for (const auto& group : l2Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L2 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
+#else
+  // On unsupported platforms (e.g. macOS), l2CacheGroups() returns empty
+  EXPECT_TRUE(l2Groups.empty());
+#endif
+}
+
+TEST(CpuSet, L3GroupsAreNonEmpty) {
+  const auto& l3Groups = CpuSet::l3CacheGroups();
+#if defined(__linux__) || defined(_WIN32)
+  EXPECT_GT(l3Groups.size(), 0u) << "No L3 cache groups detected";
+
+  for (const auto& group : l3Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L3 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
+#else
+  // On unsupported platforms (e.g. macOS), l3CacheGroups() returns empty
+  EXPECT_TRUE(l3Groups.empty());
+#endif
+}
+
+TEST(CpuSet, L2GroupsCoverAllCpus) {
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  if (l2Groups.empty()) {
+    GTEST_SKIP() << "No L2 cache groups (unsupported platform)";
+  }
+
+  std::set<int32_t> coveredCpus;
+  for (const auto& group : l2Groups) {
+    for (int32_t cpu : group.cpus) {
+      EXPECT_TRUE(coveredCpus.insert(cpu).second)
+          << "CPU " << cpu << " appears in multiple L2 groups";
+    }
+  }
+
+  // All online CPUs should be covered
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  const auto& allSet = CpuSet::all();
+  for (int32_t i = 0; i < maxCpu; ++i) {
+    if (allSet.contains(i)) {
+      EXPECT_TRUE(coveredCpus.count(i) > 0) << "CPU " << i << " not covered by any L2 group";
+    }
+  }
+}
+
+TEST(CpuSet, L3GroupsCoverAllCpus) {
+  const auto& l3Groups = CpuSet::l3CacheGroups();
+  if (l3Groups.empty()) {
+    GTEST_SKIP() << "No L3 cache groups (unsupported platform)";
+  }
+
+  std::set<int32_t> coveredCpus;
+  for (const auto& group : l3Groups) {
+    for (int32_t cpu : group.cpus) {
+      EXPECT_TRUE(coveredCpus.insert(cpu).second)
+          << "CPU " << cpu << " appears in multiple L3 groups";
+    }
+  }
+
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  const auto& allSet = CpuSet::all();
+  for (int32_t i = 0; i < maxCpu; ++i) {
+    if (allSet.contains(i)) {
+      EXPECT_TRUE(coveredCpus.count(i) > 0) << "CPU " << i << " not covered by any L3 group";
+    }
+  }
+}
+
+TEST(CpuSet, L2GroupsAreSubsetsOfL3Groups) {
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  const auto& l3Groups = CpuSet::l3CacheGroups();
+  if (l2Groups.empty() || l3Groups.empty()) {
+    GTEST_SKIP() << "No L2 or L3 cache groups (unsupported platform)";
+  }
+
+  // Build L3 membership map: CPU -> L3 group index. Size by the actual max CPU
+  // ID across both group sets — CPU IDs can be sparse or exceed the online
+  // count, so hardware_concurrency() alone can under-size the vector.
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  for (const auto& g : l3Groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  for (const auto& g : l2Groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  std::vector<int32_t> cpuToL3(static_cast<size_t>(maxCpu), -1);
+  for (size_t g = 0; g < l3Groups.size(); ++g) {
+    for (int32_t cpu : l3Groups[g].cpus) {
+      cpuToL3[static_cast<size_t>(cpu)] = static_cast<int32_t>(g);
+    }
+  }
+
+  // Each L2 group's CPUs should all belong to the same L3 group
+  for (const auto& l2 : l2Groups) {
+    if (l2.cpus.empty()) {
+      continue;
+    }
+    int32_t expectedL3 = cpuToL3[static_cast<size_t>(l2.cpus[0])];
+    ASSERT_GE(expectedL3, 0) << "CPU " << l2.cpus[0] << " has no L3 group";
+    for (int32_t cpu : l2.cpus) {
+      EXPECT_EQ(cpuToL3[static_cast<size_t>(cpu)], expectedL3)
+          << "L2 group (cacheId=" << l2.cacheId << ") spans multiple L3 groups: "
+          << "CPU " << l2.cpus[0] << " is in L3 group " << expectedL3 << " but CPU " << cpu
+          << " is in L3 group " << cpuToL3[static_cast<size_t>(cpu)];
+    }
+  }
+}
+
+TEST(CpuSet, L2GroupsSortedByFirstCpu) {
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  for (size_t i = 1; i < l2Groups.size(); ++i) {
+    EXPECT_LT(l2Groups[i - 1].cpus.front(), l2Groups[i].cpus.front())
+        << "L2 groups not sorted by first CPU ID";
+  }
+}
+
+// =============================================================================
+// Thread Binding Tests
+// =============================================================================
+
+// Fixture that restores full CPU affinity after each test, even if an
+// assertion aborts early (ASSERT_*, unhandled exception, etc.).
+class CpuSetBindTest : public ::testing::Test {
+ protected:
+  void TearDown() override {
+    CpuSet::all().bindCurrentThread();
+  }
+};
+
+TEST_F(CpuSetBindTest, BindCurrentThread) {
+  // Bind to current CPU and verify we're still on it
+  int32_t currentCpu = CpuSet::currentHardwareThread();
+  if (currentCpu < 0) {
+    GTEST_SKIP() << "Platform does not support CPU query";
+  }
+
+  CpuSet set;
+  set.add(currentCpu);
+  if (!set.bindCurrentThread()) {
+    GTEST_SKIP() << "Binding restricted in this environment";
+  }
+
+  // After binding, we should still be on the same CPU
+  int32_t afterBind = CpuSet::currentHardwareThread();
+  EXPECT_EQ(afterBind, currentCpu);
+}
+
+TEST_F(CpuSetBindTest, BindToRange) {
+  if (CpuSet::currentHardwareThread() < 0) {
+    GTEST_SKIP() << "Platform does not support CPU query";
+  }
+
+  const auto& allSet = CpuSet::all();
+  if (allSet.count() < 2) {
+    GTEST_SKIP() << "Need at least 2 CPUs";
+  }
+
+  // Find first 2 CPUs
+  int32_t cpu0 = -1, cpu1 = -1;
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  for (int32_t i = 0; i < maxCpu && cpu1 < 0; ++i) {
+    if (allSet.contains(i)) {
+      if (cpu0 < 0) {
+        cpu0 = i;
+      } else {
+        cpu1 = i;
+      }
+    }
+  }
+
+  CpuSet set;
+  set.add(cpu0);
+  set.add(cpu1);
+  if (!set.bindCurrentThread()) {
+    GTEST_SKIP() << "Binding not supported on this platform";
+  }
+
+  // After binding, we should be on one of the two CPUs
+  int32_t current = CpuSet::currentHardwareThread();
+  EXPECT_TRUE(current == cpu0 || current == cpu1)
+      << "After binding to {" << cpu0 << ", " << cpu1 << "}, running on CPU " << current;
+}
+
+// =============================================================================
+// Thread Group Building Tests
+// =============================================================================
+
+TEST(CpuSet, BuildThreadGroupsProducesGroups) {
+  auto groups = CpuSet::buildThreadGroups();
+  EXPECT_GT(groups.size(), 0u);
+
+  // Every group should have at least 1 CPU
+  for (const auto& group : groups) {
+    EXPECT_GT(group.cpus.size(), 0u);
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsRespectsMaxSize) {
+  auto groups = CpuSet::buildThreadGroups(dispenso::kDefaultMaxGroupSize);
+
+  // L2 atom clamping may make some groups larger than maxGroupSize on
+  // architectures with large SMT (e.g. Power SMT8 with maxGroupSize=4).
+  // But on this machine (SMT2), no group should exceed the limit.
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  int32_t maxL2 = 0;
+  for (const auto& l2 : l2Groups) {
+    int32_t sz = static_cast<int32_t>(l2.cpus.size());
+    if (sz > maxL2) {
+      maxL2 = sz;
+    }
+  }
+  int32_t effectiveMax = std::max(static_cast<int32_t>(dispenso::kDefaultMaxGroupSize), maxL2);
+
+  for (const auto& group : groups) {
+    EXPECT_LE(static_cast<int32_t>(group.cpus.size()), effectiveMax)
+        << "Group starting at CPU " << group.cpus.front() << " exceeds max size";
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsCoversAllCpus) {
+  auto groups = CpuSet::buildThreadGroups();
+  const auto& allSet = CpuSet::all();
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+
+  std::set<int32_t> covered;
+  for (const auto& group : groups) {
+    for (int32_t cpu : group.cpus) {
+      EXPECT_TRUE(covered.insert(cpu).second)
+          << "CPU " << cpu << " appears in multiple thread groups";
+    }
+  }
+
+  for (int32_t i = 0; i < maxCpu; ++i) {
+    if (allSet.contains(i)) {
+      EXPECT_TRUE(covered.count(i) > 0) << "CPU " << i << " not in any thread group";
+    }
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsNeverSplitsL2) {
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  if (l2Groups.empty()) {
+    GTEST_SKIP() << "No L2 cache groups (unsupported platform)";
+  }
+
+  auto groups = CpuSet::buildThreadGroups();
+
+  // Build group membership: CPU -> thread group index. Size by the actual max
+  // CPU ID across both group sets — CPU IDs can be sparse or exceed the online
+  // count, so hardware_concurrency() alone can under-size the vector.
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  for (const auto& g : groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  for (const auto& g : l2Groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  std::vector<int32_t> cpuToGroup(static_cast<size_t>(maxCpu), -1);
+  for (size_t g = 0; g < groups.size(); ++g) {
+    for (int32_t cpu : groups[g].cpus) {
+      cpuToGroup[static_cast<size_t>(cpu)] = static_cast<int32_t>(g);
+    }
+  }
+
+  // Every L2 group's CPUs must be in the same thread group
+  for (const auto& l2 : l2Groups) {
+    if (l2.cpus.size() <= 1) {
+      continue;
+    }
+    int32_t expectedGroup = cpuToGroup[static_cast<size_t>(l2.cpus[0])];
+    for (int32_t cpu : l2.cpus) {
+      EXPECT_EQ(cpuToGroup[static_cast<size_t>(cpu)], expectedGroup)
+          << "L2 group (cacheId=" << l2.cacheId << ") split across thread groups: "
+          << "CPU " << l2.cpus[0] << " in group " << expectedGroup << ", CPU " << cpu
+          << " in group " << cpuToGroup[static_cast<size_t>(cpu)];
+    }
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsNeverCrossesL3) {
+  const auto& l3Groups = CpuSet::l3CacheGroups();
+  if (l3Groups.empty()) {
+    GTEST_SKIP() << "No L3 cache groups (unsupported platform)";
+  }
+
+  auto groups = CpuSet::buildThreadGroups();
+
+  // Build L3 membership. Size by the actual max CPU ID across both group sets —
+  // CPU IDs can be sparse or exceed the online count, so hardware_concurrency()
+  // alone can under-size the vector.
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  for (const auto& g : l3Groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  for (const auto& g : groups) {
+    for (int32_t cpu : g.cpus) {
+      maxCpu = std::max(maxCpu, cpu + 1);
+    }
+  }
+  std::vector<int32_t> cpuToL3(static_cast<size_t>(maxCpu), -1);
+  for (size_t g = 0; g < l3Groups.size(); ++g) {
+    for (int32_t cpu : l3Groups[g].cpus) {
+      cpuToL3[static_cast<size_t>(cpu)] = static_cast<int32_t>(g);
+    }
+  }
+
+  // Every thread group's CPUs must be in the same L3 group
+  for (const auto& group : groups) {
+    if (group.cpus.empty()) {
+      continue;
+    }
+    int32_t expectedL3 = cpuToL3[static_cast<size_t>(group.cpus[0])];
+    for (int32_t cpu : group.cpus) {
+      EXPECT_EQ(cpuToL3[static_cast<size_t>(cpu)], expectedL3)
+          << "Thread group crosses L3 boundary: CPU " << group.cpus[0] << " in L3 " << expectedL3
+          << ", CPU " << cpu << " in L3 " << cpuToL3[static_cast<size_t>(cpu)];
+    }
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsSortedByFirstCpu) {
+  auto groups = CpuSet::buildThreadGroups();
+  for (size_t i = 1; i < groups.size(); ++i) {
+    EXPECT_LT(groups[i - 1].cpus.front(), groups[i].cpus.front())
+        << "Thread groups not sorted by first CPU ID";
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsAffinityMaskMatchesCpus) {
+  auto groups = CpuSet::buildThreadGroups();
+  for (const auto& group : groups) {
+    EXPECT_EQ(group.affinityMask.count(), static_cast<int32_t>(group.cpus.size()));
+    for (int32_t cpu : group.cpus) {
+      EXPECT_TRUE(group.affinityMask.contains(cpu))
+          << "CPU " << cpu << " in group but not in affinity mask";
+    }
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsCustomSize) {
+  // Build with a smaller group size
+  auto groups8 = CpuSet::buildThreadGroups(8);
+  auto groups16 = CpuSet::buildThreadGroups(16);
+
+  // Smaller max should produce at least as many groups
+  EXPECT_GE(groups8.size(), groups16.size());
+
+  // Both should cover all CPUs
+  std::set<int32_t> covered8, covered16;
+  for (const auto& g : groups8) {
+    covered8.insert(g.cpus.begin(), g.cpus.end());
+  }
+  for (const auto& g : groups16) {
+    covered16.insert(g.cpus.begin(), g.cpus.end());
+  }
+  EXPECT_EQ(covered8, covered16);
+}
+
+TEST(CpuSet, BuildThreadGroupsClampsBelowL2Atom) {
+  // maxGroupSize=1 should be clamped up to the L2 atom size
+  auto groups = CpuSet::buildThreadGroups(1);
+  EXPECT_GT(groups.size(), 0u);
+
+  // On any machine with SMT, L2 atoms are >= 2, so groups should be >= 2.
+  // Without topology (fallback path), groups of 1 are valid.
+  const auto& l2Groups = CpuSet::l2CacheGroups();
+  if (!l2Groups.empty()) {
+    // Production clamps maxGroupSize *up* to the largest L2 atom so it never
+    // splits an atom — but a group flushed at an L3 boundary can still be
+    // smaller than the largest atom. The guaranteed invariant is that every
+    // group is built by packing whole L2 atoms, so each group contains at least
+    // one complete atom and is therefore no smaller than the *smallest* L2 atom.
+    int32_t minL2Atom = static_cast<int32_t>(l2Groups.front().cpus.size());
+    for (const auto& l2 : l2Groups) {
+      minL2Atom = std::min(minL2Atom, static_cast<int32_t>(l2.cpus.size()));
+    }
+    for (const auto& group : groups) {
+      EXPECT_GE(static_cast<int32_t>(group.cpus.size()), minL2Atom)
+          << "Group smaller than the smallest L2 atom (every group holds >= 1 full L2 atom)";
+    }
+  }
+
+  // Coverage should still be complete
+  std::set<int32_t> covered;
+  for (const auto& g : groups) {
+    covered.insert(g.cpus.begin(), g.cpus.end());
+  }
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  const auto& allSet = CpuSet::all();
+  for (int32_t i = 0; i < maxCpu; ++i) {
+    if (allSet.contains(i)) {
+      EXPECT_TRUE(covered.count(i) > 0);
+    }
+  }
+}
+
+TEST(CpuSet, BuildThreadGroupsLargeMaxSize) {
+  // maxGroupSize larger than total CPUs — should still work, fewer groups
+  auto groups = CpuSet::buildThreadGroups(4096);
+  EXPECT_GT(groups.size(), 0u);
+
+  // Should produce fewer groups than default
+  auto defaultGroups = CpuSet::buildThreadGroups();
+  EXPECT_LE(groups.size(), defaultGroups.size());
+
+  // Coverage must be complete
+  std::set<int32_t> covered;
+  for (const auto& g : groups) {
+    covered.insert(g.cpus.begin(), g.cpus.end());
+  }
+  std::set<int32_t> coveredDefault;
+  for (const auto& g : defaultGroups) {
+    coveredDefault.insert(g.cpus.begin(), g.cpus.end());
+  }
+  EXPECT_EQ(covered, coveredDefault);
+}
+
+TEST(CpuSet, BuildThreadGroupsCpusSortedWithinGroup) {
+  auto groups = CpuSet::buildThreadGroups();
+  for (const auto& group : groups) {
+    for (size_t i = 1; i < group.cpus.size(); ++i) {
+      EXPECT_LT(group.cpus[i - 1], group.cpus[i]) << "CPUs within group not sorted";
+    }
+  }
+}
