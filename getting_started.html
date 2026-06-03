@@ -120,7 +120,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"> </div>
 <div class="line"><span class="comment">// Or create a custom pool with a specific number of threads</span></div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a> myPool(4);  <span class="comment">// 4 worker threads</span></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00072">thread_pool.h:72</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00098">thread_pool.h:98</a></div></div>
 <div class="ttc" id="athread__pool_8h_html"><div class="ttname"><a href="thread__pool_8h.html">thread_pool.h</a></div></div>
 </div><!-- fragment --><blockquote class="doxtable">
 <p>&zwj;<b>Note:</b> <code>globalThreadPool()</code> defaults to <code>std::thread::hardware_concurrency() - 1</code> worker threads, since the calling thread typically participates in computation. Use <code>dispenso::resizeGlobalThreadPool(n)</code> to change it. </p>
@@ -135,7 +135,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">taskSet.schedule([]() { <span class="comment">/* task 2 */</span> });</div>
 <div class="line"> </div>
 <div class="line">taskSet.wait();  <span class="comment">// Block until all tasks complete</span></div>
-<div class="ttc" id="aclassdispenso_1_1_task_set_html"><div class="ttname"><a href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00038">task_set.h:38</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_task_set_html"><div class="ttname"><a href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00066">task_set.h:66</a></div></div>
 <div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
 </div><!-- fragment --><hr  />
 <h1>Your First Parallel Loop</h1>
@@ -222,7 +222,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line">taskSet.wait();</div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00198">task_set.h:198</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00228">task_set.h:228</a></div></div>
 </div><!-- fragment --><p>See <a href="../examples/task_set_example.cpp">full example</a>.</p>
 <p>Key points:</p><ul>
 <li><code>TaskSet</code> is for single-threaded scheduling</li>

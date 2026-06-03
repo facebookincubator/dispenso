@@ -6,6 +6,7 @@ var hierarchy =
     [ "dispenso::ChaseLevDeque< T, Capacity >", "classdispenso_1_1_chase_lev_deque.html", null ],
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
+    [ "dispenso::ConcurrentObjectArena< dispenso::MpmcRingBuffer >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
     [ "dispenso::CpuSet", "classdispenso_1_1_cpu_set.html", null ],
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
@@ -28,6 +29,7 @@ var hierarchy =
       [ "dispenso::Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", null ]
     ] ],
     [ "dispenso::GraphT< N >", "classdispenso_1_1_graph_t.html", null ],
+    [ "dispenso::GroupWakeState", "structdispenso_1_1_group_wake_state.html", null ],
     [ "dispenso::ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", null ],
     [ "dispenso::Latch", "classdispenso_1_1_latch.html", null ],
     [ "dispenso::MpmcRingBuffer< T, Capacity, RoundUpToPowerOfTwo >", "classdispenso_1_1_mpmc_ring_buffer.html", null ],
@@ -38,6 +40,7 @@ var hierarchy =
     [ "dispenso::OnceFunction", "classdispenso_1_1_once_function.html", null ],
     [ "dispenso::ParForOptions", "structdispenso_1_1_par_for_options.html", null ],
     [ "dispenso::PoolAllocatorT< kThreadSafe >", "classdispenso_1_1_pool_allocator_t.html", null ],
+    [ "dispenso::PoolWakeState", "classdispenso_1_1_pool_wake_state.html", null ],
     [ "dispenso::ReserveTagS", "structdispenso_1_1_reserve_tag_s.html", null ],
     [ "dispenso::Resource< T >", "classdispenso_1_1_resource.html", null ],
     [ "dispenso::ResourcePool< T >", "classdispenso_1_1_resource_pool.html", null ],
@@ -55,5 +58,6 @@ var hierarchy =
     [ "dispenso::ThreadGroup", "structdispenso_1_1_thread_group.html", null ],
     [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ],
     [ "dispenso::TimedTask", "classdispenso_1_1_timed_task.html", null ],
-    [ "dispenso::TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", null ]
+    [ "dispenso::TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", null ],
+    [ "dispenso::WaiterBlock", "structdispenso_1_1_waiter_block.html", null ]
 ];

@@ -101,6 +101,7 @@ $(function(){initNavTree('task__set_8h.html',''); initResizable(true); });
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#enum-members">Enumerations</a> &#124;
 <a href="#func-members">Functions</a>  </div>
   <div class="headertitle"><div class="title">task_set.h File Reference<div class="ingroups"><a class="el" href="group__group__core.html">Core Components</a></div></div></div>
 </div><!--header-->
@@ -116,6 +117,13 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
+Enumerations</h2></td></tr>
+<tr class="memitem:a52c2043af468d8544e92cd1a22833535" id="r_a52c2043af468d8544e92cd1a22833535"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a52c2043af468d8544e92cd1a22833535">dispenso::TaskCost</a> { <b>kLightweight</b>
+, <b>kHeavy</b>
+ }</td></tr>
+<tr class="separator:a52c2043af468d8544e92cd1a22833535"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:aff0e5c216460dbadab4af999d2a5ebc7" id="r_aff0e5c216460dbadab4af999d2a5ebc7"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS TaskSetBase *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aff0e5c216460dbadab4af999d2a5ebc7">dispenso::parentTaskSet</a> ()</td></tr>
@@ -125,7 +133,36 @@ Functions</h2></td></tr>
 <div class="textblock"><p>A file providing TaskSet and ConcurrentTaskSet. These interfaces allow the user to submit/schedule multiple closures and then wait on them. </p>
 
 <p class="definition">Definition in file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
-</div><h2 class="groupheader">Function Documentation</h2>
+</div><h2 class="groupheader">Enumeration Type Documentation</h2>
+<a id="a52c2043af468d8544e92cd1a22833535" name="a52c2043af468d8544e92cd1a22833535"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a52c2043af468d8544e92cd1a22833535">&#9670;&#160;</a></span>TaskCost</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="#a52c2043af468d8544e92cd1a22833535">dispenso::TaskCost</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Hint to ConcurrentTaskSet about how much work each scheduled task does. Affects how the task set distributes work across pool threads.</p>
+<p>kHeavy (default) — Each task does meaningful work — typically anything taking microseconds or longer (e.g. a parallel_for chunk, a tree-build subproblem, image-tile processing, a numerical kernel). Choose kHeavy if you want best scaling across many cores, or if many threads will concurrently submit tasks (e.g. fork-join recursion).</p>
+<p>kLightweight — Each task does very little work and you are submitting a large number of them, where submission cost matters more than scaling. Typical: short callbacks, small counter updates, simple per-element operations from a single producer.</p>
+<p>If unsure, leave at kHeavy. Picking kHeavy for genuinely tiny tasks costs a small constant overhead per submission; picking kLightweight for heavy parallel work can leave many cores idle. </p>
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00046">46</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
 <a id="aff0e5c216460dbadab4af999d2a5ebc7" name="aff0e5c216460dbadab4af999d2a5ebc7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aff0e5c216460dbadab4af999d2a5ebc7">&#9670;&#160;</a></span>parentTaskSet()</h2>
 

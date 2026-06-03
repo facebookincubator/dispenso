@@ -5,5 +5,6 @@ var searchData=
   ['bindcurrentthread_2',['bindCurrentThread',['../classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f',1,'dispenso::CpuSet']]],
   ['bipropdependson_3',['biPropDependsOn',['../classdispenso_1_1_bi_prop_node.html#af7381198c926f4b8a3f09e8add2fde30',1,'dispenso::BiPropNode']]],
   ['bipropnode_4',['BiPropNode',['../classdispenso_1_1_bi_prop_node.html#a055b4ba3ac4a6f989c7b1529009c1d9f',1,'dispenso::BiPropNode']]],
-  ['buildthreadgroups_5',['buildThreadGroups',['../classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5',1,'dispenso::CpuSet']]]
+  ['branchfactor_5',['branchFactor',['../classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367',1,'dispenso::PoolWakeState']]],
+  ['buildthreadgroups_6',['buildThreadGroups',['../classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5',1,'dispenso::CpuSet']]]
 ];

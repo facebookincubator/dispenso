@@ -18,6 +18,7 @@ var searchData=
   ['try_5fsteal_15',['try_steal',['../classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab',1,'dispenso::ChaseLevDeque']]],
   ['try_5fsteal_5finto_16',['try_steal_into',['../classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195',1,'dispenso::ChaseLevDeque']]],
   ['try_5fwait_17',['try_wait',['../classdispenso_1_1_latch.html#abe26b747c7ddb5620585faad089b2d3f',1,'dispenso::Latch']]],
-  ['tryemplaceupdate_18',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
-  ['trywait_19',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
+  ['tryclaimsleeper_18',['tryClaimSleeper',['../classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3',1,'dispenso::PoolWakeState']]],
+  ['tryemplaceupdate_19',['tryEmplaceUpdate',['../classdispenso_1_1_async_request.html#a4fc2ef79cd8d2efd6cbab96b0ca8ef1d',1,'dispenso::AsyncRequest']]],
+  ['trywait_20',['tryWait',['../classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa',1,'dispenso::TaskSet::tryWait()'],['../classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753',1,'dispenso::ConcurrentTaskSet::tryWait()']]]
 ];
