@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <utility>
 
 #include <dispenso/detail/once_callable_impl.h>
@@ -44,7 +45,7 @@ class FutureImplBase;
 /**
  * A class fullfilling the void() signature, and operator() must be called exactly once for valid
  * <code>OnceFunction</code>s.  This class can be much more efficient than std::function for type
- * erasing functors without too much state (currently < ~250 bytes).
+ * erasing functors without too much state (currently 56 bytes inline buffer).
  * @note The wrapped type-erased functor in OnceFunction is *not* deleted upon destruction, but
  * rather when operator() is called.  It is the user's responsibility to ensure that operator() is
  * called.
@@ -57,8 +58,7 @@ class OnceFunction {
    **/
   OnceFunction()
 #if defined DISPENSO_DEBUG
-      : data_(nullptr),
-        invoke_(nullptr)
+      : invoke_(nullptr)
 #endif // DISPENSO_DEBUG
   {
   }
@@ -73,30 +73,32 @@ class OnceFunction {
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
   OnceFunction(F&& f) {
-    auto callable = detail::createOnceCallable(std::forward<F>(f));
-    data_ = callable.data;
+    auto callable = detail::createOnceCallable(std::forward<F>(f), buf_);
     invoke_ = callable.invoke;
   }
 
   OnceFunction(const OnceFunction& other) = delete;
 
-  /** Move constructor. */
-  OnceFunction(OnceFunction&& other) noexcept : data_(other.data_), invoke_(other.invoke_) {
+  /** Move constructor.  Copies the full 64-byte object (one cache line). */
+  OnceFunction(OnceFunction&& other) noexcept {
+    std::memcpy(static_cast<void*>(this), &other, sizeof(OnceFunction));
 #if defined DISPENSO_DEBUG
-    other.data_ = nullptr;
     other.invoke_ = nullptr;
 #endif // DISPENSO_DEBUG
   }
 
   OnceFunction& operator=(OnceFunction&& other) noexcept {
-    data_ = other.data_;
-    invoke_ = other.invoke_;
+    if (this != &other) {
 #if defined DISPENSO_DEBUG
-    if (&other != this) {
-      other.data_ = nullptr;
-      other.invoke_ = nullptr;
-    }
+      assert(
+          invoke_ == nullptr &&
+          "OnceFunction must be invoked or cleanupNotRun() before reassignment");
 #endif // DISPENSO_DEBUG
+      std::memcpy(static_cast<void*>(this), &other, sizeof(OnceFunction));
+#if defined DISPENSO_DEBUG
+      other.invoke_ = nullptr;
+#endif // DISPENSO_DEBUG
+    }
     return *this;
   }
 
@@ -105,14 +107,13 @@ class OnceFunction {
    * Use this when a OnceFunction will not be called but its resources must still be freed.
    * Like operator(), this must be called at most once, and the OnceFunction must not be used after.
    **/
-  void cleanupNotRun() const {
+  void cleanupNotRun() {
 #if defined DISPENSO_DEBUG
-    assert(data_ != nullptr && "Must not cleanup an invalid OnceFunction!");
-    invoke_(data_, false);
-    data_ = nullptr;
+    assert(invoke_ != nullptr && "Must not cleanup an invalid OnceFunction!");
+    invoke_(buf_, false);
     invoke_ = nullptr;
 #else
-    invoke_(data_, false);
+    invoke_(buf_, false);
 #endif // DISPENSO_DEBUG
   }
 
@@ -122,22 +123,23 @@ class OnceFunction {
    **/
   void operator()() const {
 #if defined DISPENSO_DEBUG
-    assert(data_ != nullptr && "Must not use OnceFunction more than once!");
+    assert(invoke_ != nullptr && "Must not use OnceFunction more than once!");
 #endif // DISPENSO_DEBUG
 
-    invoke_(data_, true);
+    invoke_(buf_, true);
 
 #if defined DISPENSO_DEBUG
-    data_ = nullptr;
     invoke_ = nullptr;
 #endif // DISPENSO_DEBUG
   }
 
  private:
-  OnceFunction(detail::OnceCallable* func, bool) : data_(func), invoke_(&detail::runOnceCallable) {}
-
-  mutable void* data_;
-  void (*invoke_)(void*, bool);
+  // 64 bytes total (one cache line): 56 bytes inline storage + 8 bytes invoke ptr.
+  // Inline: buf_ holds the functor directly.
+  // Spill: buf_[0..7] holds a void* to pool-allocated storage.
+  // Moves are a 64-byte memcpy — no pointer fixup needed.
+  alignas(64) mutable char buf_[detail::kOnceFunctionInlineSize];
+  mutable void (*invoke_)(void*, bool);
 
   template <typename Result>
   friend class detail::FutureBase;

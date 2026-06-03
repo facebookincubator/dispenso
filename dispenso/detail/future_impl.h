@@ -129,7 +129,7 @@ template <typename Result>
 class FutureBase;
 
 template <typename Result>
-class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallable {
+class FutureImplBase : private FutureImplResultMember<Result> {
  public:
   enum Status { kNotStarted, kRunning, kReady };
 
@@ -141,7 +141,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
     return status_.intrusiveStatus().load(std::memory_order_acquire) == kReady;
   }
 
-  void run() override {
+  void run() {
     (void)run(kNotStarted);
     decRefCountMaybeDestroy();
   }
@@ -192,6 +192,21 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
   void setTaskSetCounter(std::atomic<ssize_t>* tsc) {
     taskSetCounter_ = tsc;
+  }
+
+  // Create a OnceFunction that runs this future. The lambda captures just
+  // `this` (8 bytes) and fits in OnceFunction's inline SBO buffer — no
+  // pool allocation needed.
+  //
+  // Invariant: the returned OnceFunction holds a *raw* `this` (no refcount
+  // bump), so the caller must keep this future alive until the OnceFunction is
+  // either invoked or destroyed. The function must be *run* for the future to
+  // ever reach kReady — a destroy-only (drop without invoking) leaves the
+  // future permanently not-ready. Dispenso's pools always drain queued work by
+  // invoking it (including at shutdown), so the destroy-only path does not occur
+  // for pool-scheduled futures; non-pool callers must uphold this themselves.
+  OnceFunction makeOnceFunction() {
+    return OnceFunction([this]() { run(); });
   }
 
  protected:
@@ -251,23 +266,23 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
   static void thenChainInvokeAsync(void* implv, void* schedulablev) {
     SomeFutureImpl* impl = reinterpret_cast<SomeFutureImpl*>(implv);
     Schedulable* schedulable = reinterpret_cast<Schedulable*>(schedulablev);
-    schedulable->schedule(OnceFunction(impl, true), ForceQueuingTag());
+    schedulable->schedule(impl->makeOnceFunction(), ForceQueuingTag());
   }
 
   template <typename SomeFutureImpl, typename Schedulable>
   static void thenChainInvoke(void* implv, void* schedulablev) {
     SomeFutureImpl* impl = reinterpret_cast<SomeFutureImpl*>(implv);
     Schedulable* schedulable = reinterpret_cast<Schedulable*>(schedulablev);
-    schedulable->schedule(OnceFunction(impl, true));
+    schedulable->schedule(impl->makeOnceFunction());
   }
 
   template <typename SomeFutureImpl, typename Schedulable>
   void addToThenChainOrExecute(SomeFutureImpl* impl, Schedulable& sched, std::launch asyncPolicy) {
     if (status_.intrusiveStatus().load(std::memory_order_acquire) == kReady) {
       if ((asyncPolicy & std::launch::async) == std::launch::async) {
-        sched.schedule(OnceFunction(impl, true), ForceQueuingTag());
+        sched.schedule(impl->makeOnceFunction(), ForceQueuingTag());
       } else {
-        sched.schedule(OnceFunction(impl, true));
+        sched.schedule(impl->makeOnceFunction());
       }
       return;
     }
@@ -305,12 +320,7 @@ class FutureImplBase : private FutureImplResultMember<Result>, public OnceCallab
 
   virtual void dealloc() = 0;
 
-  // Futures always run to completion (no cancellation), so destroyOnly() is unreachable.
-  void destroyOnly() override {
-    assert(false && "destroyOnly() should never be called on a FutureImpl");
-  }
-
-  ~FutureImplBase() override = default;
+  virtual ~FutureImplBase() = default;
 
   bool allowInline_;
 
@@ -471,9 +481,9 @@ class FutureBase {
                 (deferredPolicy & std::launch::deferred) == std::launch::deferred,
                 nullptr)) {
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      schedulable.schedule(OnceFunction(impl_, true), ForceQueuingTag());
+      schedulable.schedule(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      schedulable.schedule(OnceFunction(impl_, true));
+      schedulable.schedule(impl_->makeOnceFunction());
     }
   }
 
@@ -486,9 +496,9 @@ class FutureBase {
                 &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
+      taskSet.pool().schedule(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      taskSet.pool().schedule(OnceFunction(impl_, true));
+      taskSet.pool().schedule(impl_->makeOnceFunction());
     }
   }
 
@@ -501,9 +511,9 @@ class FutureBase {
                 &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      taskSet.pool().schedule(OnceFunction(impl_, true), ForceQueuingTag());
+      taskSet.pool().schedule(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      taskSet.pool().schedule(OnceFunction(impl_, true));
+      taskSet.pool().schedule(impl_->makeOnceFunction());
     }
   }
 
@@ -520,9 +530,9 @@ class FutureBase {
                 &invoker.taskSet.outstandingTaskCount_)) {
     invoker.taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      invoker.schedule(OnceFunction(impl_, true), ForceQueuingTag());
+      invoker.schedule(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      invoker.schedule(OnceFunction(impl_, true));
+      invoker.schedule(impl_->makeOnceFunction());
     }
   }
 
