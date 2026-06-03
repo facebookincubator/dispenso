@@ -88,6 +88,9 @@ struct ConcurrentObjectArena {
         allocatedSize_(other.allocatedSize_.load(std::memory_order_relaxed)),
         buffersSize_(other.buffersSize_),
         buffersPos_(other.buffersPos_) {
+    static_assert(
+        std::is_trivially_copyable<T>::value,
+        "ConcurrentObjectArena copy constructor uses memcpy; T must be trivially copyable.");
     T** otherBuffers = other.buffers_.load(std::memory_order_acquire);
     T** newBuffers = new T*[buffersSize_];
     for (Index i = 0; i < buffersSize_; ++i) {
