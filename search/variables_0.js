@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['defaultchunking_0',['defaultChunking',['../structdispenso_1_1_par_for_options.html#a2cfd7b948697c97874c727940529d1d8',1,'dispenso::ParForOptions']]]
+  ['affinitymask_0',['affinityMask',['../structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1',1,'dispenso::ThreadGroup']]]
 ];

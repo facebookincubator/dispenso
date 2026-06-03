@@ -2,12 +2,15 @@ var hierarchy =
 [
     [ "dispenso::AsyncRequest< T >", "classdispenso_1_1_async_request.html", null ],
     [ "dispenso::CacheAligned< T >", "classdispenso_1_1_cache_aligned.html", null ],
+    [ "dispenso::CacheGroup", "structdispenso_1_1_cache_group.html", null ],
     [ "dispenso::ChaseLevDeque< T, Capacity >", "classdispenso_1_1_chase_lev_deque.html", null ],
     [ "dispenso::CompletionEvent", "classdispenso_1_1_completion_event.html", null ],
     [ "dispenso::ConcurrentObjectArena< T, Index, alignment >", "structdispenso_1_1_concurrent_object_arena.html", null ],
     [ "dispenso::ConcurrentVector< T, Traits, SizeTraits >", "classdispenso_1_1_concurrent_vector.html", null ],
+    [ "dispenso::CpuSet", "classdispenso_1_1_cpu_set.html", null ],
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
     [ "dispenso::DefaultConcurrentVectorTraits", "structdispenso_1_1_default_concurrent_vector_traits.html", null ],
+    [ "dispenso::DistributedRWLock< N >", "classdispenso_1_1_distributed_r_w_lock.html", null ],
     [ "detail::ExecutorBase", null, [
       [ "dispenso::ConcurrentTaskSetExecutor", "classdispenso_1_1_concurrent_task_set_executor.html", null ],
       [ "dispenso::ForwardPropagator", "classdispenso_1_1_forward_propagator.html", null ],
@@ -49,6 +52,7 @@ var hierarchy =
       [ "dispenso::ConcurrentTaskSet", "classdispenso_1_1_concurrent_task_set.html", null ],
       [ "dispenso::TaskSet", "classdispenso_1_1_task_set.html", null ]
     ] ],
+    [ "dispenso::ThreadGroup", "structdispenso_1_1_thread_group.html", null ],
     [ "dispenso::ThreadPool", "classdispenso_1_1_thread_pool.html", null ],
     [ "dispenso::TimedTask", "classdispenso_1_1_timed_task.html", null ],
     [ "dispenso::TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", null ]
