@@ -7,6 +7,7 @@
 
 #include <dispenso/rw_lock.h>
 
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <shared_mutex>
@@ -46,6 +47,38 @@ TEST(RWLock, BasicWriterTest) {
   thread1.join();
 
   EXPECT_EQ(count, 2 * kPerThreadTotal);
+}
+
+// Regression: try_lock() (write) must fail while a reader is held, and must
+// leave the lock in a clean, re-lockable state. The previous implementation set
+// the writer bit and returned true even with active readers, handing out a
+// non-exclusive "exclusive" lock.
+TEST(RWLock, TryLockFailsWithActiveReader) {
+  dispenso::RWLock mtx;
+
+  // Hold a read lock on the main thread.
+  mtx.lock_shared();
+
+  // A write try_lock from another thread must not succeed while the reader is
+  // held. Use a separate thread because reader->writer on one thread is UB.
+  std::atomic<bool> gotWriteWhileRead{true};
+  std::thread reader([&]() { gotWriteWhileRead.store(mtx.try_lock()); });
+  reader.join();
+  EXPECT_FALSE(gotWriteWhileRead.load());
+
+  // Once the reader drains, the lock must be acquirable again -- proving the
+  // failed try_lock rolled its writer bit back rather than leaking it.
+  mtx.unlock_shared();
+
+  std::atomic<bool> gotWriteAfter{false};
+  std::thread writer([&]() {
+    if (mtx.try_lock()) {
+      gotWriteAfter.store(true);
+      mtx.unlock();
+    }
+  });
+  writer.join();
+  EXPECT_TRUE(gotWriteAfter.load());
 }
 
 TEST(RWLock, HighContentionReaderWriterTest) {

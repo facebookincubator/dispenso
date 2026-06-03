@@ -8,6 +8,7 @@
 // This benchmark relies on shared_lock from C++17
 #if __cplusplus >= 201703L
 
+#include <dispenso/distributed_rw_lock.h>
 #include <dispenso/rw_lock.h>
 
 #include <map>
@@ -110,8 +111,32 @@ BENCHMARK_TEMPLATE(BM_serial, std::shared_mutex)->Apply(CustomArgumentsSerial)->
 
 BENCHMARK_TEMPLATE(BM_serial, dispenso::RWLock)->Apply(CustomArgumentsSerial)->UseRealTime();
 
+BENCHMARK_TEMPLATE(BM_serial, dispenso::DistributedRWLock<8>)
+    ->Apply(CustomArgumentsSerial)
+    ->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_serial, dispenso::DistributedRWLock<16>)
+    ->Apply(CustomArgumentsSerial)
+    ->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_serial, dispenso::DistributedRWLock<128>)
+    ->Apply(CustomArgumentsSerial)
+    ->UseRealTime();
+
 BENCHMARK_TEMPLATE(BM_parallel, std::shared_mutex)->Apply(CustomArgumentsParallel)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_parallel, dispenso::RWLock)->Apply(CustomArgumentsParallel)->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<8>)
+    ->Apply(CustomArgumentsParallel)
+    ->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<16>)
+    ->Apply(CustomArgumentsParallel)
+    ->UseRealTime();
+
+BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<128>)
+    ->Apply(CustomArgumentsParallel)
+    ->UseRealTime();
 
 #endif // C++17

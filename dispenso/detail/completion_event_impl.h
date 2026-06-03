@@ -29,8 +29,6 @@
 namespace dispenso {
 namespace detail {
 
-#define DISPENSO_COMPLETION_SUPPORTS_TRY_NOTIFY
-
 #if defined(__linux__)
 
 class CompletionEventImpl {
@@ -44,6 +42,10 @@ class CompletionEventImpl {
 
   void tryNotify() {
     futex(&ftx_, FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(), nullptr, nullptr, 0);
+  }
+
+  void waitUntilChanged(int currentValue) const {
+    futex(&ftx_, FUTEX_WAIT_PRIVATE, currentValue, nullptr, nullptr, 0);
   }
 
   void wait(int completedStatus) const {
@@ -137,6 +139,19 @@ class CompletionEventImpl {
     }
   }
 
+  void waitUntilChanged(int currentValue) const {
+    uint64_t val = combined_.load(std::memory_order_acquire);
+    if (static_cast<int>(val) != currentValue)
+      return;
+    uint64_t newVal = val + kOneWaiter;
+    if (!combined_.compare_exchange_weak(
+            val, newVal, std::memory_order_acq_rel, std::memory_order_acquire)) {
+      return;
+    }
+    mac_futex_wait(&combined_, newVal, sizeof(uint64_t));
+    combined_.fetch_sub(kOneWaiter, std::memory_order_acq_rel);
+  }
+
   void wait(int completedStatus) const {
     uint64_t val = combined_.load(std::memory_order_acquire);
     while (static_cast<int>(val) != completedStatus) {
@@ -228,6 +243,10 @@ class CompletionEventImpl {
     WakeByAddressAll(&status_);
   }
 
+  void waitUntilChanged(int currentValue) const {
+    WaitOnAddress(&status_, &currentValue, sizeof(int), kInfiniteWin);
+  }
+
   void wait(int completedStatus) const {
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
@@ -286,8 +305,6 @@ class CompletionEventImpl {
 
 #else
 
-#undef DISPENSO_COMPLETION_SUPPORTS_TRY_NOTIFY
-
 // Fallback C++11 implementation.
 class CompletionEventImpl {
  public:
@@ -302,6 +319,25 @@ class CompletionEventImpl {
       status_.store(completedStatus, std::memory_order_release);
     }
     cv_.notify_all();
+  }
+
+  void tryNotify() {
+    // The empty critical section synchronizes memory with waiters: our mutex release
+    // happens-before the waiter's mutex acquire in cv_.wait(), ensuring the waiter's
+    // predicate re-check sees any prior atomic modifications to intrusiveStatus().
+    {
+      std::lock_guard<std::mutex> lk(mtx_);
+    }
+    cv_.notify_all();
+  }
+
+  void waitUntilChanged(int currentValue) const {
+    if (status_.load(std::memory_order_acquire) != currentValue)
+      return;
+    std::unique_lock<std::mutex> lk(mtx_);
+    cv_.wait(lk, [this, currentValue] {
+      return status_.load(std::memory_order_relaxed) != currentValue;
+    });
   }
 
   void wait(int completedStatus) const {
