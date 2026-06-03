@@ -16,6 +16,7 @@
 #include <cmath>
 #include <limits>
 
+#include <dispenso/cpu_set.h>
 #include <dispenso/detail/can_invoke.h>
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/small_buffer_allocator.h>
@@ -353,7 +354,7 @@ void parallel_for_staticImpl(
     bool reuseExistingState) {
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads() + wait, maxThreads);
+  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads() + 1, maxThreads);
   // Reduce threads used if they exceed work to be done.
   numThreads = std::min(numThreads, range.size());
 
@@ -365,66 +366,83 @@ void parallel_for_staticImpl(
 
   bool perfectlyChunked = static_cast<size_type>(chunking.transitionTaskIndex) == numThreads;
 
-  // Number of tasks to schedule (all but the last one if wait is true)
+  // Helper: compute chunk [start, end) for a given task index.
+  auto chunkRange = [&](size_type idx) -> std::pair<IntegerT, IntegerT> {
+    size_type transIdx = perfectlyChunked ? numThreads : chunking.transitionTaskIndex;
+    IntegerT smallChunk = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
+    IntegerT start;
+    if (idx < transIdx) {
+      IntegerT i = static_cast<IntegerT>(idx);
+      start = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
+    } else {
+      IntegerT ti = static_cast<IntegerT>(transIdx);
+      IntegerT ri = static_cast<IntegerT>(idx - transIdx);
+      start = static_cast<IntegerT>(
+          range.start + static_cast<IntegerT>(ti * chunkSize) +
+          static_cast<IntegerT>(ri * smallChunk));
+    }
+    IntegerT end;
+    if (idx + 1 == numThreads) {
+      end = range.end;
+    } else if (idx < transIdx) {
+      end = static_cast<IntegerT>(start + chunkSize);
+    } else {
+      end = static_cast<IntegerT>(start + smallChunk);
+    }
+    return {start, end};
+  };
+
+  // Determine which chunk the calling thread should take for L2 locality.
+  // If the caller is a pool thread with a ring, it takes the chunk matching
+  // its ring index so that repeated parallel_for calls keep the same data
+  // in the caller's L2 cache. Otherwise takes the last chunk.
+  int32_t callerRing = wait ? detail::PerPoolPerThreadInfo::ringIndex(&taskSet.pool()) : -1;
+  size_type callerChunk = numThreads - 1;
+  if (callerRing >= 0 && static_cast<size_type>(callerRing) < numThreads) {
+    callerChunk = static_cast<size_type>(callerRing);
+  }
+
+  // Schedule N-1 chunks to workers (skipping callerChunk when wait=true).
+  // The generator remaps scheduler index to chunk index: indices below
+  // callerChunk map 1:1, indices >= callerChunk shift up by 1.
+  // This ensures ring i gets the data for chunk i (or chunk i+1 if i >= callerChunk),
+  // maintaining L2 locality for each worker thread.
   size_type numToSchedule = wait ? numThreads - 1 : numThreads;
 
   if (numToSchedule > 0) {
-    // Precompute range boundaries for the generator
-    // First loop: indices [0, transitionTaskIndex) use ceilChunkSize
-    // Second loop: indices [transitionTaskIndex, numToSchedule) use ceilChunkSize - 1
-    size_type transitionIdx = perfectlyChunked ? numToSchedule : chunking.transitionTaskIndex;
-    IntegerT smallChunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
+    taskSet.scheduleBulk(static_cast<size_t>(numToSchedule), [&, callerChunk](size_t idx) {
+      size_type chunkIdx = static_cast<size_type>(idx);
+      if (wait && chunkIdx >= callerChunk) {
+        ++chunkIdx;
+      }
 
-    taskSet.scheduleBulk(
-        static_cast<size_t>(numToSchedule),
-        [&, chunkSize, smallChunkSize, transitionIdx](size_t idx) {
-          // Calculate start position for this chunk
-          IntegerT start;
-          IntegerT thisChunkSize;
-          if (static_cast<size_type>(idx) < transitionIdx) {
-            IntegerT i = static_cast<IntegerT>(idx);
-            start = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
-            thisChunkSize = chunkSize;
-          } else {
-            // After transition, chunks are smaller by 1
-            IntegerT ti = static_cast<IntegerT>(transitionIdx);
-            IntegerT ri = static_cast<IntegerT>(idx - transitionIdx);
-            start = static_cast<IntegerT>(
-                range.start + static_cast<IntegerT>(ti * chunkSize) +
-                static_cast<IntegerT>(ri * smallChunkSize));
-            thisChunkSize = smallChunkSize;
-          }
-          IntegerT end = static_cast<IntegerT>(start + thisChunkSize);
+      auto chunkBounds = chunkRange(chunkIdx);
+      IntegerT start = chunkBounds.first;
+      IntegerT end = chunkBounds.second;
 
-          auto stateIt = states.begin();
-          std::advance(stateIt, static_cast<ptrdiff_t>(idx));
+      auto stateIt = states.begin();
+      std::advance(stateIt, static_cast<ptrdiff_t>(chunkIdx));
 
-          return [it = stateIt, start, end, f]() {
-            auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-            f(*it, start, end);
-          };
-        });
+      return [it = stateIt, start, end, f]() {
+        auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+        f(*it, start, end);
+      };
+    });
   }
 
   if (wait) {
-    // Execute the last chunk on the calling thread
     auto stateIt = states.begin();
-    std::advance(stateIt, static_cast<ptrdiff_t>(numThreads - 1));
-    // Calculate start of last chunk
-    size_type transitionIdx = perfectlyChunked ? numThreads - 1 : chunking.transitionTaskIndex;
-    IntegerT smallChunkSize = static_cast<IntegerT>(chunkSize - !perfectlyChunked);
-    IntegerT lastStart;
-    if (numThreads - 1 < transitionIdx) {
-      IntegerT i = static_cast<IntegerT>(numThreads - 1);
-      lastStart = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
-    } else {
-      IntegerT ti = static_cast<IntegerT>(transitionIdx);
-      IntegerT ri = static_cast<IntegerT>(numThreads - 1 - transitionIdx);
-      lastStart = static_cast<IntegerT>(
-          range.start + static_cast<IntegerT>(ti * chunkSize) +
-          static_cast<IntegerT>(ri * smallChunkSize));
+    std::advance(stateIt, static_cast<ptrdiff_t>(callerChunk));
+    auto callerBounds = chunkRange(callerChunk);
+    {
+      // Mark caller as inside parallel_for so nested parallel_for calls
+      // skip the ring fast path (same as worker tasks which have this guard
+      // in their lambda). Without this, the caller's nested parallel_for
+      // would push to rings that workers can't drain while they're busy
+      // with their own outer chunks.
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      f(*stateIt, callerBounds.first, callerBounds.second);
     }
-    f(*stateIt, lastStart, range.end);
     taskSet.wait();
   }
 }
@@ -457,8 +475,12 @@ ChunkSizingResult<IntegerT> adjustChunkSizing(
     bool wait) {
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  // Step 1: never use more threads than the pool actually has
-  maxThreads = std::min<size_type>(maxThreads, poolThreads + wait);
+  // Step 1: never use more threads than could participate.
+  // Always count the caller (+1) even when wait=false, because the caller
+  // will eventually participate via TaskSet::wait()/destructor and can steal
+  // work items. This prevents noWait parallel_for on small pools from
+  // degenerating to serial inline execution.
+  maxThreads = std::min<size_type>(maxThreads, poolThreads + 1);
 
   if (minItemsPerChunk > 1) {
     // Step 2a: reduce threads so each gets at least minItemsPerChunk items
@@ -482,13 +504,31 @@ ChunkSizingResult<IntegerT> adjustChunkSizing(
   return {maxThreads, isStatic};
 }
 
+// Per-group range for decoupled-atomic dynamic parallel_for. Each group of
+// threads shares an L3-local atomic index over a contiguous sub-range of
+// chunks, eliminating cross-CCD cache-line bouncing on many-core machines.
+struct alignas(kCacheLineSize) GroupRange {
+  std::atomic<size_t> index{0};
+  size_t startChunk{0};
+  size_t numGroupChunks{0};
+};
+
 /**
  * Dynamic (work-stealing) parallel_for implementation.
  *
- * Workers atomically claim chunks from a shared index and process them.
+ * Workers are partitioned into groups of ~16 threads, each with its own
+ * atomic index over a contiguous sub-range of chunks. This keeps each
+ * group's atomic in the local L3 cache on many-core machines with
+ * multiple CCDs, eliminating cross-CCD cache-line contention on the
+ * shared fetch_add. Intra-group load balancing (16 threads sharing one
+ * L3-local atomic) is fast and preserved.
+ *
+ * When the total worker count is below 16, there is exactly one group
+ * and the behavior is equivalent to the original single-atomic approach.
+ *
  * The ExitAction callback is invoked when a worker finds no more chunks;
- * this allows the no-wait path to deallocate a heap-allocated index when
- * the last worker exits, while the wait path passes a no-op.
+ * this allows the no-wait path to deallocate heap state when the last
+ * worker exits, while the wait path passes a no-op.
  *
  * When wait is true, the calling thread participates as an additional worker
  * and blocks until all tasks complete.
@@ -512,33 +552,164 @@ void parallel_for_dynamicImpl(
     IndexRef& index,
     ExitAction exitAction,
     bool wait) {
-  auto worker = [start, end, &index, f, chunkSize, numChunks, exitAction](auto& s) {
+  size_t totalWorkers = numToLaunch + (wait ? 1 : 0);
+
+  // Use the L3 cache group count (one per CCD on AMD, one per tile/SNC
+  // cluster on Intel) when available, so the per-group atomic lands in each
+  // CCD's L3. Falls back to a heuristic (~16 threads per group) on platforms
+  // where sysfs/topology detection returns nothing (e.g. macOS).
+  size_t l3Groups = CpuSet::l3CacheGroups().size();
+  size_t effectiveGroups;
+  if (l3Groups > 1 && totalWorkers > 16) {
+    effectiveGroups = std::min(l3Groups, totalWorkers);
+  } else {
+    effectiveGroups = std::max<size_t>(1, (totalWorkers + 15) / 16);
+  }
+
+  // Single group: use the original shared-index path with no extra overhead.
+  if (effectiveGroups <= 1) {
+    auto worker = [start, end, &index, f, chunkSize, numChunks, exitAction](auto& s) {
+      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+      while (true) {
+        auto cur = index.fetch_add(1, std::memory_order_relaxed);
+        if (cur >= numChunks) {
+          exitAction(cur);
+          break;
+        }
+        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
+        if (cur + 1 == numChunks) {
+          f(s, sidx, end);
+        } else {
+          f(s, sidx, static_cast<IntegerT>(sidx + chunkSize));
+        }
+      }
+    };
+
+    {
+      auto it = states.begin();
+      for (size_t i = 0; i < static_cast<size_t>(numToLaunch); ++i) {
+        taskSet.schedule([&s = *it++, worker]() { worker(s); });
+      }
+    }
+
+    if (wait) {
+      auto it = states.begin();
+      std::advance(it, static_cast<ptrdiff_t>(numToLaunch));
+      worker(*it);
+      taskSet.wait();
+    }
+    return;
+  }
+
+  // Multi-group path: partition chunks among effectiveGroups groups, each with
+  // its own cache-line-aligned atomic index.
+  //
+  // The GroupRange array and exit counter must outlive all workers. In the
+  // wait path the caller blocks until completion, so stack ownership suffices.
+  // In the no-wait path the function returns immediately, so we heap-allocate
+  // and have the last worker free the memory alongside the caller's exitAction.
+
+  // Header stored at the front of a single aligned allocation that holds the
+  // exit counter followed by the GroupRange array.
+  struct alignas(kCacheLineSize) GroupBlock {
+    std::atomic<size_t> exitCounter{0};
+    size_t numGroups;
+    size_t totalWorkers;
+    bool heapOwned;
+
+    GroupRange* ranges() {
+      auto* base = reinterpret_cast<char*>(this);
+      uintptr_t off = detail::alignToCacheLine(sizeof(GroupBlock));
+      return reinterpret_cast<GroupRange*>(base + off);
+    }
+  };
+
+  size_t blockBytes =
+      detail::alignToCacheLine(sizeof(GroupBlock)) + sizeof(GroupRange) * effectiveGroups;
+
+  // Both the wait and no-wait paths heap-own the block; the last worker to
+  // finish frees it. A thread-local buffer-reuse optimization for the wait
+  // path was intentionally not used here: it is unsafe under nested multi-group
+  // parallel_for on the same thread, because the caller runs its own chunk
+  // (worker(*it) below) -- which may re-enter here -- BEFORE taskSet.wait()
+  // returns, while this call's other-thread workers are still reading the
+  // block. The per-call allocation is negligible relative to the >16-thread
+  // work on this path; revisit only if it shows up in a profile.
+  void* blockMem = detail::alignedMalloc(blockBytes, kCacheLineSize);
+  bool heapOwned = true;
+
+  auto* block = new (blockMem) GroupBlock{};
+  block->numGroups = effectiveGroups;
+  block->totalWorkers = totalWorkers;
+  block->heapOwned = heapOwned;
+
+  GroupRange* groupRanges = block->ranges();
+  for (size_t g = 0; g < effectiveGroups; ++g) {
+    new (&groupRanges[g]) GroupRange{};
+  }
+
+  size_t baseChunks = static_cast<size_t>(numChunks) / effectiveGroups;
+  size_t extraChunks = static_cast<size_t>(numChunks) % effectiveGroups;
+  size_t chunkOffset = 0;
+  for (size_t g = 0; g < effectiveGroups; ++g) {
+    size_t gc = baseChunks + (g < extraChunks ? 1 : 0);
+    groupRanges[g].startChunk = chunkOffset;
+    groupRanges[g].numGroupChunks = gc;
+    chunkOffset += gc;
+  }
+
+  auto worker = [start, end, block, f, chunkSize, numChunks, exitAction](auto& s, size_t groupIdx) {
     auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
+    auto& gr = block->ranges()[groupIdx];
+    // Snapshot block-owned metadata BEFORE the release increment below. Once a
+    // worker performs exitCounter.fetch_add, the worker that observes the final
+    // count frees `block`, so `block` must not be dereferenced afterwards.
+    // Reading block->totalWorkers in the `prev + 1 == ...` check after the
+    // increment is a use-after-free race against that free (caught by TSAN).
+    const size_t totalWorkersLocal = block->totalWorkers;
+    const bool owned = block->heapOwned;
     while (true) {
-      auto cur = index.fetch_add(1, std::memory_order_relaxed);
-      if (cur >= numChunks) {
-        exitAction(cur);
+      auto cur = gr.index.fetch_add(1, std::memory_order_relaxed);
+      if (cur >= gr.numGroupChunks) {
         break;
       }
-      auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
-      if (cur + 1 == numChunks) {
+      auto globalChunk =
+          static_cast<typename ChunkedRange<IntegerT>::size_type>(gr.startChunk + cur);
+      auto sidx = static_cast<IntegerT>(start + globalChunk * chunkSize);
+      if (globalChunk + 1 == numChunks) {
         f(s, sidx, end);
       } else {
         f(s, sidx, static_cast<IntegerT>(sidx + chunkSize));
       }
     }
+    // The acq_rel increment orders every worker's prior block accesses (the gr
+    // loop above) before the last worker's free. After it, only the last worker
+    // touches block, and only to free it -- no peer reads block past this point.
+    auto prev = block->exitCounter.fetch_add(1, std::memory_order_acq_rel);
+    if (prev + 1 == totalWorkersLocal) {
+      exitAction(numChunks + static_cast<decltype(numChunks)>(totalWorkersLocal) - 1);
+      if (owned) {
+        detail::alignedFree(block);
+      }
+    }
   };
 
-  taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [&states, &worker](size_t i) {
+  {
     auto it = states.begin();
-    std::advance(it, static_cast<ptrdiff_t>(i));
-    return [&s = *it, worker]() { worker(s); };
-  });
+    for (size_t i = 0; i < numToLaunch; ++i) {
+      size_t gIdx = (i * effectiveGroups) / totalWorkers;
+      taskSet.schedule([&s = *it++, worker, gIdx]() { worker(s, gIdx); });
+    }
+  }
 
   if (wait) {
     auto it = states.begin();
     std::advance(it, static_cast<ptrdiff_t>(numToLaunch));
-    worker(*it);
+    size_t gIdx = (numToLaunch * effectiveGroups) / totalWorkers;
+    if (gIdx >= effectiveGroups) {
+      gIdx = effectiveGroups - 1;
+    }
+    worker(*it, gIdx);
     taskSet.wait();
   }
 }

@@ -496,9 +496,9 @@ class FutureBase {
                 &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      taskSet.pool().schedule(impl_->makeOnceFunction(), ForceQueuingTag());
+      taskSet.pool().schedulePlaced(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      taskSet.pool().schedule(impl_->makeOnceFunction());
+      taskSet.pool().schedulePlaced(impl_->makeOnceFunction());
     }
   }
 
@@ -511,9 +511,9 @@ class FutureBase {
                 &taskSet.outstandingTaskCount_)) {
     taskSet.outstandingTaskCount_.fetch_add(1, std::memory_order_acquire);
     if ((asyncPolicy & std::launch::async) == std::launch::async) {
-      taskSet.pool().schedule(impl_->makeOnceFunction(), ForceQueuingTag());
+      taskSet.pool().schedulePlaced(impl_->makeOnceFunction(), ForceQueuingTag());
     } else {
-      taskSet.pool().schedule(impl_->makeOnceFunction());
+      taskSet.pool().schedulePlaced(impl_->makeOnceFunction());
     }
   }
 

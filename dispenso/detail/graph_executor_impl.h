@@ -58,7 +58,10 @@ class ExecutorBase {
   }
 
   template <class N>
-  inline static void evaluateNodeConcurrently(dispenso::ConcurrentTaskSet& tasks, const N* node) {
+  inline static void evaluateNodeConcurrently(
+      dispenso::ConcurrentTaskSet& tasks,
+      const N* node,
+      float poolRecursiveLoadFactor = 3.0f) {
     // Track recursion depth to prevent stack overflow. CTS may inline scheduled
     // lambdas when load is high, causing evaluateNodeConcurrently to recurse
     // through the schedule→inline→evaluate path. When depth exceeds the limit,
@@ -89,11 +92,18 @@ class ExecutorBase {
             inlineNext = dep;
           } else if (depth < kMaxGraphInlineDepth) {
             // Additional ready dependents: schedule to task queue
-            tasks.schedule([&tasks, dep]() { evaluateNodeConcurrently(tasks, dep); });
+            tasks.schedule(
+                [&tasks, dep, poolRecursiveLoadFactor]() {
+                  evaluateNodeConcurrently(tasks, dep, poolRecursiveLoadFactor);
+                },
+                false,
+                poolRecursiveLoadFactor);
           } else {
             // Depth limit reached: force enqueue to prevent stack overflow
             tasks.schedule(
-                [&tasks, dep]() { evaluateNodeConcurrently(tasks, dep); },
+                [&tasks, dep, poolRecursiveLoadFactor]() {
+                  evaluateNodeConcurrently(tasks, dep, poolRecursiveLoadFactor);
+                },
                 dispenso::ForceQueuingTag());
           }
         }

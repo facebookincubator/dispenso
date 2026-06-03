@@ -16,7 +16,35 @@
 
 namespace dispenso {
 enum class ParentCascadeCancel { kOff, kOn };
-}
+
+/**
+ * Hint to ConcurrentTaskSet about how much work each scheduled task does.
+ * Affects how the task set distributes work across pool threads.
+ *
+ *   kHeavy (default) — Each task does meaningful work — typically anything
+ *                      taking microseconds or longer (e.g. a parallel_for
+ *                      chunk, a tree-build subproblem, image-tile processing,
+ *                      a numerical kernel). Choose kHeavy if you want best
+ *                      scaling across many cores, or if many threads will
+ *                      concurrently submit tasks (e.g. fork-join recursion).
+ *
+ *   kLightweight     — Each task does very little work and you are submitting
+ *                      a large number of them, where submission cost matters
+ *                      more than scaling. Typical: short callbacks, small
+ *                      counter updates, simple per-element operations from a
+ *                      single producer.
+ *
+ * If unsure, leave at kHeavy. Picking kHeavy for genuinely tiny tasks costs
+ * a small constant overhead per submission; picking kLightweight for heavy
+ * parallel work can leave many cores idle.
+ **/
+// Implementation note: kHeavy routes through the pool's per-group steal rings
+// (schedulePlaced / scheduleBulkPlaced), which avoids consumer-side contention
+// on the central moodycamel queue at high core counts. kLightweight routes
+// through the central queue, which has lower per-task overhead but does not
+// scale past ~100 contending consumers.
+enum class TaskCost { kLightweight, kHeavy };
+} // namespace dispenso
 
 #include <dispenso/detail/task_set_impl.h>
 
@@ -181,6 +209,8 @@ class TaskSet : public TaskSetBase {
 
   template <typename Result>
   friend class detail::FutureBase;
+  template <typename Result>
+  friend class detail::FutureImplBase;
 };
 
 /**
@@ -208,16 +238,24 @@ class ConcurrentTaskSet : public TaskSetBase {
   ConcurrentTaskSet(
       ThreadPool& pool,
       ParentCascadeCancel registerForParentCancel,
-      ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier)
-      : TaskSetBase(pool, registerForParentCancel, stealingLoadMultiplier) {}
+      ssize_t stealingLoadMultiplier = kDefaultStealingMultiplier,
+      TaskCost cost = TaskCost::kHeavy)
+      : TaskSetBase(pool, registerForParentCancel, stealingLoadMultiplier), cost_(cost) {}
 
   /** Construct a ConcurrentTaskSet with default options. @param p The backing pool. */
   ConcurrentTaskSet(ThreadPool& p)
       : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier) {}
+  /** Construct a ConcurrentTaskSet with a task-cost hint. @param p The backing pool. @param cost
+   * Hint about per-task cost; see TaskCost. */
+  ConcurrentTaskSet(ThreadPool& p, TaskCost cost)
+      : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, kDefaultStealingMultiplier, cost) {}
   /** Construct a ConcurrentTaskSet with custom load multiplier. @param p The backing pool. @param
    * stealingLoadMultiplier The over-load factor. */
   ConcurrentTaskSet(ThreadPool& p, ssize_t stealingLoadMultiplier)
       : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier) {}
+  /** Construct a ConcurrentTaskSet with a task-cost hint and custom load multiplier. */
+  ConcurrentTaskSet(ThreadPool& p, TaskCost cost, ssize_t stealingLoadMultiplier)
+      : ConcurrentTaskSet(p, ParentCascadeCancel::kOff, stealingLoadMultiplier, cost) {}
 
   ConcurrentTaskSet(ConcurrentTaskSet&& other) = delete;
   ConcurrentTaskSet& operator=(ConcurrentTaskSet&& other) = delete;
@@ -233,6 +271,10 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param skipRecheck A poweruser knob that says that if we don't have enough outstanding tasks to
    * immediately work steal, we should bypass the similar check in the ThreadPool.
    *
+   * @param poolRecursiveLoadFactor Controls how aggressively pool threads
+   *   inline work.  Lower values (1.0) cause more inlining (pipeline-like),
+   *   higher values (3.0) cause more distribution (graph-like).
+   *
    * @note If <code>f</code> can throw exceptions, then <code>schedule</code> may throw if the task
    * is run inline.  Otherwise, exceptions will be caught on the running thread and best-effort
    * propagated to the <code>ConcurrentTaskSet</code>, where the first one from the set is rethrown
@@ -240,15 +282,37 @@ class ConcurrentTaskSet : public TaskSetBase {
    **/
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
-  void schedule(F&& f, bool skipRecheck = false) {
+  void schedule(
+      F&& f,
+      bool skipRecheck = false,
+      float poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {
+    if (cost_ == TaskCost::kHeavy) {
+      schedulePlaced(std::forward<F>(f), skipRecheck, poolRecursiveLoadFactor);
+      return;
+    }
+    // Combined inline decision (mirrors scheduleBulkImpl):
+    // 1. TaskSet-level overload
+    // 2. Pool-recursive: pool threads inline when workRemaining_ exceeds
+    //    numThreads * poolRecursiveLoadFactor
+    // 3. Pool global: non-recursive callers inline at the loose poolLoadFactor_
+    // After this check, use ForceQueuingTag to skip the redundant check
+    // in ThreadPool::schedule.
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_ &&
         DISPENSO_EXPECT(!canceled(), true)) {
       f();
-    } else if (skipRecheck) {
-      pool_.schedule(packageTask(std::forward<F>(f)), ForceQueuingTag());
-    } else {
-      pool_.schedule(packageTask(std::forward<F>(f)));
+      return;
     }
+    if (!skipRecheck) {
+      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
+      ssize_t quickFactor =
+          static_cast<ssize_t>(static_cast<float>(pool_.numThreads()) * poolRecursiveLoadFactor);
+      if ((detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) && curWork > quickFactor) ||
+          curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
+        f();
+        return;
+      }
+    }
+    pool_.schedule(packageTask(std::forward<F>(f)), ForceQueuingTag());
   }
 
   /**
@@ -266,6 +330,10 @@ class ConcurrentTaskSet : public TaskSetBase {
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag fq) {
+    if (cost_ == TaskCost::kHeavy) {
+      pool_.schedulePlaced(packageTask(std::forward<F>(f)), fq);
+      return;
+    }
     pool_.schedule(packageTask(std::forward<F>(f)), fq);
   }
 
@@ -283,6 +351,10 @@ class ConcurrentTaskSet : public TaskSetBase {
    **/
   template <typename Generator>
   void scheduleBulk(size_t count, Generator&& gen) {
+    if (cost_ == TaskCost::kHeavy) {
+      scheduleBulkImplPlaced(count, std::forward<Generator>(gen));
+      return;
+    }
     scheduleBulkImpl(count, std::forward<Generator>(gen), nullptr);
   }
 
@@ -339,10 +411,45 @@ class ConcurrentTaskSet : public TaskSetBase {
     return pool_.tryExecuteNext();
   }
 
+  template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
+  void schedulePlaced(
+      F&& f,
+      bool skipRecheck = false,
+      float poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {
+    ssize_t placedThreshold = std::max(pool_.numThreads() + 1, taskSetLoadFactor_ / 2);
+    if (outstandingTaskCount_.load(std::memory_order_relaxed) > placedThreshold &&
+        DISPENSO_EXPECT(!canceled(), true)) {
+      f();
+      return;
+    }
+    if (!skipRecheck) {
+      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
+      ssize_t quickFactor =
+          static_cast<ssize_t>(static_cast<float>(pool_.numThreads()) * poolRecursiveLoadFactor);
+      if ((detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) && curWork > quickFactor) ||
+          curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
+        f();
+        return;
+      }
+    }
+    pool_.schedulePlaced(packageTask(std::forward<F>(f)), ForceQueuingTag());
+  }
+
+  template <typename F>
+  DISPENSO_REQUIRES(OnceCallableFunc<F>)
+  void schedulePlaced(F&& f, ForceQueuingTag) {
+    pool_.schedulePlaced(packageTask(std::forward<F>(f)), ForceQueuingTag());
+  }
+
   template <typename Result>
   friend class detail::FutureBase;
+  template <typename Result>
+  friend class detail::FutureImplBase;
 
   friend class detail::LimitGatedScheduler;
+
+  TaskCost cost_{TaskCost::kHeavy};
 };
 
 /**

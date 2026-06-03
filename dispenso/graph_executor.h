@@ -73,9 +73,16 @@ class ConcurrentTaskSetExecutor : public ::detail::ExecutorBase {
    * @param tasks <code>ConcurrentTaskSet</code> to schedule tasks.
    * @param graph graph to invoke
    * @param wait if true run <code>tasks.wait()</code> at the end of the function
+   * @param poolRecursiveLoadFactor Controls inline vs distribution tradeoff.
+   *   Default 3.0 favors distribution for graph parallelism.  See
+   *   <code>kDefaultPoolRecursiveLoadFactor</code> for details.
    **/
   template <typename G>
-  void operator()(dispenso::ConcurrentTaskSet& tasks, const G& graph, bool wait = true);
+  void operator()(
+      dispenso::ConcurrentTaskSet& tasks,
+      const G& graph,
+      bool wait = true,
+      float poolRecursiveLoadFactor = 3.0f);
 
  private:
   std::vector<const Node*> startNodes_;

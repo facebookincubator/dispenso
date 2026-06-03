@@ -107,7 +107,8 @@ template <typename G>
 void ConcurrentTaskSetExecutor::operator()(
     dispenso::ConcurrentTaskSet& tasks,
     const G& graph,
-    bool wait) {
+    bool wait,
+    float poolRecursiveLoadFactor) {
   using NodeType = typename G::NodeType;
   startNodes_.clear();
 
@@ -119,7 +120,12 @@ void ConcurrentTaskSetExecutor::operator()(
 
   for (const Node* n : startNodes_) {
     const NodeType* node = static_cast<const NodeType*>(n);
-    tasks.schedule([&tasks, node]() { evaluateNodeConcurrently(tasks, node); });
+    tasks.schedule(
+        [&tasks, node, poolRecursiveLoadFactor]() {
+          evaluateNodeConcurrently(tasks, node, poolRecursiveLoadFactor);
+        },
+        false,
+        poolRecursiveLoadFactor);
   }
   if (wait) {
     tasks.wait();
@@ -208,11 +214,13 @@ template DISPENSO_DLL_ACCESS void ParallelForExecutor::operator()<ConcurrentTask
 template DISPENSO_DLL_ACCESS void ConcurrentTaskSetExecutor::operator()<Graph>(
     dispenso::ConcurrentTaskSet& tasks,
     const Graph& graph,
-    bool wait);
+    bool wait,
+    float poolRecursiveLoadFactor);
 template DISPENSO_DLL_ACCESS void ConcurrentTaskSetExecutor::operator()<BiPropGraph>(
     dispenso::ConcurrentTaskSet& tasks,
     const BiPropGraph& graph,
-    bool wait);
+    bool wait,
+    float poolRecursiveLoadFactor);
 
 template DISPENSO_DLL_ACCESS void setAllNodesIncomplete<Graph>(const Graph&);
 template DISPENSO_DLL_ACCESS void setAllNodesIncomplete<BiPropGraph>(const BiPropGraph&);

@@ -17,13 +17,26 @@
 
 namespace dispenso {
 
+/**
+ * Default pool-recursive inline load factor.  When a pool thread schedules
+ * work and workRemaining exceeds numThreads * this factor, the work is
+ * executed inline instead of queued.  Lower values (1.0) favor inlining
+ * (good for pipeline data locality), higher values (3.0) favor distribution
+ * (good for wide graph parallelism).
+ **/
+constexpr float kDefaultPoolRecursiveLoadFactor = 1.5f;
+
 class TaskSetBase;
 
 namespace detail {
 template <typename Result>
 class FutureBase;
+template <typename Result>
+class FutureImplBase;
 
 class LimitGatedScheduler;
+
+struct SchedulePlacedWrapper;
 
 DISPENSO_DLL_ACCESS void pushThreadTaskSet(TaskSetBase* tasks);
 DISPENSO_DLL_ACCESS void popThreadTaskSet();
@@ -159,26 +172,49 @@ class TaskSetBase {
     };
   }
 
+  // Run gen(i)() inline with exception handling. Shared by scheduleBulkImpl's
+  // overloaded and at-capacity paths.
   template <typename Generator>
-  void scheduleBulkImpl(size_t count, Generator&& gen, moodycamel::ProducerToken* token) {
+  DISPENSO_INLINE void invokeInline(Generator&& gen, size_t i) {
+#if defined(__cpp_exceptions)
+    try {
+      gen(i)();
+    } catch (...) {
+      trySetCurrentException();
+    }
+#else
+    gen(i)();
+#endif // __cpp_exceptions
+  }
+
+  // Check pool-level overload: recursive load factor (tight, numThreads*1.5)
+  // for pool-recursive callers, global poolLoadFactor_ (loose, numThreads*32)
+  // for external callers. Separated from scheduleBulkImpl for CCN reduction.
+  DISPENSO_INLINE bool
+  shouldInlineBulk(ssize_t curWork, ssize_t numPool, float poolRecursiveLoadFactor) const {
+    return (detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) &&
+            curWork >
+                static_cast<ssize_t>(static_cast<float>(numPool) * poolRecursiveLoadFactor)) ||
+        curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed);
+  }
+
+  template <typename Generator>
+  void scheduleBulkImpl(
+      size_t count,
+      Generator&& gen,
+      moodycamel::ProducerToken* token,
+      float poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {
     if (count == 0) {
       return;
     }
 
     ssize_t numPool = pool_.numThreads();
 
-    // Fork-join fast path: when count <= numPool (kStatic pattern — one task
-    // per thread), push task i directly to ring i for deterministic
-    // thread-to-chunk affinity. This is the key optimization for closing the
-    // IPC gap with OMP on locality-sensitive parallel_for.
-    //
-    // Skip this path when:
-    // - No rings allocated (pool has 0 threads or rings not initialized)
-    // - Pool is recursive (nested parallel_for — throttle via load factor)
-    // - Already overloaded (outstanding > taskSetLoadFactor_)
-    if (count <= static_cast<size_t>(numPool) &&
+    // Ring fast path: for kStatic parallel_for where count ≈ numPool.
+    // Push task i directly to ring i for deterministic thread-to-chunk affinity.
+    if (count * 4 >= static_cast<size_t>(numPool) && count <= static_cast<size_t>(numPool) &&
         pool_.numRings_.load(std::memory_order_relaxed) >= count &&
-        !detail::PerPoolPerThreadInfo::isParForRecursive(&pool_) &&
+        !detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) &&
         outstandingTaskCount_.load(std::memory_order_relaxed) <= taskSetLoadFactor_) {
       outstandingTaskCount_.fetch_add(static_cast<ssize_t>(count), std::memory_order_acquire);
       pool_.scheduleBulkToRings(
@@ -199,44 +235,13 @@ class TaskSetBase {
       }
       ssize_t outstanding = outstandingTaskCount_.load(std::memory_order_relaxed);
       ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
-      // Mirror the two-tier inline decision from ThreadPool::schedule():
-      // 1. TaskSet-level: outstandingTaskCount_ exceeds our own load factor
-      // 2. Pool recursive: tight quickLoadFactor (numThreads*1.5) when called from a pool
-      //    thread. Critical for nested patterns where inner scheduleBulk must throttle to
-      //    avoid flooding the pool queue and starving outer tasks.
-      // 3. Pool global: loose poolLoadFactor_ (numThreads*32) for non-recursive callers
-      if (outstanding > taskSetLoadFactor_ ||
-          (detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) &&
-           curWork > numPool + numPool / 2) ||
-          curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
-#if defined(__cpp_exceptions)
-        try {
-          gen(i)();
-        } catch (...) {
-          trySetCurrentException();
-        }
-#else
-        gen(i)();
-#endif // __cpp_exceptions
+      ssize_t room = taskSetLoadFactor_ - outstanding;
+
+      if (room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) {
+        // At/over our task set limit, or pool is overloaded — run inline.
+        invokeInline(gen, i);
         ++i;
       } else {
-        ssize_t room = taskSetLoadFactor_ - outstanding;
-        if (room <= 0) {
-          // At the limit but not over — run one inline to let the pool drain,
-          // then re-check on the next iteration rather than force-enqueuing
-          // and pushing over the limit (which causes enqueue/inline thrashing).
-#if defined(__cpp_exceptions)
-          try {
-            gen(i)();
-          } catch (...) {
-            trySetCurrentException();
-          }
-#else
-          gen(i)();
-#endif // __cpp_exceptions
-          ++i;
-          continue;
-        }
         size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
         outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
         size_t base = i;
@@ -244,6 +249,45 @@ class TaskSetBase {
             toEnqueue,
             [this, &gen, base](size_t j) { return packageTaskNoIncrement(gen(base + j)); },
             token);
+        i += toEnqueue;
+      }
+    }
+  }
+
+  template <typename Generator>
+  void scheduleBulkImplPlaced(
+      size_t count,
+      Generator&& gen,
+      float poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {
+    if (count == 0) {
+      return;
+    }
+
+    ssize_t numPool = pool_.numThreads();
+    size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
+    if (chunkSize < 1) {
+      chunkSize = 1;
+    }
+
+    size_t i = 0;
+    while (i < count) {
+      if (canceled()) {
+        break;
+      }
+      ssize_t outstanding = outstandingTaskCount_.load(std::memory_order_relaxed);
+      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
+      ssize_t room = taskSetLoadFactor_ - outstanding;
+
+      if (room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) {
+        invokeInline(gen, i);
+        ++i;
+      } else {
+        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+        outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
+        size_t base = i;
+        pool_.scheduleBulkPlaced(toEnqueue, [this, &gen, base](size_t j) {
+          return packageTaskNoIncrement(gen(base + j));
+        });
         i += toEnqueue;
       }
     }
@@ -311,8 +355,8 @@ class TaskSetBase {
   TaskSetBase* tail_{nullptr};
 
   // prev_ and next_ are links in our *parent's* intrusive linked list.
-  TaskSetBase* prev_;
-  TaskSetBase* next_;
+  TaskSetBase* prev_{nullptr};
+  TaskSetBase* next_{nullptr};
 };
 
 } // namespace dispenso

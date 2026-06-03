@@ -214,7 +214,7 @@ TEST(GreedyForRanges, CoordinatedConcurrentLoops) {
 static void
 testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testStaticChunking, bool testWaitOption) {
   resetTestTid();
-  size_t numAvailableThreads = poolSize + testWaitOption;
+  size_t numAvailableThreads = poolSize + 1;
   std::vector<int> threadLocalSums(numAvailableThreads, 0);
   dispenso::ThreadPool pool(poolSize);
   dispenso::TaskSet tasks(pool);

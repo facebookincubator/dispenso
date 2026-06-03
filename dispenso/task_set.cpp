@@ -82,14 +82,17 @@ bool ConcurrentTaskSet::wait() {
   // ThreadPool.  Each thread is running code that is using TaskSets.  No
   // progress could be made without stealing.
 
-  // Work may be in the central queue or in per-thread rings (via
-  // scheduleBulkToRings). Drain each source fully before switching.
+  // Work may be in the central queue or in per-thread rings (via proactive
+  // wake). Drain each source fully before switching to avoid oscillation.
   size_t startRing = 0;
   while (outstandingTaskCount_.load(std::memory_order_acquire)) {
+    // Drain central queue
     while (pool_.tryExecuteNext()) {
     }
+    // Drain rings — work may have been pushed via proactive wake
     while (pool_.tryExecuteNextFromRings(startRing)) {
     }
+    // If neither had work, yield and retry
     if (outstandingTaskCount_.load(std::memory_order_acquire)) {
       std::this_thread::yield();
     }
