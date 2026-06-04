@@ -856,8 +856,14 @@ void ThreadPool::scheduleBulkEnqueue(
     enqueued = work_.enqueue_bulk(it, count);
   }
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
-  (void)(enqueued);
-  assert(enqueued);
+  if (DISPENSO_EXPECT(!enqueued, false)) {
+    workRemaining_.fetch_sub(static_cast<ssize_t>(count), std::memory_order_relaxed);
+#if defined(__cpp_exceptions)
+    throw std::bad_alloc();
+#else
+    std::abort();
+#endif
+  }
 
   // Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.
   // Spinning threads (numNotWorking - totalSleeping) will find enqueued work

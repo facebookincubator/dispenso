@@ -214,8 +214,7 @@ These are ideas that may be pursued based on community feedback:
 ### Fork-Join Scheduling & Thread Groups (post-1.5) --- COMPLETE
 
 Design documents:
-- [fork_join_scheduling.md](fork_join_scheduling.md) — original design
-- [three_tier_scheduling.md](three_tier_scheduling.md) — final three-tier queue architecture
+- [three_tier_scheduling.md](three_tier_scheduling.md) — three-tier queue architecture
 - [wake_cascade.md](wake_cascade.md) — leader-team parallel wake cascade
 
 **Implemented.** Per-thread locality rings, per-group steal rings, leader-team

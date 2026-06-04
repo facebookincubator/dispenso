@@ -20,7 +20,7 @@
  * - **Windows**: Full support (binding via SetThreadGroupAffinity, topology via
  *   GetLogicalProcessorInformationEx)
  *
- * @see docs/design/fork_join_scheduling.md for the design context.
+ * @see docs/design/three_tier_scheduling.md for the design context.
  **/
 
 #pragma once
@@ -68,7 +68,7 @@ namespace dispenso {
  *
  * 16 matches the AMD CCD boundary (8 cores x 2 SMT = 16 threads) and provides
  * a good balance between wake granularity and scheduling overhead across
- * architectures. See docs/design/fork_join_scheduling.md for rationale.
+ * architectures. See docs/design/three_tier_scheduling.md for rationale.
  *
  * This is a runtime default, not a compile-time constraint. ThreadPool accepts
  * maxGroupSize as a constructor parameter. Override at compile time via

@@ -11,8 +11,8 @@
  * Wake infrastructure for ThreadPool's fork-join and central queue scheduling.
  *
  * Implements a budget-limited cascade wake strategy with per-thread EpochWaiters
- * and per-group atomic sleep masks. See docs/design/fork_join_scheduling.md
- * Component 6 for the design rationale.
+ * and per-group atomic sleep masks. See docs/design/wake_cascade.md for the
+ * design rationale.
  **/
 
 #pragma once

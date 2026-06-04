@@ -136,6 +136,11 @@ int32_t PoolWakeState::claimAndWakeOne() {
 }
 
 bool PoolWakeState::wakeOneWithBudget(int32_t budget, int32_t startGroup) {
+  // Relaxed loads on totalSleeping_/sleepMask are intentional: a missed
+  // sleeper here is a bounded latency hit (the sleeper wakes via
+  // sleepLengthUs_ timeout in waitOnThread and re-checks for work), not a
+  // deadlock. Adding a seq_cst fence to every producer push to close this
+  // window would penalize the hot path for what's a rare race.
   if (totalSleeping_.load(std::memory_order_relaxed) <= 0) {
     return false;
   }
