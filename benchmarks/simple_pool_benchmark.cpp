@@ -117,7 +117,7 @@ void BM_folly(benchmark::State& state) {
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int s : pow2HalfStepThreads()) {
+    for (int s : benchmarkThreadCounts()) {
       b->Args({s, j});
     }
   }

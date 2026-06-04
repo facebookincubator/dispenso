@@ -149,7 +149,7 @@ void BM_for_each_n_set(benchmark::State& state) {
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int i : pow2HalfStepThreads()) {
+    for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
   }
@@ -158,7 +158,7 @@ static void CustomArguments(benchmark::internal::Benchmark* b) {
 // Smaller argument set for containers where 100M elements is impractical
 static void SmallArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize}) {
-    for (int i : pow2HalfStepThreads()) {
+    for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
   }

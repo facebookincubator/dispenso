@@ -17,16 +17,22 @@
 
 #include "benchmark_common.h"
 
-inline std::vector<int> pow2HalfStepThreads() {
+// Standard set of thread counts for thread-count-varying benchmarks:
+// powers of 2 from 1 up to the number of hardware threads, plus the
+// hardware-thread count itself if it isn't already a power of 2 (so a
+// 166-thread SMT machine ends up measuring ..., 128, 166).
+//
+// The earlier half-step schedule (3, 6, 12, 24, 48, 96, ...) doubled
+// sweep wall time without yielding meaningfully different signal —
+// adjacent measurements were almost always within noise of each other.
+inline std::vector<int> benchmarkThreadCounts() {
   const int kRunningThreads = std::thread::hardware_concurrency();
   std::vector<int> result;
-  result.push_back(1);
-  for (int block = 2; block <= kRunningThreads; block *= 2) {
-    int step = block / 2;
-
-    for (int i = block; i < 2 * block && i <= kRunningThreads; i += step) {
-      result.push_back(i);
-    }
+  for (int n = 1; n <= kRunningThreads; n *= 2) {
+    result.push_back(n);
+  }
+  if (!result.empty() && result.back() != kRunningThreads) {
+    result.push_back(kRunningThreads);
   }
   return result;
 }

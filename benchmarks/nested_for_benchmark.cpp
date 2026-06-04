@@ -276,7 +276,7 @@ void BM_tbb(benchmark::State& state) {
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int i : pow2HalfStepThreads()) {
+    for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
   }

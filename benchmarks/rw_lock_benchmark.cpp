@@ -78,7 +78,8 @@ void BM_parallel(benchmark::State& state) {
   MutexT mtx;
   int start = 0;
 
-  dispenso::TaskSet tasks(dispenso::globalThreadPool());
+  dispenso::ThreadPool pool(concurrency);
+  dispenso::TaskSet tasks(pool);
   for (auto UNUSED_VAR : state) {
     for (int c = 0; c < concurrency; ++c) {
       tasks.schedule([&total, start, &mtx, &values, writePeriod]() {

@@ -178,7 +178,7 @@ void BM_tbb(benchmark::State& state) {
 #endif // !BENCHMARK_WITHOUT_TBB
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
-  for (int i : pow2HalfStepThreads()) {
+  for (int i : benchmarkThreadCounts()) {
     b->Arg(i);
   }
 }

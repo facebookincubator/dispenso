@@ -545,13 +545,35 @@ def run_benchmark(
         }
 
 
-def _build_extra_benchmark_args(args) -> List[str]:
-    """Build the extra benchmark arguments list from parsed CLI args."""
+# Benchmarks where multiple repetitions add little value (results are
+# stable or runtime is already very long).  When --repetitions is given,
+# the actual rep count is min(requested, cap).  Benchmarks not listed
+# here use the requested value unchanged.
+_MAX_REPETITIONS: Dict[str, int] = {
+    "rw_lock_benchmark": 1,
+    "concurrent_vector_benchmark": 1,
+    "once_function_benchmark": 1,
+    "pool_allocator_benchmark": 1,
+    "small_buffer_benchmark": 1,
+}
+
+
+def _build_extra_benchmark_args(
+    args, benchmark_stem: Optional[str] = None
+) -> List[str]:
+    """Build the extra benchmark arguments list from parsed CLI args.
+
+    When benchmark_stem is provided, per-benchmark repetition caps from
+    _MAX_REPETITIONS are applied.
+    """
     extra_args = []
     if args.min_time is not None:
         extra_args.append(f"--benchmark_min_time={args.min_time}s")
     if args.repetitions is not None:
-        extra_args.append(f"--benchmark_repetitions={args.repetitions}")
+        reps = args.repetitions
+        if benchmark_stem is not None and benchmark_stem in _MAX_REPETITIONS:
+            reps = min(reps, _MAX_REPETITIONS[benchmark_stem])
+        extra_args.append(f"--benchmark_repetitions={reps}")
     return extra_args
 
 
@@ -721,11 +743,11 @@ def main():
     print()
 
     # Run benchmarks
-    extra_args = _build_extra_benchmark_args(args)
     env_override = _build_windows_env_override(args.cmake_args)
 
     results = []
     for benchmark in benchmarks:
+        extra_args = _build_extra_benchmark_args(args, benchmark.stem)
         result = run_benchmark(
             benchmark,
             extra_args if extra_args else None,

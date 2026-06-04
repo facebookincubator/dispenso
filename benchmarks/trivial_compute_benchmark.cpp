@@ -21,6 +21,10 @@
 
 #include "thread_benchmark_common.h"
 
+struct alignas(dispenso::kCacheLineSize) AlignedSum {
+  uint64_t value{0};
+};
+
 static constexpr int kSmallSize = 100;
 static constexpr int kMediumSize = 1000000;
 static constexpr int kLargeSize = 100000000;
@@ -85,26 +89,26 @@ void BM_dispenso(benchmark::State& state) {
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
 
-    std::vector<uint64_t> sums;
+    std::vector<AlignedSum> sums;
     sums.reserve(num_threads + 1);
     ++foo;
     dispenso::parallel_for(
         tasks,
         sums,
-        []() { return uint64_t{0}; },
+        []() { return AlignedSum{}; },
         0,
         num_elements,
-        [input, foo](uint64_t& lsumStore, int i, int end) {
+        [input, foo](AlignedSum& lsumStore, int i, int end) {
           uint64_t lsum = 0;
           for (; i != end; ++i) {
             lsum += calculate(input, i, foo);
           }
-          lsumStore += lsum;
+          lsumStore.value += lsum;
         },
         options);
     sum = 0;
-    for (auto s : sums) {
-      sum += s;
+    for (auto& s : sums) {
+      sum += s.value;
     }
   }
 
@@ -178,25 +182,25 @@ void BM_dispenso_static(benchmark::State& state) {
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
 
-    std::vector<uint64_t> sums;
+    std::vector<AlignedSum> sums;
     sums.reserve(num_threads + 1);
     ++foo;
     dispenso::parallel_for(
         tasks,
         sums,
-        []() { return uint64_t{0}; },
+        []() { return AlignedSum{}; },
         dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kStatic),
-        [input, foo](uint64_t& lsumStore, int i, int end) {
+        [input, foo](AlignedSum& lsumStore, int i, int end) {
           uint64_t lsum = 0;
           for (; i != end; ++i) {
             lsum += calculate(input, i, foo);
           }
-          lsumStore += lsum;
+          lsumStore.value += lsum;
         },
         options);
     sum = 0;
-    for (auto s : sums) {
-      sum += s;
+    for (auto& s : sums) {
+      sum += s.value;
     }
   }
 
@@ -205,7 +209,7 @@ void BM_dispenso_static(benchmark::State& state) {
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int i : pow2HalfStepThreads()) {
+    for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
   }

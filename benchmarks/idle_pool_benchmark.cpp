@@ -12,9 +12,12 @@
 
 #include <chrono>
 
+#include <dispenso/parallel_for.h>
 #include <dispenso/task_set.h>
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
 #include <tbb/task_group.h>
 #include "tbb_compat.h"
 #endif // !BENCHMARK_WITHOUT_TBB
@@ -162,16 +165,92 @@ void BM_dispenso_very_idle(benchmark::State& state) {
   endRusage(state);
 }
 
+// Periodic-burst pattern: pool sits truly idle most of the time, then a real
+// parallel workload (large dot product) fires in a burst. Designed to validate
+// (a) that idle threads don't burn CPU between bursts, (b) that wake fan-out
+// is fast when the burst arrives. 5 ms is well past the spin window
+// (kMaxSpinTimeoutSec is 128 µs on Linux, 256 µs on Windows) and far past
+// futex_wait / WaitOnAddress entry latency on every supported platform,
+// so workers have unambiguously parked. Going lower than ~3 ms risks
+// catching the tail of the spin phase on Windows.
+static constexpr int kBurstSleepMs = 5;
+static constexpr int kBurstVecSize = 1 << 20; // 1M doubles
+
+struct DotProductData {
+  std::vector<double> a;
+  std::vector<double> b;
+  DotProductData(int n) : a(n), b(n) {
+    for (int i = 0; i < n; ++i) {
+      a[i] = i * 1e-6;
+      b[i] = (n - i) * 1e-6;
+    }
+  }
+};
+
+#if !defined(BENCHMARK_WITHOUT_TBB)
+void BM_tbb_periodic_burst(benchmark::State& state) {
+  const int num_threads = state.range(0);
+  DotProductData data(kBurstVecSize);
+  tbb_compat::task_scheduler_init initsched(num_threads);
+
+  startRusage();
+  for (auto UNUSED_VAR : state) {
+    state.PauseTiming();
+    std::this_thread::sleep_for(std::chrono::milliseconds(kBurstSleepMs));
+    state.ResumeTiming();
+
+    tbb::parallel_for(
+        tbb::blocked_range<int>(0, kBurstVecSize), [&](const tbb::blocked_range<int>& r) {
+          double s = 0.0;
+          for (int i = r.begin(); i != r.end(); ++i) {
+            s += data.a[i] * data.b[i];
+          }
+          benchmark::DoNotOptimize(s);
+        });
+  }
+  endRusage(state);
+}
+#endif // !BENCHMARK_WITHOUT_TBB
+
+void BM_dispenso_periodic_burst(benchmark::State& state) {
+  const int num_threads = std::max<int>(1, state.range(0) - 1);
+  DotProductData data(kBurstVecSize);
+  dispenso::ThreadPool pool(num_threads);
+
+  startRusage();
+  for (auto UNUSED_VAR : state) {
+    state.PauseTiming();
+    std::this_thread::sleep_for(std::chrono::milliseconds(kBurstSleepMs));
+    state.ResumeTiming();
+
+    dispenso::TaskSet ts(pool);
+    dispenso::parallel_for(ts, 0, kBurstVecSize, [&](int begin, int end) {
+      double s = 0.0;
+      for (int i = begin; i < end; ++i) {
+        s += data.a[i] * data.b[i];
+      }
+      benchmark::DoNotOptimize(s);
+    });
+  }
+  endRusage(state);
+}
+
+static void CustomArgumentsBurst(benchmark::internal::Benchmark* b) {
+  for (int s : benchmarkThreadCounts()) {
+    b->Args({s});
+  }
+}
+
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int s : pow2HalfStepThreads()) {
+    for (int s : benchmarkThreadCounts()) {
       b->Args({s, j});
     }
   }
 }
 
 static void CustomArgumentsVeryIdle(benchmark::internal::Benchmark* b) {
-  for (int s : pow2HalfStepThreads()) {
+  for (int s : benchmarkThreadCounts()) {
     b->Args({s});
   }
 }
@@ -182,6 +261,10 @@ BENCHMARK(BM_tbb_very_idle)
     ->Apply(CustomArgumentsVeryIdle)
     ->Unit(benchmark::kMicrosecond)
     ->UseRealTime();
+BENCHMARK(BM_tbb_periodic_burst)
+    ->Apply(CustomArgumentsBurst)
+    ->Unit(benchmark::kMicrosecond)
+    ->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK(BM_dispenso_mostly_idle)
@@ -190,6 +273,10 @@ BENCHMARK(BM_dispenso_mostly_idle)
     ->UseRealTime();
 BENCHMARK(BM_dispenso_very_idle)
     ->Apply(CustomArgumentsVeryIdle)
+    ->Unit(benchmark::kMicrosecond)
+    ->UseRealTime();
+BENCHMARK(BM_dispenso_periodic_burst)
+    ->Apply(CustomArgumentsBurst)
     ->Unit(benchmark::kMicrosecond)
     ->UseRealTime();
 
