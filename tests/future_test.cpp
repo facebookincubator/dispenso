@@ -926,6 +926,58 @@ static dispenso::Future<std::unique_ptr<Node>> makeTreeIters(
       });
 }
 
+TEST(Future, WhenAnyEmptyVector) {
+  std::deque<dispenso::Future<int>> items;
+  auto winner = dispenso::when_any(items.begin(), items.end());
+  EXPECT_EQ(winner.get(), SIZE_MAX);
+}
+
+TEST(Future, WhenAnyEmptyTuple) {
+  auto winner = dispenso::when_any();
+  EXPECT_EQ(winner.get(), SIZE_MAX);
+}
+
+TEST(Future, WhenAnySingleVector) {
+  std::deque<dispenso::Future<int>> items;
+  items.emplace_back([]() { return 42; }, dispenso::globalThreadPool());
+  auto winner = dispenso::when_any(items.begin(), items.end());
+  EXPECT_EQ(winner.get(), 0u);
+  EXPECT_EQ(items[0].get(), 42);
+}
+
+TEST(Future, WhenAnyVectorReturnsValidIndex) {
+  // Launch many futures racing in the pool. Don't assert which wins (the
+  // ordering depends on scheduling and is not deterministic), only that the
+  // returned index is in range and the corresponding future is in fact ready.
+  constexpr size_t kN = 64;
+  std::deque<dispenso::Future<int>> items;
+  for (size_t i = 0; i < kN; ++i) {
+    items.emplace_back([i]() { return static_cast<int>(i); }, dispenso::globalThreadPool());
+  }
+  auto winner = dispenso::when_any(items.begin(), items.end());
+  size_t idx = winner.get();
+  ASSERT_LT(idx, kN);
+  EXPECT_TRUE(items[idx].is_ready());
+}
+
+TEST(Future, WhenAnyTupleReturnsValidIndex) {
+  // Mixed-type tuple — exercises the tuple variant's index tracking.
+  dispenso::Future<int> intF([]() { return 1; }, dispenso::globalThreadPool());
+  dispenso::Future<float> floatF([]() { return 2.0f; }, dispenso::globalThreadPool());
+  dispenso::Future<void> voidF([]() {}, dispenso::globalThreadPool());
+
+  auto winner = dispenso::when_any(intF, floatF, voidF);
+  size_t idx = winner.get();
+  ASSERT_LT(idx, 3u);
+  // The winning future must be ready by the time when_any's continuation fires.
+  if (idx == 0)
+    EXPECT_TRUE(intF.is_ready());
+  else if (idx == 1)
+    EXPECT_TRUE(floatF.is_ready());
+  else
+    EXPECT_TRUE(voidF.is_ready());
+}
+
 TEST(Future, WhenAllTreeBuildIters) {
   std::atomic<uint32_t> val(0);
   auto result = makeTreeIters(6, val);
@@ -1012,6 +1064,66 @@ TEST(Future, ConcurrentTaskSetWaitImpliesWhenAllFinished) {
 
   taskSet.wait();
   EXPECT_TRUE(result.is_ready());
+}
+
+TEST(Future, TaskSetWaitImpliesWhenAnyFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+
+  for (int i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto winner = dispenso::when_any(taskSet, futures.begin(), futures.end());
+
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  size_t idx = winner.get();
+  ASSERT_LT(idx, futures.size());
+  EXPECT_TRUE(futures[idx].is_ready());
+}
+
+TEST(Future, ConcurrentTaskSetWaitImpliesWhenAnyFinished) {
+  std::vector<dispenso::Future<int>> futures;
+  dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+
+  for (int i = 0; i < 100; ++i) {
+    futures.emplace_back(dispenso::Future<int>([i]() { return i; }, taskSet));
+  }
+
+  auto winner = dispenso::when_any(taskSet, futures.begin(), futures.end());
+
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  size_t idx = winner.get();
+  ASSERT_LT(idx, futures.size());
+  EXPECT_TRUE(futures[idx].is_ready());
+}
+
+TEST(Future, TaskSetWaitImpliesWhenAnyTupleFinished) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::Future<int> a([]() { return 1; }, taskSet);
+  dispenso::Future<float> b([]() { return 2.0f; }, taskSet);
+  dispenso::Future<void> c([]() {}, taskSet);
+
+  auto winner = dispenso::when_any(taskSet, a, b, c);
+
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  EXPECT_LT(winner.get(), 3u);
+}
+
+TEST(Future, ConcurrentTaskSetWaitImpliesWhenAnyTupleFinished) {
+  dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::Future<int> a([]() { return 1; }, taskSet);
+  dispenso::Future<float> b([]() { return 2.0f; }, taskSet);
+  dispenso::Future<void> c([]() {}, taskSet);
+
+  auto winner = dispenso::when_any(taskSet, a, b, c);
+
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  EXPECT_LT(winner.get(), 3u);
 }
 
 TEST(Future, Copy) {

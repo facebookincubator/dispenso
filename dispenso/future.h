@@ -690,6 +690,50 @@ auto when_all(TaskSet& taskSet, Futures&&... futures)
 template <class... Futures>
 auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
     -> Future<std::tuple<std::decay_t<Futures>...>>;
+
+/**
+ * Take a collection of futures, and return a future which will be ready when any one of the input
+ * futures becomes ready.  The result holds the index of the first input future to complete.  Late
+ * completions of other inputs do not affect the result.
+ *
+ * @param first An iterator to the start of the future collection.
+ * @param last An iterator to the end of the future collection.
+ *
+ * @return A Future containing the index (in iterator order) of the first input Future to become
+ * ready.  If the input range is empty, returns SIZE_MAX as a sentinel.
+ *
+ * @note when_any does not cancel the losing inputs.  If they are tasks scheduled into a TaskSet,
+ * the caller may use TaskSet::cancel() to ask cooperatively-cancellable tasks to exit early.
+ *
+ **/
+template <class InputIt>
+Future<size_t> when_any(InputIt first, InputIt last);
+
+/**
+ * Take a specific set of futures, and return a future which will be ready when any one of them
+ * becomes ready.  The result holds the index (in argument order) of the first to complete.
+ *
+ * @param futures A parameter pack of futures.
+ *
+ * @return A Future containing the argument index of the first to become ready.  If no inputs are
+ * given, returns SIZE_MAX as a sentinel.
+ **/
+template <class... Futures>
+auto when_any(Futures&&... futures) -> Future<size_t>;
+
+/** @overload Variant that registers with a TaskSet so that taskSet.wait() implies the result is
+ * ready. */
+template <class InputIt>
+Future<size_t> when_any(TaskSet& taskSet, InputIt first, InputIt last);
+/** @overload */
+template <class InputIt>
+Future<size_t> when_any(ConcurrentTaskSet& taskSet, InputIt first, InputIt last);
+/** @overload */
+template <class... Futures>
+auto when_any(TaskSet& taskSet, Futures&&... futures) -> Future<size_t>;
+/** @overload */
+template <class... Futures>
+auto when_any(ConcurrentTaskSet& taskSet, Futures&&... futures) -> Future<size_t>;
 } // namespace dispenso
 
 #include <dispenso/detail/future_impl2.h>

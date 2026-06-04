@@ -487,6 +487,25 @@ class FutureBase {
     }
   }
 
+  // ThreadPool-specific overload: route through schedulePlaced (locality-
+  // aware path) by default.  Most Future workloads are non-trivial computes
+  // where the placed path's per-call overhead is amortized by the work
+  // itself, and where steal-ring distribution avoids central-queue
+  // contention when many futures are being launched concurrently.
+  template <typename F>
+  FutureBase(F&& f, ThreadPool& pool, std::launch asyncPolicy, std::launch deferredPolicy)
+      : impl_(
+            createFutureImpl<Result>(
+                std::forward<F>(f),
+                (deferredPolicy & std::launch::deferred) == std::launch::deferred,
+                nullptr)) {
+    if ((asyncPolicy & std::launch::async) == std::launch::async) {
+      pool.schedulePlaced(impl_->makeOnceFunction(), ForceQueuingTag());
+    } else {
+      pool.schedulePlaced(impl_->makeOnceFunction());
+    }
+  }
+
   template <typename F>
   FutureBase(F&& f, TaskSet& taskSet, std::launch asyncPolicy, std::launch deferredPolicy)
       : impl_(

@@ -5,472 +5,380 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// Future benchmarks targeting workloads where futures are the natural
+// abstraction (rather than raw scheduling).  Compute-bound fork-join code
+// belongs in tree_benchmark.cpp; this file is for patterns where futures
+// genuinely earn their keep.
+//
+// Two workloads:
+//
+//   1. Speculative search (when_any) — launch K candidates, take the first to
+//      complete.  Models "first usable answer wins" patterns: ML inference
+//      ensembles, parallel search from multiple seeds, parallel hash lookups
+//      across shards.
+//
+//   2. Memoization fan-in (shared future) — M concurrent consumers request
+//      results for K cached keys.  First request initializes the cached
+//      future; subsequent requests for the same key wait on it.  Models
+//      lazy asset/model loaders with concurrent clients.
+
 #include <array>
-#include <cmath>
+#include <atomic>
 #include <future>
-#include <iostream>
-#include <random>
+#include <mutex>
+#include <optional>
+#include <vector>
 
 #include <dispenso/future.h>
+#include <dispenso/task_set.h>
+#include <dispenso/thread_pool.h>
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
+#include <folly/futures/SharedPromise.h>
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
 #include "thread_benchmark_common.h"
 
-constexpr size_t kSmallSize = 13;
-constexpr size_t kMediumSize = 16;
-constexpr size_t kLargeSize = 19;
+namespace {
 
-// Note that there are many optimizations that could be made for these tree build routines.  The
-// goal was to make these as apples-to-apples as possible.
+// Same workload kernel used in tree_benchmark.cpp.  CPU-bound, no allocations.
+uint32_t busyWork(uint32_t seed, size_t iterations) {
+  uint32_t h = seed;
+  for (size_t i = 0; i < iterations; ++i) {
+    h *= 2654435761u;
+    h ^= h >> 16;
+  }
+  return h;
+}
 
-struct Node {
-  Node* left;
-  Node* right;
-  uint32_t value;
+// ============================================================================
+// Benchmark 1: Speculative search via when_any.
+//
+// Hash-cracking style workload: each candidate scans iterations of a 32-bit
+// hash, looking for one whose low N bits are zero (a poor-man's proof-of-
+// work).  Different seeds find a match at different iteration counts;
+// distribution is roughly geometric with mean 1/p where p = 2^-N.  Some
+// seeds get lucky and find quickly; others slog all the way to maxIters
+// without finding.  The loop EARLY-EXITS on success — work is genuinely
+// search-shaped, not fixed-cost.
+//
+// Speculative pattern: launch K candidates with different seeds, take the
+// first one to finish.  Speedup over picking one randomly comes from
+// running K independent geometric variables and taking their min.
+//
+// The serial baseline runs ONE candidate (no oracle pre-pick) and reports
+// the per-find cost.  Comparing speculative-K against serial shows the
+// parallel speedup of taking the min of K geometric variables.
+// ============================================================================
 
-  void setValue(uint32_t unique_bitset, uint32_t modulo) {
-    value = 0;
-    for (uint32_t i = 0; i < 32; ++i) {
-      value += unique_bitset % modulo;
-      unique_bitset /= modulo;
+constexpr size_t kSpecMaxIters = 5'000'000;
+constexpr uint32_t kSpecMask = 0xffff; // 16 zero bits → ~65k iters per find on avg
+
+// Returns the iteration index where (h & mask) == 0 was satisfied, or maxIters
+// if no match was found within the budget.
+size_t crackHash(uint32_t seed, size_t maxIters, uint32_t mask) {
+  uint32_t h = seed;
+  for (size_t i = 0; i < maxIters; ++i) {
+    h *= 2654435761u;
+    h ^= h >> 16;
+    if ((h & mask) == 0) {
+      return i + 1;
     }
   }
-};
+  return maxIters;
+}
 
-class Allocator {
- public:
-  void reset(size_t depth) {
-    nodes_.resize(std::pow(2, depth) - 1);
-    next_.store(0, std::memory_order_release);
+// Honest serial baseline: pick one seed (no oracle) and run.  Across many
+// iterations this samples the geometric find-time distribution.
+void BM_speculative_serial(benchmark::State& state) {
+  uint32_t iter = 0;
+  for (auto _ : state) {
+    size_t found = crackHash(0xc0ffee + iter, kSpecMaxIters, kSpecMask);
+    benchmark::DoNotOptimize(found);
+    ++iter;
   }
+}
 
-  Node* alloc() {
-    size_t cur = next_.fetch_add(1, std::memory_order_relaxed);
-    return &nodes_[cur];
-  }
-
- private:
-  std::vector<Node> nodes_;
-  std::atomic<size_t> next_{0};
-};
-
-const std::vector<uint32_t>& getModulos() {
-  static const std::vector<uint32_t> modulos = []() {
-    std::mt19937 mt;
-    std::uniform_int_distribution<> dis(2, 55);
-    std::vector<uint32_t> m;
-    for (size_t i = 0; i < 64; ++i) {
-      m.emplace_back(dis(mt));
+// Speculative search: measures TIME-TO-FIRST-RESULT (the search cost only).
+// Losers are drained between iterations using state.PauseTiming() so the
+// drain cost is excluded from the measured time and the pool starts each
+// iteration clean.  Without this, a tight benchmark loop saturates the pool
+// with leftover loser work and the measurement degenerates into
+// throughput-bounded cycle time rather than search latency.
+//
+// TODO: When dispenso gains a Future-level cancellation token, when_any can
+// auto-trigger cancellation on losers.  Cancellation won't interrupt running
+// tasks (compute is opaque to the library), but it will (a) skip
+// not-yet-started losers when the pool is saturated and (b) let user kernels
+// cooperatively short-circuit on the token.  The PauseTiming/drain dance
+// becomes unnecessary at that point.
+template <size_t K>
+void BM_speculative_dispenso(benchmark::State& state) {
+  auto& pool = dispenso::globalThreadPool();
+  uint32_t iter = 0;
+  for (auto _ : state) {
+    std::vector<dispenso::Future<size_t>> candidates;
+    candidates.reserve(K);
+    // Distinct seeds per candidate (and per iter) so each runs an independent
+    // geometric search.
+    for (size_t k = 0; k < K; ++k) {
+      const uint32_t seed = 0xc0ffee + iter * static_cast<uint32_t>(K) + static_cast<uint32_t>(k);
+      candidates.emplace_back([seed]() { return crackHash(seed, kSpecMaxIters, kSpecMask); }, pool);
     }
-    return m;
-  }();
-  return modulos;
-}
-
-uint64_t sumTree(Node* root) {
-  if (!root) {
-    return 0;
-  }
-  return root->value + sumTree(root->left) + sumTree(root->right);
-}
-
-void checkTree(Node* root, uint32_t depth, uint32_t modulo) {
-  uint64_t expectedSum = 0;
-
-  uint32_t num = std::pow(2, depth);
-  for (uint32_t i = 0; i < num; ++i) {
-    auto bitset = i;
-    while (bitset) {
-      expectedSum += bitset % modulo;
-      bitset /= modulo;
+    size_t winner = dispenso::when_any(candidates.begin(), candidates.end()).get();
+    benchmark::DoNotOptimize(winner);
+    state.PauseTiming();
+    for (auto& c : candidates) {
+      c.wait();
     }
-  }
-
-  uint64_t actual = sumTree(root);
-  if (actual != expectedSum) {
-    std::cerr << "Mismatch! " << expectedSum << " vs " << actual << std::endl;
-    std::abort();
+    state.ResumeTiming();
+    ++iter;
   }
 }
 
-Node* serialTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValue(bitset, modulo);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return node;
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+template <size_t K>
+void BM_speculative_folly(benchmark::State& state) {
+  static folly::CPUThreadPoolExecutor exec(std::thread::hardware_concurrency());
+  uint32_t iter = 0;
+  for (auto _ : state) {
+    // collectAny moves the input futures in; losers' handles are lost.  Track
+    // completion via a shared atomic counter so we can drain in unmeasured
+    // time after when_any returns, mirroring the dispenso variant.
+    auto remaining = std::make_shared<std::atomic<size_t>>(K);
+    std::vector<folly::SemiFuture<size_t>> candidates;
+    candidates.reserve(K);
+    for (size_t k = 0; k < K; ++k) {
+      const uint32_t seed = 0xc0ffee + iter * static_cast<uint32_t>(K) + static_cast<uint32_t>(k);
+      candidates.emplace_back(folly::via(&exec, [seed, remaining]() {
+        size_t found = crackHash(seed, kSpecMaxIters, kSpecMask);
+        remaining->fetch_sub(1, std::memory_order_release);
+        return found;
+      }));
+    }
+    auto result = folly::collectAny(std::move(candidates)).get();
+    benchmark::DoNotOptimize(result.first);
+    state.PauseTiming();
+    while (remaining->load(std::memory_order_acquire) > 0) {
+      std::this_thread::yield();
+    }
+    state.ResumeTiming();
+    ++iter;
   }
-  node->left = serialTree(allocator, depth, (bitset << 1), modulo);
-  node->right = serialTree(allocator, depth, (bitset << 1) | 1, modulo);
-
-  return node;
 }
-
-template <size_t depth>
-void BM_serial_tree(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-
-  Node* root;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = serialTree(alloc, depth, 1, modulo);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(root, depth, modulo);
-}
-
-Node* stdTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValue(bitset, modulo);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return node;
-  }
-  auto left = std::async([&]() { return stdTree(allocator, depth, (bitset << 1), modulo); });
-  auto right = std::async([&]() { return stdTree(allocator, depth, (bitset << 1) | 1, modulo); });
-  node->left = left.get();
-  node->right = right.get();
-
-  return node;
-}
-
-template <size_t depth>
-void BM_std_tree(benchmark::State& state) {
-#if defined(__APPLE__) || defined(__ANDROID__)
-  // std::async on macOS and Android (libc++) creates a real thread per call.
-  // At depth 16+ this spawns tens of thousands of threads recursively,
-  // exhausting OS thread limits and hanging the process.
-  if (depth >= kMediumSize) {
-    state.SkipWithError("std::async hangs on this platform at this tree depth");
-    return;
-  }
-#elif defined(_WIN32)
-  // std::async on Windows uses a threadpool. The recursive tree construction
-  // pattern causes deadlock as threadpool threads wait for tasks that require
-  // more threadpool threads. Skip all depths on Windows.
-  state.SkipWithError("std::async deadlocks on Windows threadpool");
-  return;
 #endif
 
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
+BENCHMARK(BM_speculative_serial)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_speculative_dispenso, 4)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_speculative_dispenso, 8)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_speculative_dispenso, 16)->UseRealTime();
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+BENCHMARK_TEMPLATE(BM_speculative_folly, 4)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_speculative_folly, 8)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_speculative_folly, 16)->UseRealTime();
+#endif
 
-  uint32_t modulo;
+// ============================================================================
+// Benchmark 2: KV cache memoization.
+//
+// Models a key-value cache where many concurrent requesters look up keys with
+// a skewed access pattern (a small fraction of slots get most of the
+// requests).  First request to a slot atomically claims it, kicks off the
+// expensive compute, and stores the resulting Future.  Subsequent requests
+// for that same slot just observe the already-claimed Future and (a) wait if
+// the compute is still in flight or (b) return immediately if it's done.
+//
+// The win pattern requires more concurrent demand than pool threads can
+// satisfy in parallel — otherwise every request runs its own compute in
+// parallel and there's nothing for memoization to dedupe.  We achieve this
+// by making the request count >> pool size.
+//
+// Cache slot uses double-checked atomic-bool + mutex:
+//   - Hot read path: one acquire load + branch (no mutex).
+//   - Cold init path: mutex serializes; one winner constructs the Future.
+//
+// Why mutex on init (instead of CAS-publishing a heap-allocated Future): the
+// Future ctor has a side effect (queues a task on the pool).  Two racing
+// initializers would each queue a wasted compute the loser can't recall.
+// Mutex serializes init so only the winner ever constructs.
+// ============================================================================
 
-  Node* root;
+constexpr size_t kKvNumSlots = 1024;
+constexpr size_t kKvNumRequests = 4096; // ~25x oversubscription on 165-thread pool
+constexpr size_t kKvComputeWork = 500000; // ~830µs per compute (5 cycles/iter at ~3GHz)
 
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = stdTree(alloc, depth, 1, modulo);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+// Deterministic skewed access: 50% of requests hit the top 10% of slots.
+size_t pickKey(size_t i) {
+  uint64_t h = (i * 8121u + 28411u) & 0xffffffffu;
+  if ((h & 0x1u) == 0) {
+    return (h >> 1) % (kKvNumSlots / 10); // hot
   }
-
-  checkTree(root, depth, modulo);
+  return (h >> 1) % kKvNumSlots; // cold
 }
 
-Node* dispensoTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValue(bitset, modulo);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return node;
+struct DispensoCacheSlot {
+  std::atomic<bool> initialized{false};
+  std::mutex mu;
+  std::optional<dispenso::Future<uint32_t>> future;
+};
+
+struct StdCacheSlot {
+  std::atomic<bool> initialized{false};
+  std::mutex mu;
+  std::shared_future<uint32_t> future;
+};
+
+#if !defined(BENCHMARK_WITHOUT_FOLLY)
+struct FollyCacheSlot {
+  std::atomic<bool> initialized{false};
+  std::mutex mu;
+  std::unique_ptr<folly::SharedPromise<uint32_t>> promise;
+};
+#endif
+
+// No-cache baseline: every request computes independently. Upper bound on
+// what memoization can save you when compute is scarce.
+void BM_kv_no_cache(benchmark::State& state) {
+  auto& pool = dispenso::globalThreadPool();
+  for (auto _ : state) {
+    dispenso::ConcurrentTaskSet tasks(pool);
+    for (size_t i = 0; i < kKvNumRequests; ++i) {
+      tasks.schedule([i]() {
+        size_t key = pickKey(i);
+        uint32_t v = busyWork(0xc0ffee + static_cast<uint32_t>(key), kKvComputeWork);
+        benchmark::DoNotOptimize(v);
+      });
+    }
+    tasks.wait();
   }
-
-  auto left = dispenso::async(
-      [=, &allocator]() { return dispensoTree(allocator, depth, (bitset << 1), modulo); });
-  auto right = dispenso::async(
-      [=, &allocator]() { return dispensoTree(allocator, depth, (bitset << 1) | 1, modulo); });
-  node->left = left.get();
-  node->right = right.get();
-
-  return node;
 }
 
-template <size_t depth>
-void BM_dispenso_tree(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  dispenso::globalThreadPool();
+// Idiomatic dispenso shape:
+//   - TaskSet (non-concurrent) for the 4096 consumer fan-out, since this is
+//     single-producer.  scheduleBulk amortizes per-task atomic overhead and
+//     uses the central-queue's bulk-enqueue path.  TaskSet always uses the
+//     central queue, which is right for these tiny consumer tasks.
+//   - Future(lambda, pool) for the cached compute, which routes through
+//     pool.schedulePlaced (placed/locality-aware path).  Heavy ~830µs
+//     computes benefit from steal-ring distribution.
+void BM_kv_dispenso(benchmark::State& state) {
+  auto& pool = dispenso::globalThreadPool();
+  for (auto _ : state) {
+    state.PauseTiming();
+    auto cache = std::make_unique<std::array<DispensoCacheSlot, kKvNumSlots>>();
+    state.ResumeTiming();
 
-  uint32_t modulo;
+    auto& cacheRef = *cache;
+    dispenso::TaskSet tasks(pool);
+    tasks.scheduleBulk(kKvNumRequests, [&cacheRef, &pool](size_t i) {
+      return [i, &cacheRef, &pool]() {
+        size_t key = pickKey(i);
+        DispensoCacheSlot& slot = cacheRef[key];
+        if (!slot.initialized.load(std::memory_order_acquire)) {
+          std::lock_guard<std::mutex> lk(slot.mu);
+          if (!slot.future) {
+            slot.future.emplace(
+                [key]() { return busyWork(0xc0ffee + static_cast<uint32_t>(key), kKvComputeWork); },
+                pool);
+            slot.initialized.store(true, std::memory_order_release);
+          }
+        }
+        uint32_t v = slot.future->get();
+        benchmark::DoNotOptimize(v);
+      };
+    });
+    tasks.wait();
 
-  Node* root;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = dispensoTree(alloc, depth, 1, modulo);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+    state.PauseTiming();
+    cache.reset();
+    state.ResumeTiming();
   }
+}
 
-  checkTree(root, depth, modulo);
+void BM_kv_std_shared_future(benchmark::State& state) {
+  auto& pool = dispenso::globalThreadPool();
+  for (auto _ : state) {
+    state.PauseTiming();
+    auto cache = std::make_unique<std::array<StdCacheSlot, kKvNumSlots>>();
+    state.ResumeTiming();
+
+    auto& cacheRef = *cache;
+    dispenso::ConcurrentTaskSet tasks(pool);
+    for (size_t i = 0; i < kKvNumRequests; ++i) {
+      tasks.schedule([i, &cacheRef]() {
+        size_t key = pickKey(i);
+        StdCacheSlot& slot = cacheRef[key];
+        if (!slot.initialized.load(std::memory_order_acquire)) {
+          std::lock_guard<std::mutex> lk(slot.mu);
+          if (!slot.future.valid()) {
+            slot.future = std::async(std::launch::async, [key]() {
+                            return busyWork(0xc0ffee + static_cast<uint32_t>(key), kKvComputeWork);
+                          }).share();
+            slot.initialized.store(true, std::memory_order_release);
+          }
+        }
+        uint32_t v = slot.future.get();
+        benchmark::DoNotOptimize(v);
+      });
+    }
+    tasks.wait();
+
+    state.PauseTiming();
+    cache.reset();
+    state.ResumeTiming();
+  }
 }
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
-folly::SemiFuture<folly::Unit> follyTree(
-    folly::Executor* exec,
-    Node* node,
-    Allocator* allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  --depth;
-  node->setValue(bitset, modulo);
+void BM_kv_folly(benchmark::State& state) {
+  static folly::CPUThreadPoolExecutor exec(std::thread::hardware_concurrency());
+  auto& pool = dispenso::globalThreadPool();
+  for (auto _ : state) {
+    state.PauseTiming();
+    auto cache = std::make_unique<std::array<FollyCacheSlot, kKvNumSlots>>();
+    state.ResumeTiming();
 
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return folly::Unit{};
-  }
-
-  node->left = allocator->alloc();
-  node->right = allocator->alloc();
-
-  return folly::via(
-             exec,
-             [=]() {
-               return folly::collectAll(
-                          follyTree(exec, node->left, allocator, depth, bitset << 1, modulo),
-                          follyTree(exec, node->right, allocator, depth, bitset << 1 | 1, modulo))
-                   .unit();
-             })
-      .semi();
-}
-
-template <size_t depth>
-void BM_folly_tree(benchmark::State& state) {
-  folly::CPUThreadPoolExecutor follyExec{std::thread::hardware_concurrency()};
-  Allocator alloc;
-  alloc.reset(depth);
-
-  uint32_t modulo;
-
-  Node root;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    follyTree(&follyExec, &root, &alloc, depth, 1, modulo).via(&follyExec).get();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-  checkTree(&root, depth, modulo);
-}
-#endif // !BENCHMARK_WITHOUT_FOLLY
-
-void dispensoTaskSetTree(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo]() {
-        node->left = allocator.alloc();
-        dispensoTaskSetTree(tasks, node->left, allocator, depth, (bitset << 1), modulo);
-      },
-      true);
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo]() {
-        node->right = allocator.alloc();
-        dispensoTaskSetTree(tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
-      },
-      true);
-}
-
-template <size_t depth>
-void BM_dispenso_taskset_tree(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTree(tasks, &root, alloc, depth, 1, modulo);
+    auto& cacheRef = *cache;
+    dispenso::ConcurrentTaskSet tasks(pool);
+    for (size_t i = 0; i < kKvNumRequests; ++i) {
+      tasks.schedule([i, &cacheRef]() {
+        size_t key = pickKey(i);
+        FollyCacheSlot& slot = cacheRef[key];
+        if (!slot.initialized.load(std::memory_order_acquire)) {
+          std::lock_guard<std::mutex> lk(slot.mu);
+          if (!slot.promise) {
+            slot.promise = std::make_unique<folly::SharedPromise<uint32_t>>();
+            auto* p = slot.promise.get();
+            // Submit the compute as a bare task; it fulfills the SharedPromise
+            // so all consumers (current and future) can wait on it.
+            exec.add([key, p]() {
+              p->setValue(busyWork(0xc0ffee + static_cast<uint32_t>(key), kKvComputeWork));
+            });
+            slot.initialized.store(true, std::memory_order_release);
+          }
+        }
+        uint32_t v = slot.promise->getSemiFuture().via(&exec).get();
+        benchmark::DoNotOptimize(v);
+      });
+    }
     tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+
+    state.PauseTiming();
+    cache.reset();
+    state.ResumeTiming();
   }
-
-  checkTree(&root, depth, modulo);
 }
+#endif
 
-void dispensoTaskSetTreeBulk(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-
-  std::array<Node**, 2> children = {&node->left, &node->right};
-  tasks.scheduleBulk(2, [&tasks, &allocator, children, depth, bitset, modulo](size_t i) {
-    return [&tasks,
-            &allocator,
-            child = children[i],
-            depth,
-            bitset = (bitset << 1) | static_cast<uint32_t>(i),
-            modulo]() {
-      *child = allocator.alloc();
-      dispensoTaskSetTreeBulk(tasks, *child, allocator, depth, bitset, modulo);
-    };
-  });
-}
-
-template <size_t depth>
-void BM_dispenso_taskset_tree_bulk(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeBulk(tasks, &root, alloc, depth, 1, modulo);
-    tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(&root, depth, modulo);
-}
-
-dispenso::Future<Node*>
-dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValue(bitset, modulo);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return dispenso::make_ready_future(node);
-  }
-
-  auto left = dispenso::async([depth, bitset, modulo, &allocator]() {
-    return dispensoTreeWhenAll(allocator, depth, (bitset << 1), modulo);
-  });
-  auto right = dispenso::async([depth, bitset, modulo, &allocator]() {
-    return dispensoTreeWhenAll(allocator, depth, (bitset << 1) | 1, modulo);
-  });
-  return dispenso::when_all(left, right).then([node](auto&& both) {
-    auto& tuple = both.get();
-    node->left = std::get<0>(tuple).get().get();
-    node->right = std::get<1>(tuple).get().get();
-    return node;
-  });
-}
-
-template <size_t depth>
-void BM_dispenso_tree_when_all(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  dispenso::globalThreadPool();
-
-  uint32_t modulo;
-
-  Node* root;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = dispensoTreeWhenAll(alloc, depth, 1, modulo).get();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(root, depth, modulo);
-}
-
-BENCHMARK_TEMPLATE(BM_serial_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_serial_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_serial_tree, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_std_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_std_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_std_tree, kLargeSize)->UseRealTime();
-
+BENCHMARK(BM_kv_no_cache)->UseRealTime();
+BENCHMARK(BM_kv_dispenso)->UseRealTime();
+BENCHMARK(BM_kv_std_shared_future)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
-BENCHMARK_TEMPLATE(BM_folly_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_folly_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_folly_tree, kLargeSize)->UseRealTime();
-#endif // !BENCHMARK_WITHOUT_FOLLY
+BENCHMARK(BM_kv_folly)->UseRealTime();
+#endif
 
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kLargeSize)->UseRealTime();
+} // namespace
 
 BENCHMARK_MAIN();

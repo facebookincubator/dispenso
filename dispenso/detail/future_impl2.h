@@ -140,6 +140,26 @@ struct InterceptionInvoker {
   OnceFunction savedOffFn;
 };
 
+template <typename VecType>
+struct WhenAnySharedVec {
+  VecType vec;
+  std::atomic<size_t> winner;
+  OnceFunction f;
+
+  template <typename InputIt>
+  WhenAnySharedVec(InputIt first, InputIt last) : vec(first, last), winner(SIZE_MAX) {}
+};
+
+template <typename Tuple>
+struct WhenAnySharedTuple {
+  Tuple tuple;
+  std::atomic<size_t> winner;
+  OnceFunction f;
+  template <typename... Types>
+  WhenAnySharedTuple(Types&&... args)
+      : tuple(std::make_tuple(std::forward<Types>(args)...)), winner(SIZE_MAX) {}
+};
+
 template <typename Invoker, typename... Futures>
 auto whenAllTuple(Invoker& invoker, Futures&&... futures)
     -> Future<std::tuple<std::decay_t<Futures>...>> {
@@ -219,6 +239,107 @@ whenAllIterators(Invoker& invoker, InputIt first, InputIt last) {
   return res;
 }
 
+template <typename Invoker, typename... Futures>
+auto whenAnyTuple(Invoker& invoker, Futures&&... futures) -> Future<size_t> {
+  using TupleType = std::tuple<std::decay_t<Futures>...>;
+  using ResultFuture = Future<size_t>;
+
+  auto shared =
+      std::make_shared<detail::WhenAnySharedTuple<TupleType>>(std::forward<Futures>(futures)...);
+
+  auto whenComplete = [shared]() -> size_t {
+    size_t w = shared->winner.load(std::memory_order_acquire);
+    if (w != SIZE_MAX) {
+      return w;
+    }
+    // Inline-execution path: see whenAnyIterators for the rationale. Wait on a
+    // single input (the first one forEach visits) and claim it if no .then
+    // callback has already picked a winner. The --idx scheme matches the
+    // registration loop below, so the index we assign is consistent with what
+    // that input's .then would have set. We do not force strictly-first
+    // completion here.
+    size_t idx = std::tuple_size<TupleType>::value;
+    forEach(shared->tuple, [&shared, &idx](auto& future) {
+      --idx;
+      future.wait();
+      size_t expected = SIZE_MAX;
+      shared->winner.compare_exchange_strong(expected, idx, std::memory_order_acq_rel);
+      return false; // one input resolved ⇒ winner is now set; stop iterating.
+    });
+    return shared->winner.load(std::memory_order_acquire);
+  };
+
+  ResultFuture res(std::move(whenComplete), invoker);
+
+  shared->f = std::move(invoker.savedOffFn);
+  size_t idx = std::tuple_size<TupleType>::value;
+  auto& tuple = shared->tuple;
+  forEach(tuple, [shared, &idx](auto& future) {
+    --idx;
+    size_t myIdx = idx;
+    future.then(
+        [shared, myIdx](auto&&) {
+          size_t expected = SIZE_MAX;
+          if (shared->winner.compare_exchange_strong(expected, myIdx, std::memory_order_acq_rel)) {
+            shared->f();
+          }
+        },
+        kImmediateInvoker);
+    return true;
+  });
+
+  return res;
+}
+
+template <typename Invoker, typename InputIt>
+Future<size_t> whenAnyIterators(Invoker& invoker, InputIt first, InputIt last) {
+  using VecType = std::vector<typename std::iterator_traits<InputIt>::value_type>;
+  using ResultFuture = Future<size_t>;
+
+  if (first == last) {
+    // Empty range: no winner possible. Return SIZE_MAX as sentinel.
+    return make_ready_future(static_cast<size_t>(SIZE_MAX));
+  }
+
+  auto shared = std::make_shared<detail::WhenAnySharedVec<VecType>>(first, last);
+
+  auto whenComplete = [shared]() -> size_t {
+    size_t w = shared->winner.load(std::memory_order_acquire);
+    if (w != SIZE_MAX) {
+      return w;
+    }
+    // Inline-execution path: get() ran the result inline before any .then
+    // callback fired shared->f. Block until at least one input is resolved,
+    // then return the winner. We deliberately wait on a single input rather
+    // than racing all of them for the strictly-first completion: when_any makes
+    // no such promise, and a wait-any over the inputs would only pessimize this
+    // rare fallback. If a .then callback claims an earlier-completing winner
+    // while we wait, our CAS fails and we return that winner instead. vec is
+    // non-empty here (the empty range returned above).
+    shared->vec[0].wait();
+    size_t expected = SIZE_MAX;
+    shared->winner.compare_exchange_strong(expected, size_t{0}, std::memory_order_acq_rel);
+    return shared->winner.load(std::memory_order_acquire);
+  };
+
+  ResultFuture res(std::move(whenComplete), invoker);
+
+  shared->f = std::move(invoker.savedOffFn);
+  for (size_t i = 0; i < shared->vec.size(); ++i) {
+    auto& s = shared->vec[i];
+    s.then(
+        [shared, i](auto&&) {
+          size_t expected = SIZE_MAX;
+          if (shared->winner.compare_exchange_strong(expected, i, std::memory_order_acq_rel)) {
+            shared->f();
+          }
+        },
+        kImmediateInvoker);
+  }
+
+  return res;
+}
+
 } // namespace detail
 
 template <typename InputIt>
@@ -273,6 +394,54 @@ auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
     -> Future<std::tuple<std::decay_t<Futures>...>> {
   detail::TaskSetInterceptionInvoker<ConcurrentTaskSet> interceptor(taskSet);
   return whenAllTuple(interceptor, std::forward<Futures>(futures)...);
+}
+
+template <typename InputIt>
+Future<size_t> when_any(InputIt first, InputIt last) {
+  detail::InterceptionInvoker interceptor;
+  return detail::whenAnyIterators(interceptor, first, last);
+}
+
+template <typename InputIt>
+Future<size_t> when_any(TaskSet& taskSet, InputIt first, InputIt last) {
+  detail::TaskSetInterceptionInvoker<TaskSet> interceptor(taskSet);
+  return detail::whenAnyIterators(interceptor, first, last);
+}
+
+template <typename InputIt>
+Future<size_t> when_any(ConcurrentTaskSet& taskSet, InputIt first, InputIt last) {
+  detail::TaskSetInterceptionInvoker<ConcurrentTaskSet> interceptor(taskSet);
+  return detail::whenAnyIterators(interceptor, first, last);
+}
+
+inline Future<size_t> when_any() {
+  return make_ready_future(static_cast<size_t>(SIZE_MAX));
+}
+
+inline Future<size_t> when_any(TaskSet&) {
+  return make_ready_future(static_cast<size_t>(SIZE_MAX));
+}
+
+inline Future<size_t> when_any(ConcurrentTaskSet&) {
+  return make_ready_future(static_cast<size_t>(SIZE_MAX));
+}
+
+template <typename... Futures>
+auto when_any(Futures&&... futures) -> Future<size_t> {
+  detail::InterceptionInvoker interceptor;
+  return detail::whenAnyTuple(interceptor, std::forward<Futures>(futures)...);
+}
+
+template <typename... Futures>
+auto when_any(TaskSet& taskSet, Futures&&... futures) -> Future<size_t> {
+  detail::TaskSetInterceptionInvoker<TaskSet> interceptor(taskSet);
+  return detail::whenAnyTuple(interceptor, std::forward<Futures>(futures)...);
+}
+
+template <typename... Futures>
+auto when_any(ConcurrentTaskSet& taskSet, Futures&&... futures) -> Future<size_t> {
+  detail::TaskSetInterceptionInvoker<ConcurrentTaskSet> interceptor(taskSet);
+  return detail::whenAnyTuple(interceptor, std::forward<Futures>(futures)...);
 }
 
 } // namespace dispenso
