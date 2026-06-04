@@ -655,7 +655,12 @@ inline bool ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToke
 
 inline bool ThreadPool::tryExecuteNextFromRings(size_t& startRing) {
   OnceFunction task;
-  size_t n = numRings_.load(std::memory_order_relaxed);
+  // Acquire pairs with resizeLocked's numRings_.store(release), which is published
+  // only after the new rings are fully constructed in the arena. A relaxed load
+  // could observe the grown count without the rings' construction being visible,
+  // letting us index a not-yet-constructed ring (UB; SIGILL on weak-memory targets
+  // like arm64).
+  size_t n = numRings_.load(std::memory_order_acquire);
   for (size_t i = 0; i < n; ++i) {
     size_t idx = (startRing + i) % n;
     if (rings_[idx].try_pop(task)) {
@@ -752,7 +757,10 @@ void ThreadPool::scheduleBulkToRings(
 
   // Linear layout: task i goes to ring i (1 task per ring, kStatic pattern).
   // Tasks that don't fit in their ring overflow to central queue.
-  size_t ringCount = numRings_.load(std::memory_order_relaxed);
+  // Acquire: see tryExecuteNextFromRings. Pairs with the release store in
+  // resizeLocked so we observe the freshly-constructed rings, not merely the
+  // updated count.
+  size_t ringCount = numRings_.load(std::memory_order_acquire);
   size_t tasksPerRing = (count + ringCount - 1) / ringCount;
 
   size_t taskIdx = 0;
