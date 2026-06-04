@@ -4,8 +4,10 @@ Design document for adding fork-join-style scheduling to dispenso's thread
 pool, enabling cache-affinity-aware `parallel_for` while preserving all
 existing semantics.
 
-**Status:** Design phase
-**Target:** post-1.5.0
+**Status:** Implemented
+
+See also: [three_tier_scheduling.md](three_tier_scheduling.md) and
+[wake_cascade.md](wake_cascade.md) for the final architecture.
 
 ## Table of Contents
 

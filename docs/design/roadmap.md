@@ -211,13 +211,25 @@ These are ideas that may be pursued based on community feedback:
   - **Goal.** Reclaim retired generations safely without taxing the `schedule()` hot path — no per-call reference count and no hardware fence on the reader side.
   - **Approach (asymmetric-fence / hazard-pointer reclamation).** Readers (`schedule()`) publish the `wakeState_` pointer they are about to use into a per-thread hazard slot via a *relaxed* store bracketed by compiler-only fences — nearly free, no atomic RMW, no contention (this is a published pointer, not a reference count). `resize()` (rare, may be slow) publishes the new generation, issues a process-wide "heavy" barrier, then scans all hazard slots and frees a retired generation only once no slot still references it. The heavy barrier supplies the ordering asymmetrically so readers pay nothing: `sys_membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED)` on Linux, `FlushProcessWriteBuffers()` on Windows, and an `mprotect`-toggle (forces a TLB-shootdown IPI → per-core barrier) fallback for macOS and other POSIX. After the barrier, a reader either had already published the old pointer (the scan sees it and waits) or runs its load after the barrier and therefore observes the new generation — so a retired object can never be freed while a reader still holds it. (folly packages this as `asymmetric_thread_fence_{light,heavy}`; dispenso would self-implement to avoid the folly dependency.)
 
-### Fork-Join Scheduling & Thread Groups (post-1.5)
+### Fork-Join Scheduling & Thread Groups (post-1.5) --- COMPLETE
 
-Full design document: [fork_join_scheduling.md](fork_join_scheduling.md)
+Design documents:
+- [fork_join_scheduling.md](fork_join_scheduling.md) — original design
+- [three_tier_scheduling.md](three_tier_scheduling.md) — final three-tier queue architecture
+- [wake_cascade.md](wake_cascade.md) — leader-team parallel wake cascade
 
-**Summary.** Add per-thread bounded MPMC rings (Vyukov algorithm), thread
-groups with per-group EpochWaiters, and cache-topology-aware group assignment
-to enable fork-join-style scheduling for `parallel_for`.  Closes the ~5x IPC
-gap vs OMP on locality-sensitive patterns by ensuring deterministic
-thread-to-chunk affinity across iterations.  All existing semantics (TaskSet,
-Futures, Pipelines, deadlock prevention) are preserved.
+**Implemented.** Per-thread locality rings, per-group steal rings, leader-team
+parallel wake cascade, CpuSet topology detection, adaptive spin backoff,
+and tunable pool-recursive load factor. Locality-sensitive parallel_for
+improved 74-86%. Pipeline sub-6ms. Graph scene CTS improved 18%. Dispenso
+compositing benchmark 26-58x faster than Taskflow.
+
+### 2.0 (API-breaking changes)
+
+The following changes require a major version bump due to API breakage:
+
+| Feature | Description |
+|---------|-------------|
+| Remove poll mode | Remove `threadLoopPoll`, the `setSignalingWake(false)` path, and the `DISPENSO_WAKEUP_ENABLE` / `DISPENSO_POLL_PERIOD_US` defines. Signaling wake (futex/WaitOnAddress/ulock) is always-on and well-tested. Poll mode is a legacy fallback that adds code complexity without benefit on any supported platform. |
+| C++17 minimum | Bump minimum standard from C++14 to C++17. Enables `std::optional` (replacing `OpResult`), `if constexpr`, structured bindings, `[[nodiscard]]`, and `std::string_view`. Simplifies template metaprogramming throughout. |
+| C++20 consideration | Evaluate C++20 as minimum for a later 2.x release. Enables `std::atomic<T>::wait/notify` (potential EpochWaiter simplification), concepts (better error messages), coroutine integration, and `std::jthread`. |

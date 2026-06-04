@@ -401,7 +401,9 @@ static void BM_scene_graph_concurrent_task_set(benchmark::State& state) {
   Scene scene;
   prepareGraph(threadPool, scene, g);
 
-  dispenso::ConcurrentTaskSet concurrentTaskSet(threadPool);
+  // Scene-graph nodes are short callbacks; the lightweight path outperforms the
+  // locality-aware default for this workload.
+  dispenso::ConcurrentTaskSet concurrentTaskSet(threadPool, dispenso::TaskCost::kLightweight);
   dispenso::ConcurrentTaskSetExecutor concurrentTaskSetExecutor;
 
   for (auto _ : state) {
