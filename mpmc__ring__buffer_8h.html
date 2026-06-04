@@ -126,7 +126,7 @@ Classes</h2></td></tr>
 <p>This buffer implements the Vyukov bounded MPMC queue algorithm, which uses per-slot sequence numbers for synchronization. It provides O(1) fail-fast push and pop operations with no CAS retry loops on the uncontended fast path.</p>
 <p>The primary use case is per-thread work queues for fork-join scheduling, where a scheduler pushes targeted work to a specific thread's ring and the thread (or a work-stealing neighbor) pops from it. Bulk push is supported for efficient batch scheduling.</p>
 <dl class="section note"><dt>Note</dt><dd>This implementation is thread-safe for multiple producers AND multiple consumers.</dd></dl>
-<dl class="section see"><dt>See also</dt><dd>docs/design/fork_join_scheduling.md for the design context. </dd>
+<dl class="section see"><dt>See also</dt><dd>docs/design/three_tier_scheduling.md for the design context. </dd>
 <dd>
 <a href="https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue">https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue</a> </dd></dl>
 

@@ -875,120 +875,126 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00856" name="l00856"></a><span class="lineno">  856</span>    enqueued = work_.enqueue_bulk(it, count);</div>
 <div class="line"><a id="l00857" name="l00857"></a><span class="lineno">  857</span>  }</div>
 <div class="line"><a id="l00858" name="l00858"></a><span class="lineno">  858</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00859" name="l00859"></a><span class="lineno">  859</span>  (void)(enqueued);</div>
-<div class="line"><a id="l00860" name="l00860"></a><span class="lineno">  860</span>  assert(enqueued);</div>
-<div class="line"><a id="l00861" name="l00861"></a><span class="lineno">  861</span> </div>
-<div class="line"><a id="l00862" name="l00862"></a><span class="lineno">  862</span>  <span class="comment">// Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.</span></div>
-<div class="line"><a id="l00863" name="l00863"></a><span class="lineno">  863</span>  <span class="comment">// Spinning threads (numNotWorking - totalSleeping) will find enqueued work</span></div>
-<div class="line"><a id="l00864" name="l00864"></a><span class="lineno">  864</span>  <span class="comment">// naturally, so only wake enough sleepers to cover the deficit beyond the</span></div>
-<div class="line"><a id="l00865" name="l00865"></a><span class="lineno">  865</span>  <span class="comment">// spinner threshold.</span></div>
-<div class="line"><a id="l00866" name="l00866"></a><span class="lineno">  866</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00867" name="l00867"></a><span class="lineno">  867</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
-<div class="line"><a id="l00868" name="l00868"></a><span class="lineno">  868</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
-<div class="line"><a id="l00869" name="l00869"></a><span class="lineno">  869</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
-<div class="line"><a id="l00870" name="l00870"></a><span class="lineno">  870</span>      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00871" name="l00871"></a><span class="lineno">  871</span>      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);</div>
-<div class="line"><a id="l00872" name="l00872"></a><span class="lineno">  872</span>      <span class="comment">// Only count spinners beyond the threshold as &quot;covering&quot; tasks</span></div>
-<div class="line"><a id="l00873" name="l00873"></a><span class="lineno">  873</span>      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);</div>
-<div class="line"><a id="l00874" name="l00874"></a><span class="lineno">  874</span>      int32_t toWake = std::max(int32_t{0}, <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count) - effectiveSpinners);</div>
-<div class="line"><a id="l00875" name="l00875"></a><span class="lineno">  875</span>      toWake = std::min(toWake, sleeping);</div>
-<div class="line"><a id="l00876" name="l00876"></a><span class="lineno">  876</span>      <span class="keywordflow">if</span> (toWake &lt;= ws-&gt;branchFactor()) {</div>
-<div class="line"><a id="l00877" name="l00877"></a><span class="lineno">  877</span>        <span class="comment">// Small N: direct claim+wake, no cascade overhead</span></div>
-<div class="line"><a id="l00878" name="l00878"></a><span class="lineno">  878</span>        <span class="keywordflow">for</span> (int32_t i = 0; i &lt; toWake; ++i) {</div>
-<div class="line"><a id="l00879" name="l00879"></a><span class="lineno">  879</span>          <span class="keywordflow">if</span> (ws-&gt;claimAndWakeOne() &lt; 0) {</div>
-<div class="line"><a id="l00880" name="l00880"></a><span class="lineno">  880</span>            <span class="keywordflow">break</span>;</div>
-<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span>          }</div>
-<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span>        }</div>
-<div class="line"><a id="l00883" name="l00883"></a><span class="lineno">  883</span>      } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00884" name="l00884"></a><span class="lineno">  884</span>        <span class="comment">// Large N: budget cascade for parallel fan-out</span></div>
-<div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span>        ws-&gt;wakeN(toWake);</div>
-<div class="line"><a id="l00886" name="l00886"></a><span class="lineno">  886</span>      }</div>
-<div class="line"><a id="l00887" name="l00887"></a><span class="lineno">  887</span>    }</div>
-<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>  }</div>
-<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>}</div>
-<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span> </div>
-<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="foldopen" id="foldopen00892" data-start="{" data-end="}">
-<div class="line"><a id="l00892" name="l00892"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">  892</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">ThreadPool::scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span>  <span class="keywordflow">if</span> (count == 0) {</div>
-<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span>  }</div>
+<div class="line"><a id="l00859" name="l00859"></a><span class="lineno">  859</span>  <span class="keywordflow">if</span> (DISPENSO_EXPECT(!enqueued, <span class="keyword">false</span>)) {</div>
+<div class="line"><a id="l00860" name="l00860"></a><span class="lineno">  860</span>    workRemaining_.fetch_sub(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_relaxed);</div>
+<div class="line"><a id="l00861" name="l00861"></a><span class="lineno">  861</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00862" name="l00862"></a><span class="lineno">  862</span>    <span class="keywordflow">throw</span> std::bad_alloc();</div>
+<div class="line"><a id="l00863" name="l00863"></a><span class="lineno">  863</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00864" name="l00864"></a><span class="lineno">  864</span>    std::abort();</div>
+<div class="line"><a id="l00865" name="l00865"></a><span class="lineno">  865</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00866" name="l00866"></a><span class="lineno">  866</span>  }</div>
+<div class="line"><a id="l00867" name="l00867"></a><span class="lineno">  867</span> </div>
+<div class="line"><a id="l00868" name="l00868"></a><span class="lineno">  868</span>  <span class="comment">// Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.</span></div>
+<div class="line"><a id="l00869" name="l00869"></a><span class="lineno">  869</span>  <span class="comment">// Spinning threads (numNotWorking - totalSleeping) will find enqueued work</span></div>
+<div class="line"><a id="l00870" name="l00870"></a><span class="lineno">  870</span>  <span class="comment">// naturally, so only wake enough sleepers to cover the deficit beyond the</span></div>
+<div class="line"><a id="l00871" name="l00871"></a><span class="lineno">  871</span>  <span class="comment">// spinner threshold.</span></div>
+<div class="line"><a id="l00872" name="l00872"></a><span class="lineno">  872</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00873" name="l00873"></a><span class="lineno">  873</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
+<div class="line"><a id="l00874" name="l00874"></a><span class="lineno">  874</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
+<div class="line"><a id="l00875" name="l00875"></a><span class="lineno">  875</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
+<div class="line"><a id="l00876" name="l00876"></a><span class="lineno">  876</span>      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00877" name="l00877"></a><span class="lineno">  877</span>      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);</div>
+<div class="line"><a id="l00878" name="l00878"></a><span class="lineno">  878</span>      <span class="comment">// Only count spinners beyond the threshold as &quot;covering&quot; tasks</span></div>
+<div class="line"><a id="l00879" name="l00879"></a><span class="lineno">  879</span>      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);</div>
+<div class="line"><a id="l00880" name="l00880"></a><span class="lineno">  880</span>      int32_t toWake = std::max(int32_t{0}, <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count) - effectiveSpinners);</div>
+<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span>      toWake = std::min(toWake, sleeping);</div>
+<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span>      <span class="keywordflow">if</span> (toWake &lt;= ws-&gt;branchFactor()) {</div>
+<div class="line"><a id="l00883" name="l00883"></a><span class="lineno">  883</span>        <span class="comment">// Small N: direct claim+wake, no cascade overhead</span></div>
+<div class="line"><a id="l00884" name="l00884"></a><span class="lineno">  884</span>        <span class="keywordflow">for</span> (int32_t i = 0; i &lt; toWake; ++i) {</div>
+<div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span>          <span class="keywordflow">if</span> (ws-&gt;claimAndWakeOne() &lt; 0) {</div>
+<div class="line"><a id="l00886" name="l00886"></a><span class="lineno">  886</span>            <span class="keywordflow">break</span>;</div>
+<div class="line"><a id="l00887" name="l00887"></a><span class="lineno">  887</span>          }</div>
+<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>        }</div>
+<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>      } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span>        <span class="comment">// Large N: budget cascade for parallel fan-out</span></div>
+<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span>        ws-&gt;wakeN(toWake);</div>
+<div class="line"><a id="l00892" name="l00892"></a><span class="lineno">  892</span>      }</div>
+<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span>    }</div>
+<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span>  }</div>
+<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span>}</div>
 <div class="line"><a id="l00896" name="l00896"></a><span class="lineno">  896</span> </div>
-<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00898" name="l00898"></a><span class="lineno">  898</span>  <span class="keywordflow">if</span> (!numPool) {</div>
-<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>    <span class="comment">// No threads in pool - execute all inline</span></div>
-<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
-<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span>      gen(i)();</div>
-<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>    }</div>
-<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span>  }</div>
-<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span> </div>
-<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span>  <span class="comment">// Process in chunks, interleaving enqueue and inline execution based on load.</span></div>
-<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
-<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span>  <span class="keywordtype">size_t</span> i = 0;</div>
-<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
-<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
-<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>      <span class="comment">// Over load factor - execute one task inline, then re-check</span></div>
-<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span>      gen(i)();</div>
-<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span>      ++i;</div>
-<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span>      <span class="comment">// Under load factor - enqueue a chunk</span></div>
-<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span>      ssize_t room = loadFactor - curWork;</div>
-<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
-<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
-<div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span>        toEnqueue = 1;</div>
-<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span>      }</div>
-<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span>      <span class="keywordtype">size_t</span> base = i;</div>
-<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span>      scheduleBulkEnqueue(toEnqueue, [&amp;gen, base](<span class="keywordtype">size_t</span> j) { <span class="keywordflow">return</span> gen(base + j); });</div>
-<div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>      i += toEnqueue;</div>
-<div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span>    }</div>
-<div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span>  }</div>
-<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span>}</div>
+<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="foldopen" id="foldopen00898" data-start="{" data-end="}">
+<div class="line"><a id="l00898" name="l00898"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">  898</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">ThreadPool::scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>  <span class="keywordflow">if</span> (count == 0) {</div>
+<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span>  }</div>
+<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span> </div>
+<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span>  <span class="keywordflow">if</span> (!numPool) {</div>
+<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span>    <span class="comment">// No threads in pool - execute all inline</span></div>
+<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
+<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>      gen(i)();</div>
+<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span>    }</div>
+<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>  }</div>
+<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span> </div>
+<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span>  <span class="comment">// Process in chunks, interleaving enqueue and inline execution based on load.</span></div>
+<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
+<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span>  <span class="keywordtype">size_t</span> i = 0;</div>
+<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
+<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
+<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span>      <span class="comment">// Over load factor - execute one task inline, then re-check</span></div>
+<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>      gen(i)();</div>
+<div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span>      ++i;</div>
+<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span>      <span class="comment">// Under load factor - enqueue a chunk</span></div>
+<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span>      ssize_t room = loadFactor - curWork;</div>
+<div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
+<div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
+<div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span>        toEnqueue = 1;</div>
+<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span>      }</div>
+<div class="line"><a id="l00929" name="l00929"></a><span class="lineno">  929</span>      <span class="keywordtype">size_t</span> base = i;</div>
+<div class="line"><a id="l00930" name="l00930"></a><span class="lineno">  930</span>      scheduleBulkEnqueue(toEnqueue, [&amp;gen, base](<span class="keywordtype">size_t</span> j) { <span class="keywordflow">return</span> gen(base + j); });</div>
+<div class="line"><a id="l00931" name="l00931"></a><span class="lineno">  931</span>      i += toEnqueue;</div>
+<div class="line"><a id="l00932" name="l00932"></a><span class="lineno">  932</span>    }</div>
+<div class="line"><a id="l00933" name="l00933"></a><span class="lineno">  933</span>  }</div>
+<div class="line"><a id="l00934" name="l00934"></a><span class="lineno">  934</span>}</div>
 </div>
-<div class="line"><a id="l00929" name="l00929"></a><span class="lineno">  929</span> </div>
-<div class="line"><a id="l00930" name="l00930"></a><span class="lineno">  930</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00931" name="l00931"></a><span class="lineno">  931</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkPlaced(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l00932" name="l00932"></a><span class="lineno">  932</span>  <span class="keywordflow">if</span> (count == 0) {</div>
-<div class="line"><a id="l00933" name="l00933"></a><span class="lineno">  933</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00934" name="l00934"></a><span class="lineno">  934</span>  }</div>
 <div class="line"><a id="l00935" name="l00935"></a><span class="lineno">  935</span> </div>
-<div class="line"><a id="l00936" name="l00936"></a><span class="lineno">  936</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00937" name="l00937"></a><span class="lineno">  937</span>  <span class="keywordflow">if</span> (!numPool) {</div>
-<div class="line"><a id="l00938" name="l00938"></a><span class="lineno">  938</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
-<div class="line"><a id="l00939" name="l00939"></a><span class="lineno">  939</span>      gen(i)();</div>
-<div class="line"><a id="l00940" name="l00940"></a><span class="lineno">  940</span>    }</div>
-<div class="line"><a id="l00941" name="l00941"></a><span class="lineno">  941</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00942" name="l00942"></a><span class="lineno">  942</span>  }</div>
-<div class="line"><a id="l00943" name="l00943"></a><span class="lineno">  943</span> </div>
-<div class="line"><a id="l00944" name="l00944"></a><span class="lineno">  944</span>  <span class="comment">// Process in chunks, interleaving placed-enqueue and inline execution based on load.</span></div>
-<div class="line"><a id="l00945" name="l00945"></a><span class="lineno">  945</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
-<div class="line"><a id="l00946" name="l00946"></a><span class="lineno">  946</span>  <span class="keywordtype">size_t</span> i = 0;</div>
-<div class="line"><a id="l00947" name="l00947"></a><span class="lineno">  947</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
-<div class="line"><a id="l00948" name="l00948"></a><span class="lineno">  948</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00949" name="l00949"></a><span class="lineno">  949</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
-<div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span>      gen(i)();</div>
-<div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span>      ++i;</div>
-<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>      ssize_t room = loadFactor - curWork;</div>
-<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
-<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
-<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span>        toEnqueue = 1;</div>
-<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span>      }</div>
-<div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span>      <span class="comment">// Batch the workRemaining bump for the whole chunk; placed path will</span></div>
-<div class="line"><a id="l00960" name="l00960"></a><span class="lineno">  960</span>      <span class="comment">// wake per-task as needed via scheduleImplPlaced&#39;s claimAndWakeOne.</span></div>
-<div class="line"><a id="l00961" name="l00961"></a><span class="lineno">  961</span>      workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(toEnqueue), std::memory_order_release);</div>
-<div class="line"><a id="l00962" name="l00962"></a><span class="lineno">  962</span>      <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toEnqueue; ++j) {</div>
-<div class="line"><a id="l00963" name="l00963"></a><span class="lineno">  963</span>        scheduleImplPlaced({gen(i + j)}, <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00936" name="l00936"></a><span class="lineno">  936</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00937" name="l00937"></a><span class="lineno">  937</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkPlaced(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l00938" name="l00938"></a><span class="lineno">  938</span>  <span class="keywordflow">if</span> (count == 0) {</div>
+<div class="line"><a id="l00939" name="l00939"></a><span class="lineno">  939</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00940" name="l00940"></a><span class="lineno">  940</span>  }</div>
+<div class="line"><a id="l00941" name="l00941"></a><span class="lineno">  941</span> </div>
+<div class="line"><a id="l00942" name="l00942"></a><span class="lineno">  942</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00943" name="l00943"></a><span class="lineno">  943</span>  <span class="keywordflow">if</span> (!numPool) {</div>
+<div class="line"><a id="l00944" name="l00944"></a><span class="lineno">  944</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
+<div class="line"><a id="l00945" name="l00945"></a><span class="lineno">  945</span>      gen(i)();</div>
+<div class="line"><a id="l00946" name="l00946"></a><span class="lineno">  946</span>    }</div>
+<div class="line"><a id="l00947" name="l00947"></a><span class="lineno">  947</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00948" name="l00948"></a><span class="lineno">  948</span>  }</div>
+<div class="line"><a id="l00949" name="l00949"></a><span class="lineno">  949</span> </div>
+<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>  <span class="comment">// Process in chunks, interleaving placed-enqueue and inline execution based on load.</span></div>
+<div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
+<div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span>  <span class="keywordtype">size_t</span> i = 0;</div>
+<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
+<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
+<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span>      gen(i)();</div>
+<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span>      ++i;</div>
+<div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00960" name="l00960"></a><span class="lineno">  960</span>      ssize_t room = loadFactor - curWork;</div>
+<div class="line"><a id="l00961" name="l00961"></a><span class="lineno">  961</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
+<div class="line"><a id="l00962" name="l00962"></a><span class="lineno">  962</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
+<div class="line"><a id="l00963" name="l00963"></a><span class="lineno">  963</span>        toEnqueue = 1;</div>
 <div class="line"><a id="l00964" name="l00964"></a><span class="lineno">  964</span>      }</div>
-<div class="line"><a id="l00965" name="l00965"></a><span class="lineno">  965</span>      i += toEnqueue;</div>
-<div class="line"><a id="l00966" name="l00966"></a><span class="lineno">  966</span>    }</div>
-<div class="line"><a id="l00967" name="l00967"></a><span class="lineno">  967</span>  }</div>
-<div class="line"><a id="l00968" name="l00968"></a><span class="lineno">  968</span>}</div>
-<div class="line"><a id="l00969" name="l00969"></a><span class="lineno">  969</span> </div>
-<div class="line"><a id="l00970" name="l00970"></a><span class="lineno">  970</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00965" name="l00965"></a><span class="lineno">  965</span>      <span class="comment">// Batch the workRemaining bump for the whole chunk; placed path will</span></div>
+<div class="line"><a id="l00966" name="l00966"></a><span class="lineno">  966</span>      <span class="comment">// wake per-task as needed via scheduleImplPlaced&#39;s claimAndWakeOne.</span></div>
+<div class="line"><a id="l00967" name="l00967"></a><span class="lineno">  967</span>      workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(toEnqueue), std::memory_order_release);</div>
+<div class="line"><a id="l00968" name="l00968"></a><span class="lineno">  968</span>      <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toEnqueue; ++j) {</div>
+<div class="line"><a id="l00969" name="l00969"></a><span class="lineno">  969</span>        scheduleImplPlaced({gen(i + j)}, <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00970" name="l00970"></a><span class="lineno">  970</span>      }</div>
+<div class="line"><a id="l00971" name="l00971"></a><span class="lineno">  971</span>      i += toEnqueue;</div>
+<div class="line"><a id="l00972" name="l00972"></a><span class="lineno">  972</span>    }</div>
+<div class="line"><a id="l00973" name="l00973"></a><span class="lineno">  973</span>  }</div>
+<div class="line"><a id="l00974" name="l00974"></a><span class="lineno">  974</span>}</div>
+<div class="line"><a id="l00975" name="l00975"></a><span class="lineno">  975</span> </div>
+<div class="line"><a id="l00976" name="l00976"></a><span class="lineno">  976</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_mpmc_ring_buffer_html_aec66d6a89d370599d61880a36c415874"><div class="ttname"><a href="classdispenso_1_1_mpmc_ring_buffer.html#aec66d6a89d370599d61880a36c415874">dispenso::MpmcRingBuffer::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the buffer can hold.</div><div class="ttdef"><b>Definition</b> <a href="mpmc__ring__buffer_8h_source.html#l00584">mpmc_ring_buffer.h:584</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="#l00098">thread_pool.h:98</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a1496e66b4081c1f35ab2ff70536148ac"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a1496e66b4081c1f35ab2ff70536148ac">dispenso::ThreadPool::setSignalingWake</a></div><div class="ttdeci">void setSignalingWake(bool enable, const std::chrono::duration&lt; Rep, Period &gt; &amp;sleepDuration=std::chrono::microseconds(kDefaultSleepLenUs))</div><div class="ttdef"><b>Definition</b> <a href="#l00128">thread_pool.h:128</a></div></div>
@@ -996,7 +1002,7 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a656639db1edaa1293a7dfec9629c0289"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">dispenso::ThreadPool::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="#l00482">thread_pool.h:482</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a6b6d82ff0d0a23686cee515b3c2a22dc"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a6b6d82ff0d0a23686cee515b3c2a22dc">dispenso::ThreadPool::resize</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void resize(ssize_t n)</div><div class="ttdef"><b>Definition</b> <a href="#l00144">thread_pool.h:144</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a790fecdf2ce448db2f02af9117c7f538"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a790fecdf2ce448db2f02af9117c7f538">dispenso::ThreadPool::numThreads</a></div><div class="ttdeci">ssize_t numThreads() const</div><div class="ttdef"><b>Definition</b> <a href="#l00155">thread_pool.h:155</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_abd7b0434f1b824c1a0be19b91a8ab635"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">dispenso::ThreadPool::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l00892">thread_pool.h:892</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_abd7b0434f1b824c1a0be19b91a8ab635"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">dispenso::ThreadPool::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l00898">thread_pool.h:898</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_aff84991b150f3e27711d277bcbc9f6f3"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#aff84991b150f3e27711d277bcbc9f6f3">dispenso::ThreadPool::ThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ThreadPool(size_t n, size_t poolLoadMultiplier=32)</div></div>
 <div class="ttc" id="aconcurrent__object__arena_8h_html"><div class="ttname"><a href="concurrent__object__arena_8h.html">concurrent_object_arena.h</a></div></div>
 <div class="ttc" id="acpu__set_8h_html"><div class="ttname"><a href="cpu__set_8h.html">cpu_set.h</a></div></div>
