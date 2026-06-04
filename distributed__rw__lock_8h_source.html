@@ -122,19 +122,19 @@ $(function(){initNavTree('distributed__rw__lock_8h_source.html',''); initResizab
 <div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> <span class="keyword">public</span>:</div>
 <div class="foldopen" id="foldopen00092" data-start="{" data-end="}">
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno"><a class="line" href="classdispenso_1_1_distributed_r_w_lock.html#a48c8397d2a12c055fd70ac4447222660">   92</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_distributed_r_w_lock.html#a48c8397d2a12c055fd70ac4447222660">lock_shared</a>() {</div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    impl_.lock_shared(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>());</div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    impl_.lock_shared(<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>()));</div>
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>  }</div>
 </div>
 <div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span> </div>
 <div class="foldopen" id="foldopen00097" data-start="{" data-end="}">
 <div class="line"><a id="l00097" name="l00097"></a><span class="lineno"><a class="line" href="classdispenso_1_1_distributed_r_w_lock.html#a55014510a8099c4bffc986751e270a5a">   97</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_distributed_r_w_lock.html#a55014510a8099c4bffc986751e270a5a">unlock_shared</a>() {</div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    impl_.unlock_shared(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>());</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    impl_.unlock_shared(<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>()));</div>
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>  }</div>
 </div>
 <div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span> </div>
 <div class="foldopen" id="foldopen00103" data-start="{" data-end="}">
 <div class="line"><a id="l00103" name="l00103"></a><span class="lineno"><a class="line" href="classdispenso_1_1_distributed_r_w_lock.html#a0d1faa2c4817e827c7d3c1c59d1a812c">  103</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_distributed_r_w_lock.html#a0d1faa2c4817e827c7d3c1c59d1a812c">try_lock_shared</a>() {</div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>    <span class="keywordflow">return</span> impl_.try_lock_shared(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>());</div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>    <span class="keywordflow">return</span> impl_.try_lock_shared(<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(<a class="code hl_function" href="thread__id_8h.html#a56e5109c9414c72fbb1b1b6eb042e0d1">threadId</a>()));</div>
 <div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>  }</div>
 </div>
 <div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
