@@ -36,7 +36,9 @@ include(GoogleTest)
 macro(package_add_test TEST_NAME LABEL TEST_FILE)
     add_executable(${TEST_NAME} ${TEST_FILE})
     target_compile_options(${TEST_NAME} PRIVATE
-      $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+      # /wd4316: see dispenso/CMakeLists.txt — over-aligned OnceFunction in
+      # make_shared/make_unique (incl. std::thread internals) is benign on MSVC.
+      $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX /wd4316>
       # GCC false positives: stringop-overflow through deeply inlined atomics
       # (seen with GCC 13 on Linux, GCC 14 on macOS ARM64), and
       # maybe-uninitialized through inlined try_pop + gtest macros (GCC 13).

@@ -7,6 +7,8 @@
 
 #include <dispenso/cpu_set.h>
 
+#include <dispenso/detail/math.h>
+
 #if defined(DISPENSO_CPUSET_WINDOWS)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -549,9 +551,10 @@ std::vector<int32_t> groupAffinityToCpuList(const GROUP_AFFINITY* masks, WORD gr
     int32_t groupBase = static_cast<int32_t>(masks[g].Group) * 64;
     KAFFINITY mask = masks[g].Mask;
     while (mask) {
-      unsigned long bit;
-      _BitScanForward64(&bit, mask);
-      cpus.push_back(groupBase + static_cast<int32_t>(bit));
+      // Portable bit-scan: _BitScanForward64 is x64-only, so use the shared
+      // helper (it has an x86 fallback) to keep 32-bit Windows building.
+      int32_t bit = detail::countTrailingZeros(mask);
+      cpus.push_back(groupBase + bit);
       mask &= mask - 1; // Clear lowest set bit
     }
   }

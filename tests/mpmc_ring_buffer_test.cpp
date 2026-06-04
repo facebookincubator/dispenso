@@ -476,7 +476,7 @@ TEST(MpmcRingBuffer, NonDefaultConstructible) {
 
 TEST(MpmcRingBuffer, SingleProducerSingleConsumer) {
   MpmcRingBuffer<int, 16> buffer;
-  constexpr int kCount = 100000;
+  static constexpr int kCount = 100000;
   std::atomic<bool> done{false};
 
   std::thread producer([&]() {
@@ -516,9 +516,9 @@ TEST(MpmcRingBuffer, SingleProducerSingleConsumer) {
 
 TEST(MpmcRingBuffer, MultipleProducersSingleConsumer) {
   MpmcRingBuffer<int, 32> buffer;
-  constexpr int kProducers = 4;
-  constexpr int kItemsPerProducer = 25000;
-  constexpr int kTotalItems = kProducers * kItemsPerProducer;
+  static constexpr int kProducers = 4;
+  static constexpr int kItemsPerProducer = 25000;
+  static constexpr int kTotalItems = kProducers * kItemsPerProducer;
 
   std::atomic<int> producersDone{0};
   std::vector<std::thread> producers;
@@ -574,8 +574,8 @@ TEST(MpmcRingBuffer, MultipleProducersSingleConsumer) {
 
 TEST(MpmcRingBuffer, SingleProducerMultipleConsumers) {
   MpmcRingBuffer<int, 32> buffer;
-  constexpr int kConsumers = 4;
-  constexpr int kTotalItems = 100000;
+  static constexpr int kConsumers = 4;
+  static constexpr int kTotalItems = 100000;
 
   std::atomic<bool> producerDone{false};
   std::vector<std::thread> consumers;
@@ -627,10 +627,10 @@ TEST(MpmcRingBuffer, SingleProducerMultipleConsumers) {
 
 TEST(MpmcRingBuffer, MultipleProducersMultipleConsumers) {
   MpmcRingBuffer<int, 32> buffer;
-  constexpr int kProducers = 4;
-  constexpr int kConsumers = 4;
-  constexpr int kItemsPerProducer = 25000;
-  constexpr int kTotalItems = kProducers * kItemsPerProducer;
+  static constexpr int kProducers = 4;
+  static constexpr int kConsumers = 4;
+  static constexpr int kItemsPerProducer = 25000;
+  static constexpr int kTotalItems = kProducers * kItemsPerProducer;
 
   std::atomic<int> producersDone{0};
   std::vector<std::thread> producers;
@@ -694,10 +694,10 @@ TEST(MpmcRingBuffer, MultipleProducersMultipleConsumers) {
 
 TEST(MpmcRingBuffer, ConcurrentBulkPush) {
   MpmcRingBuffer<int, 32> buffer;
-  constexpr int kProducers = 4;
-  constexpr int kBatchesPerProducer = 1000;
-  constexpr int kBatchSize = 4;
-  constexpr int kTotalItems = kProducers * kBatchesPerProducer * kBatchSize;
+  static constexpr int kProducers = 4;
+  static constexpr int kBatchesPerProducer = 1000;
+  static constexpr int kBatchSize = 4;
+  static constexpr int kTotalItems = kProducers * kBatchesPerProducer * kBatchSize;
 
   std::atomic<int> producersDone{0};
   std::vector<std::thread> producers;
@@ -760,14 +760,14 @@ TEST(MpmcRingBuffer, BatchPushWithConcurrentConsumers) {
   // could leave earlier slots unfinished while the batch producer sees a later
   // slot as available. The fix validates each slot individually.
   MpmcRingBuffer<int, 4> buffer;
-  constexpr int kIterations = 200000;
+  static constexpr int kIterations = 200000;
   std::atomic<int64_t> pushSum{0};
   std::atomic<int64_t> popSum{0};
   std::atomic<bool> done{false};
 
   // Multiple consumers that deliberately yield between reservation and
   // completion to increase the window for out-of-order slot release.
-  constexpr int kConsumers = 3;
+  static constexpr int kConsumers = 3;
   std::vector<std::thread> consumers;
   for (int c = 0; c < kConsumers; ++c) {
     consumers.emplace_back([&]() {
@@ -829,9 +829,9 @@ TEST(MpmcRingBuffer, BatchPushWithConcurrentConsumers) {
 
 TEST(MpmcRingBuffer, StressTest) {
   MpmcRingBuffer<int, 16> buffer;
-  constexpr int kProducers = 4;
-  constexpr int kConsumers = 4;
-  constexpr int kItemsPerProducer = 100000;
+  static constexpr int kProducers = 4;
+  static constexpr int kConsumers = 4;
+  static constexpr int kItemsPerProducer = 100000;
   std::atomic<int> producersDone{0};
   std::atomic<int64_t> pushSum{0};
   std::atomic<int64_t> popSum{0};
@@ -964,7 +964,7 @@ TEST(MpmcRingBuffer, ExactCapacityModeNonPow2) {
 TEST(MpmcRingBuffer, TargetedSchedulingPattern) {
   // Simulate the fork-join pattern: one scheduler pushes to per-thread rings,
   // each thread pops from its own ring
-  constexpr int kThreads = 8;
+  static constexpr int kThreads = 8;
   std::array<MpmcRingBuffer<int, 16>, kThreads> rings;
   std::array<int, kThreads> results;
   results.fill(-1);
@@ -997,7 +997,7 @@ TEST(MpmcRingBuffer, TargetedSchedulingPattern) {
 TEST(MpmcRingBuffer, BulkSchedulingWithOverflow) {
   // Simulate kAuto scheduling: bulk push to a ring, handle overflow
   MpmcRingBuffer<int, 4> ring;
-  constexpr int kChunks = 10;
+  static constexpr int kChunks = 10;
 
   std::array<int, kChunks> chunks;
   std::iota(chunks.begin(), chunks.end(), 0);
@@ -1022,7 +1022,7 @@ TEST(MpmcRingBuffer, WorkStealingPattern) {
   // and a "thief" both drain it. Verifies every item is consumed exactly once
   // across both consumers under real concurrency — no loss, no duplication.
   MpmcRingBuffer<int, 16> ring0;
-  constexpr int kNumItems = 100000;
+  static constexpr int kNumItems = 100000;
 
   std::vector<std::atomic<uint8_t>> consumed(kNumItems);
   for (auto& c : consumed) {

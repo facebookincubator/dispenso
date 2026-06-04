@@ -27,7 +27,12 @@ else()
 endif()
 
 target_compile_options(dispenso PRIVATE
-  $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
+  # /wd4316: OnceFunction is intentionally cache-line (64B) aligned (see
+  # once_function.h); MSVC's make_shared/make_unique control-block allocator does
+  # not propagate that over-alignment. Benign here (the alignment is a
+  # false-sharing optimization, not a correctness requirement), so silence the
+  # warning rather than under-align or drop the optimization.
+  $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX /wd4316>
   # GCC false positive: stringop-overflow through deeply inlined atomics.
   # Seen with GCC 13 on Linux and GCC 14 on macOS ARM64.
   $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow>

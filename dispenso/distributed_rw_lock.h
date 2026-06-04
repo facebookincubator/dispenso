@@ -90,18 +90,18 @@ class alignas(kCacheLineSize) DistributedRWLock {
  public:
   /** Acquire shared (read) access. */
   void lock_shared() {
-    impl_.lock_shared(threadId());
+    impl_.lock_shared(static_cast<size_t>(threadId()));
   }
 
   /** Release shared (read) access. */
   void unlock_shared() {
-    impl_.unlock_shared(threadId());
+    impl_.unlock_shared(static_cast<size_t>(threadId()));
   }
 
   /** Try to acquire shared (read) access.
    * @return true if acquired, false if a writer holds the lock. */
   bool try_lock_shared() {
-    return impl_.try_lock_shared(threadId());
+    return impl_.try_lock_shared(static_cast<size_t>(threadId()));
   }
 
   /** Acquire exclusive (write) access. */
