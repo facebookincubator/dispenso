@@ -14,7 +14,7 @@ var searchData=
   ['pool_5fallocator_2eh_11',['pool_allocator.h',['../pool__allocator_8h.html',1,'']]],
   ['poolallocator_12',['PoolAllocator',['../pool__allocator_8h.html#ad5408f27675c858d8df6a3d46b789b67',1,'dispenso']]],
   ['poolallocatort_13',['PoolAllocatorT',['../classdispenso_1_1_pool_allocator_t.html',1,'dispenso::PoolAllocatorT&lt; kThreadSafe &gt;'],['../classdispenso_1_1_pool_allocator_t.html#aca4e28eddba3aac2339563d8ab1624b7',1,'dispenso::PoolAllocatorT::PoolAllocatorT()']]],
-  ['poolwakestate_14',['PoolWakeState',['../classdispenso_1_1_pool_wake_state.html',1,'dispenso::PoolWakeState'],['../classdispenso_1_1_pool_wake_state.html#a7e60387e8c009b6e9021c284ab7d38e9',1,'dispenso::PoolWakeState::PoolWakeState()']]],
+  ['poolwakestate_14',['PoolWakeState',['../classdispenso_1_1_pool_wake_state.html',1,'dispenso::PoolWakeState'],['../classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c',1,'dispenso::PoolWakeState::PoolWakeState()']]],
   ['pop_5fback_15',['pop_back',['../classdispenso_1_1_concurrent_vector.html#a6df17279a0127ce60af3abb56121678b',1,'dispenso::ConcurrentVector::pop_back()'],['../classdispenso_1_1_small_vector.html#a6457f104e34ac4cd494f0d3a73e370c5',1,'dispenso::SmallVector::pop_back()']]],
   ['priority_2eh_16',['priority.h',['../priority_8h.html',1,'']]],
   ['processbudget_17',['processBudget',['../classdispenso_1_1_pool_wake_state.html#aae970cf5b4fd8d2fc13517fdae227aba',1,'dispenso::PoolWakeState']]],

@@ -142,7 +142,7 @@ Friends</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The basic executor for dispenso. It provides typical thread pool functionality, plus allows work stealing by related types (e.g. <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, <a class="el" href="classdispenso_1_1_future.html">Future</a>, etc...), which prevents deadlock when waiting for pool-recursive tasks. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00098">98</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00099">99</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="aff84991b150f3e27711d277bcbc9f6f3" name="aff84991b150f3e27711d277bcbc9f6f3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aff84991b150f3e27711d277bcbc9f6f3">&#9670;&#160;</a></span>ThreadPool()</h2>
@@ -217,7 +217,7 @@ Friends</h2></td></tr>
 <p>Get the number of threads backing the pool. If called concurrently to <code>resize</code>, the number returned may be stale.</p>
 <dl class="section return"><dt>Returns</dt><dd>The current number of threads backing the pool. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00155">155</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00156">156</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -251,7 +251,7 @@ Friends</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00144">144</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00145">145</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -287,7 +287,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00482">482</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00512">512</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -327,7 +327,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00496">496</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00526">526</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -361,7 +361,7 @@ template&lt;typename Generator &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Work is enqueued in chunks and interleaved with inline execution based on the pool's load factor, preventing both pool thread starvation and excessive queueing overhead. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00898">898</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00951">951</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -403,7 +403,7 @@ template&lt;class Rep , class Period &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>It is highly recommended to leave signaling wake enabled on Windows platforms, as sleeping/polling tends to perform poorly for intermittent workloads. For Mac/Linux platforms, it is okay to enable signaling wake, particularly if you wish to set a longer expected duration between work. If signaling wake is disabled, ensure sleepDuration is small (e.g. 200us) for best performance. Most users will not need to call this function, as defaults are reasonable. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00128">128</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00129">129</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -428,7 +428,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00454">454</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00484">484</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -452,7 +452,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00455">455</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00485">485</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>

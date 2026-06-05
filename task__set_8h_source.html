@@ -265,130 +265,142 @@ $(function(){initNavTree('task__set_8h_source.html',''); initResizable(true); })
 <div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span>    <span class="comment">// After this check, use ForceQueuingTag to skip the redundant check</span></div>
 <div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span>    <span class="comment">// in ThreadPool::schedule.</span></div>
 <div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span>    <span class="keywordflow">if</span> (outstandingTaskCount_.load(std::memory_order_relaxed) &gt; taskSetLoadFactor_ &amp;&amp;</div>
-<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span>        DISPENSO_EXPECT(!<a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>(), <span class="keyword">true</span>)) {</div>
-<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>      f();</div>
-<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>    }</div>
-<div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>    <span class="keywordflow">if</span> (!skipRecheck) {</div>
-<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span>      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>      ssize_t quickFactor =</div>
-<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>          <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>(pool_.numThreads()) * poolRecursiveLoadFactor);</div>
-<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>      <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(&amp;pool_) &amp;&amp; curWork &gt; quickFactor) ||</div>
-<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>          curWork &gt; pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>        f();</div>
-<div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>        <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00313" name="l00313"></a><span class="lineno">  313</span>      }</div>
-<div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span>    }</div>
-<div class="line"><a id="l00315" name="l00315"></a><span class="lineno">  315</span>    pool_.schedule(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
-<div class="line"><a id="l00316" name="l00316"></a><span class="lineno">  316</span>  }</div>
+<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span>        DISPENSO_EXPECT(!<a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>(), <span class="keyword">true</span>) &amp;&amp; detail::PerPoolPerThreadInfo::canInlineSchedule()) {</div>
+<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>      detail::InlineDepthGuard depthGuard;</div>
+<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>      f();</div>
+<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>    }</div>
+<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span>    <span class="keywordflow">if</span> (!skipRecheck) {</div>
+<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>      ssize_t quickFactor =</div>
+<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>          <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>(pool_.numThreads()) * poolRecursiveLoadFactor);</div>
+<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>      <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(&amp;pool_) &amp;&amp; curWork &gt; quickFactor) ||</div>
+<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>          curWork &gt; pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>        <span class="keywordflow">if</span> (!detail::PerPoolPerThreadInfo::canInlineSchedule()) {</div>
+<div class="line"><a id="l00313" name="l00313"></a><span class="lineno">  313</span>          pool_.schedule(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
+<div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span>          <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00315" name="l00315"></a><span class="lineno">  315</span>        }</div>
+<div class="line"><a id="l00316" name="l00316"></a><span class="lineno">  316</span>        detail::InlineDepthGuard depthGuard;</div>
+<div class="line"><a id="l00317" name="l00317"></a><span class="lineno">  317</span>        f();</div>
+<div class="line"><a id="l00318" name="l00318"></a><span class="lineno">  318</span>        <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00319" name="l00319"></a><span class="lineno">  319</span>      }</div>
+<div class="line"><a id="l00320" name="l00320"></a><span class="lineno">  320</span>    }</div>
+<div class="line"><a id="l00321" name="l00321"></a><span class="lineno">  321</span>    pool_.schedule(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
+<div class="line"><a id="l00322" name="l00322"></a><span class="lineno">  322</span>  }</div>
 </div>
-<div class="line"><a id="l00317" name="l00317"></a><span class="lineno">  317</span> </div>
-<div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00332" data-start="{" data-end="}">
-<div class="line"><a id="l00332" name="l00332"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a23cd5112fabde1f473d482ac41e3616f">  332</a></span>  void <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a0fa9f5439135d62f4c2c4ef22555552a">schedule</a>(F&amp;&amp; f, ForceQueuingTag fq) {</div>
-<div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span>    <span class="keywordflow">if</span> (cost_ == TaskCost::kHeavy) {</div>
-<div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>      pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), fq);</div>
-<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span>    }</div>
-<div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span>    pool_.schedule(packageTask(std::forward&lt;F&gt;(f)), fq);</div>
-<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>  }</div>
+<div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span> </div>
+<div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00338" data-start="{" data-end="}">
+<div class="line"><a id="l00338" name="l00338"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a23cd5112fabde1f473d482ac41e3616f">  338</a></span>  void <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a0fa9f5439135d62f4c2c4ef22555552a">schedule</a>(F&amp;&amp; f, ForceQueuingTag fq) {</div>
+<div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span>    <span class="keywordflow">if</span> (cost_ == TaskCost::kHeavy) {</div>
+<div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>      pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), fq);</div>
+<div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span>    }</div>
+<div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span>    pool_.schedule(packageTask(std::forward&lt;F&gt;(f)), fq);</div>
+<div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span>  }</div>
 </div>
-<div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span> </div>
-<div class="line"><a id="l00352" name="l00352"></a><span class="lineno">  352</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="foldopen" id="foldopen00353" data-start="{" data-end="}">
-<div class="line"><a id="l00353" name="l00353"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">  353</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span>    <span class="keywordflow">if</span> (cost_ == TaskCost::kHeavy) {</div>
-<div class="line"><a id="l00355" name="l00355"></a><span class="lineno">  355</span>      scheduleBulkImplPlaced(count, std::forward&lt;Generator&gt;(gen));</div>
-<div class="line"><a id="l00356" name="l00356"></a><span class="lineno">  356</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00357" name="l00357"></a><span class="lineno">  357</span>    }</div>
-<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>    scheduleBulkImpl(count, std::forward&lt;Generator&gt;(gen), <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00359" name="l00359"></a><span class="lineno">  359</span>  }</div>
+<div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span> </div>
+<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="foldopen" id="foldopen00359" data-start="{" data-end="}">
+<div class="line"><a id="l00359" name="l00359"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">  359</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>    <span class="keywordflow">if</span> (cost_ == TaskCost::kHeavy) {</div>
+<div class="line"><a id="l00361" name="l00361"></a><span class="lineno">  361</span>      scheduleBulkImplPlaced(count, std::forward&lt;Generator&gt;(gen));</div>
+<div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span>    }</div>
+<div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>    scheduleBulkImpl(count, std::forward&lt;Generator&gt;(gen), <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span>  }</div>
 </div>
-<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span> </div>
-<div class="line"><a id="l00365" name="l00365"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">  365</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">wait</a>();</div>
 <div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span> </div>
-<div class="line"><a id="l00380" name="l00380"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753">  380</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753">tryWait</a>(<span class="keywordtype">size_t</span> maxToExecute);</div>
-<div class="line"><a id="l00381" name="l00381"></a><span class="lineno">  381</span> </div>
-<div class="foldopen" id="foldopen00388" data-start="{" data-end="}">
-<div class="line"><a id="l00388" name="l00388"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">  388</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">cancel</a>() {</div>
-<div class="line"><a id="l00389" name="l00389"></a><span class="lineno">  389</span>    TaskSetBase::cancel();</div>
-<div class="line"><a id="l00390" name="l00390"></a><span class="lineno">  390</span>  }</div>
+<div class="line"><a id="l00371" name="l00371"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">  371</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">wait</a>();</div>
+<div class="line"><a id="l00372" name="l00372"></a><span class="lineno">  372</span> </div>
+<div class="line"><a id="l00386" name="l00386"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753">  386</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753">tryWait</a>(<span class="keywordtype">size_t</span> maxToExecute);</div>
+<div class="line"><a id="l00387" name="l00387"></a><span class="lineno">  387</span> </div>
+<div class="foldopen" id="foldopen00394" data-start="{" data-end="}">
+<div class="line"><a id="l00394" name="l00394"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">  394</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">cancel</a>() {</div>
+<div class="line"><a id="l00395" name="l00395"></a><span class="lineno">  395</span>    TaskSetBase::cancel();</div>
+<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span>  }</div>
 </div>
-<div class="line"><a id="l00391" name="l00391"></a><span class="lineno">  391</span> </div>
-<div class="foldopen" id="foldopen00397" data-start="{" data-end="}">
-<div class="line"><a id="l00397" name="l00397"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">  397</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00398" name="l00398"></a><span class="lineno">  398</span>    <span class="keywordflow">return</span> TaskSetBase::canceled();</div>
-<div class="line"><a id="l00399" name="l00399"></a><span class="lineno">  399</span>  }</div>
+<div class="line"><a id="l00397" name="l00397"></a><span class="lineno">  397</span> </div>
+<div class="foldopen" id="foldopen00403" data-start="{" data-end="}">
+<div class="line"><a id="l00403" name="l00403"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">  403</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00404" name="l00404"></a><span class="lineno">  404</span>    <span class="keywordflow">return</span> TaskSetBase::canceled();</div>
+<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span>  }</div>
 </div>
-<div class="line"><a id="l00400" name="l00400"></a><span class="lineno">  400</span> </div>
-<div class="foldopen" id="foldopen00405" data-start="{" data-end="}">
-<div class="line"><a id="l00405" name="l00405"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">  405</a></span>  <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">~ConcurrentTaskSet</a>() {</div>
-<div class="line"><a id="l00406" name="l00406"></a><span class="lineno">  406</span>    <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">wait</a>();</div>
-<div class="line"><a id="l00407" name="l00407"></a><span class="lineno">  407</span>  }</div>
+<div class="line"><a id="l00406" name="l00406"></a><span class="lineno">  406</span> </div>
+<div class="foldopen" id="foldopen00411" data-start="{" data-end="}">
+<div class="line"><a id="l00411" name="l00411"></a><span class="lineno"><a class="line" href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">  411</a></span>  <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">~ConcurrentTaskSet</a>() {</div>
+<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span>    <a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">wait</a>();</div>
+<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span>  }</div>
 </div>
-<div class="line"><a id="l00408" name="l00408"></a><span class="lineno">  408</span> </div>
-<div class="line"><a id="l00409" name="l00409"></a><span class="lineno">  409</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span>  <span class="keywordtype">bool</span> tryExecuteNext() {</div>
-<div class="line"><a id="l00411" name="l00411"></a><span class="lineno">  411</span>    <span class="keywordflow">return</span> pool_.tryExecuteNext();</div>
-<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span>  }</div>
-<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span> </div>
-<div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>  <span class="keywordtype">void</span> schedulePlaced(</div>
-<div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span>      F&amp;&amp; f,</div>
-<div class="line"><a id="l00418" name="l00418"></a><span class="lineno">  418</span>      <span class="keywordtype">bool</span> skipRecheck = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00419" name="l00419"></a><span class="lineno">  419</span>      <span class="keywordtype">float</span> poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {</div>
-<div class="line"><a id="l00420" name="l00420"></a><span class="lineno">  420</span>    ssize_t placedThreshold = std::max(pool_.numThreads() + 1, taskSetLoadFactor_ / 2);</div>
-<div class="line"><a id="l00421" name="l00421"></a><span class="lineno">  421</span>    <span class="keywordflow">if</span> (outstandingTaskCount_.load(std::memory_order_relaxed) &gt; placedThreshold &amp;&amp;</div>
-<div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span>        DISPENSO_EXPECT(!<a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>(), <span class="keyword">true</span>)) {</div>
-<div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span>      f();</div>
-<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span>    }</div>
-<div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span>    <span class="keywordflow">if</span> (!skipRecheck) {</div>
-<div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span>      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span>      ssize_t quickFactor =</div>
-<div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span>          <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>(pool_.numThreads()) * poolRecursiveLoadFactor);</div>
-<div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span>      <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(&amp;pool_) &amp;&amp; curWork &gt; quickFactor) ||</div>
-<div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span>          curWork &gt; pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span>        f();</div>
-<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span>        <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span>      }</div>
-<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span>    }</div>
-<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span>    pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
-<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span>  }</div>
-<div class="line"><a id="l00438" name="l00438"></a><span class="lineno">  438</span> </div>
-<div class="line"><a id="l00439" name="l00439"></a><span class="lineno">  439</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00440" name="l00440"></a><span class="lineno">  440</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="line"><a id="l00441" name="l00441"></a><span class="lineno">  441</span>  <span class="keywordtype">void</span> schedulePlaced(F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00442" name="l00442"></a><span class="lineno">  442</span>    pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
-<div class="line"><a id="l00443" name="l00443"></a><span class="lineno">  443</span>  }</div>
-<div class="line"><a id="l00444" name="l00444"></a><span class="lineno">  444</span> </div>
-<div class="line"><a id="l00445" name="l00445"></a><span class="lineno">  445</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
-<div class="line"><a id="l00446" name="l00446"></a><span class="lineno">  446</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureBase;</div>
-<div class="line"><a id="l00447" name="l00447"></a><span class="lineno">  447</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
-<div class="line"><a id="l00448" name="l00448"></a><span class="lineno">  448</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureImplBase;</div>
-<div class="line"><a id="l00449" name="l00449"></a><span class="lineno">  449</span> </div>
-<div class="line"><a id="l00450" name="l00450"></a><span class="lineno">  450</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::LimitGatedScheduler;</div>
-<div class="line"><a id="l00451" name="l00451"></a><span class="lineno">  451</span> </div>
-<div class="line"><a id="l00452" name="l00452"></a><span class="lineno">  452</span>  <a class="code hl_enumeration" href="task__set_8h.html#a52c2043af468d8544e92cd1a22833535">TaskCost</a> cost_{TaskCost::kHeavy};</div>
-<div class="line"><a id="l00453" name="l00453"></a><span class="lineno">  453</span>};</div>
-</div>
-<div class="line"><a id="l00454" name="l00454"></a><span class="lineno">  454</span> </div>
-<div class="line"><a id="l00460" name="l00460"></a><span class="lineno"><a class="line" href="task__set_8h.html#aff0e5c216460dbadab4af999d2a5ebc7">  460</a></span>DISPENSO_DLL_ACCESS TaskSetBase* <a class="code hl_function" href="task__set_8h.html#aff0e5c216460dbadab4af999d2a5ebc7">parentTaskSet</a>();</div>
+<div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span> </div>
+<div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>  <span class="keywordtype">bool</span> tryExecuteNext() {</div>
+<div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span>    <span class="keywordflow">return</span> pool_.tryExecuteNext();</div>
+<div class="line"><a id="l00418" name="l00418"></a><span class="lineno">  418</span>  }</div>
+<div class="line"><a id="l00419" name="l00419"></a><span class="lineno">  419</span> </div>
+<div class="line"><a id="l00420" name="l00420"></a><span class="lineno">  420</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00421" name="l00421"></a><span class="lineno">  421</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span>  <span class="keywordtype">void</span> schedulePlaced(</div>
+<div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span>      F&amp;&amp; f,</div>
+<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span>      <span class="keywordtype">bool</span> skipRecheck = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span>      <span class="keywordtype">float</span> poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {</div>
+<div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span>    ssize_t placedThreshold = std::max(pool_.numThreads() + 1, taskSetLoadFactor_ / 2);</div>
+<div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span>    <span class="keywordflow">if</span> (outstandingTaskCount_.load(std::memory_order_relaxed) &gt; placedThreshold &amp;&amp;</div>
+<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span>        DISPENSO_EXPECT(!<a class="code hl_function" href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">canceled</a>(), <span class="keyword">true</span>) &amp;&amp; detail::PerPoolPerThreadInfo::canInlineSchedule()) {</div>
+<div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span>      detail::InlineDepthGuard depthGuard;</div>
+<div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span>      f();</div>
+<div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span>    }</div>
+<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span>    <span class="keywordflow">if</span> (!skipRecheck) {</div>
+<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span>      ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span>      ssize_t quickFactor =</div>
+<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span>          <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(<span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>(pool_.numThreads()) * poolRecursiveLoadFactor);</div>
+<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span>      <span class="keywordflow">if</span> ((detail::PerPoolPerThreadInfo::isPoolRecursive(&amp;pool_) &amp;&amp; curWork &gt; quickFactor) ||</div>
+<div class="line"><a id="l00438" name="l00438"></a><span class="lineno">  438</span>          curWork &gt; pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00439" name="l00439"></a><span class="lineno">  439</span>        <span class="keywordflow">if</span> (!detail::PerPoolPerThreadInfo::canInlineSchedule()) {</div>
+<div class="line"><a id="l00440" name="l00440"></a><span class="lineno">  440</span>          pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
+<div class="line"><a id="l00441" name="l00441"></a><span class="lineno">  441</span>          <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00442" name="l00442"></a><span class="lineno">  442</span>        }</div>
+<div class="line"><a id="l00443" name="l00443"></a><span class="lineno">  443</span>        detail::InlineDepthGuard depthGuard;</div>
+<div class="line"><a id="l00444" name="l00444"></a><span class="lineno">  444</span>        f();</div>
+<div class="line"><a id="l00445" name="l00445"></a><span class="lineno">  445</span>        <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00446" name="l00446"></a><span class="lineno">  446</span>      }</div>
+<div class="line"><a id="l00447" name="l00447"></a><span class="lineno">  447</span>    }</div>
+<div class="line"><a id="l00448" name="l00448"></a><span class="lineno">  448</span>    pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
+<div class="line"><a id="l00449" name="l00449"></a><span class="lineno">  449</span>  }</div>
+<div class="line"><a id="l00450" name="l00450"></a><span class="lineno">  450</span> </div>
+<div class="line"><a id="l00451" name="l00451"></a><span class="lineno">  451</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00452" name="l00452"></a><span class="lineno">  452</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="line"><a id="l00453" name="l00453"></a><span class="lineno">  453</span>  <span class="keywordtype">void</span> schedulePlaced(F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00454" name="l00454"></a><span class="lineno">  454</span>    pool_.schedulePlaced(packageTask(std::forward&lt;F&gt;(f)), ForceQueuingTag());</div>
+<div class="line"><a id="l00455" name="l00455"></a><span class="lineno">  455</span>  }</div>
+<div class="line"><a id="l00456" name="l00456"></a><span class="lineno">  456</span> </div>
+<div class="line"><a id="l00457" name="l00457"></a><span class="lineno">  457</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
+<div class="line"><a id="l00458" name="l00458"></a><span class="lineno">  458</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureBase;</div>
+<div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
+<div class="line"><a id="l00460" name="l00460"></a><span class="lineno">  460</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureImplBase;</div>
 <div class="line"><a id="l00461" name="l00461"></a><span class="lineno">  461</span> </div>
-<div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::LimitGatedScheduler;</div>
+<div class="line"><a id="l00463" name="l00463"></a><span class="lineno">  463</span> </div>
+<div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span>  <a class="code hl_enumeration" href="task__set_8h.html#a52c2043af468d8544e92cd1a22833535">TaskCost</a> cost_{TaskCost::kHeavy};</div>
+<div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span>};</div>
+</div>
+<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span> </div>
+<div class="line"><a id="l00472" name="l00472"></a><span class="lineno"><a class="line" href="task__set_8h.html#aff0e5c216460dbadab4af999d2a5ebc7">  472</a></span>DISPENSO_DLL_ACCESS TaskSetBase* <a class="code hl_function" href="task__set_8h.html#aff0e5c216460dbadab4af999d2a5ebc7">parentTaskSet</a>();</div>
+<div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span> </div>
+<div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="#l00228">task_set.h:228</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a0fa9f5439135d62f4c2c4ef22555552a"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a0fa9f5439135d62f4c2c4ef22555552a">dispenso::ConcurrentTaskSet::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f, bool skipRecheck=false, float poolRecursiveLoadFactor=kDefaultPoolRecursiveLoadFactor)</div><div class="ttdef"><b>Definition</b> <a href="#l00285">task_set.h:285</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a1436539a3a484b59fe144170f2812077"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a1436539a3a484b59fe144170f2812077">dispenso::ConcurrentTaskSet::wait</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool wait()</div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a248cfe647d470b481b062b4d7f531151"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a248cfe647d470b481b062b4d7f531151">dispenso::ConcurrentTaskSet::ConcurrentTaskSet</a></div><div class="ttdeci">ConcurrentTaskSet(ThreadPool &amp;p, ssize_t stealingLoadMultiplier)</div><div class="ttdef"><b>Definition</b> <a href="#l00254">task_set.h:254</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a60a0472be135c058a7bbe34274786790"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a60a0472be135c058a7bbe34274786790">dispenso::ConcurrentTaskSet::ConcurrentTaskSet</a></div><div class="ttdeci">ConcurrentTaskSet(ThreadPool &amp;pool, ParentCascadeCancel registerForParentCancel, ssize_t stealingLoadMultiplier=kDefaultStealingMultiplier, TaskCost cost=TaskCost::kHeavy)</div><div class="ttdef"><b>Definition</b> <a href="#l00238">task_set.h:238</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a7b03e6239e7982f2d3cdc504606c6165"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">dispenso::ConcurrentTaskSet::canceled</a></div><div class="ttdeci">bool canceled() const</div><div class="ttdef"><b>Definition</b> <a href="#l00397">task_set.h:397</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_a7b03e6239e7982f2d3cdc504606c6165"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#a7b03e6239e7982f2d3cdc504606c6165">dispenso::ConcurrentTaskSet::canceled</a></div><div class="ttdeci">bool canceled() const</div><div class="ttdef"><b>Definition</b> <a href="#l00403">task_set.h:403</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_aa0963d05833a814e605c8ef7d4a7e251"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#aa0963d05833a814e605c8ef7d4a7e251">dispenso::ConcurrentTaskSet::ConcurrentTaskSet</a></div><div class="ttdeci">ConcurrentTaskSet(ThreadPool &amp;p, TaskCost cost)</div><div class="ttdef"><b>Definition</b> <a href="#l00250">task_set.h:250</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_aa665812452d314ba2f69041a6acc1754"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#aa665812452d314ba2f69041a6acc1754">dispenso::ConcurrentTaskSet::ConcurrentTaskSet</a></div><div class="ttdeci">ConcurrentTaskSet(ThreadPool &amp;p, TaskCost cost, ssize_t stealingLoadMultiplier)</div><div class="ttdef"><b>Definition</b> <a href="#l00257">task_set.h:257</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_aaf3fa4c1b3da5fe5c542aa161dcf9478"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">dispenso::ConcurrentTaskSet::~ConcurrentTaskSet</a></div><div class="ttdeci">~ConcurrentTaskSet()</div><div class="ttdef"><b>Definition</b> <a href="#l00405">task_set.h:405</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_acb022ccd94e9af3c06ef15554be1bb1d"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">dispenso::ConcurrentTaskSet::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l00353">task_set.h:353</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_ad50be57caee21bdd81ca59fb1f62d4c7"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">dispenso::ConcurrentTaskSet::cancel</a></div><div class="ttdeci">void cancel()</div><div class="ttdef"><b>Definition</b> <a href="#l00388">task_set.h:388</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_aaf3fa4c1b3da5fe5c542aa161dcf9478"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#aaf3fa4c1b3da5fe5c542aa161dcf9478">dispenso::ConcurrentTaskSet::~ConcurrentTaskSet</a></div><div class="ttdeci">~ConcurrentTaskSet()</div><div class="ttdef"><b>Definition</b> <a href="#l00411">task_set.h:411</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_acb022ccd94e9af3c06ef15554be1bb1d"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#acb022ccd94e9af3c06ef15554be1bb1d">dispenso::ConcurrentTaskSet::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l00359">task_set.h:359</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_ad50be57caee21bdd81ca59fb1f62d4c7"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#ad50be57caee21bdd81ca59fb1f62d4c7">dispenso::ConcurrentTaskSet::cancel</a></div><div class="ttdeci">void cancel()</div><div class="ttdef"><b>Definition</b> <a href="#l00394">task_set.h:394</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_ad594abbb3f6399eaaa121c829157296a"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#ad594abbb3f6399eaaa121c829157296a">dispenso::ConcurrentTaskSet::ConcurrentTaskSet</a></div><div class="ttdeci">ConcurrentTaskSet(ThreadPool &amp;p)</div><div class="ttdef"><b>Definition</b> <a href="#l00246">task_set.h:246</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html_affdda0f9e4d3108ccacece7d26860753"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html#affdda0f9e4d3108ccacece7d26860753">dispenso::ConcurrentTaskSet::tryWait</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool tryWait(size_t maxToExecute)</div></div>
 <div class="ttc" id="aclassdispenso_1_1_task_set_html"><div class="ttname"><a href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="#l00066">task_set.h:66</a></div></div>
@@ -402,7 +414,7 @@ $(function(){initNavTree('task__set_8h_source.html',''); initResizable(true); })
 <div class="ttc" id="aclassdispenso_1_1_task_set_html_adaf78b774cf53f55332f6708f988fc02"><div class="ttname"><a href="classdispenso_1_1_task_set.html#adaf78b774cf53f55332f6708f988fc02">dispenso::TaskSet::cancel</a></div><div class="ttdeci">void cancel()</div><div class="ttdef"><b>Definition</b> <a href="#l00183">task_set.h:183</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_task_set_html_ae2d95692c1fddea054ae0922ece6fb19"><div class="ttname"><a href="classdispenso_1_1_task_set.html#ae2d95692c1fddea054ae0922ece6fb19">dispenso::TaskSet::TaskSet</a></div><div class="ttdeci">TaskSet(ThreadPool &amp;p)</div><div class="ttdef"><b>Definition</b> <a href="#l00084">task_set.h:84</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_task_set_html_affb9b54fd2515e548613783db7cf7aec"><div class="ttname"><a href="classdispenso_1_1_task_set.html#affb9b54fd2515e548613783db7cf7aec">dispenso::TaskSet::wait</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool wait()</div></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00098">thread_pool.h:98</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00099">thread_pool.h:99</a></div></div>
 <div class="ttc" id="atask__set_8h_html_a52c2043af468d8544e92cd1a22833535"><div class="ttname"><a href="task__set_8h.html#a52c2043af468d8544e92cd1a22833535">dispenso::TaskCost</a></div><div class="ttdeci">TaskCost</div><div class="ttdef"><b>Definition</b> <a href="#l00046">task_set.h:46</a></div></div>
 <div class="ttc" id="atask__set_8h_html_aff0e5c216460dbadab4af999d2a5ebc7"><div class="ttname"><a href="task__set_8h.html#aff0e5c216460dbadab4af999d2a5ebc7">dispenso::parentTaskSet</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS TaskSetBase * parentTaskSet()</div></div>
 </div><!-- fragment --></div><!-- contents -->

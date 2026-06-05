@@ -1,6 +1,5 @@
 var NAVTREEINDEX1 =
 {
-"classdispenso_1_1_s_p_s_c_ring_buffer.html#a8ccae05411a187a9c40efef9b0cbd565":[2,0,0,37,13],
 "classdispenso_1_1_s_p_s_c_ring_buffer.html#aa295f4e39f091407c10489c8db70bc68":[2,0,0,37,3],
 "classdispenso_1_1_s_p_s_c_ring_buffer.html#aa352ef706502a53343d2ead3ec54183e":[2,0,0,37,0],
 "classdispenso_1_1_s_p_s_c_ring_buffer.html#aa66db857adebaa5dd9a9461e7515b3cd":[2,0,0,37,7],

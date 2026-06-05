@@ -371,7 +371,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Destroy the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00405">405</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00411">411</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -401,7 +401,7 @@ Public Member Functions</h2></td></tr>
 <p>Set the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="#a7b03e6239e7982f2d3cdc504606c6165">canceled()</a> status to exit early.</p>
 <dl class="section note"><dt>Note</dt><dd>This will be reset automatically by wait. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00388">388</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00394">394</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -430,7 +430,7 @@ Public Member Functions</h2></td></tr>
 <p>Check the canceled status of the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> has been canceled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00397">397</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00403">403</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -520,7 +520,7 @@ template&lt;typename F &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>If <code>f</code> can throw exceptions, then exceptions will be caught on the running thread and best-effort propagated to the <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>, where the first one from the set is rethrown in <code>wait</code>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00332">332</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00338">338</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -562,7 +562,7 @@ template&lt;typename Generator &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Work is processed in chunks, interleaving enqueue and inline execution based on the task set's load factor, preventing both pool thread starvation and excessive overhead. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00353">353</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00359">359</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>

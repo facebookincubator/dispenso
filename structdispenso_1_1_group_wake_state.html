@@ -106,7 +106,7 @@ $(function(){initNavTree('structdispenso_1_1_group_wake_state.html',''); initRes
 </div><!--header-->
 <div class="contents">
 
-<p>Per-group state for tracking sleeping threads.  
+<p>Per-group state.  
  <a href="#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>&gt;</code></p>
@@ -115,13 +115,37 @@ $(function(){initNavTree('structdispenso_1_1_group_wake_state.html',''); initRes
 Public Attributes</h2></td></tr>
 <tr class="memitem:aeb92a4e2a463fd9004e74e94ec8ee3bd" id="r_aeb92a4e2a463fd9004e74e94ec8ee3bd"><td class="memItemLeft" align="right" valign="top">std::atomic&lt; uint64_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aeb92a4e2a463fd9004e74e94ec8ee3bd">sleepMask</a> {0}</td></tr>
 <tr class="separator:aeb92a4e2a463fd9004e74e94ec8ee3bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac64a0ef9ba39dfb9955a76e258f38e2e" id="r_ac64a0ef9ba39dfb9955a76e258f38e2e"><td class="memItemLeft" align="right" valign="top">std::atomic&lt; uint64_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac64a0ef9ba39dfb9955a76e258f38e2e">wakePending</a> {0}</td></tr>
+<tr class="separator:ac64a0ef9ba39dfb9955a76e258f38e2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b7ce741aa499fdca1b30a13bb4e44d7" id="r_a8b7ce741aa499fdca1b30a13bb4e44d7"><td class="memItemLeft" align="right" valign="top">std::atomic&lt; int32_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8b7ce741aa499fdca1b30a13bb4e44d7">promoteSeed</a> {-1}</td></tr>
+<tr class="separator:a8b7ce741aa499fdca1b30a13bb4e44d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Per-group state for tracking sleeping threads. </p>
-<p>Each group (up to 64 threads) has a sleep mask where bit i is set when thread i in the group is sleeping on its EpochWaiter. Wakers atomically test-and-clear bits to claim exclusive wake responsibility, preventing redundant futex calls. </p>
+<div class="textblock"><p>Per-group state. </p>
+<ul>
+<li><code>sleepMask</code>: bit i set when thread i in the group is sleeping on the group's EpochWaiter. Wakers may atomically test-and-clear bits to claim exclusive wake responsibility (e.g. for targeted wakes).</li>
+<li><code>wakePending</code>: bitmask of OTHER groups this group is responsible for waking. Set by <code>wakeN</code> before broadcasting to this group; consumed by the just-woken threads via atomic CAS-claim. Bit i set means "wake
+  group i (broadcast)". When zero (the common case), workers see a single relaxed atomic load and skip the cascade hook entirely. </li>
+</ul>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00053">53</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00057">57</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
+<a id="a8b7ce741aa499fdca1b30a13bb4e44d7" name="a8b7ce741aa499fdca1b30a13bb4e44d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8b7ce741aa499fdca1b30a13bb4e44d7">&#9670;&#160;</a></span>promoteSeed</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::atomic&lt;int32_t&gt; dispenso::GroupWakeState::promoteSeed {-1}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00066">66</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+
+</div>
+</div>
 <a id="aeb92a4e2a463fd9004e74e94ec8ee3bd" name="aeb92a4e2a463fd9004e74e94ec8ee3bd"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aeb92a4e2a463fd9004e74e94ec8ee3bd">&#9670;&#160;</a></span>sleepMask</h2>
 
@@ -134,7 +158,23 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00054">54</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00058">58</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+
+</div>
+</div>
+<a id="ac64a0ef9ba39dfb9955a76e258f38e2e" name="ac64a0ef9ba39dfb9955a76e258f38e2e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac64a0ef9ba39dfb9955a76e258f38e2e">&#9670;&#160;</a></span>wakePending</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::atomic&lt;uint64_t&gt; dispenso::GroupWakeState::wakePending {0}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00059">59</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
