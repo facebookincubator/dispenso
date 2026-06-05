@@ -26,22 +26,7 @@ PoolWakeState::PoolWakeState(int32_t numThreads, int32_t groupSize, int32_t bran
   if (numThreads > 0) {
     waiterBlocks_ = detail::makeAlignedArray<WaiterBlock>(static_cast<size_t>(numGroups_));
     groupStates_ = detail::makeAlignedArray<GroupWakeState>(static_cast<size_t>(numGroups_));
-    // Cascade budgets: one per cascade-team thread (first subgroup per group).
-    size_t numBudgets = static_cast<size_t>(numGroups_) * kWaiterSubgroupSize;
-    wakeBudgets_ = detail::makeAlignedArray<WakeBudget>(numBudgets);
-    // Precompute thread-to-budget-slot table.
-    budgetSlotTable_ = std::make_unique<uint16_t[]>(static_cast<size_t>(numThreads));
-    for (int32_t i = 0; i < numThreads; ++i) {
-      int32_t posInGroup = i % groupSize;
-      if (posInGroup < kWaiterSubgroupSize) {
-        int32_t group = i / groupSize;
-        budgetSlotTable_[static_cast<size_t>(i)] =
-            static_cast<uint16_t>(group * kWaiterSubgroupSize + posInGroup);
-      } else {
-        budgetSlotTable_[static_cast<size_t>(i)] = kNoCascade;
-      }
-    }
-    // Precompute wrap-around table to avoid modulo in hot path
+    // Precompute wrap-around table to avoid modulo in hot path.
     nextGroupTable_ = std::make_unique<int32_t[]>(static_cast<size_t>(numGroups_));
     for (int32_t i = 0; i < numGroups_ - 1; ++i) {
       nextGroupTable_[static_cast<size_t>(i)] = i + 1;
@@ -66,10 +51,10 @@ bool PoolWakeState::wakeOne() {
       int bit = detail::countTrailingZeros(mask);
       int32_t threadIdx = g * groupSize_ + bit;
       if (threadIdx < numThreads_) {
-        // No claim needed — just bump the waiter. The thread clears its own
-        // bit in exitSleep. Wake the full subgroup — conditionallyWake may be
-        // called when multiple tasks are pending.
-        waiterFor(threadIdx).bumpAndWakeAll();
+        // Wake one thread from this group's shared waiter. The kernel picks
+        // any one of the parked waiters; that's fine since group threads
+        // share a steal ring and any of them can grab the work.
+        waiterFor(threadIdx).bumpAndWake();
         nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g)], std::memory_order_relaxed);
         return true;
       }
@@ -83,29 +68,27 @@ void PoolWakeState::wakeRange(int32_t count) {
   if (count <= 0) {
     return;
   }
-  // Only scan groups that contain threads in [0, count).
+  // Only scan groups that contain threads in [0, count). With one waiter
+  // per group, issue ONE bump-and-wake per group sized to the number of
+  // sleepers in range — avoids the redundant per-bit wake the old
+  // sg=4 layout needed.
   int32_t lastGroup = (count - 1) / groupSize_;
   for (int32_t g = 0; g <= lastGroup && g < numGroups_; ++g) {
     uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
     if (!mask) {
       continue;
     }
-    // Mask off bits beyond our range in the last group
     if (g == lastGroup) {
       int32_t bitsInLastGroup = count - g * groupSize_;
       if (bitsInLastGroup < 64) {
         mask &= (uint64_t{1} << bitsInLastGroup) - 1;
       }
     }
-    // Wake all sleeping threads in range within this group
-    while (mask) {
-      int bit = detail::countTrailingZeros(mask);
-      int32_t threadIdx = g * groupSize_ + bit;
-      if (tryClaimSleeper(threadIdx)) {
-        waiterFor(threadIdx).bumpAndWakeAll();
-      }
-      mask &= mask - 1;
+    if (!mask) {
+      continue;
     }
+    int32_t numSleepers = detail::countSetBits(mask);
+    waiterFor(g * groupSize_).bumpAndWakeN(numSleepers, groupSize_);
   }
 }
 
@@ -123,8 +106,9 @@ int32_t PoolWakeState::claimAndWakeOne() {
       int bit = detail::countTrailingZeros(mask);
       int32_t threadIdx = g * groupSize_ + bit;
       if (threadIdx < numThreads_ && tryClaimSleeper(threadIdx)) {
-        // Claimed: bit is cleared, so other callers won't try to wake this thread.
-        waiterFor(threadIdx).bumpAndWakeAll();
+        // Wake one thread from this group's shared waiter (the claimed
+        // thread's bit is cleared so other callers see one fewer sleeper).
+        waiterFor(threadIdx).bumpAndWake();
         nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g)], std::memory_order_relaxed);
         return threadIdx;
       }
@@ -135,168 +119,169 @@ int32_t PoolWakeState::claimAndWakeOne() {
   return -1;
 }
 
-bool PoolWakeState::wakeOneWithBudget(int32_t budget, int32_t startGroup) {
-  // Relaxed loads on totalSleeping_/sleepMask are intentional: a missed
-  // sleeper here is a bounded latency hit (the sleeper wakes via
-  // sleepLengthUs_ timeout in waitOnThread and re-checks for work), not a
-  // deadlock. Adding a seq_cst fence to every producer push to close this
-  // window would penalize the hot path for what's a rare race.
-  if (totalSleeping_.load(std::memory_order_relaxed) <= 0) {
-    return false;
-  }
-  // Use round-robin hint when no specific group is requested.
-  if (startGroup < 0) {
-    startGroup = nextWakeGroup_.load(std::memory_order_relaxed);
-    if (startGroup >= numGroups_) {
-      startGroup = 0;
-    }
-  }
-  int32_t g = startGroup;
+// Find a group with sleepers, starting from `from`, walking via
+// nextGroupTable_. Returns -1 if none.
+int32_t PoolWakeState::findGroupWithSleepers(int32_t from) const {
+  int32_t g = from;
   for (int32_t gi = 0; gi < numGroups_; ++gi) {
-    uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
-    if (mask) {
-      // Prefer cascade-team threads (first subgroup, bits 0..kWaiterSubgroupSize-1).
-      // These threads process budgets and can cascade further.
-      uint64_t cascadeMask = mask & kCascadeTeamMask;
-      if (!cascadeMask) {
-        cascadeMask = mask; // No cascade-team threads sleeping; use any thread.
-      }
-      while (cascadeMask) {
-        int bit = detail::countTrailingZeros(cascadeMask);
-        int32_t threadIdx = g * groupSize_ + bit;
-        if (threadIdx < numThreads_ && tryClaimSleeper(threadIdx)) {
-          if (budget > 0) {
-            // Assign budget to the target's cascade-team position.
-            // If the target IS in the cascade team, this is its own slot.
-            // If not, assign to position 0 of the group (it will be woken
-            // separately or find the budget on its next spin-phase check).
-            size_t budgetIdx = cascadeBudgetIdx(
-                bit < kWaiterSubgroupSize ? threadIdx : g * groupSize_); // group leader
-            wakeBudgets_[budgetIdx].value.store(budget, std::memory_order_release);
-          }
-          waiterFor(threadIdx).bumpAndWakeAll();
-          nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g)], std::memory_order_relaxed);
-          return true;
-        }
-        cascadeMask &= cascadeMask - 1;
-      }
+    if (groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed)) {
+      return g;
     }
     g = nextGroupTable_[static_cast<size_t>(g)];
   }
-  return false;
+  return -1;
+}
+
+void PoolWakeState::setupCascade(int32_t g0, int32_t remaining) {
+  int32_t numToCascade = (remaining + groupSize_ - 1) / groupSize_;
+
+#ifndef DISPENSO_TUNE_PROMOTE_SEED
+// On Windows, promote-seed is a small net loss (~1.5% mean across the
+// per-bench tuning sweep, with the clearest losses on
+// BM_dispenso_blocking/*). Each WakeByAddressSingle is expensive enough
+// that the extra in-thread wake to bootstrap g1 doesn't pay for itself
+// against a single seed cascading from g0. On Linux/macOS the second
+// seed runs in parallel with g0's cascade for free, so keep it on.
+#if defined(_WIN32)
+#define DISPENSO_TUNE_PROMOTE_SEED 0
+#else
+#define DISPENSO_TUNE_PROMOTE_SEED 1
+#endif
+#endif
+  int32_t g1 = -1;
+#if DISPENSO_TUNE_PROMOTE_SEED
+  if (numToCascade > groupSize_) {
+    g1 = findGroupWithSleepers(nextGroupTable_[static_cast<size_t>(g0)]);
+    if (g1 == g0) {
+      g1 = -1;
+    }
+  }
+#endif
+
+  uint64_t bits0 = 0, bits1 = 0;
+  int32_t scan = nextGroupTable_[static_cast<size_t>(g0)];
+  int32_t bitIdx = 0;
+  for (int32_t gi = 0; gi < numGroups_ - 1 && numToCascade > 0; ++gi) {
+    if (scan == g1) {
+      scan = nextGroupTable_[static_cast<size_t>(scan)];
+      continue;
+    }
+    if (scan < 64 &&
+        groupStates_[static_cast<size_t>(scan)].sleepMask.load(std::memory_order_relaxed)) {
+      if (g1 >= 0 && (bitIdx & 1)) {
+        bits1 |= (uint64_t{1} << scan);
+      } else {
+        bits0 |= (uint64_t{1} << scan);
+      }
+      --numToCascade;
+      ++bitIdx;
+    }
+    scan = nextGroupTable_[static_cast<size_t>(scan)];
+  }
+  if (bits0 != 0) {
+    groupStates_[static_cast<size_t>(g0)].wakePending.fetch_or(bits0, std::memory_order_release);
+  }
+  if (g1 >= 0) {
+    if (bits1 != 0) {
+      groupStates_[static_cast<size_t>(g1)].wakePending.fetch_or(bits1, std::memory_order_release);
+    }
+    groupStates_[static_cast<size_t>(g0)].promoteSeed.store(g1, std::memory_order_release);
+  }
+}
+
+void PoolWakeState::wakeN(int32_t n) {
+  // Relaxed loads on totalSleeping_/sleepMask are intentional: a missed
+  // sleeper here is a bounded latency hit (the sleeper wakes via the
+  // sleepLengthUs_ timeout and re-checks for work), not a deadlock.
+  if (n <= 0 || totalSleeping_.load(std::memory_order_relaxed) <= 0) {
+    return;
+  }
+  if (n == 1) {
+    wakeOne();
+    return;
+  }
+
+  int32_t startGroup = nextWakeGroup_.load(std::memory_order_relaxed);
+  if (startGroup >= numGroups_) {
+    startGroup = 0;
+  }
+  int32_t g0 = findGroupWithSleepers(startGroup);
+  if (g0 < 0) {
+    return;
+  }
+
+  // K0 = up to groupSize threads from g0; remainder wakes other groups via
+  // the bitmask cascade.
+  int32_t k0 = std::min(n, groupSize_);
+  int32_t remaining = n - k0;
+
+  if (remaining > 0) {
+    setupCascade(g0, remaining);
+  }
+
+  // Broadcast to g0. Workers in g0 will see promoteSeed (if set) and
+  // wakePending bits (if any) and CAS-claim them in cascadeStepSlow.
+  waiterFor(g0 * groupSize_).bumpAndWakeN(k0, groupSize_);
+  nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g0)], std::memory_order_relaxed);
+}
+
+int32_t PoolWakeState::cascadeStepSlow(int32_t group) {
+  auto& gs = groupStates_[static_cast<size_t>(group)];
+
+  // First, try to claim the promoteSeed (one thread wins, others fall through).
+  // If we win, bumpAndWake the promote target to bootstrap parallel cascade.
+  // We then continue to claim a wakePending bit so this thread also fans out.
+  //
+  // The relaxed load is safe: this thread just returned from EpochWaiter::wait,
+  // which provides a happens-after edge with the producer's bumpAndWakeN, which
+  // in turn happens-after the producer's release-store of promoteSeed. The
+  // exchange's acquire ordering guarantees we observe g1.wakePending bits if
+  // we successfully claim — relaxed-then-acquire avoids a redundant fence on
+  // the common no-promote path.
+  //
+  // We use bumpAndWakeAll here rather than bumpAndWakeN(popcount(bits1)+1, ...)
+  // for simplicity. The trade-off: when g1 has more parked threads than bits1
+  // cascade work, the extra threads wake, find no work, and re-sleep (spurious
+  // wake CPU bounded by spurious_round_trip * (groupSize - popcount(bits1)),
+  // running in parallel on otherwise-idle cores). Acceptable for the rare case
+  // promote-seed engages; revisit if measurements show it dominates.
+  int32_t promote = gs.promoteSeed.load(std::memory_order_relaxed);
+  if (promote >= 0) {
+    int32_t claimed = gs.promoteSeed.exchange(-1, std::memory_order_acquire);
+    if (claimed >= 0) {
+      waiterFor(claimed * groupSize_).bumpAndWakeAll();
+    }
+  }
+
+  uint64_t pending = gs.wakePending.load(std::memory_order_acquire);
+  while (pending != 0) {
+    int target = detail::countTrailingZeros(pending);
+    uint64_t bit = uint64_t{1} << target;
+    uint64_t prev = gs.wakePending.fetch_and(~bit, std::memory_order_acq_rel);
+    if (prev & bit) {
+      // We claimed this bit — wake the target group fully.
+      waiterFor(target * groupSize_).bumpAndWakeAll();
+      return target;
+    }
+    // Lost the race; another worker took this bit. Re-load to pick up
+    // any new bits that were set between our previous load and now.
+    pending = gs.wakePending.load(std::memory_order_acquire);
+  }
+  return -1;
 }
 
 void PoolWakeState::wakeAll() {
-  // Bump every group's epoch unconditionally. A thread could be past its
-  // data.running() check but before enterSleep() (sleepMask bit not yet set).
-  // Without the epoch bump, such a thread enters waitFor with a stale epoch
-  // and blocks until timeout — causing slow shutdown.
+  // Bump every group's epoch and wake groups with sleepers. The epoch bump
+  // is needed even for groups with sleepMask == 0: a thread could be past
+  // its data.running() check but before enterSleep() (which sets the bit).
+  // Without the bump, such a thread enters waitFor with a stale epoch and
+  // blocks until timeout — causing slow shutdown.
   for (int32_t g = 0; g < numGroups_; ++g) {
-    uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
-    while (mask) {
-      int bit = detail::countTrailingZeros(mask);
-      int32_t threadIdx = g * groupSize_ + bit;
-      if (threadIdx < numThreads_) {
-        tryClaimSleeper(threadIdx);
-      }
-      mask &= mask - 1;
+    if (groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed)) {
+      waiterFor(g * groupSize_).bumpAndWakeAll();
+    } else {
+      waiterFor(g * groupSize_).bump();
     }
-    int32_t threadsInGroup = std::min(groupSize_, numThreads_ - g * groupSize_);
-    int32_t numSubWaiters = (threadsInGroup + kWaiterSubgroupSize - 1) / kWaiterSubgroupSize;
-    for (int32_t s = 0; s < numSubWaiters; ++s) {
-      waiterFor(g * groupSize_ + s * kWaiterSubgroupSize).bumpAndWakeAll();
-    }
-  }
-}
-
-int32_t PoolWakeState::processBudgetSlow(int32_t threadIdx) {
-  // Called only when the inline fast path detected a non-zero budget.
-  // Exchange atomically claims the budget (another thread may race us).
-  size_t myBudgetIdx = cascadeBudgetIdx(threadIdx);
-  int32_t budget = wakeBudgets_[myBudgetIdx].value.exchange(0, std::memory_order_acquire);
-  if (budget <= 0) {
-    return 0;
-  }
-
-  // Parallel cascade with leader team: find a sleeping thread in another
-  // group's cascade team (first subgroup). Distribute budget across the
-  // target's cascade-team peers so they fan out in parallel.
-  //
-  // Budget counts cascade actions, not threads. Each action issues one
-  // futex call that wakes a subgroup (up to kWaiterSubgroupSize threads).
-  // Budget is deducted by kWaiterSubgroupSize/2 per action, mildly
-  // over-waking for spatial coverage. Over-waking is cheap (no-op for
-  // already-awake threads), while under-waking causes latency.
-  // O(log_kWaiterSubgroupSize(N)) wake latency.
-
-  int32_t myGroup = threadIdx / groupSize_;
-
-  // Scan other groups first (breadth-first for NUMA distribution), then own.
-  int32_t g = nextGroupTable_[static_cast<size_t>(myGroup)];
-  for (int32_t gi = 0; gi < numGroups_; ++gi) {
-    uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
-    // Prefer cascade-team threads (first subgroup bits).
-    uint64_t cascadeMask = mask & kCascadeTeamMask;
-    if (!cascadeMask) {
-      cascadeMask = mask; // Fallback to any sleeping thread.
-    }
-    while (cascadeMask) {
-      int bit = detail::countTrailingZeros(cascadeMask);
-      int32_t targetIdx = g * groupSize_ + bit;
-      if (targetIdx < numThreads_ && tryClaimSleeper(targetIdx)) {
-        // Each futex call wakes up to kWaiterSubgroupSize threads. Deduct
-        // half the subgroup size as a balanced estimate of actual wakes.
-        static constexpr int32_t kBudgetDeduction = kWaiterSubgroupSize / 2;
-        int32_t remaining = budget - kBudgetDeduction;
-
-        if (remaining > 0) {
-          distributeBudget(remaining, g, targetIdx, threadIdx);
-        }
-
-        waiterFor(targetIdx).bumpAndWakeAll();
-        return budget;
-      }
-      cascadeMask &= cascadeMask - 1;
-    }
-    g = nextGroupTable_[static_cast<size_t>(g)];
-  }
-
-  return 0;
-}
-
-void PoolWakeState::distributeBudget(
-    int32_t remaining,
-    int32_t groupIdx,
-    int32_t targetIdx,
-    int32_t callerIdx) {
-  int32_t targetBit = targetIdx % groupSize_;
-  if (targetBit < kWaiterSubgroupSize) {
-    // Target is in the cascade team. Distribute budget across its
-    // cascade-team peers (they all wake from one futex call).
-    int32_t cascadeBase = groupIdx * groupSize_;
-    int32_t numRecipients = 1;
-    int32_t peerSlots[kWaiterSubgroupSize - 1];
-    int32_t numPeers = 0;
-    for (int32_t p = 0; p < kWaiterSubgroupSize; ++p) {
-      int32_t peerIdx = cascadeBase + p;
-      if (peerIdx < numThreads_ && peerIdx != targetIdx && peerIdx != callerIdx) {
-        peerSlots[numPeers++] = static_cast<int32_t>(cascadeBudgetIdx(peerIdx));
-        ++numRecipients;
-      }
-    }
-    int32_t perPeer = numRecipients > 1 ? remaining / numRecipients : 0;
-    int32_t assigned = 0;
-    for (int32_t p = 0; p < numPeers; ++p) {
-      wakeBudgets_[static_cast<size_t>(peerSlots[p])].value.store(
-          perPeer, std::memory_order_release);
-      assigned += perPeer;
-    }
-    wakeBudgets_[cascadeBudgetIdx(targetIdx)].value.store(
-        remaining - assigned, std::memory_order_release);
-  } else {
-    // Target is NOT in the cascade team. Give full budget to group leader.
-    wakeBudgets_[cascadeBudgetIdx(groupIdx * groupSize_)].value.store(
-        remaining, std::memory_order_release);
   }
 }
 

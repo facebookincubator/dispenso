@@ -177,5 +177,31 @@ inline int32_t countTrailingZeros(uint64_t v) {
 }
 #endif
 
+// --- countSetBits (64-bit) ---
+
+#if (defined(__GNUC__) || defined(__clang__))
+inline int32_t countSetBits(uint64_t v) {
+  return static_cast<int32_t>(__builtin_popcountll(v));
+}
+#elif defined(_WIN64)
+inline int32_t countSetBits(uint64_t v) {
+  return static_cast<int32_t>(__popcnt64(v));
+}
+#elif defined(_WIN32)
+inline int32_t countSetBits(uint64_t v) {
+  return static_cast<int32_t>(__popcnt(static_cast<uint32_t>(v))) +
+      static_cast<int32_t>(__popcnt(static_cast<uint32_t>(v >> 32)));
+}
+#else
+inline int32_t countSetBits(uint64_t v) {
+  int32_t count = 0;
+  while (v != 0) {
+    v &= v - 1;
+    ++count;
+  }
+  return count;
+}
+#endif
+
 } // namespace detail
 } // namespace dispenso

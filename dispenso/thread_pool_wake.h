@@ -43,15 +43,27 @@ constexpr int32_t kDefaultWakeBranchFactor = 4;
 #endif
 
 /**
- * @brief Per-group state for tracking sleeping threads.
+ * @brief Per-group state.
  *
- * Each group (up to 64 threads) has a sleep mask where bit i is set when
- * thread i in the group is sleeping on its EpochWaiter. Wakers atomically
- * test-and-clear bits to claim exclusive wake responsibility, preventing
- * redundant futex calls.
+ * - `sleepMask`: bit i set when thread i in the group is sleeping on the
+ *   group's EpochWaiter. Wakers may atomically test-and-clear bits to
+ *   claim exclusive wake responsibility (e.g. for targeted wakes).
+ * - `wakePending`: bitmask of OTHER groups this group is responsible for
+ *   waking. Set by `wakeN` before broadcasting to this group; consumed by
+ *   the just-woken threads via atomic CAS-claim. Bit i set means "wake
+ *   group i (broadcast)". When zero (the common case), workers see a
+ *   single relaxed atomic load and skip the cascade hook entirely.
  */
 struct DISPENSO_CACHELINE_ALIGNED GroupWakeState {
   std::atomic<uint64_t> sleepMask{0};
+  std::atomic<uint64_t> wakePending{0};
+  // Promote seed group: index of a second seed group set by wakeN when the
+  // cascade tree from one seed alone can't claim all wakePending bits in
+  // parallel (numCascadeGroups > groupSize). The first awoken thread of
+  // this group atomically exchanges to -1 and bumpAndWakes the promote
+  // target, bootstrapping parallel cascade from two seeds with one
+  // producer syscall. Sentinel -1 = no promote pending.
+  std::atomic<int32_t> promoteSeed{-1};
 };
 
 /**
@@ -62,24 +74,14 @@ struct DISPENSO_CACHELINE_ALIGNED GroupWakeState {
  */
 static constexpr int32_t kMaxThreadsPerWakeGroup = 64;
 
-// Number of threads sharing one EpochWaiter (and thus one futex address).
-// A single futex_wake(INT_MAX) wakes all threads in a subgroup, reducing
-// the number of syscalls for batch wakes by this factor. The tradeoff is
-// that targeted wakes (cascade wakeOne) cause up to kWaiterSubgroupSize-1
-// spurious wakes — those threads check for work, find none, and sleep again.
-// Override via -DDISPENSO_TUNE_WAITER_SUBGROUP_SIZE=N for cross-platform tuning.
-#if defined(DISPENSO_TUNE_WAITER_SUBGROUP_SIZE)
-static constexpr int32_t kWaiterSubgroupSize = DISPENSO_TUNE_WAITER_SUBGROUP_SIZE;
-#else
-static constexpr int32_t kWaiterSubgroupSize = 4;
-#endif
-
-// distributeBudget declares EpochWaiter peerSlots[kWaiterSubgroupSize - 1];
-// a value of 1 would yield a zero-length array (UB).
-static_assert(kWaiterSubgroupSize >= 2, "kWaiterSubgroupSize must be at least 2");
-
+// One EpochWaiter (futex address) per group: all threads in a group share
+// it. A single futex_wake(addr, K) wakes K arbitrary threads from the group;
+// futex_wake(addr, 1) wakes one. Bulk wakes for K > groupSize fan out
+// across groups via the wakePending bitmask cascade (see GroupWakeState
+// below) — no waitv needed, workers wait on a single address via plain
+// futex_wait.
 struct DISPENSO_CACHELINE_ALIGNED WaiterBlock {
-  detail::EpochWaiter waiters[kMaxThreadsPerWakeGroup / kWaiterSubgroupSize];
+  detail::EpochWaiter waiter;
 };
 
 /**
@@ -112,10 +114,13 @@ class PoolWakeState {
       int32_t numThreads,
 #if defined(DISPENSO_TUNE_WAKE_GROUP_SIZE)
       int32_t groupSize = DISPENSO_TUNE_WAKE_GROUP_SIZE,
-#elif defined(_WIN32)
-      int32_t groupSize = 8,
 #else
-      int32_t groupSize = 16,
+      // Default G=8 across platforms based on the Linux tuning sweep
+      // (smaller groups reduce steal-ring + group-futex contention, with
+      // promote-seed cascade absorbing the extra cascade hop). Expected to
+      // be reasonable on macOS/Windows but not yet validated there — see
+      // docs/design/wake_tuning.md for the per-platform tuning process.
+      int32_t groupSize = 8,
 #endif
       int32_t branchFactor = kDefaultWakeBranchFactor);
 
@@ -126,16 +131,12 @@ class PoolWakeState {
   PoolWakeState& operator=(const PoolWakeState&) = delete;
 
   /**
-   * @brief Get the EpochWaiter for a specific thread.
-   *
-   * Multiple threads (kWaiterSubgroupSize) share one EpochWaiter, so
-   * bumpAndWakeAll() on this waiter wakes the entire subgroup with a
-   * single futex syscall.
+   * @brief Get the EpochWaiter for a specific thread's group. All threads
+   * in a group share one EpochWaiter (one futex address); bumpAndWakeN on
+   * this waiter wakes K arbitrary threads from the group with one syscall.
    */
   detail::EpochWaiter& waiterFor(int32_t threadIdx) {
-    int32_t inGroup = threadIdx % groupSize_;
-    return waiterBlocks_[static_cast<size_t>(threadIdx / groupSize_)]
-        .waiters[static_cast<size_t>(inGroup / kWaiterSubgroupSize)];
+    return waiterBlocks_[static_cast<size_t>(threadIdx / groupSize_)].waiter;
   }
 
   /**
@@ -215,44 +216,20 @@ class PoolWakeState {
   DISPENSO_DLL_ACCESS void wakeRange(int32_t count);
 
   /**
-   * @brief Wake one sleeping thread with the given cascade budget.
+   * @brief Wake N threads via bitmask cascade.
    *
-   * Scans group sleep masks starting from startGroup (for locality),
-   * claims one sleeper, sets its cascade budget, and bumps its waiter.
-   * Budget counts cascade actions (futex calls), not threads — each
-   * action wakes one subgroup, intentionally over-waking for coverage.
+   * Picks a sleeping group g0; wakes up to groupSize threads from it. If N >
+   * groupSize, sets a bitmask of OTHER groups to wake on g0.wakePending —
+   * the just-woken threads atomically claim bits and broadcast to those
+   * groups in parallel. Single indirection covers up to (numGroups+1)*
+   * groupSize threads (e.g. 272 for groupSize=16, 17 groups).
    *
-   * @param budget Cascade actions remaining (0 = no cascade, >0 = continue).
-   * @param startGroup Group index to start scanning from. If -1, uses
-   *                   the round-robin hint for O(1) single-wake performance.
-   * @return true if a thread was woken, false if no sleeping threads found.
+   * Producer cost: one syscall + one atomic store + a few cache-line writes.
+   *
+   * @param n Total threads requested. Over-wakes to groupSize granularity
+   *          when N is not a multiple of groupSize (benign).
    */
-  DISPENSO_DLL_ACCESS bool wakeOneWithBudget(int32_t budget, int32_t startGroup = -1);
-
-  /**
-   * @brief Wake threads using budget-limited cascade.
-   *
-   * Budget counts cascade actions, not threads woken. Each cascade action
-   * issues one futex call that wakes a subgroup (up to kWaiterSubgroupSize
-   * threads). The budget is deducted by kWaiterSubgroupSize/2 per action,
-   * which mildly over-wakes (each action wakes up to kWaiterSubgroupSize
-   * threads but consumes only half that from the budget). This is
-   * intentional: over-waking is a no-op (already-awake threads are
-   * unaffected), while under-waking causes latency (threads wait for
-   * spin timeout).
-   *
-   * @param n Budget for cascade actions.
-   */
-  void wakeN(int32_t n) {
-    if (n <= 0 || totalSleeping_.load(std::memory_order_relaxed) <= 0) {
-      return;
-    }
-    if (n == 1) {
-      wakeOne();
-    } else {
-      wakeOneWithBudget(n - 1);
-    }
-  }
+  DISPENSO_DLL_ACCESS void wakeN(int32_t n);
 
   /**
    * @brief Wake all sleeping threads. Used during shutdown.
@@ -260,30 +237,22 @@ class PoolWakeState {
   DISPENSO_DLL_ACCESS void wakeAll();
 
   /**
-   * @brief Process wake budget. Called at the top of the thread loop and
-   * periodically during the spin phase.
+   * @brief Cascade hook called by woken workers. Inline fast path: one
+   * relaxed atomic load. When the group's wakePending bitmask is non-zero,
+   * the worker atomically claims one bit and broadcasts to that target
+   * group; cascading workers spread across the wakePending bits in parallel.
    *
-   * Fast path is inlined: a single relaxed load that returns 0 when no budget
-   * is pending (the common case). The slow path (finding a sleeping thread,
-   * distributing budget, issuing futex wake) is out-of-line in the .cpp.
-   *
-   * @param threadIdx The index of the thread processing the budget.
-   * @return The budget that was consumed (0 if no budget was pending).
+   * Returns the index of the group that was woken, or -1 if no claim made.
    */
   int32_t processBudget(int32_t threadIdx) {
-    // Precomputed lookup: non-cascade threads have kNoCascade, cascade-team
-    // threads have their budget slot index. Avoids division/modulo per call.
-    uint16_t slot = budgetSlotTable_[static_cast<size_t>(threadIdx)];
-    if (slot == kNoCascade) {
-      return 0;
+    int32_t group = threadIdx / groupSize_;
+    if (groupStates_[static_cast<size_t>(group)].wakePending.load(std::memory_order_relaxed) == 0) {
+      return -1;
     }
-    if (wakeBudgets_[slot].value.load(std::memory_order_relaxed) <= 0) {
-      return 0;
-    }
-    return processBudgetSlow(threadIdx);
+    return cascadeStepSlow(group);
   }
 
-  DISPENSO_DLL_ACCESS int32_t processBudgetSlow(int32_t threadIdx);
+  DISPENSO_DLL_ACCESS int32_t cascadeStepSlow(int32_t group);
 
   /** @brief Total number of threads managed by this wake state. */
   int32_t numThreads() const {
@@ -306,41 +275,15 @@ class PoolWakeState {
   }
 
  private:
-  // Bitmask for cascade-team threads within a group's sleep mask.
-  static constexpr uint64_t kCascadeTeamMask = (uint64_t{1} << kWaiterSubgroupSize) - 1;
-  // Sentinel value: thread is not in the cascade team.
-  static constexpr uint16_t kNoCascade = UINT16_MAX;
+  // Find a group with sleepers, starting from `from`. Returns -1 if none.
+  int32_t findGroupWithSleepers(int32_t from) const;
 
-  // Map a thread index to its cascade budget slot.
-  // Thread must be in the cascade team (posInGroup < kWaiterSubgroupSize).
-  size_t cascadeBudgetIdx(int32_t threadIdx) const {
-    assert(
-        budgetSlotTable_[static_cast<size_t>(threadIdx)] != kNoCascade &&
-        "cascadeBudgetIdx called for non-cascade thread");
-    return static_cast<size_t>(budgetSlotTable_[static_cast<size_t>(threadIdx)]);
-  }
-
-  // Distribute remaining cascade budget to the target thread and its peers.
-  // Called after successfully claiming a sleeper in processBudgetSlow.
-  void distributeBudget(int32_t remaining, int32_t groupIdx, int32_t targetIdx, int32_t callerIdx);
+  // Build and place cascade bitmasks for wakeN. Selects promote seed,
+  // builds per-group wake bits, and stores them on groupStates_.
+  void setupCascade(int32_t g0, int32_t remaining);
 
   decltype(detail::makeAlignedArray<WaiterBlock>(0)) waiterBlocks_;
   decltype(detail::makeAlignedArray<GroupWakeState>(0)) groupStates_;
-
-  // Per-cascade-thread wake budgets, cache-line padded to prevent false
-  // sharing. Only the first subgroup per group (kWaiterSubgroupSize threads)
-  // participates in parallel cascade; the other threads in the group just
-  // wake and find work. Total slots = numGroups * kWaiterSubgroupSize.
-  struct DISPENSO_CACHELINE_ALIGNED WakeBudget {
-    std::atomic<int32_t> value{0};
-  };
-  decltype(detail::makeAlignedArray<WakeBudget>(0)) wakeBudgets_;
-
-  // Precomputed thread-to-budget-slot mapping. Cascade-team threads
-  // (first subgroup of each group) map to their budget slot index.
-  // Non-cascade threads map to kNoCascade. Avoids division/modulo
-  // in the processBudget fast path.
-  std::unique_ptr<uint16_t[]> budgetSlotTable_;
 
   // Round-robin hint for single-wake: avoids scanning all groups when only
   // one thread needs waking (schedule, Future). Relaxed — no correctness

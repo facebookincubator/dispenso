@@ -26,23 +26,23 @@ TEST(PoolWakeState, ConstructionZeroThreads) {
 }
 
 TEST(PoolWakeState, ConstructionBasic) {
-  PoolWakeState state(16, 16);
+  PoolWakeState state(16, 8);
   EXPECT_EQ(state.numThreads(), 16);
-  EXPECT_EQ(state.numGroups(), 1);
-  EXPECT_EQ(state.groupSize(), 16);
+  EXPECT_EQ(state.numGroups(), 2);
+  EXPECT_EQ(state.groupSize(), 8);
 }
 
 TEST(PoolWakeState, ConstructionMultipleGroups) {
-  PoolWakeState state(64, 16);
+  PoolWakeState state(64, 8);
   EXPECT_EQ(state.numThreads(), 64);
-  EXPECT_EQ(state.numGroups(), 4);
-  EXPECT_EQ(state.groupSize(), 16);
+  EXPECT_EQ(state.numGroups(), 8);
+  EXPECT_EQ(state.groupSize(), 8);
 }
 
 TEST(PoolWakeState, ConstructionPartialLastGroup) {
-  PoolWakeState state(20, 16);
+  PoolWakeState state(20, 8);
   EXPECT_EQ(state.numThreads(), 20);
-  EXPECT_EQ(state.numGroups(), 2);
+  EXPECT_EQ(state.numGroups(), 3);
 }
 
 TEST(PoolWakeState, ConstructionCustomGroupSize) {
@@ -112,28 +112,26 @@ TEST(PoolWakeState, SleepersAcrossGroups) {
 }
 
 // =============================================================================
-// Wake Budget Tests
+// Wake N + Cascade Tests
 // =============================================================================
 
-TEST(PoolWakeState, WakeOneWithBudgetNoSleepers) {
+TEST(PoolWakeState, WakeNNoSleepers) {
   PoolWakeState state(16);
-  // No one sleeping — should return false
-  EXPECT_FALSE(state.wakeOneWithBudget(5));
+  EXPECT_EQ(state.totalSleeping(), 0);
+  state.wakeN(5);
+  EXPECT_EQ(state.totalSleeping(), 0);
 }
 
-TEST(PoolWakeState, WakeOneWithBudgetSetsAndWakes) {
+TEST(PoolWakeState, WakeNWakesSeedGroup) {
   PoolWakeState state(4);
 
   state.enterSleep(2);
   uint32_t epochBefore = state.waiterFor(2).current();
 
-  EXPECT_TRUE(state.wakeOneWithBudget(3));
+  state.wakeN(3);
 
-  // Epoch should have been bumped
+  // The waiter for thread 2's group should have been bumped.
   EXPECT_NE(state.waiterFor(2).current(), epochBefore);
-
-  // Sleep bit should be cleared (claimed by waker)
-  EXPECT_FALSE(state.tryClaimSleeper(2));
 }
 
 TEST(PoolWakeState, WakeNZero) {
@@ -212,18 +210,12 @@ TEST(PoolWakeState, WakeNMultiple) {
     state.enterSleep(i);
   }
 
-  // n>1 delegates to wakeOneWithBudget(n-1), which claims one sleeper
-  // and sets a cascade budget
+  uint32_t epochBefore = state.waiterFor(0).current();
+
   state.wakeN(4);
 
-  // At least one thread should have been claimed
-  int32_t stillSleeping = 0;
-  for (int32_t i = 0; i < 4; ++i) {
-    if (state.tryClaimSleeper(i)) {
-      ++stillSleeping;
-    }
-  }
-  EXPECT_LT(stillSleeping, 4);
+  // wakeN broadcasts to the seed group — epoch should be bumped.
+  EXPECT_NE(state.waiterFor(0).current(), epochBefore);
 }
 
 TEST(PoolWakeState, WakeRangeWakesInRange) {
@@ -235,38 +227,38 @@ TEST(PoolWakeState, WakeRangeWakesInRange) {
   state.enterSleep(16); // Group 1
 
   uint32_t e0 = state.waiterFor(0).current();
-  uint32_t e5 = state.waiterFor(5).current();
+  uint32_t e16 = state.waiterFor(16).current();
 
   // Wake only the first 8 threads (group 0 only)
   state.wakeRange(8);
 
-  // Threads 0 and 5 should be claimed (in range)
-  EXPECT_FALSE(state.tryClaimSleeper(0));
-  EXPECT_FALSE(state.tryClaimSleeper(5));
-
-  // Thread 16 should still be sleeping (out of range)
-  EXPECT_TRUE(state.tryClaimSleeper(16));
-
-  // Epochs for woken threads should be bumped
+  // Group 0's epoch should be bumped (has sleepers in range)
   EXPECT_NE(state.waiterFor(0).current(), e0);
-  EXPECT_NE(state.waiterFor(5).current(), e5);
+
+  // Group 1's epoch should NOT be bumped (out of range)
+  EXPECT_EQ(state.waiterFor(16).current(), e16);
 }
 
 TEST(PoolWakeState, WakeRangePartialGroup) {
   PoolWakeState state(32, 16);
 
   state.enterSleep(0); // Group 0, in range
-  state.enterSleep(10); // Group 0, out of range (count=8)
+  state.enterSleep(10); // Group 0, out of range (count=8) but same group
   state.enterSleep(16); // Group 1, out of range
+
+  uint32_t e0 = state.waiterFor(0).current();
+  uint32_t e16 = state.waiterFor(16).current();
 
   state.wakeRange(8);
 
-  // Thread 0 should be claimed (in range)
-  EXPECT_FALSE(state.tryClaimSleeper(0));
+  // Group 0's epoch should be bumped (has sleepers in the [0,8) range).
+  // Note: thread 10 is in group 0 but outside the count=8 range; however
+  // wakeRange masks only the bits within range before broadcasting, so the
+  // wake count reflects only in-range sleepers.
+  EXPECT_NE(state.waiterFor(0).current(), e0);
 
-  // Thread 10 and 16 should still be sleeping (out of range)
-  EXPECT_TRUE(state.tryClaimSleeper(10));
-  EXPECT_TRUE(state.tryClaimSleeper(16));
+  // Group 1's epoch should NOT be bumped (entirely out of range)
+  EXPECT_EQ(state.waiterFor(16).current(), e16);
 }
 
 // =============================================================================
@@ -275,57 +267,42 @@ TEST(PoolWakeState, WakeRangePartialGroup) {
 
 TEST(PoolWakeState, ProcessBudgetZero) {
   PoolWakeState state(16);
-  EXPECT_EQ(state.processBudget(0), 0);
+  EXPECT_EQ(state.processBudget(0), -1);
 }
 
-TEST(PoolWakeState, ProcessBudgetWakesPeers) {
-  PoolWakeState state(16, 16, 4);
+TEST(PoolWakeState, ProcessBudgetWakesPeerGroup) {
+  // Small groupSize so wakeN with N > groupSize forces a cascade.
+  PoolWakeState state(32, 4, 4);
 
-  // Put thread 0 to sleep so wakeOneWithBudget can target it, plus several
-  // peers for the cascade to find.
-  state.enterSleep(0);
-  for (int32_t i = 1; i < 8; ++i) {
-    state.enterSleep(i);
+  // Put threads to sleep in two groups so wakeN sets a cascade bit on g0
+  // pointing at g1 (g1's bit set on g0.wakePending).
+  for (int32_t i = 0; i < 4; ++i) {
+    state.enterSleep(i); // Group 0
+  }
+  for (int32_t i = 4; i < 8; ++i) {
+    state.enterSleep(i); // Group 1
   }
 
-  // Wake thread 0 with budget=5 (via the real API)
-  EXPECT_TRUE(state.wakeOneWithBudget(5));
+  // wakeN with N > groupSize forces a cascade: g0 is the seed, g1's bit
+  // gets set on g0.wakePending. The producer wakes g0; a g0 thread would
+  // normally drain wakePending via processBudget. Simulate that here by
+  // calling processBudget directly from a g0 thread (thread 0).
+  state.wakeN(8);
 
-  // Simulate thread 0 waking and processing its budget
-  int32_t consumed = state.processBudget(0);
-  EXPECT_EQ(consumed, 5);
-
-  // Some peers should have been claimed by the cascade
-  int32_t stillSleeping = 0;
-  for (int32_t i = 1; i < 8; ++i) {
-    if (state.tryClaimSleeper(i)) {
-      ++stillSleeping;
-    }
-  }
-  // 7 peers were sleeping; cascade should have woken at least 1
-  EXPECT_LT(stillSleeping, 7);
+  // Thread 0's processBudget should claim the g1 bit and broadcast to g1.
+  int32_t target = state.processBudget(0);
+  EXPECT_GE(target, 0) << "processBudget should have claimed a cascade target";
 }
 
-TEST(PoolWakeState, ProcessBudgetPrefersOtherGroup) {
-  PoolWakeState state(32, 16, 4);
+TEST(PoolWakeState, ProcessBudgetReturnsMinusOneWhenNoPending) {
+  PoolWakeState state(32, 4, 4);
 
-  // Put thread 0 to sleep so wakeOneWithBudget can target it
+  // Only one group sleeping — wakeN sets no cascade bits.
   state.enterSleep(0);
-  // Put threads to sleep in both groups for the cascade to find
-  state.enterSleep(1); // Group 0
-  state.enterSleep(17); // Group 1
+  state.wakeN(1);
 
-  // Wake thread 0 with budget=1
-  EXPECT_TRUE(state.wakeOneWithBudget(1));
-
-  // Thread 0 processes its budget
-  state.processBudget(0);
-
-  // processBudget scans other groups first (breadth-first for NUMA
-  // distribution), so it should wake thread 17 (group 1) before thread 1
-  // (group 0). Thread 1 should still be sleeping.
-  bool thread1StillSleeping = state.tryClaimSleeper(1);
-  EXPECT_TRUE(thread1StillSleeping) << "Should have preferred other group (thread 17) first";
+  // No wakePending bits to claim, so processBudget on g0 returns -1.
+  EXPECT_EQ(state.processBudget(0), -1);
 }
 
 // =============================================================================
@@ -376,7 +353,7 @@ TEST(PoolWakeState, WakeAllWakesAllSleepers) {
   }
 }
 
-TEST(PoolWakeState, WakeAllClearsSleepBits) {
+TEST(PoolWakeState, WakeAllBumpsAllEpochs) {
   constexpr int32_t kNumThreads = 8;
   PoolWakeState state(kNumThreads);
 
@@ -385,14 +362,21 @@ TEST(PoolWakeState, WakeAllClearsSleepBits) {
     state.enterSleep(i);
   }
 
+  uint32_t epochs[kNumThreads];
+  for (int32_t i = 0; i < kNumThreads; ++i) {
+    epochs[i] = state.waiterFor(i).current();
+  }
+
   state.wakeAll();
 
-  // wakeAll clears sleep mask bits (via tryClaimSleeper) but does NOT
-  // decrement totalSleeping — only exitSleep does that. Verify bits are
-  // cleared, then simulate real thread behavior by calling exitSleep.
+  // wakeAll bumps epochs for groups with sleepers; threads self-exit via
+  // exitSleep when they wake. Verify epochs were bumped for sleeping groups.
   for (int32_t i = 0; i < kNumThreads; i += 2) {
-    EXPECT_FALSE(state.tryClaimSleeper(i)) << "Thread " << i << " sleep bit not cleared by wakeAll";
+    EXPECT_NE(state.waiterFor(i).current(), epochs[i])
+        << "Thread " << i << " group epoch not bumped by wakeAll";
   }
+
+  // Simulate thread wakeup by calling exitSleep
   for (int32_t i = 0; i < kNumThreads; i += 2) {
     state.exitSleep(i);
   }
@@ -402,7 +386,6 @@ TEST(PoolWakeState, WakeAllClearsSleepBits) {
   for (int32_t i = 0; i < kNumThreads; ++i) {
     state.enterSleep(i);
   }
-  uint32_t epochs[kNumThreads];
   for (int32_t i = 0; i < kNumThreads; ++i) {
     epochs[i] = state.waiterFor(i).current();
   }

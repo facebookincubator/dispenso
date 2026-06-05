@@ -10,11 +10,41 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <limits>
 
 #include "notifier_common.h"
 
 namespace dispenso {
 namespace detail {
+
+// Threshold at and above which `bumpAndWakeN` falls back to a single
+// wake-all instead of looping wake-one. Linux's futex_wake supports exact
+// K natively (one syscall), so no threshold is needed there. On macOS the
+// Mach IPC port wake-up is so cheap per call that K wake-ones are
+// competitive with one wake-all, and wake-one avoids the spurious-wake
+// CPU cost of waking all parked threads — measurements (wake_cost_bench)
+// show K * wake_1 ≈ wake_all across all N tested, so we set the threshold
+// effectively to "never" and only fall through to wake-all when n really
+// equals totalWaiters. On Windows the WaitOnAddress per-call cost is
+// genuinely high; lower threshold. Override via
+// -DDISPENSO_TUNE_WAKE_ALL_THRESHOLD=N.
+#if defined(DISPENSO_TUNE_WAKE_ALL_THRESHOLD)
+constexpr int kWakeAllThreshold = DISPENSO_TUNE_WAKE_ALL_THRESHOLD;
+#elif defined(__linux__)
+// Single-syscall exact-K — no threshold needed.
+constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
+#elif defined(__APPLE__)
+// Mach IPC wake-one is heavily optimized; K wake-ones cost about the same
+// as one wake-all (per wake_cost_bench), so prefer wake-one to avoid
+// spurious wakes on the (groupSize - K) threads we don't need to wake.
+constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
+#elif defined(_WIN32)
+// Windows WaitOnAddress per-syscall cost is highest; lower threshold.
+// (Pending wake_cost_bench measurement on Windows.)
+constexpr int kWakeAllThreshold = 3;
+#else
+constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
+#endif
 
 #if defined(__linux__)
 
@@ -25,6 +55,10 @@ class EpochWaiter {
   void bumpAndWake() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
     futex(&ftx_, FUTEX_WAKE_PRIVATE, 1, nullptr, nullptr, 0);
+  }
+
+  void bump() {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
   }
 
   void bumpAndWakeAll() {
@@ -90,6 +124,10 @@ class EpochWaiter {
     mac_futex_wake_one(&epoch_, sizeof(uint32_t));
   }
 
+  void bump() {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
+  }
+
   void bumpAndWakeAll() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
     mac_futex_wake_all(&epoch_, sizeof(uint32_t));
@@ -97,7 +135,7 @@ class EpochWaiter {
 
   void bumpAndWakeN(int n, int totalWaiters) {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
-    if (n >= totalWaiters) {
+    if (n >= totalWaiters || n >= kWakeAllThreshold) {
       mac_futex_wake_all(&epoch_, sizeof(uint32_t));
     } else {
       for (int i = 0; i < n; ++i) {
@@ -153,6 +191,10 @@ class EpochWaiter {
     // in their spin phase (kBackoffYield iterations) where they can pick up
     // subsequent work without another kernel wake transition.
     WakeByAddressAll(&epoch_);
+  }
+
+  void bump() {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
   }
 
   void bumpAndWakeAll() {
@@ -223,6 +265,10 @@ class EpochWaiter {
   void bumpAndWake() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
     cv_.notify_one();
+  }
+
+  void bump() {
+    epoch_.fetch_add(1, std::memory_order_acq_rel);
   }
 
   void bumpAndWakeAll() {

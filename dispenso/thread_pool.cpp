@@ -190,7 +190,8 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
   uint32_t epoch = ws->waiterFor(ringIndex).current();
   size_t myRingIndex = static_cast<size_t>(ringIndex);
   Ring& myRing = rings_[myRingIndex];
-  StealRing& myStealRing = stealRings_[static_cast<size_t>(ringIndex) / stealRingSharing_];
+  size_t myStealIdx = static_cast<size_t>(ringIndex) / stealRingSharing_;
+  StealRing& myStealRing = stealRings_[myStealIdx];
 
   int failCount = 0;
   double idleStart = 0.0;
@@ -209,7 +210,8 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
     // stagger across threads to cut try_dequeue CAS contention.
     bool checkQueue = (failCount < kSpinCheckInterval) ||
         (((failCount + ringIndex) & (kQueueCheckInterval - 1)) == 0);
-    while (tryFindAndExecuteWork(myRing, myStealRing, ctoken, preferRing, checkQueue)) {
+    while (tryFindAndExecuteWork(
+        myRing, myStealRing, myStealIdx, ctoken, preferRing, failCount, checkQueue)) {
       ++localWorkDone;
       if (localWorkDone >= kWorkBatchSize) {
         workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
@@ -318,7 +320,8 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
   uint32_t epoch = ws->waiterFor(ringIndex).current();
   size_t myRingIndex = static_cast<size_t>(ringIndex);
   Ring& myRing = rings_[myRingIndex];
-  StealRing& myStealRing = stealRings_[static_cast<size_t>(ringIndex) / stealRingSharing_];
+  size_t myStealIdx = static_cast<size_t>(ringIndex) / stealRingSharing_;
+  StealRing& myStealRing = stealRings_[myStealIdx];
 
   int failCount = 0;
   double idleStart = 0.0;
@@ -335,7 +338,8 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
     int localWorkDone = 0;
     bool checkQueue = (failCount < kSpinCheckInterval) ||
         (((failCount + ringIndex) & (kQueueCheckInterval - 1)) == 0);
-    while (tryFindAndExecuteWork(myRing, myStealRing, ctoken, preferRing, checkQueue)) {
+    while (tryFindAndExecuteWork(
+        myRing, myStealRing, myStealIdx, ctoken, preferRing, failCount, checkQueue)) {
       ++localWorkDone;
       if (localWorkDone >= kWorkBatchSize) {
         workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);

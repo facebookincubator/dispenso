@@ -27,6 +27,7 @@
 
 #include <dispenso/concurrent_object_arena.h>
 #include <dispenso/cpu_set.h>
+#include <dispenso/detail/math.h>
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/mpmc_ring_buffer.h>
 #include <dispenso/once_function.h>
@@ -318,9 +319,25 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Slots per thread: base capacity before sharing multiplier.
   static constexpr size_t kStealSlotsPerThread = 4;
   // Sharing factor: threads per steal ring (aligned with wake group size).
-  static constexpr size_t kStealRingSharing = 16;
+#if defined(DISPENSO_TUNE_STEAL_RING_SHARING)
+  static constexpr size_t kStealRingSharing = DISPENSO_TUNE_STEAL_RING_SHARING;
+#else
+  // Matches the wake group-size default (8). See docs/design/wake_tuning.md.
+  static constexpr size_t kStealRingSharing = 8;
+#endif
   static constexpr size_t kStealRingCapacity = kStealSlotsPerThread * kStealRingSharing;
   using StealRing = MpmcRingBuffer<OnceFunction, kStealRingCapacity>;
+
+  // Cross-ring steal gate: workers only probe other rings' has-work bitmask
+  // after `failCount` consecutive empty pops on their own ring. Preserves
+  // placed-scheduling locality during steady-state operation; the threshold
+  // (~kSpinCheckInterval / 2) means we steal cross-ring only after sustained
+  // local idle, by which point our own ring's locality is exhausted anyway.
+#if defined(DISPENSO_TUNE_CROSS_RING_FAIL_THRESHOLD)
+  static constexpr int kCrossRingFailThreshold = DISPENSO_TUNE_CROSS_RING_FAIL_THRESHOLD;
+#else
+  static constexpr int kCrossRingFailThreshold = 32;
+#endif
 
   // Enqueue a task to the central concurrent queue with optional producer token.
   // Handles TSAN annotations. Used by scheduleBulkToRings for overflow tasks.
@@ -358,11 +375,15 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // central queue, and steal ring as third tier.
   // Returns true if work was found and executed.
   // preferRing: sticky hint — true = try ring first, false = try central queue first.
+  // failCount: consecutive failures finding work — used to gate cross-ring stealing
+  //   so we preserve placed-scheduling locality during steady-state operation.
   DISPENSO_INLINE bool tryFindAndExecuteWork(
       Ring& myRing,
       StealRing& myStealRing,
+      size_t myStealIdx,
       moodycamel::ConsumerToken& ctoken,
       bool& preferRing,
+      int failCount,
       bool checkQueue = true);
 
   // Number of tasks each thread accumulates before flushing workRemaining_.
@@ -434,11 +455,20 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Populated by schedule() (both proactive wake and no-sleeper paths).
   // Consumed in tryFindAndExecuteWork (third tier) and outer thread loop.
   //
-  // stealRingSharing_: threads per steal ring (16 = per-group sharing).
-  //   Ring capacity = slots_per_thread (4) * sharing_factor (16) = 64.
+  // stealRingSharing_: threads per steal ring (default kStealRingSharing).
+  //   Ring capacity = kStealSlotsPerThread * kStealRingSharing.
   ConcurrentObjectArena<StealRing> stealRings_;
   std::atomic<size_t> numStealRings_{0};
   size_t stealRingSharing_{kStealRingSharing};
+
+  // Sparse hint for which steal rings have work. Bit i set means
+  // stealRings_[i] may have work. Set on push (idempotent fetch_or); lazily
+  // cleared by consumers that find a ring empty after popping or that
+  // observe an empty ring at scan time. False positives are benign (just a
+  // wasted try_pop); false negatives are not possible because every
+  // successful push sets the bit before the work is observable.
+  static constexpr size_t kMaxStealRings = 64;
+  alignas(kCacheLineSize) std::atomic<uint64_t> stealRingsWithWork_{0};
 
   // Threads not currently in their inner work loop (spinning or sleeping).
   // Incremented when a thread exhausts work (exits inner loop with nothing found).
@@ -620,6 +650,9 @@ DISPENSO_INLINE void ThreadPool::scheduleImplPlaced(
         size_t stealIdx = static_cast<size_t>(wokeThread) / stealRingSharing_;
         if (stealIdx < numStealRings_.load(std::memory_order_relaxed) &&
             stealRings_[stealIdx].try_push(std::move(task))) {
+          if (stealIdx < kMaxStealRings) {
+            stealRingsWithWork_.fetch_or(uint64_t{1} << stealIdx, std::memory_order_release);
+          }
           return;
         }
       }
@@ -681,8 +714,10 @@ inline void ThreadPool::executeNext(OnceFunction next) {
 DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
     Ring& myRing,
     StealRing& myStealRing,
+    size_t myStealIdx,
     moodycamel::ConsumerToken& ctoken,
     bool& preferRing,
+    int failCount,
     bool checkQueue) {
   OnceFunction task;
 
@@ -714,6 +749,24 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
     if (!myStealRing.empty() && myStealRing.try_pop(task)) {
       task();
       return true;
+    }
+    // Cross-ring steal via sparse hint bitmask, gated by failCount (see
+    // kCrossRingFailThreshold above for rationale).
+    if (failCount >= kCrossRingFailThreshold) {
+      uint64_t mask = stealRingsWithWork_.load(std::memory_order_acquire);
+      if (mask != 0) {
+        if (myStealIdx < kMaxStealRings) {
+          mask &= ~(uint64_t{1} << myStealIdx);
+        }
+        if (mask != 0) {
+          int target = detail::countTrailingZeros(mask);
+          if (stealRings_[static_cast<size_t>(target)].try_pop(task)) {
+            task();
+            return true;
+          }
+          stealRingsWithWork_.fetch_and(~(uint64_t{1} << target), std::memory_order_relaxed);
+        }
+      }
     }
   } else {
     // Prefer central queue (gated by checkQueue).

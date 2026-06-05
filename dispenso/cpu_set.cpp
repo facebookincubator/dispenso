@@ -30,6 +30,13 @@
 
 #if defined(__APPLE__)
 #include <dlfcn.h>
+
+namespace {
+using OsCpuNumberFn = unsigned int (*)();
+OsCpuNumberFn resolveOsCpuNumber() {
+  return reinterpret_cast<OsCpuNumberFn>(dlsym(RTLD_DEFAULT, "_os_cpu_number"));
+}
+} // namespace
 #endif
 
 #include <algorithm>
@@ -763,14 +770,8 @@ bool CpuSet::bindCurrentThread() const {
 
 int32_t CpuSet::currentHardwareThread() {
 #if defined(__APPLE__)
-  // _os_cpu_number is a private Apple API in libsystem_platform.dylib.
-  // Load via dlsym to avoid a hard link dependency on the private symbol.
-  using OsCpuNumberFn = unsigned int (*)();
-  static const auto fn = reinterpret_cast<OsCpuNumberFn>(dlsym(RTLD_DEFAULT, "_os_cpu_number"));
-  if (fn) {
-    return static_cast<int32_t>(fn());
-  }
-  return -1;
+  static const auto fn = resolveOsCpuNumber();
+  return fn ? static_cast<int32_t>(fn()) : -1;
 #else
   return -1;
 #endif
