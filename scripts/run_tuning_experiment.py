@@ -130,6 +130,20 @@ def define_configurations():
             }
         )
 
+    # --- Spin strategy: fixed-count vs adaptive ---
+    # fixed-spin (>0): thread spins for N iterations then futex-sleeps.
+    # adaptive (0): time-based spin with exponential backoff, never truly sleeps.
+    # Linux default is fixed-200; Windows default is adaptive (0).
+    for limit in [0, 32, 64, 128, 200, 400, 800]:
+        label = "adaptive" if limit == 0 else f"fixed_{limit}"
+        configs.append(
+            {
+                "name": f"spin_{label}",
+                "category": "spin_strategy",
+                "defines": [f"-DDISPENSO_TUNE_FIXED_SPIN_ITERS={limit}"],
+            }
+        )
+
     # --- Wake group size ---
     for gs in [8, 16, 32, 64]:
         configs.append(

@@ -236,6 +236,9 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   DISPENSO_DLL_ACCESS void threadLoopWake(PerThreadData& threadData, int32_t ringIndex);
   DISPENSO_DLL_ACCESS void threadLoopPoll(PerThreadData& threadData, int32_t ringIndex);
 
+  void markWorkDone(bool& isWorking, double& spinTimeout, bool& wokeFromSleep);
+  void markIdle(bool& isWorking);
+
   bool tryExecuteNext();
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
   bool tryExecuteNextFromRings(size_t& startRing);
@@ -477,6 +480,12 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Used by schedule paths to skip wake calls when spinners exist.
   alignas(kCacheLineSize) std::atomic<int32_t> numNotWorking_{0};
 
+  // Platform-tuned spin limit (0 = adaptive time-based spin, >0 = fixed count).
+  // Linux/macOS: aggressive sleep (futex wake is cheap, ~3-5μs).
+  // Windows: adaptive spin (WakeByAddressSingle is expensive).
+  // Override via DISPENSO_TUNE_FIXED_SPIN_ITERS.
+  int32_t spinLimit_{0};
+
 #if defined DISPENSO_DEBUG
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskSets_{0};
 #endif // DISPENSO_DEBUG
@@ -616,20 +625,21 @@ inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f, 
 }
 
 DISPENSO_INLINE void ThreadPool::scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token) {
-  // Use the same central-queue path as scheduleBulkEnqueue for consistency
-  // and to avoid per-call overhead of steal-ring probing + proactive wake.
   enqueueToCentralQueue(std::move(task), token);
 
-  // Wake logic matching scheduleBulkEnqueue's single-task case:
-  // wake one sleeper if any exist and spinners can't cover.
+  // Wake when pending work exceeds awake threads. Each schedule()
+  // call wakes at most one sleeper — matching baseline's wake-per-task
+  // cadence but using per-thread futexes. The one-at-a-time approach
+  // avoids thundering herd on the central queue while still waking
+  // threads proportionally to submitted work over a burst.
   auto* ws = detail::consumeLoad(wakeState_);
   if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
     int32_t sleeping = ws->totalSleeping();
     if (sleeping > 0) {
-      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);
-      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);
-      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);
-      if (effectiveSpinners < 1) {
+      ssize_t pending = workRemaining_.load(std::memory_order_relaxed);
+      ssize_t numT = numThreads_.load(std::memory_order_relaxed);
+      ssize_t awake = numT - static_cast<ssize_t>(sleeping);
+      if (pending > awake) {
         ws->claimAndWakeOne();
       }
     }
@@ -721,16 +731,12 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
     bool checkQueue) {
   OnceFunction task;
 
-  // Sticky strategy: try the source that last had work first.
   if (preferRing) {
-    // Own ring (cached reference — avoids ConcurrentObjectArena indirection)
     bool fromRing = myRing.try_pop(task);
     if (fromRing) {
       task();
       return true;
     }
-    // Ring empty — try central queue (gated by checkQueue to reduce
-    // try_dequeue CAS contention from idle spinning threads).
     if (checkQueue) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       bool got = work_.try_dequeue(ctoken, task);
@@ -741,17 +747,10 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
         return true;
       }
     }
-    // Ring-preferred path: both ring and queue empty. Check steal ring so
-    // proactive-wake work is found immediately without an extra outer-loop
-    // round-trip. Only on the ring-preferred path — the queue-preferred path
-    // (futures/pipelines) skips this to avoid touching steal ring cache lines
-    // on every inner-loop miss.
     if (!myStealRing.empty() && myStealRing.try_pop(task)) {
       task();
       return true;
     }
-    // Cross-ring steal via sparse hint bitmask, gated by failCount (see
-    // kCrossRingFailThreshold above for rationale).
     if (failCount >= kCrossRingFailThreshold) {
       uint64_t mask = stealRingsWithWork_.load(std::memory_order_acquire);
       if (mask != 0) {
@@ -769,7 +768,6 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
       }
     }
   } else {
-    // Prefer central queue (gated by checkQueue).
     if (checkQueue) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       bool got = work_.try_dequeue(ctoken, task);
@@ -779,7 +777,6 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
         return true;
       }
     }
-    // Central queue empty — try ring, and if it has work, switch preference
     bool fromRing = myRing.try_pop(task);
     if (fromRing) {
       preferRing = true;

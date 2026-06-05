@@ -45,6 +45,22 @@ size_t getAdjustedThreadCount(size_t requested) {
 }
 } // namespace
 
+// Compile-time override: forces all pools to use a fixed spin count.
+// When not set, the platform default below is used.
+#if defined(DISPENSO_TUNE_FIXED_SPIN_ITERS)
+static constexpr int32_t kDefaultSpinLimit = DISPENSO_TUNE_FIXED_SPIN_ITERS;
+#elif defined(_WIN32)
+// Windows: WakeByAddressSingle is expensive. Use adaptive time-based spin
+// to avoid costly sleep/wake transitions between parallel_for iterations.
+static constexpr int32_t kDefaultSpinLimit = 0; // adaptive mode
+#else
+// Linux/macOS: futex/__ulock wake is cheap (~3-5μs per group). Sleep
+// aggressively to free SMT siblings for workers. Multiple pools may
+// coexist and none has visibility into total system load, so
+// conservative sleeping is the safe default.
+static constexpr int32_t kDefaultSpinLimit = 400;
+#endif
+
 void ThreadPool::PerThreadData::setThread(std::thread&& t) {
   thread_ = std::move(t);
 }
@@ -98,6 +114,8 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 
   // All threads start as "not working" — they haven't entered their work loops yet.
   numNotWorking_.store(static_cast<int32_t>(adjustedN), std::memory_order_relaxed);
+
+  spinLimit_ = kDefaultSpinLimit;
 
   for (size_t i = 0; i < adjustedN; ++i) {
     threads_.emplace_back();
@@ -179,10 +197,29 @@ static_assert(
     (kQueueCheckInterval & (kQueueCheckInterval - 1)) == 0,
     "kQueueCheckInterval must be a power of 2");
 
+void ThreadPool::markWorkDone(bool& isWorking, double& spinTimeout, bool& wokeFromSleep) {
+  if (!isWorking) {
+    numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
+    isWorking = true;
+  }
+  if (!wokeFromSleep) {
+    spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
+  }
+  wokeFromSleep = false;
+}
+
+void ThreadPool::markIdle(bool& isWorking) {
+  if (isWorking) {
+    numNotWorking_.fetch_add(1, std::memory_order_relaxed);
+    isWorking = false;
+  }
+}
+
 void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
   moodycamel::ConsumerToken ctoken(work_);
   moodycamel::ProducerToken ptoken(work_);
 
+  // Start preferring queue — schedule() enqueues there.
   bool preferRing = false;
 
   detail::PerPoolPerThreadInfo::registerPool(this, &ptoken, ringIndex);
@@ -199,15 +236,8 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
   bool wokeFromSleep = false;
   bool isWorking = false; // starts not-working (counted in constructor init)
 
-  // All threads check for cascade budgets via the inlined processBudget
-  // fast path (single relaxed load, returns 0 in the common case).
-
   while (data.running()) {
     int localWorkDone = 0;
-    // Only back off queue checks after sustained idle (kSpinCheckInterval
-    // failures). Brief inter-batch gaps (common in for_each /1000) keep
-    // failCount near zero and always check the queue. Once truly idle,
-    // stagger across threads to cut try_dequeue CAS contention.
     bool checkQueue = (failCount < kSpinCheckInterval) ||
         (((failCount + ringIndex) & (kQueueCheckInterval - 1)) == 0);
     while (tryFindAndExecuteWork(
@@ -218,75 +248,55 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
         localWorkDone = 0;
       }
       failCount = 0;
-      checkQueue = true; // found work → always check queue
+      checkQueue = true;
     }
     if (localWorkDone > 0) {
-      if (!isWorking) {
-        numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
-        isWorking = true;
-      }
+      markWorkDone(isWorking, spinTimeout, wokeFromSleep);
       workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
       failCount = 0;
-      if (!wokeFromSleep) {
-        spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
-      }
-      wokeFromSleep = false;
       continue;
     }
 
-    // No work found from either source
-
-    // Check own steal ring (outer loop only — not in tryFindAndExecuteWork hot path).
-    // try_pop already fast-paths the empty case with a relaxed head/tail compare
-    // before any acquire load, so a separate empty() guard would be redundant.
-    {
-      OnceFunction stealTask;
-      if (myStealRing.try_pop(stealTask)) {
-        if (!isWorking) {
-          numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
-          isWorking = true;
-        }
-        executeNext(std::move(stealTask));
-        failCount = 0;
-        if (!wokeFromSleep) {
-          spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
-        }
-        wokeFromSleep = false;
-        continue;
-      }
-    }
+    // --- No work found. Lean spin: only check the local ring to
+    // minimize cross-socket cache traffic from idle threads. ---
 
     ++failCount;
 
-    // Lean spin: first kSpinCheckInterval iterations just cpuRelax.
-    // Skips processBudget, getTime, and other heavy checks to minimize
-    // cache line traffic during the hot spin window.
     if (failCount < kSpinCheckInterval) {
       detail::cpuRelax();
       continue;
     }
 
-    // Full machinery after lean phase
-    ws->processBudget(ringIndex);
+    // --- Full machinery: steal ring, processBudget, adaptive backoff ---
 
-    if (failCount == kSpinCheckInterval) {
-      idleStart = getTime();
+    // Outer steal ring check (deferred from lean phase). No empty() guard:
+    // try_pop already fast-paths the empty case with a relaxed head/tail compare
+    // before any acquire load, so a separate empty() check would be redundant.
+    {
+      OnceFunction stealTask;
+      if (myStealRing.try_pop(stealTask)) {
+        markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+        executeNext(std::move(stealTask));
+        failCount = 0;
+        continue;
+      }
     }
 
-    detail::cpuRelax();
+    // Intentional second increment: lean-phase failures (above) count once,
+    // full-phase failures count twice. kDefaultSpinLimit is tuned assuming
+    // this two-rate progression. In adaptive mode (spinLimit_ == 0) the
+    // odd-aligned failCount values make the bitmask-aligned checks below
+    // unreachable; parking is handled by the backstop timeout in
+    // waitOnThread instead.
+    ++failCount;
 
-    if ((failCount & (kSpinCheckInterval - 1)) == 0) {
-      // Mark as not-working after sustained idle (kSpinCheckInterval
-      // iterations). Coarsened to avoid contention: brief inter-chunk gaps
-      // in parallel_for complete in <kSpinCheckInterval iterations and
-      // never touch numNotWorking_.
-      if (isWorking) {
-        numNotWorking_.fetch_add(1, std::memory_order_relaxed);
-        isWorking = false;
-      }
+    if (spinLimit_ > 0) {
+      // Fixed-spin mode: sleep after N total iterations, no time checks.
+      ws->processBudget(ringIndex);
+      detail::cpuRelax();
 
-      double elapsed = getTime() - idleStart;
-      if (elapsed > spinTimeout) {
+      if (failCount >= spinLimit_) {
+        markIdle(isWorking);
         ws->enterSleep(ringIndex);
         if (!data.running()) {
           ws->exitSleep(ringIndex);
@@ -296,17 +306,37 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
         ws->exitSleep(ringIndex);
         failCount = 0;
         wokeFromSleep = true;
-        spinTimeout = std::max(kMinSpinTimeoutSec, spinTimeout * 0.5);
-      } else if (elapsed > spinTimeout * 0.5) {
-        std::this_thread::yield();
+      }
+    } else {
+      // Adaptive mode (default): time-based spin with exponential backoff.
+      ws->processBudget(ringIndex);
+
+      if (failCount == kSpinCheckInterval) {
+        idleStart = getTime();
+      }
+
+      detail::cpuRelax();
+
+      if ((failCount & (kSpinCheckInterval - 1)) == 0) {
+        markIdle(isWorking);
+
+        double elapsed = getTime() - idleStart;
+        if (elapsed > spinTimeout) {
+          ws->enterSleep(ringIndex);
+          epoch = waitOnThread(ringIndex, epoch);
+          ws->exitSleep(ringIndex);
+          failCount = 0;
+          wokeFromSleep = true;
+          spinTimeout = std::max(kMinSpinTimeoutSec, spinTimeout * 0.5);
+        } else if (elapsed > spinTimeout * 0.5) {
+          std::this_thread::yield();
+        }
       }
     }
   }
 
   // Clean up on thread exit (shutdown/resize): restore counter.
-  if (isWorking) {
-    numNotWorking_.fetch_add(1, std::memory_order_relaxed);
-  }
+  markIdle(isWorking);
 }
 
 void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
@@ -349,44 +379,38 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
       checkQueue = true;
     }
     if (localWorkDone > 0) {
-      if (!isWorking) {
-        numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
-        isWorking = true;
-      }
+      markWorkDone(isWorking, spinTimeout, wokeFromSleep);
       workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
       failCount = 0;
-      if (!wokeFromSleep) {
-        spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
-      }
-      wokeFromSleep = false;
       continue;
     }
 
-    // Check own steal ring (outer loop only)
-    {
-      OnceFunction stealTask;
-      if (myStealRing.try_pop(stealTask)) {
-        if (!isWorking) {
-          numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
-          isWorking = true;
-        }
-        executeNext(std::move(stealTask));
-        failCount = 0;
-        if (!wokeFromSleep) {
-          spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
-        }
-        wokeFromSleep = false;
-        continue;
-      }
-    }
-
+    // Lean spin for the first kSpinCheckInterval iterations.
     ++failCount;
 
-    // Lean spin: first kSpinCheckInterval iterations just cpuRelax.
     if (failCount < kSpinCheckInterval) {
       detail::cpuRelax();
       continue;
     }
+
+    // Full machinery after lean phase.
+    {
+      OnceFunction stealTask;
+      if (myStealRing.try_pop(stealTask)) {
+        markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+        executeNext(std::move(stealTask));
+        failCount = 0;
+        continue;
+      }
+    }
+
+    // Intentional second increment: lean-phase failures (above) count once,
+    // full-phase failures count twice. kDefaultSpinLimit is tuned assuming
+    // this two-rate progression. In adaptive mode (spinLimit_ == 0) the
+    // odd-aligned failCount values make the bitmask-aligned checks below
+    // unreachable; parking is handled by the backstop timeout in
+    // waitOnThread instead.
+    ++failCount;
 
     if (failCount == kSpinCheckInterval) {
       idleStart = getTime();
@@ -394,14 +418,22 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
 
     detail::cpuRelax();
 
-    if ((failCount & (kSpinCheckInterval - 1)) == 0) {
-      // Mark as not-working after sustained idle (see threadLoopWake).
-      if (isWorking) {
-        numNotWorking_.fetch_add(1, std::memory_order_relaxed);
-        isWorking = false;
+    if (spinLimit_ > 0) {
+      ws->processBudget(ringIndex);
+      if (failCount >= spinLimit_) {
+        markIdle(isWorking);
+        epoch = waitOnThread(ringIndex, epoch);
+        failCount = 0;
+        wokeFromSleep = true;
       }
+    } else if ((failCount & (kSpinCheckInterval - 1)) == 0) {
+      markIdle(isWorking);
 
       ws->processBudget(ringIndex);
+
+      if (failCount == kSpinCheckInterval) {
+        idleStart = getTime();
+      }
 
       double elapsed = getTime() - idleStart;
       if (elapsed > spinTimeout) {
@@ -415,9 +447,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
     }
   }
 
-  if (isWorking) {
-    numNotWorking_.fetch_add(1, std::memory_order_relaxed);
-  }
+  markIdle(isWorking);
 }
 
 void ThreadPool::resizeLocked(ssize_t sn) {
