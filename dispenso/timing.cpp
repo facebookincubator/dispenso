@@ -29,17 +29,17 @@ namespace {
 #define DISPENSO_HAS_TIMESTAMP
 #if defined(_MSC_VER)
 inline uint64_t rdtscp() {
-  uint32_t ui;
-  return __rdtscp(&ui);
+  _mm_lfence();
+  return __rdtsc();
 }
 
 #else
 inline uint64_t rdtscp() {
   uint32_t lo, hi;
-  __asm__ volatile("rdtscp"
+  __asm__ volatile("lfence\n\trdtsc"
                    : /* outputs */ "=a"(lo), "=d"(hi)
-                   : /* no inputs */
-                   : /* clobbers */ "%rcx");
+                   : /* inputs */
+                   : /* clobbers */ "memory");
   return (uint64_t)lo | (((uint64_t)hi) << 32);
 }
 #endif // OS
