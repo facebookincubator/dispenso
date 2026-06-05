@@ -17,5 +17,9 @@ PerThreadInfo& PerPoolPerThreadInfo::info() {
   return g_perThreadInfo;
 }
 
+int& PerPoolPerThreadInfo::inlineDepth() {
+  return g_perThreadInfo.inlineDepth;
+}
+
 } // namespace detail
 } // namespace dispenso

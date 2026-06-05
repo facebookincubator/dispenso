@@ -12,10 +12,16 @@
 namespace dispenso {
 namespace detail {
 
+// Shared limit for inline scheduling depth across all subsystems (task sets,
+// graph executor, pipeline). Prevents unbounded stack growth when the pool
+// inlines recursive work.
+constexpr int kMaxInlineDepth = 32;
+
 struct DISPENSO_CACHELINE_ALIGNED PerThreadInfo {
   void* pool = nullptr;
   void* producer = nullptr;
   int parForRecursionLevel = 0;
+  int inlineDepth = 0;
   // Index into ThreadPool's per-thread ring array, or -1 if not a pool thread.
   int32_t ringIndex = -1;
   uint32_t stealTarget = 0; // Round-robin target for steal ring distribution
@@ -73,8 +79,28 @@ class PerPoolPerThreadInfo {
     return ParForRecursion(info().parForRecursionLevel);
   }
 
+  DISPENSO_DLL_ACCESS static int& inlineDepth();
+
+  static bool canInlineSchedule() {
+    return inlineDepth() < kMaxInlineDepth;
+  }
+
  private:
   DISPENSO_DLL_ACCESS static PerThreadInfo& info();
+};
+
+struct InlineDepthGuard {
+  InlineDepthGuard() : depth_(PerPoolPerThreadInfo::inlineDepth()) {
+    ++depth_;
+  }
+  ~InlineDepthGuard() noexcept {
+    --depth_;
+  }
+  InlineDepthGuard(const InlineDepthGuard&) = delete;
+  InlineDepthGuard& operator=(const InlineDepthGuard&) = delete;
+
+ private:
+  int& depth_;
 };
 
 } // namespace detail

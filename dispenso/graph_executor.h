@@ -22,7 +22,7 @@ namespace dispenso {
 /**
  * Class to invoke <code>Graph</code> or <code>BiPropGraph</code> on current thread.
  **/
-class SingleThreadExecutor : public ::detail::ExecutorBase {
+class SingleThreadExecutor : public detail::ExecutorBase {
  public:
   /**
    * Invoke the graph. This is not concurrency safe.
@@ -40,7 +40,7 @@ class SingleThreadExecutor : public ::detail::ExecutorBase {
  * Class to invoke <code>Graph</code> or <code>BiPropGraph</code> using
  * <code>dispenso::parallel_for</code> for every layer of the graph.
  **/
-class ParallelForExecutor : public ::detail::ExecutorBase {
+class ParallelForExecutor : public detail::ExecutorBase {
  public:
   /**
    * Invoke the graph. This is not concurrency safe.
@@ -65,7 +65,7 @@ class ParallelForExecutor : public ::detail::ExecutorBase {
  * Class to invoke <code>Graph</code> or <code>BiPropGraph</code> using
  * <code>dispenso::ConcurrentTaskSet</code>
  **/
-class ConcurrentTaskSetExecutor : public ::detail::ExecutorBase {
+class ConcurrentTaskSetExecutor : public detail::ExecutorBase {
  public:
   /**
    * Invoke the graph. This is not concurrency safe.
@@ -91,7 +91,7 @@ class ConcurrentTaskSetExecutor : public ::detail::ExecutorBase {
 /**
  * Class to propagate incomplete state recursively from nodes to dependents
  **/
-class ForwardPropagator : public ::detail::ExecutorBase {
+class ForwardPropagator : public detail::ExecutorBase {
  public:
   /**
    * Propagate incomplete state recursively from nodes to dependents

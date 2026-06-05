@@ -13,16 +13,13 @@
 
 #include <dispenso/detail/completion_event_impl.h>
 #include <dispenso/detail/op_result.h>
+#include <dispenso/detail/per_thread_info.h>
 #include <dispenso/detail/result_of.h>
 #include <dispenso/task_set.h>
 #include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
 namespace detail {
-
-// Maximum depth for inline pipeline continuation before forcing a schedule through
-// the thread pool. Prevents unbounded stack growth when the pool inlines execution.
-static constexpr int kMaxPipelineInlineDepth = 32;
 
 class LimitGatedScheduler {
  public:
@@ -107,18 +104,8 @@ class LimitGatedScheduler {
               // on a worker thread and only one item can be in the stage at a time.
               // Depth-limit to prevent unbounded stack growth when the pool inlines.
               if (serial_) {
-                static DISPENSO_THREAD_LOCAL int depth = 0;
-                if (depth < kMaxPipelineInlineDepth) {
-                  struct DepthGuard {
-                    DISPENSO_INLINE DepthGuard(int& d) : d_(d) {
-                      ++d_;
-                    }
-                    DISPENSO_INLINE ~DepthGuard() {
-                      --d_;
-                    }
-                    int& d_;
-                  };
-                  DepthGuard dGuard(depth);
+                if (PerPoolPerThreadInfo::canInlineSchedule()) {
+                  InlineDepthGuard dGuard;
                   func();
                 } else {
                   tasks_.schedule(std::move(func), ForceQueuingTag());

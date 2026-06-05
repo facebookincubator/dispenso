@@ -241,6 +241,11 @@ void destroyFunctor(void* ptr) {
 } // namespace detail
 
 namespace dispenso {
+
+namespace detail {
+class ExecutorBase;
+} // namespace detail
+
 /**
  * Class to store task with dependencies
  **/
@@ -381,7 +386,7 @@ class Node {
 
   template <class N>
   friend class SubgraphT;
-  friend class ::detail::ExecutorBase;
+  friend class detail::ExecutorBase;
   template <typename G>
   friend void setAllNodesIncomplete(const G& graph);
 };
@@ -441,7 +446,7 @@ class BiPropNode : public Node {
 
   template <class N>
   friend class SubgraphT;
-  friend class ::detail::ExecutorBase;
+  friend class detail::ExecutorBase;
 };
 
 template <class N>
