@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <dispenso/detail/per_thread_info.h>
 #include <dispenso/thread_pool.h>
 
 namespace dispenso {
@@ -25,7 +26,6 @@ namespace dispenso {
  * (good for wide graph parallelism).
  **/
 constexpr float kDefaultPoolRecursiveLoadFactor = 1.5f;
-
 class TaskSetBase;
 
 namespace detail {
@@ -176,6 +176,7 @@ class TaskSetBase {
   // overloaded and at-capacity paths.
   template <typename Generator>
   DISPENSO_INLINE void invokeInline(Generator&& gen, size_t i) {
+    detail::InlineDepthGuard depthGuard;
 #if defined(__cpp_exceptions)
     try {
       gen(i)();
@@ -237,12 +238,16 @@ class TaskSetBase {
       ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
       ssize_t room = taskSetLoadFactor_ - outstanding;
 
-      if (room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) {
+      if ((room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) &&
+          detail::PerPoolPerThreadInfo::canInlineSchedule()) {
         // At/over our task set limit, or pool is overloaded — run inline.
         invokeInline(gen, i);
         ++i;
       } else {
-        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+        // If inline execution is capped by recursion depth, queue work even
+        // when the task-set load factor says there is no room.
+        size_t enqueueLimit = room > 0 ? std::min(chunkSize, static_cast<size_t>(room)) : chunkSize;
+        size_t toEnqueue = std::min(count - i, enqueueLimit);
         outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
         size_t base = i;
         pool_.scheduleBulkEnqueue(
@@ -278,11 +283,15 @@ class TaskSetBase {
       ssize_t curWork = pool_.workRemaining_.load(std::memory_order_relaxed);
       ssize_t room = taskSetLoadFactor_ - outstanding;
 
-      if (room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) {
+      if ((room <= 0 || shouldInlineBulk(curWork, numPool, poolRecursiveLoadFactor)) &&
+          detail::PerPoolPerThreadInfo::canInlineSchedule()) {
         invokeInline(gen, i);
         ++i;
       } else {
-        size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
+        // If inline execution is capped by recursion depth, queue work even
+        // when the task-set load factor says there is no room.
+        size_t enqueueLimit = room > 0 ? std::min(chunkSize, static_cast<size_t>(room)) : chunkSize;
+        size_t toEnqueue = std::min(count - i, enqueueLimit);
         outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
         size_t base = i;
         pool_.scheduleBulkPlaced(toEnqueue, [this, &gen, base](size_t j) {

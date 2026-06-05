@@ -298,7 +298,8 @@ class ConcurrentTaskSet : public TaskSetBase {
     // After this check, use ForceQueuingTag to skip the redundant check
     // in ThreadPool::schedule.
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > taskSetLoadFactor_ &&
-        DISPENSO_EXPECT(!canceled(), true)) {
+        DISPENSO_EXPECT(!canceled(), true) && detail::PerPoolPerThreadInfo::canInlineSchedule()) {
+      detail::InlineDepthGuard depthGuard;
       f();
       return;
     }
@@ -308,6 +309,11 @@ class ConcurrentTaskSet : public TaskSetBase {
           static_cast<ssize_t>(static_cast<float>(pool_.numThreads()) * poolRecursiveLoadFactor);
       if ((detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) && curWork > quickFactor) ||
           curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
+        if (!detail::PerPoolPerThreadInfo::canInlineSchedule()) {
+          pool_.schedule(packageTask(std::forward<F>(f)), ForceQueuingTag());
+          return;
+        }
+        detail::InlineDepthGuard depthGuard;
         f();
         return;
       }
@@ -419,7 +425,8 @@ class ConcurrentTaskSet : public TaskSetBase {
       float poolRecursiveLoadFactor = kDefaultPoolRecursiveLoadFactor) {
     ssize_t placedThreshold = std::max(pool_.numThreads() + 1, taskSetLoadFactor_ / 2);
     if (outstandingTaskCount_.load(std::memory_order_relaxed) > placedThreshold &&
-        DISPENSO_EXPECT(!canceled(), true)) {
+        DISPENSO_EXPECT(!canceled(), true) && detail::PerPoolPerThreadInfo::canInlineSchedule()) {
+      detail::InlineDepthGuard depthGuard;
       f();
       return;
     }
@@ -429,6 +436,11 @@ class ConcurrentTaskSet : public TaskSetBase {
           static_cast<ssize_t>(static_cast<float>(pool_.numThreads()) * poolRecursiveLoadFactor);
       if ((detail::PerPoolPerThreadInfo::isPoolRecursive(&pool_) && curWork > quickFactor) ||
           curWork > pool_.poolLoadFactor_.load(std::memory_order_relaxed)) {
+        if (!detail::PerPoolPerThreadInfo::canInlineSchedule()) {
+          pool_.schedulePlaced(packageTask(std::forward<F>(f)), ForceQueuingTag());
+          return;
+        }
+        detail::InlineDepthGuard depthGuard;
         f();
         return;
       }
