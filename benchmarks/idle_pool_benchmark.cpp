@@ -179,7 +179,7 @@ static constexpr int kBurstVecSize = 1 << 20; // 1M doubles
 struct DotProductData {
   std::vector<double> a;
   std::vector<double> b;
-  DotProductData(int n) : a(n), b(n) {
+  explicit DotProductData(int n) : a(n), b(n) {
     for (int i = 0; i < n; ++i) {
       a[i] = i * 1e-6;
       b[i] = (n - i) * 1e-6;

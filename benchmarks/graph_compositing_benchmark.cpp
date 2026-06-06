@@ -124,7 +124,7 @@ template <typename GraphT>
 void buildCompositingGraph(GraphT& g, FrameData& frame) {
   // Reserve space to avoid reallocation
   size_t totalNodes = kNumLayers * kStagesPerLayer + 1 + kPostStages;
-  (void)totalNodes;
+  g.reserve(totalNodes);
 
   // Per-layer processing chains
   // Store references to last node in each layer for merge dependencies
@@ -192,8 +192,9 @@ void buildCompositingGraph(GraphT& g, FrameData& frame) {
 // BiPropGraph version uses biPropDependsOn instead of dependsOn
 template <>
 void buildCompositingGraph<dispenso::BiPropGraph>(dispenso::BiPropGraph& g, FrameData& frame) {
+  // Reserve space to avoid reallocation
   size_t totalNodes = kNumLayers * kStagesPerLayer + 1 + kPostStages;
-  (void)totalNodes;
+  g.reserve(totalNodes);
 
   using NodeRef = dispenso::BiPropNode*;
   std::vector<NodeRef> layerOutputNodes(kNumLayers);

@@ -359,4 +359,18 @@ TEST(PoolWakeState, WakeAllBumpsEpochsAndDrains) {
     state.exitSleep(i);
   }
   EXPECT_EQ(state.totalSleeping(), 0);
+
+  // Re-enter sleep and verify we can wake again (no stuck state).
+  for (int32_t i = 0; i < kNumThreads; ++i) {
+    state.enterSleep(i);
+  }
+  for (int32_t i = 0; i < kNumThreads; ++i) {
+    epochs[i] = state.waiterFor(i).current();
+  }
+  state.wakeAll();
+  for (int32_t i = 0; i < kNumThreads; ++i) {
+    EXPECT_NE(state.waiterFor(i).current(), epochs[i]) << "Re-entry: thread " << i << " not woken";
+    state.exitSleep(i);
+  }
+  EXPECT_EQ(state.totalSleeping(), 0);
 }

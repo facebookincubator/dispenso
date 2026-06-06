@@ -57,7 +57,7 @@ static constexpr int32_t kDefaultSpinLimit = DISPENSO_TUNE_FIXED_SPIN_ITERS;
 // sleep too aggressively between parallel_for iterations.
 static constexpr int32_t kDefaultSpinLimit = 200;
 #else
-// Linux/macOS: futex/__ulock wake is cheap (~3-5μs per group). Sleep
+// Linux/macOS: futex/os_sync wake is cheap (~3-5μs per group). Sleep
 // aggressively to free SMT siblings for workers. Multiple pools may
 // coexist and none has visibility into total system load, so
 // conservative sleeping is the safe default.
@@ -144,7 +144,7 @@ ThreadPool::PerThreadData::~PerThreadData() {}
 #if defined(DISPENSO_TUNE_SPIN_CHECK_INTERVAL)
 static constexpr int kSpinCheckInterval = DISPENSO_TUNE_SPIN_CHECK_INTERVAL;
 #elif defined(__APPLE__)
-// macOS: __ulock wake is faster than Linux futex, so threads can sleep/wake
+// macOS: os_sync wake is faster than Linux futex, so threads can sleep/wake
 // more quickly. Check more frequently to keep spin duration accurate.
 static constexpr int kSpinCheckInterval = 32;
 #elif defined(_WIN32)

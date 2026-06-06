@@ -581,6 +581,10 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // observe an empty ring at scan time. False positives are benign (just a
   // wasted try_pop); false negatives are not possible because every
   // successful push sets the bit before the work is observable.
+  // Pools with >64 steal rings (512+ threads at kStealRingSharing=8) degrade
+  // gracefully: rings beyond index 63 still receive work via try_push, but
+  // aren't tracked in this bitmask, so cross-ring stealing falls back to
+  // local-ring-only polling for those rings.
   static constexpr size_t kMaxStealRings = 64;
   alignas(kCacheLineSize) std::atomic<uint64_t> stealRingsWithWork_{0};
 

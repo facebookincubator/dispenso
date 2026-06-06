@@ -629,6 +629,12 @@ class DISPENSO_DLL_ACCESS GraphT {
     return subgraphs_[0].numNodes();
   }
   /**
+   * Reserve capacity for at least @p n nodes in subgraph 0. Not concurrency safe.
+   **/
+  void reserve(size_t n) {
+    subgraphs_[0].reserve(n);
+  }
+  /**
    * Return const reference to node with index in subgraph 0. Concurrency safe.
    *
    * @param index - index of the node

@@ -1049,11 +1049,14 @@ std::vector<ThreadGroup> CpuSet::buildThreadGroups(int32_t maxGroupSize) {
     }
   }
   if (!uncovered.empty()) {
-    if (groups.empty()) {
-      groups.push_back(ThreadGroup{});
+    std::vector<int32_t> pending;
+    for (int32_t cpu : uncovered) {
+      pending.push_back(cpu);
+      if (static_cast<int32_t>(pending.size()) >= maxGroupSize) {
+        flushGroup(pending, groups);
+      }
     }
-    auto& last = groups.back();
-    last.cpus.insert(last.cpus.end(), uncovered.begin(), uncovered.end());
+    flushGroup(pending, groups);
   }
 
   return groups;
