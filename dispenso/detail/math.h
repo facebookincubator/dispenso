@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <cassert>
 #include <type_traits>
 
 #if defined(_WIN32)
@@ -147,16 +148,19 @@ inline uint32_t log2(uint32_t v) {
 
 #if (defined(__GNUC__) || defined(__clang__))
 inline int32_t countTrailingZeros(uint64_t v) {
+  assert(v != 0);
   return __builtin_ctzll(v);
 }
 #elif defined(_WIN64)
 inline int32_t countTrailingZeros(uint64_t v) {
+  assert(v != 0);
   unsigned long index;
   _BitScanForward64(&index, v);
   return static_cast<int32_t>(index);
 }
 #elif defined(_WIN32)
 inline int32_t countTrailingZeros(uint64_t v) {
+  assert(v != 0);
   unsigned long index;
   uint32_t lo = static_cast<uint32_t>(v);
   if (lo != 0) {
@@ -168,6 +172,7 @@ inline int32_t countTrailingZeros(uint64_t v) {
 }
 #else
 inline int32_t countTrailingZeros(uint64_t v) {
+  assert(v != 0);
   int32_t count = 0;
   while ((v & 1) == 0) {
     v >>= 1;

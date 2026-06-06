@@ -411,3 +411,66 @@ TEST(ChaseLevDeque, LastElementRaceNoLossNoDuplicate) {
   EXPECT_EQ(takenCount.load(), kRounds);
   EXPECT_EQ(takenSum.load(), expectedSum);
 }
+
+// =============================================================================
+// Last-Element Race: try_pop_into vs concurrent push and steal
+// =============================================================================
+
+TEST(ChaseLevDeque, PopIntoLastElementRace) {
+  // Hammers the t==b path in try_pop_into where the slot must be read before
+  // the CAS. Uses capacity=4 so wrap-around is frequent, maximizing the window
+  // for a concurrent push to overwrite the slot.
+  ChaseLevDeque<int, 4> deque;
+  constexpr int kRounds = 50000;
+  constexpr int kStealers = 3;
+
+  std::atomic<int> roundBarrier{0};
+  std::atomic<int> takenCount{0};
+  std::atomic<int64_t> takenSum{0};
+  std::atomic<bool> done{false};
+
+  std::vector<std::thread> stealers;
+  for (int s = 0; s < kStealers; ++s) {
+    stealers.emplace_back([&] {
+      int lastSeenRound = -1;
+      while (!done.load(std::memory_order_acquire)) {
+        const int round = roundBarrier.load(std::memory_order_acquire);
+        if (round == lastSeenRound) {
+          continue;
+        }
+        alignas(int) char buf[sizeof(int)];
+        if (deque.try_steal_into(reinterpret_cast<int*>(buf))) {
+          int v;
+          std::memcpy(&v, buf, sizeof(int));
+          takenCount.fetch_add(1, std::memory_order_relaxed);
+          takenSum.fetch_add(v, std::memory_order_relaxed);
+          lastSeenRound = round;
+        }
+      }
+    });
+  }
+
+  int64_t expectedSum = 0;
+  for (int round = 1; round <= kRounds; ++round) {
+    expectedSum += round;
+    EXPECT_TRUE(deque.try_push(round));
+    roundBarrier.store(round, std::memory_order_release);
+    alignas(int) char buf[sizeof(int)];
+    if (deque.try_pop_into(reinterpret_cast<int*>(buf))) {
+      int v;
+      std::memcpy(&v, buf, sizeof(int));
+      takenCount.fetch_add(1, std::memory_order_relaxed);
+      takenSum.fetch_add(v, std::memory_order_relaxed);
+    }
+    for (int spin = 0; !deque.empty(); ++spin) {
+      ASSERT_LT(spin, 10000000) << "Deque not drained in round " << round;
+    }
+  }
+  done.store(true, std::memory_order_release);
+  for (auto& t : stealers) {
+    t.join();
+  }
+
+  EXPECT_EQ(takenCount.load(), kRounds);
+  EXPECT_EQ(takenSum.load(), expectedSum);
+}

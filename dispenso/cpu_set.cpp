@@ -596,9 +596,16 @@ const std::vector<CpuSet>& getNumaSets() {
     // Collect NUMA nodes, indexed by node number (may be sparse).
     std::map<int32_t, CpuSet> byNode;
 
+    // Entries are variable-length; each reports its own Size.  Only require
+    // enough bytes to read Relationship + Size (8 bytes), then validate
+    // offset + Size before touching union members.
+    constexpr DWORD kEntryHeader = sizeof(DWORD) + sizeof(DWORD);
     DWORD offset = 0;
-    while (offset < buf.size()) {
+    while (offset + kEntryHeader <= buf.size()) {
       auto* info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buf.data() + offset);
+      if (info->Size == 0 || offset + info->Size > buf.size()) {
+        break;
+      }
       if (info->Relationship == RelationNumaNode) {
         int32_t nodeNum = static_cast<int32_t>(info->NumaNode.NodeNumber);
         CpuSet& nodeSet = byNode[nodeNum];
@@ -619,9 +626,6 @@ const std::vector<CpuSet>& getNumaSets() {
             nodeSet.add(cpu);
           }
         }
-      }
-      if (info->Size == 0) {
-        break;
       }
       offset += info->Size;
     }
@@ -644,9 +648,13 @@ std::vector<CacheGroup> parseCacheGroupsWin(int cacheLevel) {
   }
 
   int32_t nextCacheId = 0;
+  constexpr DWORD kEntryHeader = sizeof(DWORD) + sizeof(DWORD);
   DWORD offset = 0;
-  while (offset < buf.size()) {
+  while (offset + kEntryHeader <= buf.size()) {
     auto* info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buf.data() + offset);
+    if (info->Size == 0 || offset + info->Size > buf.size()) {
+      break;
+    }
     if (info->Relationship == RelationCache && static_cast<int>(info->Cache.Level) == cacheLevel &&
         (info->Cache.Type == CacheData || info->Cache.Type == CacheUnified)) {
       CacheGroup group;
@@ -665,9 +673,6 @@ std::vector<CacheGroup> parseCacheGroupsWin(int cacheLevel) {
       if (!group.cpus.empty()) {
         groups.push_back(std::move(group));
       }
-    }
-    if (info->Size == 0) {
-      break;
     }
     offset += info->Size;
   }
@@ -1017,10 +1022,41 @@ std::vector<ThreadGroup> CpuSet::buildThreadGroups(int32_t maxGroupSize) {
 
   // With cache topology, build groups bottom-up from L2 atoms respecting L3
   // boundaries; otherwise fall back to contiguous chunking of all online CPUs.
+  std::vector<ThreadGroup> groups;
   if (!l2Groups.empty()) {
-    return buildGroupsFromCacheTopology(l2Groups, l3Groups, maxGroupSize);
+    groups = buildGroupsFromCacheTopology(l2Groups, l3Groups, maxGroupSize);
+  } else {
+    groups = buildGroupsContiguous(maxGroupSize);
   }
-  return buildGroupsContiguous(maxGroupSize);
+
+  // Safety net: on some platforms (e.g. virtualized Windows), cache topology
+  // enumeration may not cover every online CPU. Append any uncovered CPUs to
+  // the last group so that buildThreadGroups always covers all of allSet.
+  const CpuSet& allSet = CpuSet::all();
+  constexpr int32_t kScanLimit = 1024;
+  std::vector<bool> covered(kScanLimit, false);
+  for (const auto& g : groups) {
+    for (int32_t cpu : g.cpus) {
+      if (cpu >= 0 && cpu < kScanLimit) {
+        covered[static_cast<size_t>(cpu)] = true;
+      }
+    }
+  }
+  std::vector<int32_t> uncovered;
+  for (int32_t i = 0; i < kScanLimit; ++i) {
+    if (allSet.contains(i) && !covered[static_cast<size_t>(i)]) {
+      uncovered.push_back(i);
+    }
+  }
+  if (!uncovered.empty()) {
+    if (groups.empty()) {
+      groups.push_back(ThreadGroup{});
+    }
+    auto& last = groups.back();
+    last.cpus.insert(last.cpus.end(), uncovered.begin(), uncovered.end());
+  }
+
+  return groups;
 }
 
 } // namespace dispenso

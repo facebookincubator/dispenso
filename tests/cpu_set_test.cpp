@@ -559,16 +559,22 @@ TEST(CpuSet, BuildThreadGroupsRespectsMaxSize) {
 TEST(CpuSet, BuildThreadGroupsCoversAllCpus) {
   auto groups = CpuSet::buildThreadGroups();
   const auto& allSet = CpuSet::all();
-  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
 
+  // CPU IDs can be sparse and exceed hardware_concurrency() on some platforms
+  // (e.g. Windows processor groups), so derive the scan limit from both the
+  // group data and hardware_concurrency() to cover all possible IDs.
+  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
   std::set<int32_t> covered;
   for (const auto& group : groups) {
     for (int32_t cpu : group.cpus) {
       EXPECT_TRUE(covered.insert(cpu).second)
           << "CPU " << cpu << " appears in multiple thread groups";
+      maxCpu = std::max(maxCpu, cpu + 1);
     }
   }
 
+  // Also check beyond the groups — allSet may contain CPUs that
+  // buildThreadGroups failed to include, which is the bug we want to catch.
   for (int32_t i = 0; i < maxCpu; ++i) {
     if (allSet.contains(i)) {
       EXPECT_TRUE(covered.count(i) > 0) << "CPU " << i << " not in any thread group";

@@ -220,11 +220,13 @@ class ChaseLevDeque {
       return true;
     }
     bottom_.store(b + 1, std::memory_order_relaxed);
+    alignas(T) char tmp[sizeof(T)];
+    std::memcpy(tmp, slotPtr(b), sizeof(T));
     if (!top_.compare_exchange_strong(
             t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
       return false;
     }
-    std::memcpy(storage, slotPtr(b), sizeof(T));
+    std::memcpy(storage, tmp, sizeof(T));
     return true;
   }
 
