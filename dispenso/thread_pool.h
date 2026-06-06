@@ -289,8 +289,15 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
 
   void executeNext(OnceFunction work);
 
-  DISPENSO_DLL_ACCESS void threadLoopWake(PerThreadData& threadData, int32_t ringIndex);
-  DISPENSO_DLL_ACCESS void threadLoopPoll(PerThreadData& threadData, int32_t ringIndex);
+  template <bool kUseWakeSleep>
+  void threadLoopImpl(PerThreadData& threadData, int32_t ringIndex);
+
+  void threadLoopWake(PerThreadData& threadData, int32_t ringIndex) {
+    threadLoopImpl<true>(threadData, ringIndex);
+  }
+  void threadLoopPoll(PerThreadData& threadData, int32_t ringIndex) {
+    threadLoopImpl<false>(threadData, ringIndex);
+  }
 
   void markWorkDone(bool& isWorking);
   void markIdle(bool& isWorking);
@@ -299,12 +306,20 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   bool tryExecuteNextFromProducerToken(moodycamel::ProducerToken& token);
   bool tryExecuteNextFromRings(size_t& startRing);
 
+  // Load-factor check shared by all inline-or-queue schedule overloads.
+  DISPENSO_INLINE bool shouldRunInline();
+
   // Core scheduling: central queue + bulk-like wake (default, throughput-oriented).
   DISPENSO_INLINE void scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token);
 
   // Placed scheduling: proactive wake → steal ring → central queue.
   // Higher per-call cost but better latency for individual tasks (futures, pipelines).
   DISPENSO_INLINE void scheduleImplPlaced(OnceFunction task, moodycamel::ProducerToken* token);
+
+  // Shared body for all ForceQueuingTag overloads. kPlaced selects
+  // scheduleImplPlaced (true) vs scheduleImpl (false).
+  template <bool kPlaced, typename F>
+  inline void forceEnqueue(F&& f, moodycamel::ProducerToken* token);
 
   template <typename F>
   void schedule(moodycamel::ProducerToken& token, F&& f);
@@ -326,6 +341,11 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedulePlaced(F&& f, ForceQueuingTag);
+
+  // Shared body for scheduleBulk/scheduleBulkPlaced. kPlaced selects
+  // placed path (scheduleImplPlaced per-task) vs central queue (scheduleBulkEnqueue).
+  template <bool kPlaced, typename Generator>
+  void scheduleBulkImpl(size_t count, Generator&& gen);
 
   // Bulk placed scheduling: chunked submit through the steal-ring path. Internal only —
   // exposed via ConcurrentTaskSet's scheduleBulk under TaskCost::kHeavy routing.
@@ -562,8 +582,6 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Used by schedule paths to skip wake calls when spinners exist.
   alignas(kCacheLineSize) std::atomic<int32_t> numNotWorking_{0};
 
-  int32_t spinLimit_{0};
-
 #if defined DISPENSO_DEBUG
   alignas(kCacheLineSize) std::atomic<ssize_t> outstandingTaskSets_{0};
 #endif // DISPENSO_DEBUG
@@ -594,14 +612,32 @@ DISPENSO_DLL_ACCESS void resizeGlobalThreadPool(size_t numThreads);
 
 // ----------------------------- Implementation details -------------------------------------
 
-template <typename F>
-DISPENSO_REQUIRES(OnceCallableFunc<F>)
-inline void ThreadPool::schedule(F&& f) {
+DISPENSO_INLINE bool ThreadPool::shouldRunInline() {
   ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
   ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
   quickLoadFactor += quickLoadFactor / 2;
-  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
-      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+  return (detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
+      (curWork > poolLoadFactor_.load(std::memory_order_relaxed));
+}
+
+template <bool kPlaced, typename F>
+inline void ThreadPool::forceEnqueue(F&& f, moodycamel::ProducerToken* token) {
+  if (!numThreads_.load(std::memory_order_relaxed)) {
+    f();
+    return;
+  }
+  workRemaining_.fetch_add(1, std::memory_order_release);
+  if (kPlaced) {
+    scheduleImplPlaced({std::forward<F>(f)}, token);
+  } else {
+    scheduleImpl({std::forward<F>(f)}, token);
+  }
+}
+
+template <typename F>
+DISPENSO_REQUIRES(OnceCallableFunc<F>)
+inline void ThreadPool::schedule(F&& f) {
+  if (shouldRunInline()) {
     f();
   } else {
     schedule(std::forward<F>(f), ForceQueuingTag());
@@ -611,27 +647,14 @@ inline void ThreadPool::schedule(F&& f) {
 template <typename F>
 DISPENSO_REQUIRES(OnceCallableFunc<F>)
 inline void ThreadPool::schedule(F&& f, ForceQueuingTag) {
-  if (auto* token =
-          static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this))) {
-    schedule(*token, std::forward<F>(f), ForceQueuingTag());
-    return;
-  }
-
-  if (!numThreads_.load(std::memory_order_relaxed)) {
-    f();
-    return;
-  }
-  workRemaining_.fetch_add(1, std::memory_order_release);
-  scheduleImpl({std::forward<F>(f)}, nullptr);
+  auto* token =
+      static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this));
+  forceEnqueue<false>(std::forward<F>(f), token);
 }
 
 template <typename F>
 inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f) {
-  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
-  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
-  quickLoadFactor += quickLoadFactor / 2;
-  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
-      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+  if (shouldRunInline()) {
     f();
   } else {
     schedule(token, std::forward<F>(f), ForceQueuingTag());
@@ -640,22 +663,13 @@ inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f) {
 
 template <typename F>
 inline void ThreadPool::schedule(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag) {
-  if (!numThreads_.load(std::memory_order_relaxed)) {
-    f();
-    return;
-  }
-  workRemaining_.fetch_add(1, std::memory_order_release);
-  scheduleImpl({std::forward<F>(f)}, &token);
+  forceEnqueue<false>(std::forward<F>(f), &token);
 }
 
 template <typename F>
 DISPENSO_REQUIRES(OnceCallableFunc<F>)
 inline void ThreadPool::schedulePlaced(F&& f) {
-  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
-  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
-  quickLoadFactor += quickLoadFactor / 2;
-  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
-      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+  if (shouldRunInline()) {
     f();
   } else {
     schedulePlaced(std::forward<F>(f), ForceQueuingTag());
@@ -665,27 +679,14 @@ inline void ThreadPool::schedulePlaced(F&& f) {
 template <typename F>
 DISPENSO_REQUIRES(OnceCallableFunc<F>)
 inline void ThreadPool::schedulePlaced(F&& f, ForceQueuingTag) {
-  if (auto* token =
-          static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this))) {
-    schedulePlaced(*token, std::forward<F>(f), ForceQueuingTag());
-    return;
-  }
-
-  if (!numThreads_.load(std::memory_order_relaxed)) {
-    f();
-    return;
-  }
-  workRemaining_.fetch_add(1, std::memory_order_release);
-  scheduleImplPlaced({std::forward<F>(f)}, nullptr);
+  auto* token =
+      static_cast<moodycamel::ProducerToken*>(detail::PerPoolPerThreadInfo::producer(this));
+  forceEnqueue<true>(std::forward<F>(f), token);
 }
 
 template <typename F>
 inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f) {
-  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
-  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);
-  quickLoadFactor += quickLoadFactor / 2;
-  if ((detail::PerPoolPerThreadInfo::isPoolRecursive(this) && curWork > quickLoadFactor) ||
-      (curWork > poolLoadFactor_.load(std::memory_order_relaxed))) {
+  if (shouldRunInline()) {
     f();
   } else {
     schedulePlaced(token, std::forward<F>(f), ForceQueuingTag());
@@ -694,12 +695,7 @@ inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f) 
 
 template <typename F>
 inline void ThreadPool::schedulePlaced(moodycamel::ProducerToken& token, F&& f, ForceQueuingTag) {
-  if (!numThreads_.load(std::memory_order_relaxed)) {
-    f();
-    return;
-  }
-  workRemaining_.fetch_add(1, std::memory_order_release);
-  scheduleImplPlaced({std::forward<F>(f)}, &token);
+  forceEnqueue<true>(std::forward<F>(f), &token);
 }
 
 DISPENSO_INLINE void ThreadPool::scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token) {
@@ -1069,15 +1065,14 @@ void ThreadPool::scheduleBulkEnqueue(
   }
 }
 
-template <typename Generator>
-void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
+template <bool kPlaced, typename Generator>
+void ThreadPool::scheduleBulkImpl(size_t count, Generator&& gen) {
   if (count == 0) {
     return;
   }
 
   ssize_t numPool = numThreads_.load(std::memory_order_relaxed);
   if (!numPool) {
-    // No threads in pool - execute all inline
     for (size_t i = 0; i < count; ++i) {
       gen(i)();
     }
@@ -1091,61 +1086,36 @@ void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
     ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
     ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);
     if (curWork > loadFactor) {
-      // Over load factor - execute one task inline, then re-check
       gen(i)();
       ++i;
     } else {
-      // Under load factor - enqueue a chunk
       ssize_t room = loadFactor - curWork;
       size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
       if (toEnqueue == 0) {
         toEnqueue = 1;
       }
       size_t base = i;
-      scheduleBulkEnqueue(toEnqueue, [&gen, base](size_t j) { return gen(base + j); });
+      if (kPlaced) {
+        workRemaining_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_release);
+        for (size_t j = 0; j < toEnqueue; ++j) {
+          scheduleImplPlaced({gen(base + j)}, nullptr);
+        }
+      } else {
+        scheduleBulkEnqueue(toEnqueue, [&gen, base](size_t j) { return gen(base + j); });
+      }
       i += toEnqueue;
     }
   }
 }
 
 template <typename Generator>
+void ThreadPool::scheduleBulk(size_t count, Generator&& gen) {
+  scheduleBulkImpl<false>(count, std::forward<Generator>(gen));
+}
+
+template <typename Generator>
 void ThreadPool::scheduleBulkPlaced(size_t count, Generator&& gen) {
-  if (count == 0) {
-    return;
-  }
-
-  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);
-  if (!numPool) {
-    for (size_t i = 0; i < count; ++i) {
-      gen(i)();
-    }
-    return;
-  }
-
-  // Process in chunks, interleaving placed-enqueue and inline execution based on load.
-  size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
-  size_t i = 0;
-  while (i < count) {
-    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);
-    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);
-    if (curWork > loadFactor) {
-      gen(i)();
-      ++i;
-    } else {
-      ssize_t room = loadFactor - curWork;
-      size_t toEnqueue = std::min({count - i, chunkSize, static_cast<size_t>(room)});
-      if (toEnqueue == 0) {
-        toEnqueue = 1;
-      }
-      // Batch the workRemaining bump for the whole chunk; placed path will
-      // wake per-task as needed via scheduleImplPlaced's claimAndWakeOne.
-      workRemaining_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_release);
-      for (size_t j = 0; j < toEnqueue; ++j) {
-        scheduleImplPlaced({gen(i + j)}, nullptr);
-      }
-      i += toEnqueue;
-    }
-  }
+  scheduleBulkImpl<true>(count, std::forward<Generator>(gen));
 }
 
 } // namespace dispenso

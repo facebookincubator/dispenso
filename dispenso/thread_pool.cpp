@@ -75,6 +75,7 @@ void ThreadPool::PerThreadData::stop() {
 // Per-thread wait using PoolWakeState's per-thread EpochWaiter.
 uint32_t ThreadPool::waitOnThread(int32_t threadIdx, uint32_t currentEpoch) {
   auto* ws = detail::consumeLoad(wakeState_);
+  assert(ws && "wakeState_ null — threads must not outlive their PoolWakeState");
   if (sleepLengthUs_ > 0) {
     return ws->waiterFor(threadIdx).waitFor(
         currentEpoch, sleepLengthUs_.load(std::memory_order_acquire));
@@ -117,7 +118,6 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 
   // All threads start as "not working" — they haven't entered their work loops yet.
   numNotWorking_.store(static_cast<int32_t>(adjustedN), std::memory_order_relaxed);
-  spinLimit_ = kDefaultSpinLimit;
 
   for (size_t i = 0; i < adjustedN; ++i) {
     threads_.emplace_back();
@@ -187,121 +187,8 @@ void ThreadPool::markIdle(bool& isWorking) {
   }
 }
 
-void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
-  moodycamel::ConsumerToken ctoken(work_);
-  moodycamel::ProducerToken ptoken(work_);
-
-  // Start preferring queue — schedule() enqueues there.
-  bool preferRing = false;
-
-  detail::PerPoolPerThreadInfo::registerPool(this, &ptoken, ringIndex);
-  auto* ws = detail::consumeLoad(wakeState_);
-  uint32_t epoch = ws->waiterFor(ringIndex).current();
-  size_t myRingIndex = static_cast<size_t>(ringIndex);
-  Ring& myRing = rings_[myRingIndex];
-  size_t myStealIdx = static_cast<size_t>(ringIndex) / stealRingSharing_;
-  StealRing& myStealRing = stealRings_[myStealIdx];
-
-  int failCount = 0;
-  bool isWorking = false; // starts not-working (counted in constructor init)
-
-  while (data.running()) {
-    int localWorkDone = 0;
-    bool checkQueue = (failCount < kSpinCheckInterval) ||
-        (((failCount + ringIndex) & (kQueueCheckInterval - 1)) == 0);
-    while (tryFindAndExecuteWork(
-        myRing, myStealRing, myStealIdx, ctoken, preferRing, failCount, checkQueue)) {
-      ++localWorkDone;
-      if (localWorkDone >= kWorkBatchSize) {
-        workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
-        localWorkDone = 0;
-      }
-      failCount = 0;
-      checkQueue = true;
-    }
-    if (localWorkDone > 0) {
-      markWorkDone(isWorking);
-      workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
-      failCount = 0;
-      continue;
-    }
-
-    // --- No work found. Lean spin: only check the local ring to
-    // minimize cross-socket cache traffic from idle threads. ---
-
-    ++failCount;
-
-    if (failCount < kSpinCheckInterval) {
-      detail::cpuRelax();
-      continue;
-    }
-
-    // --- Full machinery: steal ring, fixed-count backoff ---
-
-    // Outer steal ring check (deferred from lean phase). No empty() guard:
-    // try_pop already fast-paths the empty case with a relaxed head/tail compare
-    // before any acquire load, so a separate empty() check would be redundant.
-    {
-      OnceFunction stealTask;
-      if (myStealRing.try_pop(stealTask)) {
-        markWorkDone(isWorking);
-        executeNext(std::move(stealTask));
-        failCount = 0;
-        continue;
-      }
-    }
-
-    // Intentional second increment: lean-phase failures (above) count once,
-    // full-phase failures count twice. kDefaultSpinLimit is tuned assuming
-    // this two-rate progression.
-    ++failCount;
-
-    if (spinLimit_ > 0) {
-      // Fixed-spin mode: sleep after N total iterations, no time checks.
-      detail::cpuRelax();
-
-      if (failCount >= spinLimit_) {
-        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-          failCount = spinLimit_;
-          continue;
-        }
-        markIdle(isWorking);
-        ws->enterSleep(ringIndex);
-        if (!data.running()) {
-          ws->exitSleep(ringIndex);
-          break;
-        }
-        epoch = waitOnThread(ringIndex, epoch);
-        ws->exitSleep(ringIndex);
-        failCount = 0;
-      }
-    } else {
-      // Fallback when spinLimit_ == 0: use kDefaultSpinLimit directly.
-      detail::cpuRelax();
-
-      if (failCount >= kDefaultSpinLimit) {
-        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-          failCount = kDefaultSpinLimit;
-          continue;
-        }
-        markIdle(isWorking);
-        ws->enterSleep(ringIndex);
-        if (!data.running()) {
-          ws->exitSleep(ringIndex);
-          break;
-        }
-        epoch = waitOnThread(ringIndex, epoch);
-        ws->exitSleep(ringIndex);
-        failCount = 0;
-      }
-    }
-  }
-
-  // Clean up on thread exit (shutdown/resize): restore counter.
-  markIdle(isWorking);
-}
-
-void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
+template <bool kUseWakeSleep>
+void ThreadPool::threadLoopImpl(PerThreadData& data, int32_t ringIndex) {
   moodycamel::ConsumerToken ctoken(work_);
   moodycamel::ProducerToken ptoken(work_);
 
@@ -309,6 +196,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
 
   detail::PerPoolPerThreadInfo::registerPool(this, &ptoken, ringIndex);
   auto* ws = detail::consumeLoad(wakeState_);
+  assert(ws && "wakeState_ null — threads must not outlive their PoolWakeState");
   uint32_t epoch = ws->waiterFor(ringIndex).current();
   size_t myRingIndex = static_cast<size_t>(ringIndex);
   Ring& myRing = rings_[myRingIndex];
@@ -339,7 +227,6 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
       continue;
     }
 
-    // Lean spin for the first kSpinCheckInterval iterations.
     ++failCount;
 
     if (failCount < kSpinCheckInterval) {
@@ -347,7 +234,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
       continue;
     }
 
-    // Full machinery after lean phase.
+    // Steal ring check (deferred from lean phase).
     {
       OnceFunction stealTask;
       if (myStealRing.try_pop(stealTask)) {
@@ -371,13 +258,27 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
         continue;
       }
       markIdle(isWorking);
+      if (kUseWakeSleep) {
+        ws->enterSleep(ringIndex);
+        if (!data.running()) {
+          ws->exitSleep(ringIndex);
+          break;
+        }
+      }
       epoch = waitOnThread(ringIndex, epoch);
+      if (kUseWakeSleep) {
+        ws->exitSleep(ringIndex);
+      }
       failCount = 0;
     }
   }
 
   markIdle(isWorking);
 }
+
+// Explicit instantiations so the linker finds them.
+template void ThreadPool::threadLoopImpl<true>(PerThreadData&, int32_t);
+template void ThreadPool::threadLoopImpl<false>(PerThreadData&, int32_t);
 
 void ThreadPool::resizeLocked(ssize_t sn) {
   sn = getAdjustedThreadCount(sn);
