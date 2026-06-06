@@ -194,7 +194,7 @@ class dispenso::ChaseLevDeque&lt; T, Capacity &gt;</div><p>A lock-free SPMC boun
 <div class="line"><span class="keywordflow">if</span> (deque.<a class="code hl_function" href="#ac29c2767e8c6917826d7b8c3171ceeab">try_steal</a>(stolen)) { use(stolen); }</div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html">dispenso::ChaseLevDeque</a></div><div class="ttdoc">A lock-free SPMC bounded work-stealing deque.</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00100">chase_lev_deque.h:100</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a2ebb70133b094958e023bf879fce0b1d"><div class="ttname"><a href="#a2ebb70133b094958e023bf879fce0b1d">dispenso::ChaseLevDeque::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;out)</div><div class="ttdoc">Pops the most recently pushed element (LIFO, owner-only).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00176">chase_lev_deque.h:176</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac29c2767e8c6917826d7b8c3171ceeab"><div class="ttname"><a href="#ac29c2767e8c6917826d7b8c3171ceeab">dispenso::ChaseLevDeque::try_steal</a></div><div class="ttdeci">bool try_steal(T &amp;out)</div><div class="ttdoc">Steals the oldest element from the top of the deque (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00245">chase_lev_deque.h:245</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac29c2767e8c6917826d7b8c3171ceeab"><div class="ttname"><a href="#ac29c2767e8c6917826d7b8c3171ceeab">dispenso::ChaseLevDeque::try_steal</a></div><div class="ttdeci">bool try_steal(T &amp;out)</div><div class="ttdoc">Steals the oldest element from the top of the deque (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00247">chase_lev_deque.h:247</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_afa74f001484803bfde8561d8cf3a6fc5"><div class="ttname"><a href="#afa74f001484803bfde8561d8cf3a6fc5">dispenso::ChaseLevDeque::try_push</a></div><div class="ttdeci">bool try_push(const T &amp;item)</div><div class="ttdoc">Pushes an element onto the bottom of the deque (owner-only).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00147">chase_lev_deque.h:147</a></div></div>
 </div><!-- fragment --> 
 <p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00100">100</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
@@ -257,7 +257,7 @@ template&lt;typename T , size_t Capacity = 32&gt; </div>
 
 <p>Returns the maximum number of elements the deque can hold. </p>
 
-<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00313">313</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00315">315</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
 
 </div>
 </div>
@@ -288,7 +288,7 @@ template&lt;typename T , size_t Capacity = 32&gt; </div>
 
 <p>Returns true if the deque appears empty. </p>
 
-<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00299">299</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00301">301</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
 
 </div>
 </div>
@@ -319,7 +319,7 @@ template&lt;typename T , size_t Capacity = 32&gt; </div>
 
 <p>Returns the apparent number of elements in the deque. </p>
 
-<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00306">306</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00308">308</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
 
 </div>
 </div>
@@ -474,7 +474,7 @@ template&lt;typename T , size_t Capacity = 32&gt; </div>
 <dl class="section return"><dt>Returns</dt><dd>true on success, false if the deque is empty or the CAS was lost to another concurrent stealer or a last-element pop.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Callable from any thread. Distinguishing "empty" from "contended" is not exposed; callers may retry on false if work is expected. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00245">245</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00247">247</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
 
 </div>
 </div>
@@ -506,7 +506,7 @@ template&lt;typename T , size_t Capacity = 32&gt; </div>
 <p>Steals the oldest element into uninitialized storage (FIFO). </p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="#ac29c2767e8c6917826d7b8c3171ceeab" title="Steals the oldest element from the top of the deque (FIFO).">try_steal(T&amp;)</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00273">273</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="chase__lev__deque_8h_source.html#l00275">275</a> of file <a class="el" href="chase__lev__deque_8h_source.html">chase_lev_deque.h</a>.</p>
 
 </div>
 </div>

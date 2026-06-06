@@ -153,6 +153,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ad6a94600b8590b37ad14329cf5e58f5b" id="r_ad6a94600b8590b37ad14329cf5e58f5b"><td class="memItemLeft" align="right" valign="top">static DISPENSO_DLL_ACCESS int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad6a94600b8590b37ad14329cf5e58f5b">currentHardwareThread</a> ()</td></tr>
 <tr class="memdesc:ad6a94600b8590b37ad14329cf5e58f5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the CPU ID of the calling thread's current core.  <br /></td></tr>
 <tr class="separator:ad6a94600b8590b37ad14329cf5e58f5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a244394310798d6a21c5fb92ec9f6d268" id="r_a244394310798d6a21c5fb92ec9f6d268"><td class="memItemLeft" align="right" valign="top">static int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a244394310798d6a21c5fb92ec9f6d268">currentHardwareThreadApprox</a> ()</td></tr>
+<tr class="memdesc:a244394310798d6a21c5fb92ec9f6d268"><td class="mdescLeft">&#160;</td><td class="mdescRight">Approximate CPU ID for the calling thread, refreshed periodically.  <br /></td></tr>
+<tr class="separator:a244394310798d6a21c5fb92ec9f6d268"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a343ea86ffd84c3a02e7a12463f8eccf9" id="r_a343ea86ffd84c3a02e7a12463f8eccf9"><td class="memItemLeft" align="right" valign="top">static DISPENSO_DLL_ACCESS const <a class="el" href="classdispenso_1_1_cpu_set.html">CpuSet</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a343ea86ffd84c3a02e7a12463f8eccf9">node</a> (int32_t numaNode)</td></tr>
 <tr class="memdesc:a343ea86ffd84c3a02e7a12463f8eccf9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the CPU set for a specific NUMA node.  <br /></td></tr>
 <tr class="separator:a343ea86ffd84c3a02e7a12463f8eccf9"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -442,6 +445,38 @@ Static Public Member Functions</h2></td></tr>
 <p>Returns the CPU ID of the calling thread's current core. </p>
 <p>On Linux, uses the vDSO-accelerated getcpu(). On unsupported platforms, returns -1.</p>
 <dl class="section note"><dt>Note</dt><dd>The result is instantaneous and may be stale by the time it is used (the OS may migrate the thread). Useful as a hint for scheduling decisions, not as a hard guarantee. </dd></dl>
+
+</div>
+</div>
+<a id="a244394310798d6a21c5fb92ec9f6d268" name="a244394310798d6a21c5fb92ec9f6d268"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a244394310798d6a21c5fb92ec9f6d268">&#9670;&#160;</a></span>currentHardwareThreadApprox()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static int32_t dispenso::CpuSet::currentHardwareThreadApprox </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Approximate CPU ID for the calling thread, refreshed periodically. </p>
+<p>Caches the result of <a class="el" href="#ad6a94600b8590b37ad14329cf5e58f5b" title="Returns the CPU ID of the calling thread&#39;s current core.">currentHardwareThread()</a> in a thread-local and re-queries every kRefreshPeriod calls. Designed for hot paths that want locality hints without paying the ~15ns vDSO cost per call: the cached path is a single TLS read + increment + branch (~1-2ns).</p>
+<p>Trade-off: between refreshes the returned CPU is stale if the OS has migrated the thread. With kRefreshPeriod=32 and a typical OS time-slice of 1-10ms, staleness is bounded to a small fraction of a slice.</p>
+<dl class="section return"><dt>Returns</dt><dd>A possibly-stale CPU ID, or -1 if the platform doesn't support CPU queries. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="cpu__set_8h_source.html#l00234">234</a> of file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
 
 </div>
 </div>

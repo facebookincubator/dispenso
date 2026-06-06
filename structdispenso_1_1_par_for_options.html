@@ -118,13 +118,15 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a2cfd7b948697c97874c727940529d1d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a293e1d655c40ee3b3aaf8138799771e3" id="r_a293e1d655c40ee3b3aaf8138799771e3"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a293e1d655c40ee3b3aaf8138799771e3">minItemsPerChunk</a> = 1</td></tr>
 <tr class="separator:a293e1d655c40ee3b3aaf8138799771e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9f98be70f5a3e2e86ffa2bffc84f33bb" id="r_a9f98be70f5a3e2e86ffa2bffc84f33bb"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9f98be70f5a3e2e86ffa2bffc84f33bb">granularity</a> = 1</td></tr>
+<tr class="separator:a9f98be70f5a3e2e86ffa2bffc84f33bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a84a0af7b2f1c7e7d9335173f91c1b075" id="r_a84a0af7b2f1c7e7d9335173f91c1b075"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a84a0af7b2f1c7e7d9335173f91c1b075">reuseExistingState</a> = false</td></tr>
 <tr class="separator:a84a0af7b2f1c7e7d9335173f91c1b075"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A set of options to control parallel_for </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00078">78</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00093">93</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a2cfd7b948697c97874c727940529d1d8" name="a2cfd7b948697c97874c727940529d1d8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2cfd7b948697c97874c727940529d1d8">&#9670;&#160;</a></span>defaultChunking</h2>
@@ -139,7 +141,27 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 <p>Specify whether default chunking should be static or auto (dynamic load balancing). This is used when invoking the version of parallel_for that takes index parameters (vs a ChunkedRange). </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00099">99</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00114">114</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+
+</div>
+</div>
+<a id="a9f98be70f5a3e2e86ffa2bffc84f33bb" name="a9f98be70f5a3e2e86ffa2bffc84f33bb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9f98be70f5a3e2e86ffa2bffc84f33bb">&#9670;&#160;</a></span>granularity</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t dispenso::ParForOptions::granularity = 1</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Specify a chunk-size granularity contract. When &gt; 1, every chunk passed to the user's lambda by parallel work is guaranteed to have <code>(end - begin)</code> be a multiple of <code>granularity</code>. If the total range size is not a multiple of <code>granularity</code>, the sub-granularity remainder (the "tail") will be executed serially on the calling thread after the parallel portion completes; that single tail invocation is the only call whose <code>(end - begin)</code> may not be a multiple of <code>granularity</code>.</p>
+<p>Useful for SIMD inner loops (e.g. <code>granularity = 8</code> for AVX-256 doubles), block algorithms, or any inner loop with a fixed unroll factor where partial blocks add overhead.</p>
+<p><code>granularity</code> is a contract on chunk boundaries, not on chunk size: chunks may still vary widely (e.g. 8, 16, 24, 8000) — they just won't be 9 or 17 or 8001.</p>
+<p>Ignored (treated as 1) when an explicit chunk size is provided to ChunkedRange; in that case the user is already specifying exact chunk granularity. </p>
+
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00148">148</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -156,7 +178,7 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 <p>The maximum number of threads to use. This can be used to limit the number of threads below the number associated with the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>'s thread pool to control the degree of concurrency. Setting maxThreads to zero or one will result in serial operation. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00084">84</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00099">99</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -171,9 +193,10 @@ Public Attributes</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Specify a minimum number of items per chunk for static or auto dynamic load balancing. Cheaper workloads should have a higher number of minWorkItems. Will be ignored if an explicit chunk size is provided to ChunkedRange. </p>
+<p>Specify a minimum number of items per chunk for static or auto dynamic load balancing. Cheaper workloads should have a higher number of minWorkItems. Will be ignored if an explicit chunk size is provided to ChunkedRange.</p>
+<p>For kStatic, this is a hard floor on chunk size (only the last chunk may be smaller). For kAdaptive, it is a SOFT HINT: the owner's pop step and the stealer's split point both respect minItemsPerChunk, but after a steal the victim may be left with a sub-minItemsPerChunk remainder. The remainder is still processed by the original owner, so up to <em>numWorkers</em> sub-minItemsPerChunk chunks may appear in adversarial steal patterns. If you need a hard granularity guarantee, use the <code>granularity</code> option or pass an explicit chunk size to <code>makeChunkedRange</code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00106">106</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00129">129</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -190,7 +213,7 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 <p>When set to false, and StateContainers are supplied to parallel_for, re-create container from scratch each call to parallel_for. When true, reuse existing state as much as possible (only create new state if we require more than is already available in the container). </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00113">113</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00155">155</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -208,7 +231,7 @@ Public Attributes</h2></td></tr>
 <p>Specify whether the return of the parallel_for signifies the work is complete. If the parallel_for is initiated without providing a <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, the parallel_for will always wait.</p>
 <dl class="section note"><dt>Note</dt><dd>If wait is true, the calling thread will always participate in computation. If this is not desired, pass wait as false, and wait manually outside of the parallel_for on the passed <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00093">93</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00108">108</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

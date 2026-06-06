@@ -3,7 +3,8 @@ var parallel__for_8h =
     [ "dispenso::ParForOptions", "structdispenso_1_1_par_for_options.html", "structdispenso_1_1_par_for_options" ],
     [ "ParForChunking", "parallel__for_8h.html#a6937a5697393f11085906ecf68d79634", [
       [ "kStatic", "parallel__for_8h.html#a6937a5697393f11085906ecf68d79634aeb9af1ba35d0a6f48fd1e6218a4d82c9", null ],
-      [ "kAuto", "parallel__for_8h.html#a6937a5697393f11085906ecf68d79634aa8c857c2f1b000c92f9794ebf53888d7", null ]
+      [ "kAdaptive", "parallel__for_8h.html#a6937a5697393f11085906ecf68d79634a747047a5685fc3a7c704940f23a3c947", null ],
+      [ "DISPENSO_DEPRECATED", "parallel__for_8h.html#a6937a5697393f11085906ecf68d79634ad6c52688db0695a6949d1487070bf768", null ]
     ] ],
     [ "makeChunkedRange", "parallel__for_8h.html#a006977b606e47964da4df6503cf7f2f8", null ],
     [ "makeChunkedRange", "parallel__for_8h.html#aa25d40224b10469dc019bc2523b0ae87", null ],

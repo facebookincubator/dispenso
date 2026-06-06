@@ -5,7 +5,7 @@ var searchData=
   ['removerange_2',['removeRange',['../classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc',1,'dispenso::CpuSet']]],
   ['rend_3',['rend',['../classdispenso_1_1_concurrent_vector.html#ad619151eccfcb429a1ce2d12af17bea2',1,'dispenso::ConcurrentVector::rend()'],['../classdispenso_1_1_concurrent_vector.html#a04b2097cf9835c0a923c68011deecc40',1,'dispenso::ConcurrentVector::rend() const']]],
   ['requestupdate_4',['requestUpdate',['../classdispenso_1_1_async_request.html#a1f346ca044a0b7668785b2105627cf3a',1,'dispenso::AsyncRequest']]],
-  ['reserve_5',['reserve',['../classdispenso_1_1_concurrent_vector.html#a29fe4428dde508f95b2f57efc5184978',1,'dispenso::ConcurrentVector::reserve()'],['../classdispenso_1_1_subgraph_t.html#abdbbf19bd29a67462acc48a16070f950',1,'dispenso::SubgraphT::reserve()'],['../classdispenso_1_1_small_vector.html#a084feb6c20c51b90ca78a9db6fd183fa',1,'dispenso::SmallVector::reserve()']]],
+  ['reserve_5',['reserve',['../classdispenso_1_1_concurrent_vector.html#a29fe4428dde508f95b2f57efc5184978',1,'dispenso::ConcurrentVector::reserve()'],['../classdispenso_1_1_subgraph_t.html#abdbbf19bd29a67462acc48a16070f950',1,'dispenso::SubgraphT::reserve()'],['../classdispenso_1_1_graph_t.html#a2238ea96e5a6851c4b547f00727b1213',1,'dispenso::GraphT::reserve()'],['../classdispenso_1_1_small_vector.html#a084feb6c20c51b90ca78a9db6fd183fa',1,'dispenso::SmallVector::reserve()']]],
   ['reservetag_6',['ReserveTag',['../concurrent__vector_8h.html#ad1fd37ed3358d0c441b10e30f073d317',1,'dispenso']]],
   ['reservetags_7',['ReserveTagS',['../structdispenso_1_1_reserve_tag_s.html',1,'dispenso']]],
   ['reset_8',['reset',['../classdispenso_1_1_completion_event.html#abad79988850beff09baa2126ba0f06e8',1,'dispenso::CompletionEvent']]],

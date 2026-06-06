@@ -37,5 +37,6 @@ var searchData=
   ['cpurelax_34',['cpuRelax',['../util_8h.html#ad1e2ca26986584ede0179073a455ab95',1,'dispenso']]],
   ['cpus_35',['cpus',['../structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301',1,'dispenso::CacheGroup::cpus'],['../structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271',1,'dispenso::ThreadGroup::cpus']]],
   ['cpuset_36',['CpuSet',['../classdispenso_1_1_cpu_set.html',1,'dispenso::CpuSet'],['../classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3',1,'dispenso::CpuSet::CpuSet()']]],
-  ['currenthardwarethread_37',['currentHardwareThread',['../classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b',1,'dispenso::CpuSet']]]
+  ['currenthardwarethread_37',['currentHardwareThread',['../classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b',1,'dispenso::CpuSet']]],
+  ['currenthardwarethreadapprox_38',['currentHardwareThreadApprox',['../classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268',1,'dispenso::CpuSet']]]
 ];

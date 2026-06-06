@@ -109,10 +109,13 @@ $(function(){initNavTree('parallel__for_8h.html',''); initResizable(true); });
 <div class="textblock"><code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;limits&gt;</code><br />
 <code>#include &lt;<a class="el" href="cpu__set_8h_source.html">dispenso/cpu_set.h</a>&gt;</code><br />
-<code>#include &lt;dispenso/detail/can_invoke.h&gt;</code><br />
-<code>#include &lt;dispenso/detail/per_thread_info.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="small__buffer__allocator_8h_source.html">dispenso/small_buffer_allocator.h</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="task__set_8h_source.html">dispenso/task_set.h</a>&gt;</code><br />
+<code>#include &quot;detail/can_invoke.h&quot;</code><br />
+<code>#include &quot;detail/par_for_stripe.h&quot;</code><br />
+<code>#include &quot;detail/per_thread_info.h&quot;</code><br />
+<code>#include &quot;detail/par_for_dynamic.h&quot;</code><br />
+<code>#include &quot;detail/par_for_static.h&quot;</code><br />
 </div>
 <p><a href="parallel__for_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -183,9 +186,11 @@ Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Chunking strategy. Typically if the cost of each loop iteration is roughly constant, kStatic load balancing is preferred. Additionally, when making a non-waiting parallel_for call in conjunction with other parallel_for calls or with other task submissions to a TaskSet, some dynamic load balancing is automatically introduced, and selecting kStatic load balancing here can be better. If the workload per iteration deviates a lot from constant, and some ranges may be much cheaper than others, select kAuto. </p>
+<p>Chunking strategy. Typically if the cost of each loop iteration is roughly constant, kStatic load balancing is preferred. Additionally, when making a non-waiting parallel_for call in conjunction with other parallel_for calls or with other task submissions to a TaskSet, some dynamic load balancing is automatically introduced, and selecting kStatic load balancing here can be better. If the workload per iteration deviates a lot from constant, and some ranges may be much cheaper than others, select kAdaptive (or its alias kAuto).</p>
+<p>kAdaptive partitions the iteration space into P contiguous stripes (one per worker), each consumed front-to-back by its owner via fetch_add on a per-stripe atomic cursor. When a worker's own stripe is exhausted, it claims chunks from peers' stripes the same way, preferring same-L3 cache-group victims first to keep stolen data warm in the shared L3 (CCD on AMD, tile/SNC on Intel). Chunk size is fixed per call (auto-derived from range size / worker count).</p>
+<p>kAuto is kept as a compatibility alias for kAdaptive. New code should prefer kAdaptive; kAuto will be deprecated in a future release and removed in 2.0. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00073">73</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00083">83</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -233,7 +238,7 @@ template&lt;typename IntegerA , typename IntegerB , typename IntegerC &gt; </div
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00233">233</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00283">283</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -280,7 +285,7 @@ template&lt;typename IntegerA , typename IntegerB &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00217">217</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00267">267</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -319,7 +324,7 @@ template&lt;typename IntegerT , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00897">897</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00725">725</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -364,7 +369,7 @@ template&lt;typename IntegerA , typename IntegerB , typename F , std::enable_if_
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l01019">1019</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00847">847</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -415,7 +420,7 @@ template&lt;typename F , typename IntegerT , typename StateContainer , typename 
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00921">921</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00749">749</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -472,7 +477,7 @@ template&lt;typename IntegerA , typename IntegerB , typename F , typename StateC
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l01161">1161</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00989">989</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -517,7 +522,7 @@ template&lt;typename TaskSetT , typename IntegerT , typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00871">871</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00699">699</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -569,7 +574,7 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
 </dl>
 <p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00955">955</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00783">783</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -617,7 +622,8 @@ template&lt;typename TaskSetT , typename IntegerT , typename F , typename StateC
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">taskSet</td><td>The task set to schedule the loop on. </td></tr>
-    <tr><td class="paramname">states</td><td>A container of <code>State</code> (actual type of State TBD by user). The container will be resized to hold a <code>State</code> object per executing thread. Container must provide emplace_back() and must be forward-iterable. Examples include std::vector, std::deque, and std::list. These are the states passed into <code>f</code>, and states must remain a valid object until work is completed. </td></tr>
+    <tr><td class="paramname">states</td><td>A container of <code>State</code> (actual type of State TBD by user). The container will be resized to hold a <code>State</code> object per executing thread. Container must provide emplace_back() and must be forward-iterable. Examples include std::vector, std::deque, and std::list. These are the states passed into <code>f</code>, and states must remain a valid object until work is completed. When <code>options.wait</code> is false, "until
+work is completed" extends beyond the return of this function — the caller must ensure <code>states</code> outlives all scheduled work (e.g. by calling <code>taskSet.wait()</code> before destroying it). </td></tr>
     <tr><td class="paramname">defaultState</td><td>A functor with signature State(). It will be called to initialize the objects for <code>states</code>. </td></tr>
     <tr><td class="paramname">range</td><td>The range defining the loop extents as well as chunking strategy. </td></tr>
     <tr><td class="paramname">f</td><td>The functor to execute in parallel. Must have a signature like <code>void(State &amp;s, size_t begin, size_t end)</code>. </td></tr>
@@ -626,7 +632,7 @@ template&lt;typename TaskSetT , typename IntegerT , typename F , typename StateC
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00741">741</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00555">555</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>
@@ -690,7 +696,7 @@ template&lt;typename TaskSetT , typename IntegerA , typename IntegerB , typename
 </dl>
 <p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
 
-<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l01066">1066</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="parallel__for_8h_source.html#l00894">894</a> of file <a class="el" href="parallel__for_8h_source.html">parallel_for.h</a>.</p>
 
 </div>
 </div>

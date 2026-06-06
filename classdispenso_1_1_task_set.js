@@ -9,6 +9,7 @@ var classdispenso_1_1_task_set =
     [ "schedule", "classdispenso_1_1_task_set.html#a4ceb7a54821d9e649090f17449bfc400", null ],
     [ "schedule", "classdispenso_1_1_task_set.html#aa6d01bd26f44e6547108e6c588ff454e", null ],
     [ "scheduleBulk", "classdispenso_1_1_task_set.html#a422828f7619de80efcdd865b4aadfe81", null ],
+    [ "scheduleBulk", "classdispenso_1_1_task_set.html#a581c877e44900e62ceacf4281d477ffd", null ],
     [ "tryWait", "classdispenso_1_1_task_set.html#aa616383111fae3c385840bfc677e7ffa", null ],
     [ "wait", "classdispenso_1_1_task_set.html#affb9b54fd2515e548613783db7cf7aec", null ]
 ];

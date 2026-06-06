@@ -220,125 +220,127 @@ $(function(){initNavTree('chase__lev__deque_8h_source.html',''); initResizable(t
 <div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
 <div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>    }</div>
 <div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>    bottom_.store(b + 1, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>    <span class="keywordflow">if</span> (!top_.compare_exchange_strong(</div>
-<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>            t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>    }</div>
-<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>    std::memcpy(storage, slotPtr(b), <span class="keyword">sizeof</span>(T));</div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  }</div>
+<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>    <span class="keyword">alignas</span>(T) <span class="keywordtype">char</span> tmp[<span class="keyword">sizeof</span>(T)];</div>
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>    std::memcpy(tmp, slotPtr(b), <span class="keyword">sizeof</span>(T));</div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>    <span class="keywordflow">if</span> (!top_.compare_exchange_strong(</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>            t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>    }</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>    std::memcpy(storage, tmp, <span class="keyword">sizeof</span>(T));</div>
+<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  }</div>
 </div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span> </div>
-<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>  <span class="comment">// Stealer operations: callable from any thread, including the owner.</span></div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span> </div>
 <div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span> </div>
-<div class="foldopen" id="foldopen00245" data-start="{" data-end="}">
-<div class="line"><a id="l00245" name="l00245"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">  245</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">try_steal</a>(T&amp; out) {</div>
-<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>    int64_t t = top_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>    <span class="comment">// Seq-cst fence pairs with the fence in try_pop: ensures we observe an updated</span></div>
-<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>    <span class="comment">// bottom if the owner has decremented past us.</span></div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    std::atomic_thread_fence(std::memory_order_seq_cst);</div>
-<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    <span class="keywordflow">if</span> (t &gt;= b) {</div>
-<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    }</div>
-<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>    <span class="comment">// Read directly into out before CAS. Safe because T is trivially copyable —</span></div>
-<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>    <span class="comment">// slot[t] is unchanged whether we win or lose. On CAS loss, out is unspecified</span></div>
-<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    <span class="comment">// per the try_* contract. The non-atomic slot read is ordered against the</span></div>
-<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    <span class="comment">// owner&#39;s earlier slot write via the chain: owner writes slot[b] → owner</span></div>
-<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>    <span class="comment">// bottom_.store(b+1, release) → our bottom_.load(acquire) above synchronizes</span></div>
-<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>    <span class="comment">// with that release → slot read happens-before stealer CAS. The seq_cst CAS</span></div>
-<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>    <span class="comment">// on top_ orders us against other concurrent stealers. TSAN doesn&#39;t model</span></div>
-<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>    <span class="comment">// this chain through non-atomic reads, so annotate as benign.</span></div>
-<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_BEGIN();</div>
-<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    out = *slotPtr(t);</div>
-<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_END();</div>
-<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keywordflow">return</span> top_.compare_exchange_strong(</div>
-<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>        t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>  }</div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>  <span class="comment">// Stealer operations: callable from any thread, including the owner.</span></div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span> </div>
+<div class="foldopen" id="foldopen00247" data-start="{" data-end="}">
+<div class="line"><a id="l00247" name="l00247"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">  247</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">try_steal</a>(T&amp; out) {</div>
+<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>    int64_t t = top_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    <span class="comment">// Seq-cst fence pairs with the fence in try_pop: ensures we observe an updated</span></div>
+<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>    <span class="comment">// bottom if the owner has decremented past us.</span></div>
+<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    std::atomic_thread_fence(std::memory_order_seq_cst);</div>
+<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    <span class="keywordflow">if</span> (t &gt;= b) {</div>
+<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>    }</div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    <span class="comment">// Read directly into out before CAS. Safe because T is trivially copyable —</span></div>
+<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    <span class="comment">// slot[t] is unchanged whether we win or lose. On CAS loss, out is unspecified</span></div>
+<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>    <span class="comment">// per the try_* contract. The non-atomic slot read is ordered against the</span></div>
+<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>    <span class="comment">// owner&#39;s earlier slot write via the chain: owner writes slot[b] → owner</span></div>
+<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>    <span class="comment">// bottom_.store(b+1, release) → our bottom_.load(acquire) above synchronizes</span></div>
+<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>    <span class="comment">// with that release → slot read happens-before stealer CAS. The seq_cst CAS</span></div>
+<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span>    <span class="comment">// on top_ orders us against other concurrent stealers. TSAN doesn&#39;t model</span></div>
+<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    <span class="comment">// this chain through non-atomic reads, so annotate as benign.</span></div>
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_BEGIN();</div>
+<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    out = *slotPtr(t);</div>
+<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_END();</div>
+<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    <span class="keywordflow">return</span> top_.compare_exchange_strong(</div>
+<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>        t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>  }</div>
 </div>
-<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span> </div>
-<div class="foldopen" id="foldopen00273" data-start="{" data-end="}">
-<div class="line"><a id="l00273" name="l00273"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">  273</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">try_steal_into</a>(T* storage) {</div>
-<div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>    int64_t t = top_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>    std::atomic_thread_fence(std::memory_order_seq_cst);</div>
-<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span>    <span class="keywordflow">if</span> (t &gt;= b) {</div>
-<div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span>    }</div>
-<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>    <span class="comment">// Tentative copy via memcpy (T is trivially copyable). Discarded on CAS loss.</span></div>
-<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>    <span class="comment">// See try_steal for the reasoning behind the TSAN annotations.</span></div>
-<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>    <span class="keyword">alignas</span>(T) <span class="keywordtype">char</span> tmp[<span class="keyword">sizeof</span>(T)];</div>
-<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_BEGIN();</div>
-<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span>    std::memcpy(tmp, slotPtr(t), <span class="keyword">sizeof</span>(T));</div>
-<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_END();</div>
-<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>    <span class="keywordflow">if</span> (!top_.compare_exchange_strong(</div>
-<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>            t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>    }</div>
-<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>    std::memcpy(storage, tmp, <span class="keyword">sizeof</span>(T));</div>
-<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>  }</div>
+<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span> </div>
+<div class="foldopen" id="foldopen00275" data-start="{" data-end="}">
+<div class="line"><a id="l00275" name="l00275"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">  275</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">try_steal_into</a>(T* storage) {</div>
+<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    int64_t t = top_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span>    std::atomic_thread_fence(std::memory_order_seq_cst);</div>
+<div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span>    <span class="keywordflow">if</span> (t &gt;= b) {</div>
+<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>    }</div>
+<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>    <span class="comment">// Tentative copy via memcpy (T is trivially copyable). Discarded on CAS loss.</span></div>
+<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>    <span class="comment">// See try_steal for the reasoning behind the TSAN annotations.</span></div>
+<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span>    <span class="keyword">alignas</span>(T) <span class="keywordtype">char</span> tmp[<span class="keyword">sizeof</span>(T)];</div>
+<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_BEGIN();</div>
+<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>    std::memcpy(tmp, slotPtr(t), <span class="keyword">sizeof</span>(T));</div>
+<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>    DISPENSO_TSAN_ANNOTATE_IGNORE_READS_END();</div>
+<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span>    <span class="keywordflow">if</span> (!top_.compare_exchange_strong(</div>
+<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>            t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>      <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>    }</div>
+<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>    std::memcpy(storage, tmp, <span class="keyword">sizeof</span>(T));</div>
+<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>  }</div>
 </div>
-<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span> </div>
-<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span>  <span class="comment">// Observers. Snapshots only; results may be immediately stale.</span></div>
+<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span> </div>
 <div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span> </div>
-<div class="foldopen" id="foldopen00299" data-start="{" data-end="}">
-<div class="line"><a id="l00299" name="l00299"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">  299</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">empty</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span>    <span class="keyword">const</span> int64_t t = top_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>    <span class="keywordflow">return</span> b &lt;= t;</div>
-<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>  }</div>
+<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span>  <span class="comment">// Observers. Snapshots only; results may be immediately stale.</span></div>
+<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span>  <span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span> </div>
+<div class="foldopen" id="foldopen00301" data-start="{" data-end="}">
+<div class="line"><a id="l00301" name="l00301"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">  301</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">empty</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>    <span class="keyword">const</span> int64_t t = top_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>    <span class="keywordflow">return</span> b &lt;= t;</div>
+<div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>  }</div>
 </div>
-<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span> </div>
-<div class="foldopen" id="foldopen00306" data-start="{" data-end="}">
-<div class="line"><a id="l00306" name="l00306"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">  306</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">size</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>    <span class="keyword">const</span> int64_t t = top_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>    <span class="keywordflow">return</span> b &gt; t ? <span class="keyword">static_cast&lt;</span>size_type<span class="keyword">&gt;</span>(b - t) : 0;</div>
-<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>  }</div>
+<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span> </div>
+<div class="foldopen" id="foldopen00308" data-start="{" data-end="}">
+<div class="line"><a id="l00308" name="l00308"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">  308</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">size</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>    <span class="keyword">const</span> int64_t b = bottom_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>    <span class="keyword">const</span> int64_t t = top_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>    <span class="keywordflow">return</span> b &gt; t ? <span class="keyword">static_cast&lt;</span>size_type<span class="keyword">&gt;</span>(b - t) : 0;</div>
+<div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>  }</div>
 </div>
-<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span> </div>
-<div class="foldopen" id="foldopen00313" data-start="{" data-end="}">
-<div class="line"><a id="l00313" name="l00313"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">  313</a></span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> size_type <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">capacity</a>() noexcept {</div>
-<div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span>    <span class="keywordflow">return</span> Capacity;</div>
-<div class="line"><a id="l00315" name="l00315"></a><span class="lineno">  315</span>  }</div>
+<div class="line"><a id="l00313" name="l00313"></a><span class="lineno">  313</span> </div>
+<div class="foldopen" id="foldopen00315" data-start="{" data-end="}">
+<div class="line"><a id="l00315" name="l00315"></a><span class="lineno"><a class="line" href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">  315</a></span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> size_type <a class="code hl_function" href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">capacity</a>() noexcept {</div>
+<div class="line"><a id="l00316" name="l00316"></a><span class="lineno">  316</span>    <span class="keywordflow">return</span> Capacity;</div>
+<div class="line"><a id="l00317" name="l00317"></a><span class="lineno">  317</span>  }</div>
 </div>
-<div class="line"><a id="l00316" name="l00316"></a><span class="lineno">  316</span> </div>
-<div class="line"><a id="l00317" name="l00317"></a><span class="lineno">  317</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00318" name="l00318"></a><span class="lineno">  318</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMask = Capacity - 1;</div>
-<div class="line"><a id="l00319" name="l00319"></a><span class="lineno">  319</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kStorageAlign =</div>
-<div class="line"><a id="l00320" name="l00320"></a><span class="lineno">  320</span>      (<span class="keyword">alignof</span>(T) &gt; <a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) ? <span class="keyword">alignof</span>(T) : <a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>;</div>
-<div class="line"><a id="l00321" name="l00321"></a><span class="lineno">  321</span> </div>
-<div class="line"><a id="l00322" name="l00322"></a><span class="lineno">  322</span>  T* slotPtr(int64_t index) {</div>
-<div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>T*<span class="keyword">&gt;</span>(&amp;storage_[(<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(index) &amp; kMask) * <span class="keyword">sizeof</span>(T)]);</div>
-<div class="line"><a id="l00324" name="l00324"></a><span class="lineno">  324</span>  }</div>
-<div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span> </div>
-<div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span>  <span class="keyword">alignas</span>(kCacheLineSize) std::atomic&lt;int64_t&gt; top_{0};</div>
-<div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span> </div>
-<div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int64_t&gt; bottom_{0};</div>
-<div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span> </div>
-<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span>  <span class="keyword">alignas</span>(kStorageAlign) <span class="keywordtype">char</span> storage_[<span class="keyword">sizeof</span>(T) * Capacity];</div>
-<div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span>};</div>
+<div class="line"><a id="l00318" name="l00318"></a><span class="lineno">  318</span> </div>
+<div class="line"><a id="l00319" name="l00319"></a><span class="lineno">  319</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00320" name="l00320"></a><span class="lineno">  320</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMask = Capacity - 1;</div>
+<div class="line"><a id="l00321" name="l00321"></a><span class="lineno">  321</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kStorageAlign =</div>
+<div class="line"><a id="l00322" name="l00322"></a><span class="lineno">  322</span>      (<span class="keyword">alignof</span>(T) &gt; <a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) ? <span class="keyword">alignof</span>(T) : <a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>;</div>
+<div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span> </div>
+<div class="line"><a id="l00324" name="l00324"></a><span class="lineno">  324</span>  T* slotPtr(int64_t index) {</div>
+<div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>T*<span class="keyword">&gt;</span>(&amp;storage_[(<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(index) &amp; kMask) * <span class="keyword">sizeof</span>(T)]);</div>
+<div class="line"><a id="l00326" name="l00326"></a><span class="lineno">  326</span>  }</div>
+<div class="line"><a id="l00327" name="l00327"></a><span class="lineno">  327</span> </div>
+<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span>  <span class="keyword">alignas</span>(kCacheLineSize) std::atomic&lt;int64_t&gt; top_{0};</div>
+<div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span> </div>
+<div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int64_t&gt; bottom_{0};</div>
+<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span> </div>
+<div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span>  <span class="keyword">alignas</span>(kStorageAlign) <span class="keywordtype">char</span> storage_[<span class="keyword">sizeof</span>(T) * Capacity];</div>
+<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>};</div>
 </div>
-<div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span> </div>
-<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span> </div>
+<div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html">dispenso::ChaseLevDeque</a></div><div class="ttdoc">A lock-free SPMC bounded work-stealing deque.</div><div class="ttdef"><b>Definition</b> <a href="#l00100">chase_lev_deque.h:100</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a2ebb70133b094958e023bf879fce0b1d"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a2ebb70133b094958e023bf879fce0b1d">dispenso::ChaseLevDeque::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;out)</div><div class="ttdoc">Pops the most recently pushed element (LIFO, owner-only).</div><div class="ttdef"><b>Definition</b> <a href="#l00176">chase_lev_deque.h:176</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a3889243c36977f9f6c78384857448195"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">dispenso::ChaseLevDeque::try_steal_into</a></div><div class="ttdeci">bool try_steal_into(T *storage)</div><div class="ttdoc">Steals the oldest element into uninitialized storage (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="#l00273">chase_lev_deque.h:273</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a3889243c36977f9f6c78384857448195"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a3889243c36977f9f6c78384857448195">dispenso::ChaseLevDeque::try_steal_into</a></div><div class="ttdeci">bool try_steal_into(T *storage)</div><div class="ttdoc">Steals the oldest element into uninitialized storage (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="#l00275">chase_lev_deque.h:275</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a88de2a3da0d2e2802b9a28f2da5f96f4"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a88de2a3da0d2e2802b9a28f2da5f96f4">dispenso::ChaseLevDeque::try_pop_into</a></div><div class="ttdeci">bool try_pop_into(T *storage)</div><div class="ttdoc">Pops the most recently pushed element into uninitialized storage (LIFO, owner-only)....</div><div class="ttdef"><b>Definition</b> <a href="#l00208">chase_lev_deque.h:208</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a9b16a49497c5e4eef16e041760780f93"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">dispenso::ChaseLevDeque::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the deque can hold.</div><div class="ttdef"><b>Definition</b> <a href="#l00313">chase_lev_deque.h:313</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ab17933b44fdb2d24a6deab4d41ecf0ef"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">dispenso::ChaseLevDeque::empty</a></div><div class="ttdeci">bool empty() const</div><div class="ttdoc">Returns true if the deque appears empty.</div><div class="ttdef"><b>Definition</b> <a href="#l00299">chase_lev_deque.h:299</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a9b16a49497c5e4eef16e041760780f93"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a9b16a49497c5e4eef16e041760780f93">dispenso::ChaseLevDeque::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the deque can hold.</div><div class="ttdef"><b>Definition</b> <a href="#l00315">chase_lev_deque.h:315</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ab17933b44fdb2d24a6deab4d41ecf0ef"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ab17933b44fdb2d24a6deab4d41ecf0ef">dispenso::ChaseLevDeque::empty</a></div><div class="ttdeci">bool empty() const</div><div class="ttdoc">Returns true if the deque appears empty.</div><div class="ttdef"><b>Definition</b> <a href="#l00301">chase_lev_deque.h:301</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ab34bb1e3ab7ce323290eb34305a166f1"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ab34bb1e3ab7ce323290eb34305a166f1">dispenso::ChaseLevDeque::~ChaseLevDeque</a></div><div class="ttdeci">~ChaseLevDeque()=default</div><div class="ttdoc">Destroys the deque. Trivially-copyable elements need no explicit teardown.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac29c2767e8c6917826d7b8c3171ceeab"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">dispenso::ChaseLevDeque::try_steal</a></div><div class="ttdeci">bool try_steal(T &amp;out)</div><div class="ttdoc">Steals the oldest element from the top of the deque (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="#l00245">chase_lev_deque.h:245</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac29c2767e8c6917826d7b8c3171ceeab"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">dispenso::ChaseLevDeque::try_steal</a></div><div class="ttdeci">bool try_steal(T &amp;out)</div><div class="ttdoc">Steals the oldest element from the top of the deque (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="#l00247">chase_lev_deque.h:247</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac326826768553bae5b8c370fe48112c6"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ac326826768553bae5b8c370fe48112c6">dispenso::ChaseLevDeque::ChaseLevDeque</a></div><div class="ttdeci">ChaseLevDeque()=default</div><div class="ttdoc">Constructs an empty deque. Storage is uninitialized; elements are constructed in-place when pushed.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_acf3e56a5d9a663b899be477f7defb4a3"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">dispenso::ChaseLevDeque::size</a></div><div class="ttdeci">size_type size() const</div><div class="ttdoc">Returns the apparent number of elements in the deque.</div><div class="ttdef"><b>Definition</b> <a href="#l00306">chase_lev_deque.h:306</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_acf3e56a5d9a663b899be477f7defb4a3"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#acf3e56a5d9a663b899be477f7defb4a3">dispenso::ChaseLevDeque::size</a></div><div class="ttdeci">size_type size() const</div><div class="ttdoc">Returns the apparent number of elements in the deque.</div><div class="ttdef"><b>Definition</b> <a href="#l00308">chase_lev_deque.h:308</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_afa74f001484803bfde8561d8cf3a6fc5"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#afa74f001484803bfde8561d8cf3a6fc5">dispenso::ChaseLevDeque::try_push</a></div><div class="ttdeci">bool try_push(const T &amp;item)</div><div class="ttdoc">Pushes an element onto the bottom of the deque (owner-only).</div><div class="ttdef"><b>Definition</b> <a href="#l00147">chase_lev_deque.h:147</a></div></div>
 <div class="ttc" id="aplatform_8h_html"><div class="ttname"><a href="platform_8h.html">platform.h</a></div></div>
-<div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00097">platform.h:97</a></div></div>
+<div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00114">platform.h:114</a></div></div>
 <div class="ttc" id="atsan__annotations_8h_html"><div class="ttname"><a href="tsan__annotations_8h.html">tsan_annotations.h</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

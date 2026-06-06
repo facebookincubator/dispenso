@@ -1,6 +1,7 @@
 var hierarchy =
 [
     [ "dispenso::AsyncRequest< T >", "classdispenso_1_1_async_request.html", null ],
+    [ "dispenso::ThreadPool::AwakeRef", "classdispenso_1_1_thread_pool_1_1_awake_ref.html", null ],
     [ "dispenso::CacheAligned< T >", "classdispenso_1_1_cache_aligned.html", null ],
     [ "dispenso::CacheGroup", "structdispenso_1_1_cache_group.html", null ],
     [ "dispenso::ChaseLevDeque< T, Capacity >", "classdispenso_1_1_chase_lev_deque.html", null ],

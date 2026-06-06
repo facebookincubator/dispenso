@@ -21,5 +21,6 @@ var searchData=
   ['count_5fdown_18',['count_down',['../classdispenso_1_1_latch.html#a32b1cd1f97ba95656204c9ba90de41fb',1,'dispenso::Latch']]],
   ['cpurelax_19',['cpuRelax',['../util_8h.html#ad1e2ca26986584ede0179073a455ab95',1,'dispenso']]],
   ['cpuset_20',['CpuSet',['../classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3',1,'dispenso::CpuSet']]],
-  ['currenthardwarethread_21',['currentHardwareThread',['../classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b',1,'dispenso::CpuSet']]]
+  ['currenthardwarethread_21',['currentHardwareThread',['../classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b',1,'dispenso::CpuSet']]],
+  ['currenthardwarethreadapprox_22',['currentHardwareThreadApprox',['../classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268',1,'dispenso::CpuSet']]]
 ];

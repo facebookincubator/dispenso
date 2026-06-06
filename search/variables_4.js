@@ -1,5 +1,12 @@
 var searchData=
 [
-  ['maxthreads_0',['maxThreads',['../structdispenso_1_1_for_each_options.html#a3f07fbd0ae91b2738612be10d0ac61a8',1,'dispenso::ForEachOptions::maxThreads'],['../structdispenso_1_1_par_for_options.html#ad5a5132b77e3715b07ed1424ec1013f6',1,'dispenso::ParForOptions::maxThreads']]],
-  ['minitemsperchunk_1',['minItemsPerChunk',['../structdispenso_1_1_par_for_options.html#a293e1d655c40ee3b3aaf8138799771e3',1,'dispenso::ParForOptions']]]
+  ['kcachelinesize_0',['kCacheLineSize',['../platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef',1,'dispenso']]],
+  ['kiteratorpreferspeed_1',['kIteratorPreferSpeed',['../structdispenso_1_1_default_concurrent_vector_traits.html#a923e185bf54973862e909a1da2934d45',1,'dispenso::DefaultConcurrentVectorTraits']]],
+  ['kmaxsmallbuffersize_2',['kMaxSmallBufferSize',['../small__buffer__allocator_8h.html#aa39ff033a552de8d0e275d0a9f775df1',1,'dispenso']]],
+  ['kmaxvectorsize_3',['kMaxVectorSize',['../structdispenso_1_1_default_concurrent_vector_size_traits.html#a20c558ad1856b97184329c2adb19f1ba',1,'dispenso::DefaultConcurrentVectorSizeTraits']]],
+  ['knotasync_4',['kNotAsync',['../future_8h.html#a8421f24280762e7f0fc576158306ebac',1,'dispenso']]],
+  ['knotdeferred_5',['kNotDeferred',['../future_8h.html#a945a27b88a64b1cf58ee4f7ef62f5e31',1,'dispenso']]],
+  ['kpreferbuffersinline_6',['kPreferBuffersInline',['../structdispenso_1_1_default_concurrent_vector_traits.html#a7ecb75e6ae71e75ec72c9cdd97e734ec',1,'dispenso::DefaultConcurrentVectorTraits']]],
+  ['kreallocstrategy_7',['kReallocStrategy',['../structdispenso_1_1_default_concurrent_vector_traits.html#a8e19828f00b91fd3ae5009ec8336a831',1,'dispenso::DefaultConcurrentVectorTraits']]],
+  ['kstagenolimit_8',['kStageNoLimit',['../pipeline_8h.html#aa1d380eb639cdbd92330b96253a68e4a',1,'dispenso']]]
 ];

@@ -130,6 +130,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a422828f7619de80efcdd865b4aadfe81" id="r_a422828f7619de80efcdd865b4aadfe81"><td class="memTemplParams" colspan="2">template&lt;typename Generator &gt; </td></tr>
 <tr class="memitem:a422828f7619de80efcdd865b4aadfe81"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a422828f7619de80efcdd865b4aadfe81">scheduleBulk</a> (size_t count, Generator &amp;&amp;gen)</td></tr>
 <tr class="separator:a422828f7619de80efcdd865b4aadfe81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a581c877e44900e62ceacf4281d477ffd" id="r_a581c877e44900e62ceacf4281d477ffd"><td class="memTemplParams" colspan="2">template&lt;typename Generator &gt; </td></tr>
+<tr class="memitem:a581c877e44900e62ceacf4281d477ffd"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="#a581c877e44900e62ceacf4281d477ffd">scheduleBulk</a> (size_t count, Generator &amp;&amp;gen, ForceQueuingTag)</td></tr>
+<tr class="separator:a581c877e44900e62ceacf4281d477ffd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:affb9b54fd2515e548613783db7cf7aec" id="r_affb9b54fd2515e548613783db7cf7aec"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#affb9b54fd2515e548613783db7cf7aec">wait</a> ()</td></tr>
 <tr class="separator:affb9b54fd2515e548613783db7cf7aec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa616383111fae3c385840bfc677e7ffa" id="r_aa616383111fae3c385840bfc677e7ffa"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa616383111fae3c385840bfc677e7ffa">tryWait</a> (size_t maxToExecute)</td></tr>
@@ -287,7 +290,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Destroy the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00200">200</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00214">214</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -316,7 +319,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Set the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="#aaa78e80f5277f1d3ed7132a41a87e913">canceled()</a> status to exit early. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00183">183</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00197">197</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -345,7 +348,7 @@ Public Member Functions</h2></td></tr>
 <p>Check the canceled status of the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a> has been canceled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00192">192</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00206">206</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -429,7 +432,7 @@ template&lt;typename F &gt; </div>
 </div>
 </div>
 <a id="a422828f7619de80efcdd865b4aadfe81" name="a422828f7619de80efcdd865b4aadfe81"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a422828f7619de80efcdd865b4aadfe81">&#9670;&#160;</a></span>scheduleBulk()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a422828f7619de80efcdd865b4aadfe81">&#9670;&#160;</a></span>scheduleBulk() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -467,6 +470,53 @@ template&lt;typename Generator &gt; </div>
 <dl class="section note"><dt>Note</dt><dd>Work is processed in chunks, interleaving enqueue and inline execution based on the task set's load factor, preventing both pool thread starvation and excessive overhead. </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00150">150</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+
+</div>
+</div>
+<a id="a581c877e44900e62ceacf4281d477ffd" name="a581c877e44900e62ceacf4281d477ffd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a581c877e44900e62ceacf4281d477ffd">&#9670;&#160;</a></span>scheduleBulk() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Generator &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void dispenso::TaskSet::scheduleBulk </td>
+          <td>(</td>
+          <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>count</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Generator &amp;&amp;</td>          <td class="paramname"><span class="paramname"><em>gen</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ForceQueuingTag</td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Schedule multiple functors for execution on the underlying pool in bulk, forcing each task to be queued rather than potentially run inline on the calling thread.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">count</td><td>The number of functors to schedule. </td></tr>
+    <tr><td class="paramname">gen</td><td>A generator functor that takes an index and returns a functor to execute. gen(i) will be called for i in [0, count) to produce each task. </td></tr>
+    <tr><td class="paramname">fq</td><td>Tag to force queuing instead of potential inline execution. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00164">164</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
