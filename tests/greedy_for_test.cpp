@@ -39,7 +39,7 @@ TEST(GreedyFor, ShouldNotInvokeIfEmptyRange) {
   int* myNullPtr = nullptr;
 
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 
   dispenso::parallel_for(0, 0, [myNullPtr](int i) { *myNullPtr = i; }, options);
 
@@ -182,7 +182,7 @@ testMaxThreads(size_t poolSize, uint32_t maxThreads, bool testStaticChunking, bo
   options.maxThreads = maxThreads;
   options.wait = testWaitOption;
   options.defaultChunking =
-      testStaticChunking ? dispenso::ParForChunking::kStatic : dispenso::ParForChunking::kAuto;
+      testStaticChunking ? dispenso::ParForChunking::kStatic : dispenso::ParForChunking::kAdaptive;
 
   auto func = [&threadLocalSums](int index) {
     assert(index > 0); // for correctness of numNonZero
@@ -322,7 +322,7 @@ TEST(GreedyFor, AvoidOverflow2) {
   dispenso::TaskSet taskSet(pool);
   dispenso::ParForOptions options;
   options.wait = false;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 
   std::vector<dispenso::CacheAligned<uint32_t>> vals;
   dispenso::parallel_for(

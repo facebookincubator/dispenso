@@ -217,6 +217,31 @@ class CpuSet {
   DISPENSO_DLL_ACCESS static int32_t currentHardwareThread();
 
   /**
+   * @brief Approximate CPU ID for the calling thread, refreshed periodically.
+   *
+   * Caches the result of currentHardwareThread() in a thread-local and
+   * re-queries every kRefreshPeriod calls. Designed for hot paths that
+   * want locality hints without paying the ~15ns vDSO cost per call: the
+   * cached path is a single TLS read + increment + branch (~1-2ns).
+   *
+   * Trade-off: between refreshes the returned CPU is stale if the OS has
+   * migrated the thread. With kRefreshPeriod=32 and a typical OS time-slice
+   * of 1-10ms, staleness is bounded to a small fraction of a slice.
+   *
+   * @return A possibly-stale CPU ID, or -1 if the platform doesn't support
+   *         CPU queries.
+   */
+  static int32_t currentHardwareThreadApprox() {
+    static constexpr uint32_t kRefreshPeriod = 32;
+    static DISPENSO_THREAD_LOCAL int32_t cachedCpu = -1;
+    static DISPENSO_THREAD_LOCAL uint32_t counter = 0;
+    if ((counter++ & (kRefreshPeriod - 1)) == 0) {
+      cachedCpu = currentHardwareThread();
+    }
+    return cachedCpu;
+  }
+
+  /**
    * @brief Returns the CPU set for a specific NUMA node.
    * @param numaNode The NUMA node index (0 to totalNumaNodes()-1).
    * @return A reference to the cached CpuSet for that node.

@@ -142,7 +142,7 @@ uint64_t calculateInnerDispensoAuto(uint64_t input, size_t foo, int numElements)
   std::vector<uint64_t> sums;
   sums.reserve(g_numThreads + 1);
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
   dispenso::parallel_for(
       sums,
       []() { return uint64_t{0}; },
@@ -173,7 +173,7 @@ void BM_dispenso_auto(benchmark::State& state) {
   int foo = 0;
 
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 
   auto input = getInputs(numElements);
   for (auto UNUSED_VAR : state) {

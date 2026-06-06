@@ -203,6 +203,62 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
    **/
   DISPENSO_DLL_ACCESS ~ThreadPool();
 
+  /**
+   * RAII handle that asks the pool's worker threads to stay awake (skip the
+   * sleep transition at the end of their spin window) while at least one
+   * AwakeRef is alive on the pool.
+   *
+   * Use this around bursts of fine-grained scheduling (e.g. parallel_for)
+   * where workers may run out of immediate work mid-burst and would otherwise
+   * sleep — paying ~3-5us futex wake latency just to be re-woken on the next
+   * task. With AwakeRef held, workers keep spinning instead.
+   *
+   * Cost: one fetch_add at construction, one fetch_sub at destruction, one
+   * relaxed load in the worker's sleep-decision path. Move-only (non-copyable)
+   * to allow transferring ownership while keeping a unique-owner invariant.
+   */
+  class AwakeRef {
+   public:
+    AwakeRef() = default;
+    explicit AwakeRef(ThreadPool* pool) : pool_(pool) {
+      if (pool_) {
+        pool_->keepAwakeCount_.fetch_add(1, std::memory_order_acq_rel);
+      }
+    }
+    AwakeRef(const AwakeRef&) = delete;
+    AwakeRef& operator=(const AwakeRef&) = delete;
+    AwakeRef(AwakeRef&& other) noexcept : pool_(other.pool_) {
+      other.pool_ = nullptr;
+    }
+    AwakeRef& operator=(AwakeRef&& other) noexcept {
+      reset();
+      pool_ = other.pool_;
+      other.pool_ = nullptr;
+      return *this;
+    }
+    ~AwakeRef() {
+      reset();
+    }
+    void reset() {
+      if (pool_) {
+        pool_->keepAwakeCount_.fetch_sub(1, std::memory_order_release);
+        pool_ = nullptr;
+      }
+    }
+
+   private:
+    ThreadPool* pool_ = nullptr;
+  };
+
+  /**
+   * Acquire an AwakeRef that prevents worker threads from sleeping (skip the
+   * sleep transition at the end of their spin window) while the returned
+   * handle is alive. See AwakeRef for details.
+   */
+  AwakeRef keepAwake() {
+    return AwakeRef(this);
+  }
+
  private:
   class PerThreadData {
    public:
@@ -365,6 +421,8 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
       std::abort();
 #endif
     }
+    // Mark queue as possibly-non-empty so spinning workers will try_dequeue.
+    centralQueueNonEmpty_.store(true, std::memory_order_relaxed);
   }
 
   // Push task i to ring i (linear layout) for fork-join scheduling.
@@ -419,6 +477,15 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // only plain stores and loads — so no contention on the flag itself.
   // Brief false-negatives (flag cleared while an enqueue is in flight) are
   // bounded to one spin iteration and self-correcting.
+  alignas(kCacheLineSize) std::atomic<bool> centralQueueNonEmpty_{false};
+
+  // Refcount of outstanding AwakeRef handles. When > 0, worker threads skip
+  // the sleep transition at the end of their spin window and continue
+  // spinning. Bumped by AwakeRef ctor, decremented by dtor. Workers read with
+  // relaxed ordering — a brief stale-true read just costs one extra spin
+  // iteration; a brief stale-false read is bounded by the spin window and
+  // self-corrects on the next iteration.
+  alignas(kCacheLineSize) std::atomic<int32_t> keepAwakeCount_{0};
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
 
@@ -737,7 +804,7 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
       task();
       return true;
     }
-    if (checkQueue) {
+    if (checkQueue && centralQueueNonEmpty_.load(std::memory_order_relaxed)) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       bool got = work_.try_dequeue(ctoken, task);
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
@@ -746,6 +813,8 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
         task();
         return true;
       }
+      // Empty on observation; clear flag (relaxed, plain store).
+      centralQueueNonEmpty_.store(false, std::memory_order_relaxed);
     }
     if (!myStealRing.empty() && myStealRing.try_pop(task)) {
       task();
@@ -768,7 +837,7 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
       }
     }
   } else {
-    if (checkQueue) {
+    if (checkQueue && centralQueueNonEmpty_.load(std::memory_order_relaxed)) {
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
       bool got = work_.try_dequeue(ctoken, task);
       DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();
@@ -776,6 +845,7 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
         task();
         return true;
       }
+      centralQueueNonEmpty_.store(false, std::memory_order_relaxed);
     }
     bool fromRing = myRing.try_pop(task);
     if (fromRing) {
@@ -914,6 +984,8 @@ void ThreadPool::scheduleBulkEnqueue(
     std::abort();
 #endif
   }
+  // Mark queue as possibly-non-empty so spinning workers will try_dequeue.
+  centralQueueNonEmpty_.store(true, std::memory_order_relaxed);
 
   // Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.
   // Spinning threads (numNotWorking - totalSleeping) will find enqueued work

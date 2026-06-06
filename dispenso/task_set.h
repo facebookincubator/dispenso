@@ -152,6 +152,20 @@ class TaskSet : public TaskSetBase {
   }
 
   /**
+   * Schedule multiple functors for execution on the underlying pool in bulk, forcing each
+   * task to be queued rather than potentially run inline on the calling thread.
+   *
+   * @param count The number of functors to schedule.
+   * @param gen A generator functor that takes an index and returns a functor to execute.
+   *            gen(i) will be called for i in [0, count) to produce each task.
+   * @param fq Tag to force queuing instead of potential inline execution.
+   **/
+  template <typename Generator>
+  void scheduleBulk(size_t count, Generator&& gen, ForceQueuingTag) {
+    scheduleBulkImplForceQueue(count, std::forward<Generator>(gen), &token_);
+  }
+
+  /**
    * Wait for all currently scheduled functors to finish execution.  If exceptions are thrown
    * during execution of the set of tasks, <code>wait</code> will propagate the first exception.
    *
@@ -362,6 +376,20 @@ class ConcurrentTaskSet : public TaskSetBase {
       return;
     }
     scheduleBulkImpl(count, std::forward<Generator>(gen), nullptr);
+  }
+
+  /**
+   * Schedule multiple functors for execution on the underlying pool in bulk, forcing each
+   * task to be queued rather than potentially run inline on the calling thread.
+   *
+   * @param count The number of functors to schedule.
+   * @param gen A generator functor that takes an index and returns a functor to execute.
+   *            gen(i) will be called for i in [0, count) to produce each task.
+   * @param fq Tag to force queuing instead of potential inline execution.
+   **/
+  template <typename Generator>
+  void scheduleBulk(size_t count, Generator&& gen, ForceQueuingTag) {
+    scheduleBulkImplForceQueue(count, std::forward<Generator>(gen), nullptr);
   }
 
   /**

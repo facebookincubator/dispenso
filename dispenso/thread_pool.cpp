@@ -296,6 +296,13 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       detail::cpuRelax();
 
       if (failCount >= spinLimit_) {
+        // Honor keepAwake refcount: if any AwakeRef is held (e.g. an in-flight
+        // parallel_for that may schedule more work soon), keep spinning instead
+        // of paying ~3-5us futex wake latency on the next task.
+        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+          failCount = spinLimit_; // cap so we re-check next iteration
+          continue;
+        }
         markIdle(isWorking);
         ws->enterSleep(ringIndex);
         if (!data.running()) {
@@ -322,6 +329,12 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
 
         double elapsed = getTime() - idleStart;
         if (elapsed > spinTimeout) {
+          // Honor keepAwake refcount (see fixed-spin branch comment).
+          if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+            // Reset failCount slightly to re-check next interval. No sleep.
+            failCount -= 1;
+            continue;
+          }
           ws->enterSleep(ringIndex);
           epoch = waitOnThread(ringIndex, epoch);
           ws->exitSleep(ringIndex);
@@ -421,6 +434,10 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
     if (spinLimit_ > 0) {
       ws->processBudget(ringIndex);
       if (failCount >= spinLimit_) {
+        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+          failCount = spinLimit_;
+          continue;
+        }
         markIdle(isWorking);
         epoch = waitOnThread(ringIndex, epoch);
         failCount = 0;
@@ -437,6 +454,10 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
 
       double elapsed = getTime() - idleStart;
       if (elapsed > spinTimeout) {
+        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+          failCount -= 1;
+          continue;
+        }
         epoch = waitOnThread(ringIndex, epoch);
         failCount = 0;
         wokeFromSleep = true;

@@ -59,6 +59,23 @@ namespace dispenso {
 #define DISPENSO_REQUIRES(...)
 #endif
 
+/**
+ * @def DISPENSO_DEPRECATED
+ * @brief Macro that expands to <code>[[deprecated(msg)]]</code> on C++17+ and to nothing on C++14.
+ *
+ * Use on enumerators, functions, types, etc. to mark them as deprecated. The C++14 fallback is a
+ * no-op so deprecation messages disappear silently on older toolchains — newer toolchains will see
+ * the warning. (The standard attribute on enumerators only became valid in C++17, hence the
+ * version gate.)
+ *
+ * Example: <code>kAuto DISPENSO_DEPRECATED("Use kAdaptive") = kAdaptive,</code>
+ **/
+#if __cplusplus >= 201703L
+#define DISPENSO_DEPRECATED(msg) [[deprecated(msg)]]
+#else
+#define DISPENSO_DEPRECATED(msg)
+#endif
+
 #if defined(DISPENSO_SHARED_LIB)
 #if defined _WIN32
 
@@ -330,6 +347,29 @@ inline StaticChunking staticChunkSize(ssize_t items, ssize_t chunks) {
   StaticChunking chunking;
   chunking.ceilChunkSize = (items + chunks - 1) / chunks;
   ssize_t numLeft = chunking.ceilChunkSize * chunks - items;
+  chunking.transitionTaskIndex = chunks - numLeft;
+  return chunking;
+}
+
+// Granularity-aware variant: ceilChunkSize is rounded UP to a multiple of
+// `granularity`, so each "ceil" chunk is granularity-aligned. The "floor"
+// chunks (those at index >= transitionTaskIndex) are ceilChunkSize - granularity,
+// also granularity-aligned. Caller must have already trimmed `items` to a
+// multiple of `granularity` so that all chunks (not just intermediate ones)
+// are granularity-multiples.
+inline StaticChunking staticChunkSizeGranular(ssize_t items, ssize_t chunks, uint32_t granularity) {
+  assert(chunks > 0);
+  assert(granularity >= 1);
+  if (granularity <= 1) {
+    return staticChunkSize(items, chunks);
+  }
+  assert(items % static_cast<ssize_t>(granularity) == 0);
+  StaticChunking chunking;
+  // Items measured in "granularity units".
+  ssize_t gUnits = items / static_cast<ssize_t>(granularity);
+  ssize_t ceilG = (gUnits + chunks - 1) / chunks;
+  ssize_t numLeft = ceilG * chunks - gUnits;
+  chunking.ceilChunkSize = ceilG * static_cast<ssize_t>(granularity);
   chunking.transitionTaskIndex = chunks - numLeft;
   return chunking;
 }

@@ -6,7 +6,7 @@
  */
 
 // Standalone instrumentation harness for the mandelbrot workload. Runs one
-// parallel_for (dispenso auto, dispenso fine, TBB auto, or TBB simple),
+// parallel_for (dispenso kAdaptive, dispenso fine, TBB auto, or TBB simple),
 // captures per-chunk (thread_id, start, end), and reports:
 //   - total chunk count
 //   - chunks-per-thread distribution (min/mean/max)
@@ -99,7 +99,7 @@ static void runDispensoAdaptive(int numThreads, int numPixels, int dim, ChunkCol
   dispenso::ThreadPool pool(numThreads - 1);
   dispenso::TaskSet tasks(pool);
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
   uint64_t sum = 0;
   std::mutex sumMu;
   dispenso::parallel_for(

@@ -124,7 +124,7 @@ void BM_dispenso_auto(benchmark::State& state) {
   dispenso::resizeGlobalThreadPool(static_cast<size_t>(num_threads));
   auto& pool = dispenso::globalThreadPool();
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 
   uint64_t sum = 0;
   for (auto UNUSED_VAR : state) {

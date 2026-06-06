@@ -302,6 +302,37 @@ class TaskSetBase {
     }
   }
 
+  // Force-queue variant: enqueues every task to the pool, never runs inline on
+  // the caller. Needed when the caller must not be trapped executing a task
+  // before the rest are scheduled (e.g. adaptive parallel_for no-wait, where
+  // an inline-executed worker would block on liveTasks waiting for peers that
+  // haven't been queued yet).
+  template <typename Generator>
+  void scheduleBulkImplForceQueue(size_t count, Generator&& gen, moodycamel::ProducerToken* token) {
+    if (count == 0) {
+      return;
+    }
+    ssize_t numPool = pool_.numThreads();
+    size_t chunkSize = static_cast<size_t>(numPool) + static_cast<size_t>(numPool) / 2;
+    if (chunkSize < 1) {
+      chunkSize = 1;
+    }
+    size_t i = 0;
+    while (i < count) {
+      if (canceled()) {
+        break;
+      }
+      size_t toEnqueue = std::min(count - i, chunkSize);
+      outstandingTaskCount_.fetch_add(static_cast<ssize_t>(toEnqueue), std::memory_order_acquire);
+      size_t base = i;
+      pool_.scheduleBulkEnqueue(
+          toEnqueue,
+          [this, &gen, base](size_t j) { return packageTaskNoIncrement(gen(base + j)); },
+          token);
+      i += toEnqueue;
+    }
+  }
+
   DISPENSO_DLL_ACCESS void trySetCurrentException();
   bool testAndResetException();
 

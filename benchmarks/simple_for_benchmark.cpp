@@ -154,7 +154,7 @@ void BM_dispenso_auto_chunk(benchmark::State& state) {
   auto& input = getInputs(num_elements);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
-    auto range = dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kAuto);
+    auto range = dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kAdaptive);
     dispenso::parallel_for(
         tasks,
         range,

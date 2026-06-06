@@ -137,7 +137,7 @@ void BM_dispenso_auto(benchmark::State& state) {
       const double* src = input.data();
       double* dst = output.data();
       auto range =
-          dispenso::makeChunkedRange(size_t{0}, num_elements, dispenso::ParForChunking::kAuto);
+          dispenso::makeChunkedRange(size_t{0}, num_elements, dispenso::ParForChunking::kAdaptive);
       dispenso::parallel_for(tasks, range, [src, dst, num_elements](size_t begin, size_t end) {
         stencilPass(src, dst, begin, end, num_elements);
       });

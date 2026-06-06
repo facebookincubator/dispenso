@@ -82,7 +82,7 @@ void BM_dispenso(benchmark::State& state) {
   int foo = 0;
 
   dispenso::ParForOptions options;
-  options.defaultChunking = dispenso::ParForChunking::kAuto;
+  options.defaultChunking = dispenso::ParForChunking::kAdaptive;
   options.minItemsPerChunk = 4000;
 
   auto input = getInputs(num_elements);
