@@ -27,6 +27,7 @@ var future_8h =
     [ "when_any", "future_8h.html#aac45c1efcafd3c404841f20f2488e3a7", null ],
     [ "when_any", "future_8h.html#a8ec7cdc0bb0d0d9da08c6e9dbd9ffe08", null ],
     [ "when_any", "future_8h.html#acb706af0afa4de4e692cca3d3b2244fb", null ],
+    [ "when_any", "future_8h.html#a4c05414c577d22eb4e1874fe19126778", null ],
     [ "kNotAsync", "future_8h.html#a8421f24280762e7f0fc576158306ebac", null ],
     [ "kNotDeferred", "future_8h.html#a945a27b88a64b1cf58ee4f7ef62f5e31", null ]
 ];

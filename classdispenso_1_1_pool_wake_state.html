@@ -154,13 +154,13 @@ DISPENSO_DLL_ACCESS void&#160;</td><td class="memItemRight" valign="bottom"><b>w
 <tr class="memdesc:ad1a1686e615834c8d7ecda51fe223367"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum children per node in the cascade tree.  <br /></td></tr>
 <tr class="separator:ad1a1686e615834c8d7ecda51fe223367"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a018680324cbffea7d65515f24f336ebe" id="r_a018680324cbffea7d65515f24f336ebe"><td class="memItemLeft" align="right" valign="top">int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a018680324cbffea7d65515f24f336ebe">totalSleeping</a> () const</td></tr>
+<tr class="memdesc:a018680324cbffea7d65515f24f336ebe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of threads currently sleeping across all groups.  <br /></td></tr>
 <tr class="separator:a018680324cbffea7d65515f24f336ebe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad23332dd36aaaaa9a7c541c6c9f8cef1" id="r_ad23332dd36aaaaa9a7c541c6c9f8cef1"><td class="memItemLeft" align="right" valign="top">int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad23332dd36aaaaa9a7c541c6c9f8cef1">cascadeTargetFor</a> (int32_t threadIdx, int32_t count) const</td></tr>
 <tr class="separator:ad23332dd36aaaaa9a7c541c6c9f8cef1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0376f5d2d4c83a21e9bc02cdcf18a92e" id="r_a0376f5d2d4c83a21e9bc02cdcf18a92e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0376f5d2d4c83a21e9bc02cdcf18a92e">cascadeWake</a> (int32_t targetGroup)</td></tr>
 <tr class="separator:a0376f5d2d4c83a21e9bc02cdcf18a92e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9a775e378f737be9848def8c60355a29" id="r_a9a775e378f737be9848def8c60355a29"><td class="memItemLeft" align="right" valign="top"><a id="a9a775e378f737be9848def8c60355a29" name="a9a775e378f737be9848def8c60355a29"></a>
-DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>cascadeWakeSeed</b> (int32_t count)</td></tr>
+<tr class="memitem:a9a775e378f737be9848def8c60355a29" id="r_a9a775e378f737be9848def8c60355a29"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9a775e378f737be9848def8c60355a29">cascadeWakeSeed</a> (int32_t count)</td></tr>
 <tr class="separator:a9a775e378f737be9848def8c60355a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -174,7 +174,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 <li><code>cascadeWake</code>: called only from cascade-host lambdas (one per cascade slot per dispatch) </li>
 </ul>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00095">95</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00097">97</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="af4985b23089c54dffab18a2d15e2a97c" name="af4985b23089c54dffab18a2d15e2a97c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af4985b23089c54dffab18a2d15e2a97c">&#9670;&#160;</a></span>PoolWakeState()</h2>
@@ -238,7 +238,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 
 <p>Maximum children per node in the cascade tree. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00218">218</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00220">220</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -268,8 +268,9 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Returns the level-2/3 target group for a cascade-host thread, or -1 if this thread is not a cascade host OR if the target group lies outside the wake range [0, count). The count gate matches scheduleBulkToRings's "wake only threads with work" contract: for partial-pool dispatch we don't want cascade hosts firing wakes into empty groups. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00248">248</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00251">251</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -295,8 +296,27 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Wakes one target group: bumps the group's epoch and issues bumpAndWakeN only if the sleepMask is non-zero. Called by cascade-host lambdas. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00259">259</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00262">262</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+
+</div>
+</div>
+<a id="a9a775e378f737be9848def8c60355a29" name="a9a775e378f737be9848def8c60355a29"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9a775e378f737be9848def8c60355a29">&#9670;&#160;</a></span>cascadeWakeSeed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">DISPENSO_DLL_ACCESS bool dispenso::PoolWakeState::cascadeWakeSeed </td>
+          <td>(</td>
+          <td class="paramtype">int32_t</td>          <td class="paramname"><span class="paramname"><em>count</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Single-pass wake for scheduleBulkToRings. Bumps every affected group's epoch and wakes seed group g0 if any sleepers exist in [0, count). Returns true if the cold path was taken (sleepers found). </p>
 
 </div>
 </div>
@@ -347,7 +367,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 <p>Mark a thread as sleeping. Called before entering EpochWaiter sleep. </p>
 <p>Sets the thread's bit in its group's sleep mask. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00139">139</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00141">141</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -377,7 +397,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 <p>Mark a thread as awake. Called after returning from EpochWaiter sleep. </p>
 <p>Clears the thread's bit in its group's sleep mask. This handles the timeout-wake case where no waker cleared the bit. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00153">153</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00155">155</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -406,7 +426,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 
 <p>Threads per wake group. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00214">214</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00216">216</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -435,7 +455,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 
 <p>Number of wake groups. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00210">210</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00212">212</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -464,7 +484,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 
 <p>Total number of threads managed by this wake state. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00206">206</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00208">208</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -491,7 +511,9 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00221">221</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p>Number of threads currently sleeping across all groups. </p>
+
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00224">224</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -521,7 +543,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 <p>Atomically try to claim a sleeping thread for waking. </p>
 <dl class="section return"><dt>Returns</dt><dd>true if we cleared the bit (we own the wake and should call bumpAndWake on the thread's waiter). false if the thread was already awake or claimed by another waker. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00168">168</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00170">170</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>
@@ -550,7 +572,7 @@ DISPENSO_DLL_ACCESS bool&#160;</td><td class="memItemRight" valign="bottom"><b>c
 
 <p>Get the EpochWaiter for a specific thread's group. All threads in a group share one EpochWaiter (one futex address); bumpAndWakeN on this waiter wakes K arbitrary threads from the group with one syscall. </p>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00130">130</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00132">132</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>

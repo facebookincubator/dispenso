@@ -152,7 +152,7 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><p><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> fulfills the same API as <code><a class="el" href="classdispenso_1_1_task_set.html">TaskSet</a></code> with one minor difference: It may be used to schedule tasks concurrently from multiple threads (see more below). It is an object that allows scheduling multiple function-like objects to a thread pool, and allows to wait on that set of tasks.</p>
 <p><code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> is "thread-compatible". This means that you can safely use different <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> objects on different threads concurrently. <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code> also allows multiple threads to concurrently schedule against it. It is an error to call <a class="el" href="#a1436539a3a484b59fe144170f2812077">wait()</a> concurrently with <a class="el" href="#a0fa9f5439135d62f4c2c4ef22555552a">schedule()</a> on the same <code><a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a></code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00242">242</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00241">241</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a60a0472be135c058a7bbe34274786790" name="a60a0472be135c058a7bbe34274786790"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a60a0472be135c058a7bbe34274786790">&#9670;&#160;</a></span>ConcurrentTaskSet() <span class="overload">[1/5]</span></h2>
@@ -196,6 +196,7 @@ Public Member Functions</h2></td></tr>
     <tr><td class="paramname">pool</td><td>The backing pool for this <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> </td></tr>
     <tr><td class="paramname">registerForParentCancel</td><td>Whether to register for parent cancellation cascade. </td></tr>
     <tr><td class="paramname">stealingLoadMultiplier</td><td>An over-load factor. If this factor of load is reached by the underlying pool, scheduled tasks may run immediately in the calling thread. </td></tr>
+    <tr><td class="paramname">cost</td><td>Hint about per-task cost; see TaskCost. </td></tr>
   </table>
   </dd>
 </dl>
@@ -374,7 +375,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Destroy the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>, first waiting for all currently scheduled functors to finish execution. </p>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00439">439</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00438">438</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -404,7 +405,7 @@ Public Member Functions</h2></td></tr>
 <p>Set the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> to canceled state. No unexecuted tasks will execute once this is set. Already executing tasks may check <a class="el" href="#a7b03e6239e7982f2d3cdc504606c6165">canceled()</a> status to exit early.</p>
 <dl class="section note"><dt>Note</dt><dd>This will be reset automatically by wait. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00422">422</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00421">421</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -433,7 +434,7 @@ Public Member Functions</h2></td></tr>
 <p>Check the canceled status of the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a>.</p>
 <dl class="section return"><dt>Returns</dt><dd>a boolean indicating whether or not the <a class="el" href="classdispenso_1_1_concurrent_task_set.html">ConcurrentTaskSet</a> has been canceled. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00431">431</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00430">430</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>
@@ -607,12 +608,11 @@ template&lt;typename Generator &gt; </div>
   <table class="params">
     <tr><td class="paramname">count</td><td>The number of functors to schedule. </td></tr>
     <tr><td class="paramname">gen</td><td>A generator functor that takes an index and returns a functor to execute. gen(i) will be called for i in [0, count) to produce each task. </td></tr>
-    <tr><td class="paramname">fq</td><td>Tag to force queuing instead of potential inline execution. </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00391">391</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="task__set_8h_source.html#l00390">390</a> of file <a class="el" href="task__set_8h_source.html">task_set.h</a>.</p>
 
 </div>
 </div>

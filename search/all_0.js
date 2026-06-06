@@ -24,5 +24,5 @@ var searchData=
   ['asyncrequest_21',['AsyncRequest',['../classdispenso_1_1_async_request.html',1,'dispenso']]],
   ['at_22',['at',['../classdispenso_1_1_concurrent_vector.html#aeae05d2a976749f555fba34f37707aa4',1,'dispenso::ConcurrentVector::at(size_type index) const'],['../classdispenso_1_1_concurrent_vector.html#acda721363bc5e69c6f5406d0f8c00e6e',1,'dispenso::ConcurrentVector::at(size_type index)']]],
   ['availablecount_23',['availableCount',['../classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3',1,'dispenso::CpuSet']]],
-  ['awakeref_24',['AwakeRef',['../classdispenso_1_1_thread_pool_1_1_awake_ref.html',1,'dispenso::ThreadPool']]]
+  ['awakeref_24',['AwakeRef',['../classdispenso_1_1_thread_pool_1_1_awake_ref.html',1,'dispenso::ThreadPool::AwakeRef'],['../classdispenso_1_1_thread_pool_1_1_awake_ref.html#a91633cf298e006d3ad4995803a48dc31',1,'dispenso::ThreadPool::AwakeRef::AwakeRef(ThreadPool *pool)'],['../classdispenso_1_1_thread_pool_1_1_awake_ref.html#a8bb04bc8cd2543ee25028c5cbec51a17',1,'dispenso::ThreadPool::AwakeRef::AwakeRef(AwakeRef &amp;&amp;other) noexcept']]]
 ];

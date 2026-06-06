@@ -21,7 +21,7 @@ var annotated_dup =
       [ "Future< Result & >", "classdispenso_1_1_future_3_01_result_01_6_01_4.html", "classdispenso_1_1_future_3_01_result_01_6_01_4" ],
       [ "Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", "classdispenso_1_1_future_3_01void_01_4" ],
       [ "GraphT", "classdispenso_1_1_graph_t.html", "classdispenso_1_1_graph_t" ],
-      [ "GroupWakeState", "structdispenso_1_1_group_wake_state.html", null ],
+      [ "GroupWakeState", "structdispenso_1_1_group_wake_state.html", "structdispenso_1_1_group_wake_state" ],
       [ "ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", "classdispenso_1_1_immediate_invoker" ],
       [ "Latch", "classdispenso_1_1_latch.html", "classdispenso_1_1_latch" ],
       [ "MpmcRingBuffer", "classdispenso_1_1_mpmc_ring_buffer.html", "classdispenso_1_1_mpmc_ring_buffer" ],
@@ -46,6 +46,6 @@ var annotated_dup =
       [ "TimedTask", "classdispenso_1_1_timed_task.html", "classdispenso_1_1_timed_task" ],
       [ "TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", "classdispenso_1_1_timed_task_scheduler" ],
       [ "UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ],
-      [ "WaiterBlock", "structdispenso_1_1_waiter_block.html", null ]
+      [ "WaiterBlock", "structdispenso_1_1_waiter_block.html", "structdispenso_1_1_waiter_block" ]
     ] ]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['wait_0',['wait',['../structdispenso_1_1_for_each_options.html#acb75ca2a2707c9b78df5fc5584e58c6c',1,'dispenso::ForEachOptions::wait'],['../structdispenso_1_1_par_for_options.html#ad7d5a8b0ab699da6818e85e63332eb7f',1,'dispenso::ParForOptions::wait']]]
+  ['sleepmask_0',['sleepMask',['../structdispenso_1_1_group_wake_state.html#aeb92a4e2a463fd9004e74e94ec8ee3bd',1,'dispenso::GroupWakeState']]]
 ];

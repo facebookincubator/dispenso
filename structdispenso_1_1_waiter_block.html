@@ -105,15 +105,24 @@ $(function(){initNavTree('structdispenso_1_1_waiter_block.html',''); initResizab
   <div class="headertitle"><div class="title">dispenso::WaiterBlock Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Cache-line-aligned block of EpochWaiters for one group.  
+ <a href="#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:aad857ede9c885941252e4b7a47c69859" id="r_aad857ede9c885941252e4b7a47c69859"><td class="memItemLeft" align="right" valign="top">detail::EpochWaiter&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aad857ede9c885941252e4b7a47c69859">waiter</a></td></tr>
+<tr class="memdesc:aad857ede9c885941252e4b7a47c69859"><td class="mdescLeft">&#160;</td><td class="mdescRight">The group's shared EpochWaiter (one futex address).  <br /></td></tr>
 <tr class="separator:aad857ede9c885941252e4b7a47c69859"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock">
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00073">73</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<div class="textblock"><p>Cache-line-aligned block of EpochWaiters for one group. </p>
+<p>Each group shares one EpochWaiter (one futex address). The block is cache-line aligned to prevent inter-group false sharing.</p>
+<p>A single futex_wake(addr, K) wakes K arbitrary threads from the group; futex_wake(addr, 1) wakes one. Bulk wakes for K &gt; groupSize fan out across groups via the Pattern C cascade — workers in the seed group each carry a pre-staged lambda that wakes one target group; level-2 cascade hosts in those groups wake the remaining groups in parallel. </p>
+
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00075">75</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="aad857ede9c885941252e4b7a47c69859" name="aad857ede9c885941252e4b7a47c69859"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aad857ede9c885941252e4b7a47c69859">&#9670;&#160;</a></span>waiter</h2>
@@ -127,7 +136,9 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00074">74</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
+<p>The group's shared EpochWaiter (one futex address). </p>
+
+<p class="definition">Definition at line <a class="el" href="thread__pool__wake_8h_source.html#l00076">76</a> of file <a class="el" href="thread__pool__wake_8h_source.html">thread_pool_wake.h</a>.</p>
 
 </div>
 </div>

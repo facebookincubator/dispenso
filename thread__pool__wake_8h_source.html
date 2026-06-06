@@ -140,214 +140,209 @@ $(function(){initNavTree('thread__pool__wake_8h_source.html',''); initResizable(
 <div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span> </div>
 <div class="foldopen" id="foldopen00055" data-start="{" data-end="};">
 <div class="line"><a id="l00055" name="l00055"></a><span class="lineno"><a class="line" href="structdispenso_1_1_group_wake_state.html">   55</a></span><span class="keyword">struct </span>DISPENSO_CACHELINE_ALIGNED <a class="code hl_struct" href="structdispenso_1_1_group_wake_state.html">GroupWakeState</a> {</div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>  std::atomic&lt;uint64_t&gt; sleepMask{0};</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>};</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno"><a class="line" href="structdispenso_1_1_group_wake_state.html#aeb92a4e2a463fd9004e74e94ec8ee3bd">   57</a></span>  std::atomic&lt;uint64_t&gt; sleepMask{0};</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>};</div>
 </div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kMaxThreadsPerWakeGroup = 64;</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span><span class="comment">// One EpochWaiter (futex address) per group: all threads in a group share</span></div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span><span class="comment">// it. A single futex_wake(addr, K) wakes K arbitrary threads from the</span></div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span><span class="comment">// group; futex_wake(addr, 1) wakes one. Bulk wakes for K &gt; groupSize fan</span></div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span><span class="comment">// out across groups via the Pattern C cascade — workers in the seed group</span></div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span><span class="comment">// each carry a pre-staged lambda that wakes one target group; level-2</span></div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span><span class="comment">// cascade hosts in those groups wake the remaining groups in parallel.</span></div>
-<div class="foldopen" id="foldopen00073" data-start="{" data-end="};">
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno"><a class="line" href="structdispenso_1_1_waiter_block.html">   73</a></span><span class="keyword">struct </span>DISPENSO_CACHELINE_ALIGNED <a class="code hl_struct" href="structdispenso_1_1_waiter_block.html">WaiterBlock</a> {</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>  detail::EpochWaiter waiter;</div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>};</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kMaxThreadsPerWakeGroup = 64;</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
+<div class="foldopen" id="foldopen00075" data-start="{" data-end="};">
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno"><a class="line" href="structdispenso_1_1_waiter_block.html">   75</a></span><span class="keyword">struct </span>DISPENSO_CACHELINE_ALIGNED <a class="code hl_struct" href="structdispenso_1_1_waiter_block.html">WaiterBlock</a> {</div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno"><a class="line" href="structdispenso_1_1_waiter_block.html#aad857ede9c885941252e4b7a47c69859">   76</a></span>  detail::EpochWaiter <a class="code hl_variable" href="structdispenso_1_1_waiter_block.html#aad857ede9c885941252e4b7a47c69859">waiter</a>; </div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>};</div>
 </div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span> </div>
-<div class="foldopen" id="foldopen00095" data-start="{" data-end="};">
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html">   95</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a> {</div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">  105</a></span>  DISPENSO_DLL_ACCESS <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">PoolWakeState</a>(</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">numThreads</a>,</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>#<span class="keywordflow">if</span> defined(DISPENSO_TUNE_WAKE_GROUP_SIZE)</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a> = DISPENSO_TUNE_WAKE_GROUP_SIZE,</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>#<span class="keywordflow">else</span></div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>      <span class="comment">// Default G=8 across platforms based on the Linux tuning sweep</span></div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>      <span class="comment">// (smaller groups reduce steal-ring + group-futex contention, with</span></div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>      <span class="comment">// promote-seed cascade absorbing the extra cascade hop). Expected to</span></div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>      <span class="comment">// be reasonable on macOS/Windows but not yet validated there — see</span></div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>      <span class="comment">// docs/design/wake_tuning.md for the per-platform tuning process.</span></div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a> = 8,</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>#endif</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">branchFactor</a> = kDefaultWakeBranchFactor);</div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">~PoolWakeState</a>();</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
+<div class="foldopen" id="foldopen00097" data-start="{" data-end="};">
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html">   97</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a> {</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">  107</a></span>  DISPENSO_DLL_ACCESS <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">PoolWakeState</a>(</div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">numThreads</a>,</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>#<span class="keywordflow">if</span> defined(DISPENSO_TUNE_WAKE_GROUP_SIZE)</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a> = DISPENSO_TUNE_WAKE_GROUP_SIZE,</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>#<span class="keywordflow">else</span></div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>      <span class="comment">// Default G=8 across platforms based on the Linux tuning sweep</span></div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>      <span class="comment">// (smaller groups reduce steal-ring + group-futex contention, with</span></div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>      <span class="comment">// promote-seed cascade absorbing the extra cascade hop). Expected to</span></div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>      <span class="comment">// be reasonable on macOS/Windows but not yet validated there — see</span></div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>      <span class="comment">// docs/design/wake_tuning.md for the per-platform tuning process.</span></div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a> = 8,</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>#endif</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>      int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">branchFactor</a> = kDefaultWakeBranchFactor);</div>
 <div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span> </div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>  <span class="comment">// Non-copyable, non-movable</span></div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>  <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">PoolWakeState</a>(<span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp;) = <span class="keyword">delete</span>;</div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>  <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp; operator=(<span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp;) = <span class="keyword">delete</span>;</div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span> </div>
-<div class="foldopen" id="foldopen00130" data-start="{" data-end="}">
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">  130</a></span>  detail::EpochWaiter&amp; <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">waiterFor</a>(int32_t threadIdx) {</div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>    <span class="keywordflow">return</span> waiterBlocks_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx / groupSize_)].waiter;</div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>  }</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>  DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">~PoolWakeState</a>();</div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span> </div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>  <span class="comment">// Non-copyable, non-movable</span></div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>  <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">PoolWakeState</a>(<span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp;) = <span class="keyword">delete</span>;</div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>  <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp; operator=(<span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_pool_wake_state.html">PoolWakeState</a>&amp;) = <span class="keyword">delete</span>;</div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span> </div>
+<div class="foldopen" id="foldopen00132" data-start="{" data-end="}">
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">  132</a></span>  detail::EpochWaiter&amp; <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">waiterFor</a>(int32_t threadIdx) {</div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>    <span class="keywordflow">return</span> waiterBlocks_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx / groupSize_)].waiter;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>  }</div>
 </div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span> </div>
-<div class="foldopen" id="foldopen00139" data-start="{" data-end="}">
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">  139</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">enterSleep</a>(int32_t threadIdx) {</div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>    int32_t group = threadIdx / groupSize_;</div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>    int32_t bit = threadIdx % groupSize_;</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_or(</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>        uint64_t{1} &lt;&lt; bit, std::memory_order_release);</div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    totalSleeping_.fetch_add(1, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>  }</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span> </div>
+<div class="foldopen" id="foldopen00141" data-start="{" data-end="}">
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">  141</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">enterSleep</a>(int32_t threadIdx) {</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    int32_t group = threadIdx / groupSize_;</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>    int32_t bit = threadIdx % groupSize_;</div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_or(</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>        uint64_t{1} &lt;&lt; bit, std::memory_order_release);</div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>    totalSleeping_.fetch_add(1, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>  }</div>
 </div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span> </div>
-<div class="foldopen" id="foldopen00153" data-start="{" data-end="}">
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">  153</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">exitSleep</a>(int32_t threadIdx) {</div>
-<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>    int32_t group = threadIdx / groupSize_;</div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>    int32_t bit = threadIdx % groupSize_;</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_and(</div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>        ~(uint64_t{1} &lt;&lt; bit), std::memory_order_relaxed);</div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    totalSleeping_.fetch_sub(1, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  }</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span> </div>
+<div class="foldopen" id="foldopen00155" data-start="{" data-end="}">
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">  155</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">exitSleep</a>(int32_t threadIdx) {</div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    int32_t group = threadIdx / groupSize_;</div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>    int32_t bit = threadIdx % groupSize_;</div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_and(</div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>        ~(uint64_t{1} &lt;&lt; bit), std::memory_order_relaxed);</div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>    totalSleeping_.fetch_sub(1, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  }</div>
 </div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span> </div>
-<div class="foldopen" id="foldopen00168" data-start="{" data-end="}">
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">  168</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">tryClaimSleeper</a>(int32_t threadIdx) {</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>    int32_t group = threadIdx / groupSize_;</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>    int32_t bit = threadIdx % groupSize_;</div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>    uint64_t bitMask = uint64_t{1} &lt;&lt; bit;</div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>    uint64_t prev = groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_and(</div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>        ~bitMask, std::memory_order_acq_rel);</div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>    <span class="keywordflow">return</span> (prev &amp; bitMask) != 0;</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>  }</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span> </div>
+<div class="foldopen" id="foldopen00170" data-start="{" data-end="}">
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">  170</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">tryClaimSleeper</a>(int32_t threadIdx) {</div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>    int32_t group = threadIdx / groupSize_;</div>
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>    int32_t bit = threadIdx % groupSize_;</div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    uint64_t bitMask = uint64_t{1} &lt;&lt; bit;</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>    uint64_t prev = groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(group)].sleepMask.fetch_and(</div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>        ~bitMask, std::memory_order_acq_rel);</div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>    <span class="keywordflow">return</span> (prev &amp; bitMask) != 0;</div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>  }</div>
 </div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span> </div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a2785761dea0a6cb67383dd9089ef6997">  187</a></span>  DISPENSO_DLL_ACCESS int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a2785761dea0a6cb67383dd9089ef6997">claimAndWakeOne</a>();</div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span> </div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a0914c95f2b618356e6b00d23fd0a0b23">  198</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a0914c95f2b618356e6b00d23fd0a0b23">wakeRange</a>(int32_t count);</div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span> </div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a3e0e547b944beca16d8cb30e2bf07f27">  203</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a3e0e547b944beca16d8cb30e2bf07f27">wakeAll</a>();</div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span> </div>
-<div class="foldopen" id="foldopen00206" data-start="{" data-end="}">
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">  206</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">numThreads</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>    <span class="keywordflow">return</span> numThreads_;</div>
-<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>  }</div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span> </div>
+<div class="line"><a id="l00189" name="l00189"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a2785761dea0a6cb67383dd9089ef6997">  189</a></span>  DISPENSO_DLL_ACCESS int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a2785761dea0a6cb67383dd9089ef6997">claimAndWakeOne</a>();</div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span> </div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a0914c95f2b618356e6b00d23fd0a0b23">  200</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a0914c95f2b618356e6b00d23fd0a0b23">wakeRange</a>(int32_t count);</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span> </div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a3e0e547b944beca16d8cb30e2bf07f27">  205</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a3e0e547b944beca16d8cb30e2bf07f27">wakeAll</a>();</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span> </div>
+<div class="foldopen" id="foldopen00208" data-start="{" data-end="}">
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">  208</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">numThreads</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>    <span class="keywordflow">return</span> numThreads_;</div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>  }</div>
 </div>
-<div class="foldopen" id="foldopen00210" data-start="{" data-end="}">
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">  210</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">numGroups</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>    <span class="keywordflow">return</span> numGroups_;</div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>  }</div>
+<div class="foldopen" id="foldopen00212" data-start="{" data-end="}">
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">  212</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">numGroups</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>    <span class="keywordflow">return</span> numGroups_;</div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>  }</div>
 </div>
-<div class="foldopen" id="foldopen00214" data-start="{" data-end="}">
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">  214</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span>    <span class="keywordflow">return</span> groupSize_;</div>
-<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span>  }</div>
+<div class="foldopen" id="foldopen00216" data-start="{" data-end="}">
+<div class="line"><a id="l00216" name="l00216"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">  216</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">groupSize</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span>    <span class="keywordflow">return</span> groupSize_;</div>
+<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span>  }</div>
 </div>
-<div class="foldopen" id="foldopen00218" data-start="{" data-end="}">
-<div class="line"><a id="l00218" name="l00218"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">  218</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">branchFactor</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span>    <span class="keywordflow">return</span> branchFactor_;</div>
-<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span>  }</div>
+<div class="foldopen" id="foldopen00220" data-start="{" data-end="}">
+<div class="line"><a id="l00220" name="l00220"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">  220</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">branchFactor</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>    <span class="keywordflow">return</span> branchFactor_;</div>
+<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>  }</div>
 </div>
-<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>  int32_t totalSleeping()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>    <span class="keywordflow">return</span> totalSleeping_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>  }</div>
-<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span> </div>
-<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>  <span class="comment">// ---- Pattern C cascade for scheduleBulkToRings ----</span></div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>  <span class="comment">// 1-seed 2-level static cascade tree:</span></div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  <span class="comment">//   Producer wakes seed group (g0) with one bumpAndWakeN.</span></div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  <span class="comment">//   g0&#39;s threads each have a cascade-host slot; on wake they execute a</span></div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>  <span class="comment">//   lambda that wakes one level-2 target group, then runs their own user</span></div>
-<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  <span class="comment">//   work.</span></div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>  <span class="comment">//   level-2 groups&#39; threads each have cascade-host slots that wake one</span></div>
-<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>  <span class="comment">//   level-3 target group.</span></div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  <span class="comment">// Tree shape for N threads (groupSize=G):</span></div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  <span class="comment">//   level 1: 1 group  (g0)                covers G threads</span></div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>  <span class="comment">//   level 2: G groups                     covers G*G threads</span></div>
-<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>  <span class="comment">//   level 3: G*G groups (when needed)     covers G*G*G threads</span></div>
-<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>  <span class="comment">// 192 threads / G=8 = 24 groups: levels 1+2 cover 1+8 = 9 groups (72</span></div>
-<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>  <span class="comment">// threads). Need level 3 for the remaining 15 groups.</span></div>
-<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span> </div>
-<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span>  <span class="comment">// Returns the level-2/3 target group for a cascade-host thread, or -1 if</span></div>
-<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span>  <span class="comment">// this thread is not a cascade host OR if the target group lies outside</span></div>
-<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span>  <span class="comment">// the wake range [0, count). The count gate matches scheduleBulkToRings&#39;s</span></div>
-<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>  <span class="comment">// &quot;wake only threads with work&quot; contract: for partial-pool dispatch we</span></div>
-<div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>  <span class="comment">// don&#39;t want cascade hosts firing wakes into empty groups.</span></div>
-<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>  int32_t cascadeTargetFor(int32_t threadIdx, int32_t count)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    <span class="keywordflow">if</span> (threadIdx &lt; 0 || <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx) &gt;= cascadeTargets_.size()) {</div>
-<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>      <span class="keywordflow">return</span> -1;</div>
-<div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    }</div>
-<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    int32_t target = cascadeTargets_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx)];</div>
-<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    int32_t lastGroup = (count - 1) / groupSize_;</div>
-<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>    <span class="keywordflow">return</span> (target &lt;= lastGroup) ? target : -1;</div>
-<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>  }</div>
-<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span> </div>
-<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>  <span class="comment">// Wakes one target group: bumps the group&#39;s epoch and issues bumpAndWakeN</span></div>
-<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>  <span class="comment">// only if the sleepMask is non-zero. Called by cascade-host lambdas.</span></div>
-<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>  <span class="keywordtype">void</span> cascadeWake(int32_t targetGroup) {</div>
-<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>    uint64_t mask =</div>
-<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>        groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(targetGroup)].sleepMask.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span>    <span class="keyword">auto</span>&amp; waiter = <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">waiterFor</a>(targetGroup * groupSize_);</div>
-<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    <span class="keywordflow">if</span> (mask == 0) {</div>
-<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>      waiter.bump();</div>
-<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>      int32_t numSleepers = detail::countSetBits(mask);</div>
-<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>      waiter.bumpAndWakeN(numSleepers, groupSize_);</div>
-<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    }</div>
-<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>  }</div>
-<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span> </div>
-<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>  <span class="comment">// Single-pass wake for scheduleBulkToRings. Bumps every affected group&#39;s</span></div>
-<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>  <span class="comment">// epoch and wakes seed group g0 if any sleepers exist in [0, count).</span></div>
-<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span>  <span class="comment">// Returns true if the cold path was taken (sleepers found).</span></div>
-<div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> cascadeWakeSeed(int32_t count);</div>
-<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span> </div>
-<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span>  <span class="keyword">decltype</span>(detail::makeAlignedArray&lt;WaiterBlock&gt;(0)) waiterBlocks_;</div>
-<div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span>  <span class="keyword">decltype</span>(detail::makeAlignedArray&lt;GroupWakeState&gt;(0)) groupStates_;</div>
-<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span> </div>
-<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>  <span class="comment">// Round-robin hint for single-wake: avoids scanning all groups when only</span></div>
-<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>  <span class="comment">// one thread needs waking (schedule, Future). Relaxed — no correctness</span></div>
-<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>  <span class="comment">// concern if stale, just a perf hint.</span></div>
-<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; nextWakeGroup_{0};</div>
-<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span> </div>
-<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span>  <span class="comment">// Total sleeping threads. Incremented in enterSleep, decremented in</span></div>
-<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>  <span class="comment">// exitSleep (always by the sleeping thread itself — never by claimers).</span></div>
-<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>  <span class="comment">// Provides O(1) &quot;no sleepers&quot; fast path for claimAndWakeOne /</span></div>
-<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span>  <span class="comment">// cascadeWakeSeed, avoiding the O(numGroups) sleep mask scan during</span></div>
-<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>  <span class="comment">// sustained bursts.</span></div>
-<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; totalSleeping_{0};</div>
-<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span> </div>
-<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>  <span class="comment">// Precomputed wrap-around table: nextGroupTable_[i] = (i + 1) % numGroups_.</span></div>
-<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>  <span class="comment">// Avoids modulo in the hot path.</span></div>
-<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>  std::unique_ptr&lt;int32_t[]&gt; nextGroupTable_;</div>
-<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span> </div>
-<div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span>  <span class="comment">// Pattern C cascade: cascadeTargets_[threadIdx] = group this thread cascades</span></div>
-<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span>  <span class="comment">// to on wake, or -1 if not a cascade host. Built at construction.</span></div>
-<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span>  std::vector&lt;int32_t&gt; cascadeTargets_;</div>
-<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span> </div>
-<div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span>  int32_t numThreads_;</div>
-<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span>  int32_t numGroups_;</div>
-<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>  int32_t groupSize_;</div>
-<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>  int32_t branchFactor_;</div>
-<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>};</div>
+<div class="foldopen" id="foldopen00224" data-start="{" data-end="}">
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a018680324cbffea7d65515f24f336ebe">  224</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a018680324cbffea7d65515f24f336ebe">totalSleeping</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>    <span class="keywordflow">return</span> totalSleeping_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>  }</div>
 </div>
-<div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span> </div>
-<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html">dispenso::PoolWakeState</a></div><div class="ttdoc">Wake infrastructure for a ThreadPool.</div><div class="ttdef"><b>Definition</b> <a href="#l00095">thread_pool_wake.h:95</a></div></div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span> </div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>  <span class="comment">// ---- Pattern C cascade for scheduleBulkToRings ----</span></div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>  <span class="comment">// 1-seed 2-level static cascade tree:</span></div>
+<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>  <span class="comment">//   Producer wakes seed group (g0) with one bumpAndWakeN.</span></div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>  <span class="comment">//   g0&#39;s threads each have a cascade-host slot; on wake they execute a</span></div>
+<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>  <span class="comment">//   lambda that wakes one level-2 target group, then runs their own user</span></div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>  <span class="comment">//   work.</span></div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>  <span class="comment">//   level-2 groups&#39; threads each have cascade-host slots that wake one</span></div>
+<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>  <span class="comment">//   level-3 target group.</span></div>
+<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>  <span class="comment">// Tree shape for N threads (groupSize=G):</span></div>
+<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>  <span class="comment">//   level 1: 1 group  (g0)                covers G threads</span></div>
+<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>  <span class="comment">//   level 2: G groups                     covers G*G threads</span></div>
+<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>  <span class="comment">//   level 3: G*G groups (when needed)     covers G*G*G threads</span></div>
+<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span>  <span class="comment">// 192 threads / G=8 = 24 groups: levels 1+2 cover 1+8 = 9 groups (72</span></div>
+<div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span>  <span class="comment">// threads). Need level 3 for the remaining 15 groups.</span></div>
+<div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span> </div>
+<div class="foldopen" id="foldopen00251" data-start="{" data-end="}">
+<div class="line"><a id="l00251" name="l00251"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#ad23332dd36aaaaa9a7c541c6c9f8cef1">  251</a></span>  int32_t <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#ad23332dd36aaaaa9a7c541c6c9f8cef1">cascadeTargetFor</a>(int32_t threadIdx, int32_t count)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    <span class="keywordflow">if</span> (threadIdx &lt; 0 || <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx) &gt;= cascadeTargets_.size()) {</div>
+<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>      <span class="keywordflow">return</span> -1;</div>
+<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>    }</div>
+<div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>    int32_t target = cascadeTargets_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(threadIdx)];</div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    int32_t lastGroup = (count - 1) / groupSize_;</div>
+<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    <span class="keywordflow">return</span> (target &lt;= lastGroup) ? target : -1;</div>
+<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>  }</div>
+</div>
+<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span> </div>
+<div class="foldopen" id="foldopen00262" data-start="{" data-end="}">
+<div class="line"><a id="l00262" name="l00262"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a0376f5d2d4c83a21e9bc02cdcf18a92e">  262</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a0376f5d2d4c83a21e9bc02cdcf18a92e">cascadeWake</a>(int32_t targetGroup) {</div>
+<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    uint64_t mask =</div>
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>        groupStates_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(targetGroup)].sleepMask.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keyword">auto</span>&amp; waiter = <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">waiterFor</a>(targetGroup * groupSize_);</div>
+<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    <span class="keywordflow">if</span> (mask == 0) {</div>
+<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>      waiter.bump();</div>
+<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>      int32_t numSleepers = detail::countSetBits(mask);</div>
+<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>      waiter.bumpAndWakeN(numSleepers, groupSize_);</div>
+<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>    }</div>
+<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>  }</div>
+</div>
+<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span> </div>
+<div class="line"><a id="l00277" name="l00277"></a><span class="lineno"><a class="line" href="classdispenso_1_1_pool_wake_state.html#a9a775e378f737be9848def8c60355a29">  277</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_pool_wake_state.html#a9a775e378f737be9848def8c60355a29">cascadeWakeSeed</a>(int32_t count);</div>
+<div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span> </div>
+<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>  <span class="keyword">decltype</span>(detail::makeAlignedArray&lt;WaiterBlock&gt;(0)) waiterBlocks_;</div>
+<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>  <span class="keyword">decltype</span>(detail::makeAlignedArray&lt;GroupWakeState&gt;(0)) groupStates_;</div>
+<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span> </div>
+<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>  <span class="comment">// Round-robin hint for single-wake: avoids scanning all groups when only</span></div>
+<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span>  <span class="comment">// one thread needs waking (schedule, Future). Relaxed — no correctness</span></div>
+<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span>  <span class="comment">// concern if stale, just a perf hint.</span></div>
+<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; nextWakeGroup_{0};</div>
+<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span> </div>
+<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span>  <span class="comment">// Total sleeping threads. Incremented in enterSleep, decremented in</span></div>
+<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>  <span class="comment">// exitSleep (always by the sleeping thread itself — never by claimers).</span></div>
+<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>  <span class="comment">// Provides O(1) &quot;no sleepers&quot; fast path for claimAndWakeOne /</span></div>
+<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>  <span class="comment">// cascadeWakeSeed, avoiding the O(numGroups) sleep mask scan during</span></div>
+<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>  <span class="comment">// sustained bursts.</span></div>
+<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; totalSleeping_{0};</div>
+<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span> </div>
+<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span>  <span class="comment">// Precomputed wrap-around table: nextGroupTable_[i] = (i + 1) % numGroups_.</span></div>
+<div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span>  <span class="comment">// Avoids modulo in the hot path.</span></div>
+<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span>  std::unique_ptr&lt;int32_t[]&gt; nextGroupTable_;</div>
+<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span> </div>
+<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span>  <span class="comment">// Pattern C cascade: cascadeTargets_[threadIdx] = group this thread cascades</span></div>
+<div class="line"><a id="l00300" name="l00300"></a><span class="lineno">  300</span>  <span class="comment">// to on wake, or -1 if not a cascade host. Built at construction.</span></div>
+<div class="line"><a id="l00301" name="l00301"></a><span class="lineno">  301</span>  std::vector&lt;int32_t&gt; cascadeTargets_;</div>
+<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span> </div>
+<div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>  int32_t numThreads_;</div>
+<div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>  int32_t numGroups_;</div>
+<div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>  int32_t groupSize_;</div>
+<div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span>  int32_t branchFactor_;</div>
+<div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>};</div>
+</div>
+<div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span> </div>
+<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html">dispenso::PoolWakeState</a></div><div class="ttdoc">Wake infrastructure for a ThreadPool.</div><div class="ttdef"><b>Definition</b> <a href="#l00097">thread_pool_wake.h:97</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a018680324cbffea7d65515f24f336ebe"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a018680324cbffea7d65515f24f336ebe">dispenso::PoolWakeState::totalSleeping</a></div><div class="ttdeci">int32_t totalSleeping() const</div><div class="ttdoc">Number of threads currently sleeping across all groups.</div><div class="ttdef"><b>Definition</b> <a href="#l00224">thread_pool_wake.h:224</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a0376f5d2d4c83a21e9bc02cdcf18a92e"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a0376f5d2d4c83a21e9bc02cdcf18a92e">dispenso::PoolWakeState::cascadeWake</a></div><div class="ttdeci">void cascadeWake(int32_t targetGroup)</div><div class="ttdef"><b>Definition</b> <a href="#l00262">thread_pool_wake.h:262</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a0914c95f2b618356e6b00d23fd0a0b23"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a0914c95f2b618356e6b00d23fd0a0b23">dispenso::PoolWakeState::wakeRange</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void wakeRange(int32_t count)</div><div class="ttdoc">Wake threads in range [0, count) that are sleeping.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a097ea7c0709801f5f23be9675b8a4ffd"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">dispenso::PoolWakeState::exitSleep</a></div><div class="ttdeci">void exitSleep(int32_t threadIdx)</div><div class="ttdoc">Mark a thread as awake. Called after returning from EpochWaiter sleep.</div><div class="ttdef"><b>Definition</b> <a href="#l00153">thread_pool_wake.h:153</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a1c5271aaa1c6cbfdb2cd64bf8f13a1c3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">dispenso::PoolWakeState::tryClaimSleeper</a></div><div class="ttdeci">bool tryClaimSleeper(int32_t threadIdx)</div><div class="ttdoc">Atomically try to claim a sleeping thread for waking.</div><div class="ttdef"><b>Definition</b> <a href="#l00168">thread_pool_wake.h:168</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a097ea7c0709801f5f23be9675b8a4ffd"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a097ea7c0709801f5f23be9675b8a4ffd">dispenso::PoolWakeState::exitSleep</a></div><div class="ttdeci">void exitSleep(int32_t threadIdx)</div><div class="ttdoc">Mark a thread as awake. Called after returning from EpochWaiter sleep.</div><div class="ttdef"><b>Definition</b> <a href="#l00155">thread_pool_wake.h:155</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a1c5271aaa1c6cbfdb2cd64bf8f13a1c3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a1c5271aaa1c6cbfdb2cd64bf8f13a1c3">dispenso::PoolWakeState::tryClaimSleeper</a></div><div class="ttdeci">bool tryClaimSleeper(int32_t threadIdx)</div><div class="ttdoc">Atomically try to claim a sleeping thread for waking.</div><div class="ttdef"><b>Definition</b> <a href="#l00170">thread_pool_wake.h:170</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a2785761dea0a6cb67383dd9089ef6997"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a2785761dea0a6cb67383dd9089ef6997">dispenso::PoolWakeState::claimAndWakeOne</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS int32_t claimAndWakeOne()</div><div class="ttdoc">Claim a sleeping thread, wake it, and return its index.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a29f82d543dd2003c3c45c5cb9b6eac3d"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">dispenso::PoolWakeState::numThreads</a></div><div class="ttdeci">int32_t numThreads() const</div><div class="ttdoc">Total number of threads managed by this wake state.</div><div class="ttdef"><b>Definition</b> <a href="#l00206">thread_pool_wake.h:206</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a29f82d543dd2003c3c45c5cb9b6eac3d"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a29f82d543dd2003c3c45c5cb9b6eac3d">dispenso::PoolWakeState::numThreads</a></div><div class="ttdeci">int32_t numThreads() const</div><div class="ttdoc">Total number of threads managed by this wake state.</div><div class="ttdef"><b>Definition</b> <a href="#l00208">thread_pool_wake.h:208</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a3e0e547b944beca16d8cb30e2bf07f27"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a3e0e547b944beca16d8cb30e2bf07f27">dispenso::PoolWakeState::wakeAll</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void wakeAll()</div><div class="ttdoc">Wake all sleeping threads. Used during shutdown.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a4a3656689af4d436309c9daa13a1043b"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">dispenso::PoolWakeState::waiterFor</a></div><div class="ttdeci">detail::EpochWaiter &amp; waiterFor(int32_t threadIdx)</div><div class="ttdoc">Get the EpochWaiter for a specific thread's group. All threads in a group share one EpochWaiter (one ...</div><div class="ttdef"><b>Definition</b> <a href="#l00130">thread_pool_wake.h:130</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a730f289e5ab1c013a3efedebf97615f3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">dispenso::PoolWakeState::groupSize</a></div><div class="ttdeci">int32_t groupSize() const</div><div class="ttdoc">Threads per wake group.</div><div class="ttdef"><b>Definition</b> <a href="#l00214">thread_pool_wake.h:214</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a7d348404e2430a0ddc3082967881f8b3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">dispenso::PoolWakeState::enterSleep</a></div><div class="ttdeci">void enterSleep(int32_t threadIdx)</div><div class="ttdoc">Mark a thread as sleeping. Called before entering EpochWaiter sleep.</div><div class="ttdef"><b>Definition</b> <a href="#l00139">thread_pool_wake.h:139</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a894a01071d6e6590af38e09a48569c2d"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">dispenso::PoolWakeState::numGroups</a></div><div class="ttdeci">int32_t numGroups() const</div><div class="ttdoc">Number of wake groups.</div><div class="ttdef"><b>Definition</b> <a href="#l00210">thread_pool_wake.h:210</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_ad1a1686e615834c8d7ecda51fe223367"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">dispenso::PoolWakeState::branchFactor</a></div><div class="ttdeci">int32_t branchFactor() const</div><div class="ttdoc">Maximum children per node in the cascade tree.</div><div class="ttdef"><b>Definition</b> <a href="#l00218">thread_pool_wake.h:218</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a4a3656689af4d436309c9daa13a1043b"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a4a3656689af4d436309c9daa13a1043b">dispenso::PoolWakeState::waiterFor</a></div><div class="ttdeci">detail::EpochWaiter &amp; waiterFor(int32_t threadIdx)</div><div class="ttdoc">Get the EpochWaiter for a specific thread's group. All threads in a group share one EpochWaiter (one ...</div><div class="ttdef"><b>Definition</b> <a href="#l00132">thread_pool_wake.h:132</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a730f289e5ab1c013a3efedebf97615f3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a730f289e5ab1c013a3efedebf97615f3">dispenso::PoolWakeState::groupSize</a></div><div class="ttdeci">int32_t groupSize() const</div><div class="ttdoc">Threads per wake group.</div><div class="ttdef"><b>Definition</b> <a href="#l00216">thread_pool_wake.h:216</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a7d348404e2430a0ddc3082967881f8b3"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a7d348404e2430a0ddc3082967881f8b3">dispenso::PoolWakeState::enterSleep</a></div><div class="ttdeci">void enterSleep(int32_t threadIdx)</div><div class="ttdoc">Mark a thread as sleeping. Called before entering EpochWaiter sleep.</div><div class="ttdef"><b>Definition</b> <a href="#l00141">thread_pool_wake.h:141</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a894a01071d6e6590af38e09a48569c2d"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a894a01071d6e6590af38e09a48569c2d">dispenso::PoolWakeState::numGroups</a></div><div class="ttdeci">int32_t numGroups() const</div><div class="ttdoc">Number of wake groups.</div><div class="ttdef"><b>Definition</b> <a href="#l00212">thread_pool_wake.h:212</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_a9a775e378f737be9848def8c60355a29"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#a9a775e378f737be9848def8c60355a29">dispenso::PoolWakeState::cascadeWakeSeed</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool cascadeWakeSeed(int32_t count)</div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_ad1a1686e615834c8d7ecda51fe223367"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#ad1a1686e615834c8d7ecda51fe223367">dispenso::PoolWakeState::branchFactor</a></div><div class="ttdeci">int32_t branchFactor() const</div><div class="ttdoc">Maximum children per node in the cascade tree.</div><div class="ttdef"><b>Definition</b> <a href="#l00220">thread_pool_wake.h:220</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_ad23332dd36aaaaa9a7c541c6c9f8cef1"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#ad23332dd36aaaaa9a7c541c6c9f8cef1">dispenso::PoolWakeState::cascadeTargetFor</a></div><div class="ttdeci">int32_t cascadeTargetFor(int32_t threadIdx, int32_t count) const</div><div class="ttdef"><b>Definition</b> <a href="#l00251">thread_pool_wake.h:251</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_pool_wake_state_html_af4985b23089c54dffab18a2d15e2a97c"><div class="ttname"><a href="classdispenso_1_1_pool_wake_state.html#af4985b23089c54dffab18a2d15e2a97c">dispenso::PoolWakeState::PoolWakeState</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS PoolWakeState(int32_t numThreads, int32_t groupSize=8, int32_t branchFactor=kDefaultWakeBranchFactor)</div><div class="ttdoc">Construct wake state for a pool with the given number of threads.</div></div>
 <div class="ttc" id="aplatform_8h_html"><div class="ttname"><a href="platform_8h.html">platform.h</a></div></div>
 <div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00114">platform.h:114</a></div></div>
 <div class="ttc" id="astructdispenso_1_1_group_wake_state_html"><div class="ttname"><a href="structdispenso_1_1_group_wake_state.html">dispenso::GroupWakeState</a></div><div class="ttdoc">Per-group state.</div><div class="ttdef"><b>Definition</b> <a href="#l00055">thread_pool_wake.h:55</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_waiter_block_html"><div class="ttname"><a href="structdispenso_1_1_waiter_block.html">dispenso::WaiterBlock</a></div><div class="ttdef"><b>Definition</b> <a href="#l00073">thread_pool_wake.h:73</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_waiter_block_html"><div class="ttname"><a href="structdispenso_1_1_waiter_block.html">dispenso::WaiterBlock</a></div><div class="ttdoc">Cache-line-aligned block of EpochWaiters for one group.</div><div class="ttdef"><b>Definition</b> <a href="#l00075">thread_pool_wake.h:75</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_waiter_block_html_aad857ede9c885941252e4b7a47c69859"><div class="ttname"><a href="structdispenso_1_1_waiter_block.html#aad857ede9c885941252e4b7a47c69859">dispenso::WaiterBlock::waiter</a></div><div class="ttdeci">detail::EpochWaiter waiter</div><div class="ttdoc">The group's shared EpochWaiter (one futex address).</div><div class="ttdef"><b>Definition</b> <a href="#l00076">thread_pool_wake.h:76</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
