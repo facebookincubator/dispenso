@@ -292,7 +292,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   DISPENSO_DLL_ACCESS void threadLoopWake(PerThreadData& threadData, int32_t ringIndex);
   DISPENSO_DLL_ACCESS void threadLoopPoll(PerThreadData& threadData, int32_t ringIndex);
 
-  void markWorkDone(bool& isWorking, double& spinTimeout, bool& wokeFromSleep);
+  void markWorkDone(bool& isWorking);
   void markIdle(bool& isWorking);
 
   bool tryExecuteNext();
@@ -547,10 +547,6 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Used by schedule paths to skip wake calls when spinners exist.
   alignas(kCacheLineSize) std::atomic<int32_t> numNotWorking_{0};
 
-  // Platform-tuned spin limit (0 = adaptive time-based spin, >0 = fixed count).
-  // Linux/macOS: aggressive sleep (futex wake is cheap, ~3-5μs).
-  // Windows: adaptive spin (WakeByAddressSingle is expensive).
-  // Override via DISPENSO_TUNE_FIXED_SPIN_ITERS.
   int32_t spinLimit_{0};
 
 #if defined DISPENSO_DEBUG

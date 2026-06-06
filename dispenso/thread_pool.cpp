@@ -50,9 +50,12 @@ size_t getAdjustedThreadCount(size_t requested) {
 #if defined(DISPENSO_TUNE_FIXED_SPIN_ITERS)
 static constexpr int32_t kDefaultSpinLimit = DISPENSO_TUNE_FIXED_SPIN_ITERS;
 #elif defined(_WIN32)
-// Windows: WakeByAddressSingle is expensive. Use adaptive time-based spin
-// to avoid costly sleep/wake transitions between parallel_for iterations.
-static constexpr int32_t kDefaultSpinLimit = 0; // adaptive mode
+// Windows: spin_fixed_200 was ~6% faster (geomean across the tuning set)
+// than the adaptive baseline on a 48-thread Xeon Platinum 8259CL Windows
+// sweep. WakeByAddressSingle is expensive enough that even a small fixed
+// spin is preferable to the adaptive time-based backoff, which tended to
+// sleep too aggressively between parallel_for iterations.
+static constexpr int32_t kDefaultSpinLimit = 200;
 #else
 // Linux/macOS: futex/__ulock wake is cheap (~3-5μs per group). Sleep
 // aggressively to free SMT siblings for workers. Multiple pools may
@@ -114,7 +117,6 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 
   // All threads start as "not working" — they haven't entered their work loops yet.
   numNotWorking_.store(static_cast<int32_t>(adjustedN), std::memory_order_relaxed);
-
   spinLimit_ = kDefaultSpinLimit;
 
   for (size_t i = 0; i < adjustedN; ++i) {
@@ -134,16 +136,11 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
 
 ThreadPool::PerThreadData::~PerThreadData() {}
 
-// Adaptive backoff: spin with cpuRelax, then periodically check elapsed time
-// against a threshold to decide when to yield and when to sleep.
-// kSpinCheckInterval: how many spin iterations between getTime() checks.
-// kMaxSpinTimeoutSec: upper bound on spin time — used when work arrives regularly.
-// kMinSpinTimeoutSec: lower bound — used after repeated idle sleeps.
-// After each sleep, if we wake and find no work the spin timeout halves (down to
-// kMinSpinTimeoutSec). Finding work resets the timeout to kMaxSpinTimeoutSec.
-// This keeps threads hot during sustained parallel_for bursts but quickly backs
-// off to near-zero spin when the pool is idle.
-// Override via -DDISPENSO_TUNE_SPIN_CHECK_INTERVAL=N etc. for cross-platform tuning.
+// Fixed-spin sleep strategy: workers iterate the work-finding loop up to
+// kSpinLimit times before parking. kSpinCheckInterval bounds the "lean
+// spin" warmup phase where threads only check their own ring (no central
+// queue, no processBudget).
+// Override via -DDISPENSO_TUNE_SPIN_CHECK_INTERVAL / -DDISPENSO_TUNE_FIXED_SPIN_ITERS.
 #if defined(DISPENSO_TUNE_SPIN_CHECK_INTERVAL)
 static constexpr int kSpinCheckInterval = DISPENSO_TUNE_SPIN_CHECK_INTERVAL;
 #elif defined(__APPLE__)
@@ -156,27 +153,6 @@ static constexpr int kSpinCheckInterval = 32;
 static constexpr int kSpinCheckInterval = 256;
 #else
 static constexpr int kSpinCheckInterval = 64;
-#endif
-
-#if defined(DISPENSO_TUNE_MAX_SPIN_US)
-static constexpr double kMaxSpinTimeoutSec = DISPENSO_TUNE_MAX_SPIN_US * 1e-6;
-#elif defined(__APPLE__)
-// macOS: __ulock wake is faster than Linux futex. 128us is a safe default
-// across core counts — 64us showed slight edge on 12-core but regressed
-// key benchmarks.
-static constexpr double kMaxSpinTimeoutSec = 128e-6; // 128us
-#elif defined(_WIN32)
-// Windows: WaitOnAddress wake latency is high, so spin longer to avoid
-// costly sleep/wake transitions between parallel_for iterations.
-static constexpr double kMaxSpinTimeoutSec = 256e-6; // 256us
-#else
-static constexpr double kMaxSpinTimeoutSec = 128e-6; // 128us
-#endif
-
-#if defined(DISPENSO_TUNE_MIN_SPIN_US)
-static constexpr double kMinSpinTimeoutSec = DISPENSO_TUNE_MIN_SPIN_US * 1e-6;
-#else
-static constexpr double kMinSpinTimeoutSec = 1e-6; // 1us
 #endif
 
 // How often idle threads check the central queue during the spin phase.
@@ -197,15 +173,11 @@ static_assert(
     (kQueueCheckInterval & (kQueueCheckInterval - 1)) == 0,
     "kQueueCheckInterval must be a power of 2");
 
-void ThreadPool::markWorkDone(bool& isWorking, double& spinTimeout, bool& wokeFromSleep) {
+void ThreadPool::markWorkDone(bool& isWorking) {
   if (!isWorking) {
     numNotWorking_.fetch_sub(1, std::memory_order_relaxed);
     isWorking = true;
   }
-  if (!wokeFromSleep) {
-    spinTimeout = std::min(kMaxSpinTimeoutSec, spinTimeout * 2.0);
-  }
-  wokeFromSleep = false;
 }
 
 void ThreadPool::markIdle(bool& isWorking) {
@@ -231,9 +203,6 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
   StealRing& myStealRing = stealRings_[myStealIdx];
 
   int failCount = 0;
-  double idleStart = 0.0;
-  double spinTimeout = kMaxSpinTimeoutSec;
-  bool wokeFromSleep = false;
   bool isWorking = false; // starts not-working (counted in constructor init)
 
   while (data.running()) {
@@ -251,7 +220,7 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       checkQueue = true;
     }
     if (localWorkDone > 0) {
-      markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+      markWorkDone(isWorking);
       workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
       failCount = 0;
       continue;
@@ -267,7 +236,7 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       continue;
     }
 
-    // --- Full machinery: steal ring, processBudget, adaptive backoff ---
+    // --- Full machinery: steal ring, processBudget, fixed-count backoff ---
 
     // Outer steal ring check (deferred from lean phase). No empty() guard:
     // try_pop already fast-paths the empty case with a relaxed head/tail compare
@@ -275,7 +244,7 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
     {
       OnceFunction stealTask;
       if (myStealRing.try_pop(stealTask)) {
-        markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+        markWorkDone(isWorking);
         executeNext(std::move(stealTask));
         failCount = 0;
         continue;
@@ -284,10 +253,7 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
 
     // Intentional second increment: lean-phase failures (above) count once,
     // full-phase failures count twice. kDefaultSpinLimit is tuned assuming
-    // this two-rate progression. In adaptive mode (spinLimit_ == 0) the
-    // odd-aligned failCount values make the bitmask-aligned checks below
-    // unreachable; parking is handled by the backstop timeout in
-    // waitOnThread instead.
+    // this two-rate progression.
     ++failCount;
 
     if (spinLimit_ > 0) {
@@ -296,11 +262,8 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       detail::cpuRelax();
 
       if (failCount >= spinLimit_) {
-        // Honor keepAwake refcount: if any AwakeRef is held (e.g. an in-flight
-        // parallel_for that may schedule more work soon), keep spinning instead
-        // of paying ~3-5us futex wake latency on the next task.
         if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-          failCount = spinLimit_; // cap so we re-check next iteration
+          failCount = spinLimit_;
           continue;
         }
         markIdle(isWorking);
@@ -312,38 +275,26 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
         epoch = waitOnThread(ringIndex, epoch);
         ws->exitSleep(ringIndex);
         failCount = 0;
-        wokeFromSleep = true;
       }
     } else {
-      // Adaptive mode (default): time-based spin with exponential backoff.
+      // Fallback when spinLimit_ == 0: use kDefaultSpinLimit directly.
       ws->processBudget(ringIndex);
-
-      if (failCount == kSpinCheckInterval) {
-        idleStart = getTime();
-      }
-
       detail::cpuRelax();
 
-      if ((failCount & (kSpinCheckInterval - 1)) == 0) {
-        markIdle(isWorking);
-
-        double elapsed = getTime() - idleStart;
-        if (elapsed > spinTimeout) {
-          // Honor keepAwake refcount (see fixed-spin branch comment).
-          if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-            // Reset failCount slightly to re-check next interval. No sleep.
-            failCount -= 1;
-            continue;
-          }
-          ws->enterSleep(ringIndex);
-          epoch = waitOnThread(ringIndex, epoch);
-          ws->exitSleep(ringIndex);
-          failCount = 0;
-          wokeFromSleep = true;
-          spinTimeout = std::max(kMinSpinTimeoutSec, spinTimeout * 0.5);
-        } else if (elapsed > spinTimeout * 0.5) {
-          std::this_thread::yield();
+      if (failCount >= kDefaultSpinLimit) {
+        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+          failCount = kDefaultSpinLimit;
+          continue;
         }
+        markIdle(isWorking);
+        ws->enterSleep(ringIndex);
+        if (!data.running()) {
+          ws->exitSleep(ringIndex);
+          break;
+        }
+        epoch = waitOnThread(ringIndex, epoch);
+        ws->exitSleep(ringIndex);
+        failCount = 0;
       }
     }
   }
@@ -367,15 +318,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
   StealRing& myStealRing = stealRings_[myStealIdx];
 
   int failCount = 0;
-  double idleStart = 0.0;
-  double spinTimeout = kMaxSpinTimeoutSec;
-  bool wokeFromSleep = false;
   bool isWorking = false;
-  // Wake leaders: threads in the first subgroup of each group (positions
-  // 0-3 in a group of 16). These threads share a futex and all wake from
-  // the same bumpAndWakeAll call. All 4 participate in cascade fan-out.
-  // Cascade-team threads (first subgroup of each group) check for wake
-  // budgets via the inlined processBudget fast path.
 
   while (data.running()) {
     int localWorkDone = 0;
@@ -392,7 +335,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
       checkQueue = true;
     }
     if (localWorkDone > 0) {
-      markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+      markWorkDone(isWorking);
       workRemaining_.fetch_sub(localWorkDone, std::memory_order_relaxed);
       failCount = 0;
       continue;
@@ -410,7 +353,7 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
     {
       OnceFunction stealTask;
       if (myStealRing.try_pop(stealTask)) {
-        markWorkDone(isWorking, spinTimeout, wokeFromSleep);
+        markWorkDone(isWorking);
         executeNext(std::move(stealTask));
         failCount = 0;
         continue;
@@ -419,52 +362,20 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
 
     // Intentional second increment: lean-phase failures (above) count once,
     // full-phase failures count twice. kDefaultSpinLimit is tuned assuming
-    // this two-rate progression. In adaptive mode (spinLimit_ == 0) the
-    // odd-aligned failCount values make the bitmask-aligned checks below
-    // unreachable; parking is handled by the backstop timeout in
-    // waitOnThread instead.
+    // this two-rate progression.
     ++failCount;
-
-    if (failCount == kSpinCheckInterval) {
-      idleStart = getTime();
-    }
 
     detail::cpuRelax();
 
-    if (spinLimit_ > 0) {
-      ws->processBudget(ringIndex);
-      if (failCount >= spinLimit_) {
-        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-          failCount = spinLimit_;
-          continue;
-        }
-        markIdle(isWorking);
-        epoch = waitOnThread(ringIndex, epoch);
-        failCount = 0;
-        wokeFromSleep = true;
+    ws->processBudget(ringIndex);
+    if (failCount >= kDefaultSpinLimit) {
+      if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
+        failCount = kDefaultSpinLimit;
+        continue;
       }
-    } else if ((failCount & (kSpinCheckInterval - 1)) == 0) {
       markIdle(isWorking);
-
-      ws->processBudget(ringIndex);
-
-      if (failCount == kSpinCheckInterval) {
-        idleStart = getTime();
-      }
-
-      double elapsed = getTime() - idleStart;
-      if (elapsed > spinTimeout) {
-        if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-          failCount -= 1;
-          continue;
-        }
-        epoch = waitOnThread(ringIndex, epoch);
-        failCount = 0;
-        wokeFromSleep = true;
-        spinTimeout = std::max(kMinSpinTimeoutSec, spinTimeout * 0.5);
-      } else if (elapsed > spinTimeout * 0.5) {
-        std::this_thread::yield();
-      }
+      epoch = waitOnThread(ringIndex, epoch);
+      failCount = 0;
     }
   }
 
