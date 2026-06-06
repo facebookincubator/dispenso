@@ -178,12 +178,12 @@ inline IntegerT alignDownStripe(IntegerT value, uint32_t granularity) {
     return value;
   }
   IntegerT g = static_cast<IntegerT>(granularity);
-  IntegerT d = value / g;
+  IntegerT d = static_cast<IntegerT>(value / g);
   // C++ truncates toward zero; correct to floor for signed negative remainders.
   if (std::is_signed<IntegerT>::value && d * g != value && value < IntegerT(0)) {
     --d;
   }
-  return d * g;
+  return static_cast<IntegerT>(d * g);
 }
 
 // Try to claim a chunk from the given stripe. Returns true and sets

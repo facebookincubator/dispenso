@@ -53,25 +53,27 @@ constexpr int32_t kDefaultWakeBranchFactor = 4;
  * `claimAndWakeOne`).
  */
 struct DISPENSO_CACHELINE_ALIGNED GroupWakeState {
+  /// Bit i set when thread i in the group is sleeping on the group's EpochWaiter.
   std::atomic<uint64_t> sleepMask{0};
 };
+
+/// Maximum number of threads that share a single wake group (one futex address).
+static constexpr int32_t kMaxThreadsPerWakeGroup = 64;
 
 /**
  * @brief Cache-line-aligned block of EpochWaiters for one group.
  *
  * Each group shares one EpochWaiter (one futex address). The block is
  * cache-line aligned to prevent inter-group false sharing.
+ *
+ * A single futex_wake(addr, K) wakes K arbitrary threads from the group;
+ * futex_wake(addr, 1) wakes one. Bulk wakes for K > groupSize fan out across
+ * groups via the Pattern C cascade — workers in the seed group each carry a
+ * pre-staged lambda that wakes one target group; level-2 cascade hosts in
+ * those groups wake the remaining groups in parallel.
  */
-static constexpr int32_t kMaxThreadsPerWakeGroup = 64;
-
-// One EpochWaiter (futex address) per group: all threads in a group share
-// it. A single futex_wake(addr, K) wakes K arbitrary threads from the
-// group; futex_wake(addr, 1) wakes one. Bulk wakes for K > groupSize fan
-// out across groups via the Pattern C cascade — workers in the seed group
-// each carry a pre-staged lambda that wakes one target group; level-2
-// cascade hosts in those groups wake the remaining groups in parallel.
 struct DISPENSO_CACHELINE_ALIGNED WaiterBlock {
-  detail::EpochWaiter waiter;
+  detail::EpochWaiter waiter; ///< The group's shared EpochWaiter (one futex address).
 };
 
 /**
@@ -218,6 +220,7 @@ class PoolWakeState {
   int32_t branchFactor() const {
     return branchFactor_;
   }
+  /** @brief Number of threads currently sleeping across all groups. */
   int32_t totalSleeping() const {
     return totalSleeping_.load(std::memory_order_relaxed);
   }
@@ -240,11 +243,11 @@ class PoolWakeState {
   // 192 threads / G=8 = 24 groups: levels 1+2 cover 1+8 = 9 groups (72
   // threads). Need level 3 for the remaining 15 groups.
 
-  // Returns the level-2/3 target group for a cascade-host thread, or -1 if
-  // this thread is not a cascade host OR if the target group lies outside
-  // the wake range [0, count). The count gate matches scheduleBulkToRings's
-  // "wake only threads with work" contract: for partial-pool dispatch we
-  // don't want cascade hosts firing wakes into empty groups.
+  /// Returns the level-2/3 target group for a cascade-host thread, or -1 if
+  /// this thread is not a cascade host OR if the target group lies outside
+  /// the wake range [0, count). The count gate matches scheduleBulkToRings's
+  /// "wake only threads with work" contract: for partial-pool dispatch we
+  /// don't want cascade hosts firing wakes into empty groups.
   int32_t cascadeTargetFor(int32_t threadIdx, int32_t count) const {
     if (threadIdx < 0 || static_cast<size_t>(threadIdx) >= cascadeTargets_.size()) {
       return -1;
@@ -254,8 +257,8 @@ class PoolWakeState {
     return (target <= lastGroup) ? target : -1;
   }
 
-  // Wakes one target group: bumps the group's epoch and issues bumpAndWakeN
-  // only if the sleepMask is non-zero. Called by cascade-host lambdas.
+  /// Wakes one target group: bumps the group's epoch and issues bumpAndWakeN
+  /// only if the sleepMask is non-zero. Called by cascade-host lambdas.
   void cascadeWake(int32_t targetGroup) {
     uint64_t mask =
         groupStates_[static_cast<size_t>(targetGroup)].sleepMask.load(std::memory_order_relaxed);
@@ -268,9 +271,9 @@ class PoolWakeState {
     }
   }
 
-  // Single-pass wake for scheduleBulkToRings. Bumps every affected group's
-  // epoch and wakes seed group g0 if any sleepers exist in [0, count).
-  // Returns true if the cold path was taken (sleepers found).
+  /// Single-pass wake for scheduleBulkToRings. Bumps every affected group's
+  /// epoch and wakes seed group g0 if any sleepers exist in [0, count).
+  /// Returns true if the cold path was taken (sleepers found).
   DISPENSO_DLL_ACCESS bool cascadeWakeSeed(int32_t count);
 
  private:

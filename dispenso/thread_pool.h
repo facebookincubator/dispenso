@@ -229,6 +229,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   class AwakeRef {
    public:
     AwakeRef() = default;
+    /** @brief Acquire a keep-awake reference on @p pool, incrementing its keep-awake count. */
     explicit AwakeRef(ThreadPool* pool) : pool_(pool) {
       if (pool_) {
         pool_->keepAwakeCount_.fetch_add(1, std::memory_order_acq_rel);
@@ -236,6 +237,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
     }
     AwakeRef(const AwakeRef&) = delete;
     AwakeRef& operator=(const AwakeRef&) = delete;
+    /** @brief Move-construct, transferring the keep-awake reference from @p other. */
     AwakeRef(AwakeRef&& other) noexcept : pool_(other.pool_) {
       other.pool_ = nullptr;
     }
@@ -248,6 +250,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
     ~AwakeRef() {
       reset();
     }
+    /** @brief Release the held keep-awake reference, if any. */
     void reset() {
       if (pool_) {
         pool_->keepAwakeCount_.fetch_sub(1, std::memory_order_release);

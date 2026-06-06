@@ -721,8 +721,9 @@ Future<size_t> when_any(InputIt first, InputIt last);
 template <class... Futures>
 auto when_any(Futures&&... futures) -> Future<size_t>;
 
-/** @overload Variant that registers with a TaskSet so that taskSet.wait() implies the result is
- * ready. */
+/** Variant that registers with a TaskSet so that taskSet.wait() implies the result is
+ * ready.
+ * @overload */
 template <class InputIt>
 Future<size_t> when_any(TaskSet& taskSet, InputIt first, InputIt last);
 /** @overload */

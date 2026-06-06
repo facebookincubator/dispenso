@@ -158,7 +158,6 @@ class TaskSet : public TaskSetBase {
    * @param count The number of functors to schedule.
    * @param gen A generator functor that takes an index and returns a functor to execute.
    *            gen(i) will be called for i in [0, count) to produce each task.
-   * @param fq Tag to force queuing instead of potential inline execution.
    **/
   template <typename Generator>
   void scheduleBulk(size_t count, Generator&& gen, ForceQueuingTag) {
@@ -248,6 +247,7 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param registerForParentCancel Whether to register for parent cancellation cascade.
    * @param stealingLoadMultiplier An over-load factor.  If this factor of load is reached by the
    * underlying pool, scheduled tasks may run immediately in the calling thread.
+   * @param cost Hint about per-task cost; see TaskCost.
    **/
   ConcurrentTaskSet(
       ThreadPool& pool,
@@ -385,7 +385,6 @@ class ConcurrentTaskSet : public TaskSetBase {
    * @param count The number of functors to schedule.
    * @param gen A generator functor that takes an index and returns a functor to execute.
    *            gen(i) will be called for i in [0, count) to produce each task.
-   * @param fq Tag to force queuing instead of potential inline execution.
    **/
   template <typename Generator>
   void scheduleBulk(size_t count, Generator&& gen, ForceQueuingTag) {
