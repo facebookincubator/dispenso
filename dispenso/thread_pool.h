@@ -68,21 +68,30 @@ class FutureImplBase;
 #endif // platform
 #endif // DISPENSO_WAKEUP_ENABLE
 
+// Poll-mode timeout: the interval at which idle threads wake to check for work
+// when explicit wake signaling is disabled. Short because polling is the only
+// mechanism that discovers newly scheduled work.
 #if !defined(DISPENSO_POLL_PERIOD_US)
 #if defined(_WIN32)
 #define DISPENSO_POLL_PERIOD_US 1000
 #else
-#if !(DISPENSO_WAKEUP_ENABLE)
 #define DISPENSO_POLL_PERIOD_US 200
-#else
-#define DISPENSO_POLL_PERIOD_US (1 << 15) // Determined empirically good on dual Xeon Linux
-#endif // DISPENSO_WAKEUP_ENABLE
-#endif // PLATFORM
+#endif
 #endif // DISPENSO_POLL_PERIOD_US
 
-constexpr uint32_t kDefaultSleepLenUs = DISPENSO_POLL_PERIOD_US;
+// Wake-mode backstop: in wake mode, threads are woken explicitly via
+// futex/WaitOnAddress/ulock. This timeout bounds worst-case latency from rare
+// races (e.g., a thread entering sleep between wakeAll's epoch bump and its
+// own enterSleep). Uniform across all platforms — the wake system handles
+// normal-path latency; this is purely a safety net.
+#if !defined(DISPENSO_WAKE_BACKSTOP_US)
+#define DISPENSO_WAKE_BACKSTOP_US 100000
+#endif
 
 constexpr bool kDefaultWakeupEnable = DISPENSO_WAKEUP_ENABLE;
+
+constexpr uint32_t kDefaultSleepLenUs =
+    kDefaultWakeupEnable ? DISPENSO_WAKE_BACKSTOP_US : DISPENSO_POLL_PERIOD_US;
 
 /**
  * A simple tag specifier that can be fed to TaskSets and

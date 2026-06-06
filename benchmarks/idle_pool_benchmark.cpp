@@ -236,8 +236,14 @@ void BM_dispenso_periodic_burst(benchmark::State& state) {
 }
 
 static void CustomArgumentsBurst(benchmark::internal::Benchmark* b) {
-  for (int s : benchmarkThreadCounts()) {
-    b->Args({s});
+  const int kMax = static_cast<int>(std::thread::hardware_concurrency());
+  int last = 0;
+  for (int n = 1; n <= kMax; n *= 4) {
+    b->Args({n});
+    last = n;
+  }
+  if (last != kMax) {
+    b->Args({kMax});
   }
 }
 

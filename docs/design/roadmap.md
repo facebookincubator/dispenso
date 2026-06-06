@@ -238,6 +238,7 @@ Otherwise, the current coupling is the simplest design that's correct.
 
 These are ideas that may be pursued based on community feedback:
 
+- Steal-ring round-robin for non-sleeping placed scheduling: `scheduleImplPlaced` currently only pushes to steal rings when it can claim a sleeping thread. When no threads are sleeping, the task falls through to the central queue. A round-robin steal-ring path for pool-worker callers could improve locality by keeping work near the scheduling thread. Requires benchmarking to confirm benefit over the central queue path.
 - CUDA graph mappings (TaskFlow has this; worth exploring for dispenso's Graph)
 - Lock-free stack
 - Range-based API wrappers (explicit opt-in)
