@@ -17,11 +17,11 @@
 #include <limits>
 
 #include <dispenso/cpu_set.h>
-#include <dispenso/detail/can_invoke.h>
-#include <dispenso/detail/par_for_stripe.h>
-#include <dispenso/detail/per_thread_info.h>
 #include <dispenso/small_buffer_allocator.h>
 #include <dispenso/task_set.h>
+#include "detail/can_invoke.h"
+#include "detail/par_for_stripe.h"
+#include "detail/per_thread_info.h"
 
 namespace dispenso {
 
@@ -389,11 +389,9 @@ inline IntegerT roundUpToGranularity(IntegerT size, uint32_t granularity) {
       ((static_cast<U>(size) + granularity - 1) / granularity) * granularity);
 }
 
-/**
- * Initialize states container with enough entries for the given thread count.
- * Respects reuseExistingState: when true, only adds entries if the container
- * doesn't already have enough.
- */
+// Initialize states container with enough entries for the given thread count.
+// Respects reuseExistingState: when true, only adds entries if the container
+// doesn't already have enough.
 template <typename StateContainer, typename StateGen>
 void initStates(
     StateContainer& states,
@@ -408,150 +406,13 @@ void initStates(
   }
 }
 
-template <
-    typename TaskSetT,
-    typename IntegerT,
-    typename F,
-    typename StateContainer,
-    typename StateGen>
-void parallel_for_staticImpl(
-    TaskSetT& taskSet,
-    StateContainer& states,
-    const StateGen& defaultState,
-    const ChunkedRange<IntegerT>& range,
-    F&& f,
-    ssize_t maxThreads,
-    bool wait,
-    bool reuseExistingState,
-    uint32_t granularity = 1) {
-  using size_type = typename ChunkedRange<IntegerT>::size_type;
-
-  size_type numThreads = std::min<size_type>(taskSet.numPoolThreads() + 1, maxThreads);
-  // Reduce threads used if they exceed work to be done.
-  numThreads = std::min(numThreads, range.size());
-  // With granularity > 1 we cannot give a thread fewer than `granularity` items,
-  // so reduce thread count to ensure each thread gets at least one granularity unit.
-  if (granularity > 1) {
-    size_type maxByGranularity = range.size() / static_cast<size_type>(granularity);
-    if (maxByGranularity < numThreads) {
-      numThreads = std::max<size_type>(1, maxByGranularity);
-    }
-  }
-
-  detail::initStates(states, defaultState, static_cast<size_t>(numThreads), reuseExistingState);
-
-  auto chunking = (granularity > 1)
-      ? detail::staticChunkSizeGranular(
-            static_cast<ssize_t>(range.size()), static_cast<ssize_t>(numThreads), granularity)
-      : detail::staticChunkSize(
-            static_cast<ssize_t>(range.size()), static_cast<ssize_t>(numThreads));
-  IntegerT chunkSize = static_cast<IntegerT>(chunking.ceilChunkSize);
-
-  bool perfectlyChunked = static_cast<size_type>(chunking.transitionTaskIndex) == numThreads;
-
-  // Helper: compute chunk [start, end) for a given task index.
-  auto chunkRange = [&](size_type idx) -> std::pair<IntegerT, IntegerT> {
-    size_type transIdx = perfectlyChunked ? numThreads : chunking.transitionTaskIndex;
-    // Without granularity, floor-chunks are `ceil - 1`. With granularity > 1,
-    // floor-chunks are `ceil - granularity` (one fewer granularity unit).
-    IntegerT chunkStep = granularity > 1 ? static_cast<IntegerT>(granularity) : IntegerT{1};
-    IntegerT smallChunk =
-        static_cast<IntegerT>(chunkSize - (perfectlyChunked ? IntegerT{0} : chunkStep));
-    IntegerT start;
-    if (idx < transIdx) {
-      IntegerT i = static_cast<IntegerT>(idx);
-      start = static_cast<IntegerT>(range.start + static_cast<IntegerT>(i * chunkSize));
-    } else {
-      IntegerT ti = static_cast<IntegerT>(transIdx);
-      IntegerT ri = static_cast<IntegerT>(idx - transIdx);
-      start = static_cast<IntegerT>(
-          range.start + static_cast<IntegerT>(ti * chunkSize) +
-          static_cast<IntegerT>(ri * smallChunk));
-    }
-    IntegerT end;
-    if (idx + 1 == numThreads) {
-      end = range.end;
-    } else if (idx < transIdx) {
-      end = static_cast<IntegerT>(start + chunkSize);
-    } else {
-      end = static_cast<IntegerT>(start + smallChunk);
-    }
-    return {start, end};
-  };
-
-  // Determine which chunk the calling thread should take for L2 locality.
-  // If the caller is a pool thread with a ring, it takes the chunk matching
-  // its ring index so that repeated parallel_for calls keep the same data
-  // in the caller's L2 cache. Otherwise takes the last chunk.
-  int32_t callerRing = wait ? detail::PerPoolPerThreadInfo::ringIndex(&taskSet.pool()) : -1;
-  size_type callerChunk = numThreads - 1;
-  if (callerRing >= 0 && static_cast<size_type>(callerRing) < numThreads) {
-    callerChunk = static_cast<size_type>(callerRing);
-  }
-
-  // Schedule N-1 chunks to workers (skipping callerChunk when wait=true).
-  // The generator remaps scheduler index to chunk index: indices below
-  // callerChunk map 1:1, indices >= callerChunk shift up by 1.
-  // This ensures ring i gets the data for chunk i (or chunk i+1 if i >= callerChunk),
-  // maintaining L2 locality for each worker thread.
-  size_type numToSchedule = wait ? numThreads - 1 : numThreads;
-
-  if (numToSchedule > 0) {
-    taskSet.scheduleBulk(static_cast<size_t>(numToSchedule), [&, callerChunk](size_t idx) {
-      size_type chunkIdx = static_cast<size_type>(idx);
-      if (wait && chunkIdx >= callerChunk) {
-        ++chunkIdx;
-      }
-
-      auto chunkBounds = chunkRange(chunkIdx);
-      IntegerT start = chunkBounds.first;
-      IntegerT end = chunkBounds.second;
-
-      auto stateIt = states.begin();
-      std::advance(stateIt, static_cast<ptrdiff_t>(chunkIdx));
-
-      return [it = stateIt, start, end, f]() {
-        auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-        f(*it, start, end);
-      };
-    });
-  }
-
-  if (wait) {
-    auto stateIt = states.begin();
-    std::advance(stateIt, static_cast<ptrdiff_t>(callerChunk));
-    auto callerBounds = chunkRange(callerChunk);
-    {
-      // Mark caller as inside parallel_for so nested parallel_for calls
-      // skip the ring fast path (same as worker tasks which have this guard
-      // in their lambda). Without this, the caller's nested parallel_for
-      // would push to rings that workers can't drain while they're busy
-      // with their own outer chunks.
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      f(*stateIt, callerBounds.first, callerBounds.second);
-    }
-    taskSet.wait();
-  }
-}
-
 template <typename IntegerT>
 struct ChunkSizingResult {
   typename ChunkedRange<IntegerT>::size_type maxThreads;
   bool isStatic;
 };
 
-/**
- * Adjust the thread count and static/dynamic scheduling decision based on work size.
- *
- * The goal is to avoid oversubscription and ensure each thread gets enough work:
- *
- * 1. Cap maxThreads to available pool threads (plus calling thread if waiting).
- * 2. If minItemsPerChunk > 1, reduce thread count so each thread gets at least
- *    that many items. If even after reduction the chunks are too small, fall back
- *    to static scheduling (which distributes items evenly without atomic contention).
- * 3. If minItemsPerChunk == 1 and the range is smaller than the thread count,
- *    fall back to static scheduling (auto mode) or cap threads (explicit dynamic).
- */
+// Adjust the thread count and static/dynamic scheduling decision based on work size.
 template <typename IntegerT>
 ChunkSizingResult<IntegerT> adjustChunkSizing(
     const ChunkedRange<IntegerT>& range,
@@ -562,25 +423,17 @@ ChunkSizingResult<IntegerT> adjustChunkSizing(
     bool wait) {
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  // Step 1: never use more threads than could participate.
-  // Always count the caller (+1) even when wait=false, because the caller
-  // will eventually participate via TaskSet::wait()/destructor and can steal
-  // work items. This prevents noWait parallel_for on small pools from
-  // degenerating to serial inline execution.
   maxThreads = std::min<size_type>(maxThreads, poolThreads + 1);
 
   if (minItemsPerChunk > 1) {
-    // Step 2a: reduce threads so each gets at least minItemsPerChunk items
     size_type maxWorkers = range.size() / minItemsPerChunk;
     if (maxWorkers < maxThreads) {
       maxThreads = maxWorkers;
     }
-    // Step 2b: if dynamic chunks would still be too small, use static scheduling
     if (maxThreads > 0 && range.size() / (maxThreads + wait) < minItemsPerChunk && range.isAuto()) {
       isStatic = true;
     }
   } else if (range.size() <= poolThreads + wait) {
-    // Step 3: fewer items than threads — static is better (no atomic overhead)
     if (range.isAuto()) {
       isStatic = true;
     } else if (!range.isStatic()) {
@@ -591,230 +444,88 @@ ChunkSizingResult<IntegerT> adjustChunkSizing(
   return {maxThreads, isStatic};
 }
 
-// Per-group range for decoupled-atomic dynamic parallel_for. Each group of
-// threads shares an L3-local atomic index over a contiguous sub-range of
-// chunks, eliminating cross-CCD cache-line bouncing on many-core machines.
-struct alignas(kCacheLineSize) GroupRange {
-  std::atomic<size_t> index{0};
-  size_t startChunk{0};
-  size_t numGroupChunks{0};
+// Compute effective granularity and trimmed range end.
+template <typename IntegerT>
+struct GranularityInfo {
+  uint32_t granularity;
+  IntegerT trimmedEnd;
+  bool hasTail;
 };
 
-/**
- * Dynamic (work-stealing) parallel_for implementation.
- *
- * Workers are partitioned into groups of ~16 threads, each with its own
- * atomic index over a contiguous sub-range of chunks. This keeps each
- * group's atomic in the local L3 cache on many-core machines with
- * multiple CCDs, eliminating cross-CCD cache-line contention on the
- * shared fetch_add. Intra-group load balancing (16 threads sharing one
- * L3-local atomic) is fast and preserved.
- *
- * When the total worker count is below 16, there is exactly one group
- * and the behavior is equivalent to the original single-atomic approach.
- *
- * The ExitAction callback is invoked when a worker finds no more chunks;
- * this allows the no-wait path to deallocate heap state when the last
- * worker exits, while the wait path passes a no-op.
- *
- * When wait is true, the calling thread participates as an additional worker
- * and blocks until all tasks complete.
- */
-template <
-    typename TaskSetT,
-    typename IntegerT,
-    typename F,
-    typename StateContainer,
-    typename IndexRef,
-    typename ExitAction>
-void parallel_for_dynamicImpl(
+template <typename IntegerT>
+GranularityInfo<IntegerT> computeGranularity(
+    const ChunkedRange<IntegerT>& range,
+    uint32_t requested) {
+  using size_type = typename ChunkedRange<IntegerT>::size_type;
+  uint32_t granularity = (range.chunk == 0 || range.chunk == ChunkedRange<IntegerT>::kStatic)
+      ? std::max<uint32_t>(1, requested)
+      : 1;
+
+  IntegerT trimmedEnd = range.end;
+  bool hasTail = false;
+  if (granularity > 1) {
+    size_type rem = range.size() % granularity;
+    if (rem > 0) {
+      trimmedEnd = static_cast<IntegerT>(range.end - static_cast<IntegerT>(rem));
+      hasTail = true;
+    }
+  }
+  return {granularity, trimmedEnd, hasTail};
+}
+
+// Adaptive (stripe-based) wait dispatch for the top-level parallel_for.
+template <typename TaskSetT, typename IntegerT, typename F, typename StateContainer>
+void parallel_for_adaptiveWaitDispatch(
     TaskSetT& taskSet,
     StateContainer& states,
-    IntegerT start,
-    IntegerT end,
+    const ChunkedRange<IntegerT>& parRange,
     F&& f,
     size_t numToLaunch,
-    typename ChunkedRange<IntegerT>::size_type chunkSize,
-    typename ChunkedRange<IntegerT>::size_type numChunks,
-    IndexRef& index,
-    ExitAction exitAction,
-    bool wait) {
-  size_t totalWorkers = numToLaunch + (wait ? 1 : 0);
+    uint32_t minItemsPerChunk,
+    uint32_t granularity) {
+  using size_type = typename ChunkedRange<IntegerT>::size_type;
+  size_type numStripeWorkers = static_cast<size_type>(numToLaunch) + 1;
+  auto adaptiveChunkInfo =
+      parRange.calcChunkSize(numToLaunch, true, minItemsPerChunk, granularity, /*maxDynFactor=*/64);
+  auto adaptiveChunkSize = std::get<0>(adaptiveChunkInfo);
 
-  // Use the L3 cache group count (one per CCD on AMD, one per tile/SNC
-  // cluster on Intel) when available, so the per-group atomic lands in each
-  // CCD's L3. Falls back to a heuristic (~16 threads per group) on platforms
-  // where sysfs/topology detection returns nothing (e.g. macOS).
-  size_t l3Groups = CpuSet::l3CacheGroups().size();
-  size_t effectiveGroups;
-  if (l3Groups > 1 && totalWorkers > 16) {
-    effectiveGroups = std::min(l3Groups, totalWorkers);
-  } else {
-    effectiveGroups = std::max<size_t>(1, (totalWorkers + 15) / 16);
-  }
-
-  // Single group: use the original shared-index path with no extra overhead.
-  if (effectiveGroups <= 1) {
-    auto worker = [start, end, &index, f, chunkSize, numChunks, exitAction](auto& s) {
-      auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-      while (true) {
-        auto cur = index.fetch_add(1, std::memory_order_relaxed);
-        if (cur >= numChunks) {
-          exitAction(cur);
-          break;
-        }
-        auto sidx = static_cast<IntegerT>(start + cur * chunkSize);
-        if (cur + 1 == numChunks) {
-          f(s, sidx, end);
-        } else {
-          f(s, sidx, static_cast<IntegerT>(sidx + chunkSize));
-        }
-      }
-    };
-
-    {
-      auto stateBegin = states.begin();
-      // Use scheduleBulk so the per-worker tasks land directly in per-thread
-      // rings (kStatic-style fast path), not the central moodycamel queue.
-      // Each task is the worker loop itself; the shared atomic index inside
-      // the worker handles dynamic chunk distribution.
-      taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [stateBegin, worker](size_t i) {
-        auto stateIt = stateBegin;
-        std::advance(stateIt, static_cast<ptrdiff_t>(i));
-        return [&s = *stateIt, worker]() { worker(s); };
-      });
-    }
-
-    if (wait) {
-      auto it = states.begin();
-      std::advance(it, static_cast<ptrdiff_t>(numToLaunch));
-      worker(*it);
-      taskSet.wait();
-    }
-    return;
-  }
-
-  // Multi-group path: partition chunks among effectiveGroups groups, each with
-  // its own cache-line-aligned atomic index.
-  //
-  // The GroupRange array and exit counter must outlive all workers. In the
-  // wait path the caller blocks until completion, so stack ownership suffices.
-  // In the no-wait path the function returns immediately, so we heap-allocate
-  // and have the last worker free the memory alongside the caller's exitAction.
-
-  // Header stored at the front of a single aligned allocation that holds the
-  // exit counter followed by the GroupRange array.
-  struct alignas(kCacheLineSize) GroupBlock {
-    std::atomic<size_t> exitCounter{0};
-    size_t numGroups;
-    size_t totalWorkers;
-    bool heapOwned;
-
-    GroupRange* ranges() {
-      auto* base = reinterpret_cast<char*>(this);
-      uintptr_t off = detail::alignToCacheLine(sizeof(GroupBlock));
-      return reinterpret_cast<GroupRange*>(base + off);
-    }
-  };
-
-  size_t blockBytes =
-      detail::alignToCacheLine(sizeof(GroupBlock)) + sizeof(GroupRange) * effectiveGroups;
-
-  // Both the wait and no-wait paths heap-own the block; the last worker to
-  // finish frees it. A thread-local buffer-reuse optimization for the wait
-  // path was intentionally not used here: it is unsafe under nested multi-group
-  // parallel_for on the same thread, because the caller runs its own chunk
-  // (worker(*it) below) -- which may re-enter here -- BEFORE taskSet.wait()
-  // returns, while this call's other-thread workers are still reading the
-  // block. The per-call allocation is negligible relative to the >16-thread
-  // work on this path; revisit only if it shows up in a profile.
-  void* blockMem = detail::alignedMalloc(blockBytes, kCacheLineSize);
-  bool heapOwned = true;
-
-  auto* block = new (blockMem) GroupBlock{};
-  block->numGroups = effectiveGroups;
-  block->totalWorkers = totalWorkers;
-  block->heapOwned = heapOwned;
-
-  GroupRange* groupRanges = block->ranges();
-  for (size_t g = 0; g < effectiveGroups; ++g) {
-    new (&groupRanges[g]) GroupRange{};
-  }
-
-  size_t baseChunks = static_cast<size_t>(numChunks) / effectiveGroups;
-  size_t extraChunks = static_cast<size_t>(numChunks) % effectiveGroups;
-  size_t chunkOffset = 0;
-  for (size_t g = 0; g < effectiveGroups; ++g) {
-    size_t gc = baseChunks + (g < extraChunks ? 1 : 0);
-    groupRanges[g].startChunk = chunkOffset;
-    groupRanges[g].numGroupChunks = gc;
-    chunkOffset += gc;
-  }
-
-  auto worker = [start, end, block, f, chunkSize, numChunks, exitAction](auto& s, size_t groupIdx) {
+  detail::StripeState<IntegerT> stripeState;
+  detail::initStripeState(
+      stripeState,
+      parRange.start,
+      parRange.end,
+      static_cast<uint32_t>(numStripeWorkers),
+      static_cast<IntegerT>(adaptiveChunkSize),
+      granularity);
+  auto stateBegin = states.begin();
+  auto worker = [&stripeState, &f](auto& userState, uint32_t myIdx) {
     auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-    auto& gr = block->ranges()[groupIdx];
-    // Snapshot block-owned metadata BEFORE the release increment below. Once a
-    // worker performs exitCounter.fetch_add, the worker that observes the final
-    // count frees `block`, so `block` must not be dereferenced afterwards.
-    // Reading block->totalWorkers in the `prev + 1 == ...` check after the
-    // increment is a use-after-free race against that free (caught by TSAN).
-    const size_t totalWorkersLocal = block->totalWorkers;
-    const bool owned = block->heapOwned;
-    while (true) {
-      auto cur = gr.index.fetch_add(1, std::memory_order_relaxed);
-      if (cur >= gr.numGroupChunks) {
-        break;
-      }
-      auto globalChunk =
-          static_cast<typename ChunkedRange<IntegerT>::size_type>(gr.startChunk + cur);
-      auto sidx = static_cast<IntegerT>(start + globalChunk * chunkSize);
-      if (globalChunk + 1 == numChunks) {
-        f(s, sidx, end);
-      } else {
-        f(s, sidx, static_cast<IntegerT>(sidx + chunkSize));
-      }
-    }
-    // The acq_rel increment orders every worker's prior block accesses (the gr
-    // loop above) before the last worker's free. After it, only the last worker
-    // touches block, and only to free it -- no peer reads block past this point.
-    auto prev = block->exitCounter.fetch_add(1, std::memory_order_acq_rel);
-    if (prev + 1 == totalWorkersLocal) {
-      exitAction(numChunks + static_cast<decltype(numChunks)>(totalWorkersLocal) - 1);
-      if (owned) {
-        detail::alignedFree(block);
-      }
-    }
+    detail::runStripeWorker(stripeState, myIdx, userState, f);
   };
-
-  {
-    auto stateBegin = states.begin();
-    // Use scheduleBulk so the per-worker tasks land directly in per-thread
-    // rings (kStatic-style fast path), not the central moodycamel queue.
-    // The shared per-group atomic index inside the worker handles dynamic
-    // chunk distribution across workers within a group.
-    taskSet.scheduleBulk(
-        numToLaunch, [stateBegin, worker, effectiveGroups, totalWorkers](size_t i) {
-          auto stateIt = stateBegin;
-          std::advance(stateIt, static_cast<ptrdiff_t>(i));
-          size_t gIdx = (i * effectiveGroups) / totalWorkers;
-          return [&s = *stateIt, worker, gIdx]() { worker(s, gIdx); };
-        });
+  if (numToLaunch > 0) {
+    taskSet.scheduleBulk(numToLaunch, [stateBegin, worker](size_t idx) {
+      auto stateIt = stateBegin;
+      std::advance(stateIt, static_cast<ptrdiff_t>(idx));
+      uint32_t myIdx = static_cast<uint32_t>(idx);
+      return [&userState = *stateIt, myIdx, worker]() { worker(userState, myIdx); };
+    });
   }
-
-  if (wait) {
-    auto it = states.begin();
-    std::advance(it, static_cast<ptrdiff_t>(numToLaunch));
-    size_t gIdx = (numToLaunch * effectiveGroups) / totalWorkers;
-    if (gIdx >= effectiveGroups) {
-      gIdx = effectiveGroups - 1;
-    }
-    worker(*it, gIdx);
-    taskSet.wait();
-  }
+  auto callerIt = states.begin();
+  std::advance(callerIt, static_cast<ptrdiff_t>(numToLaunch));
+  worker(*callerIt, static_cast<uint32_t>(numToLaunch));
+  taskSet.wait();
 }
 
 } // namespace detail
+
+} // namespace dispenso
+
+// Implementation detail headers — included after all shared types are defined.
+// These are not standalone headers; they depend on types defined above.
+#include "detail/par_for_dynamic.h"
+#include "detail/par_for_static.h"
+
+namespace dispenso {
 
 /**
  * Execute loop over the range in parallel.
@@ -857,25 +568,11 @@ void parallel_for(
 
   using size_type = typename ChunkedRange<IntegerT>::size_type;
 
-  // Granularity is ignored when the user provides an explicit chunk size — the user is
-  // already specifying chunk granularity in that case.
-  uint32_t granularity = (range.chunk == 0 || range.chunk == ChunkedRange<IntegerT>::kStatic)
-      ? std::max<uint32_t>(1, options.granularity)
-      : 1;
+  auto granInfo = detail::computeGranularity(range, options.granularity);
+  uint32_t granularity = granInfo.granularity;
+  IntegerT trimmedEnd = granInfo.trimmedEnd;
+  bool hasTail = granInfo.hasTail;
 
-  // If granularity > 1, we may need to peel off a sub-granularity tail and run it serially
-  // after the parallel portion. Compute the trimmed range and the tail boundary.
-  IntegerT trimmedEnd = range.end;
-  bool hasTail = false;
-  if (granularity > 1) {
-    size_type rem = range.size() % granularity;
-    if (rem > 0) {
-      trimmedEnd = static_cast<IntegerT>(range.end - static_cast<IntegerT>(rem));
-      hasTail = true;
-    }
-  }
-
-  // Helper to run the tail (if any) on the calling thread, after the parallel portion completes.
   auto runTail = [&]() {
     if (hasTail) {
       f(*states.begin(), trimmedEnd, range.end);
@@ -886,17 +583,16 @@ void parallel_for(
   size_type maxThreads = std::max<int32_t>(options.maxThreads, 1);
   bool isStatic = range.isStatic();
 
-  // Build the trimmed range used by the parallel portion. Preserve chunking choice.
   ChunkedRange<IntegerT> parRange = range;
   parRange.end = trimmedEnd;
 
   const size_type N = taskSet.numPoolThreads();
-  if (N == 0 || !options.maxThreads || parRange.size() <= minItemsPerChunk ||
+
+  // If the parallel portion is empty (entire range is a sub-granularity tail),
+  // or there's no pool / recursion, run everything inline.
+  if (parRange.empty() || N == 0 ||
       detail::PerPoolPerThreadInfo::isParForRecursive(&taskSet.pool())) {
     detail::initStates(states, defaultState, 1, options.reuseExistingState);
-    // Inline single-call path: hand the full original range to the lambda. The
-    // tail (if any) is absorbed into this single call — and that's fine because
-    // there are no other parallel chunks to violate the granularity contract.
     f(*states.begin(), range.start, range.end);
     if (options.wait) {
       taskSet.wait();
@@ -909,7 +605,6 @@ void parallel_for(
   maxThreads = chunkSizing.maxThreads;
   isStatic = chunkSizing.isStatic;
 
-  // If adjustment reduced threads below 2, run inline — not worth parallelizing.
   if (maxThreads < 2) {
     detail::initStates(states, defaultState, 1, options.reuseExistingState);
     f(*states.begin(), range.start, range.end);
@@ -942,69 +637,23 @@ void parallel_for(
       static_cast<size_t>(numToLaunch + options.wait),
       options.reuseExistingState);
 
-  // For kAdaptive (range.chunk == 0), use the per-stripe atomic-counter
-  // implementation (Callisto-inspired). Each worker owns a contiguous stripe
-  // and consumes chunkSize iterations at a time via fetch_add; when its own
-  // stripe is exhausted, it claims chunks from peers' stripes the same way,
-  // preferring same-L3 cache-group victims first.
   bool useAdaptive = range.chunk == 0;
-
-  if (numToLaunch == 1 && !options.wait && !useAdaptive) {
-    // No-wait path with a single non-adaptive worker: hand the trimmed range to
-    // the worker and (if there's a tail) run the tail synchronously on the
-    // caller before returning. kAdaptive falls through so the caller can later
-    // participate via taskSet.wait().
-    taskSet.schedule([&s = states.front(), parRange, f = std::move(f)]() {
-      f(s, parRange.start, parRange.end);
-    });
-    runTail();
-    return;
-  }
 
   auto chunkInfo = parRange.calcChunkSize(numToLaunch, options.wait, minItemsPerChunk, granularity);
   auto chunkSize = std::get<0>(chunkInfo);
   auto numChunks = std::get<1>(chunkInfo);
-  if (useAdaptive) {
-    // Adaptive stripe path: aim for ~64 chunks per worker so peers always
-    // have meaningful sub-ranges to steal even after an owner drains most
-    // of its own stripe.
-    auto adaptiveChunkInfo = parRange.calcChunkSize(
-        numToLaunch, options.wait, minItemsPerChunk, granularity, /*maxDynFactor=*/64);
-    auto adaptiveChunkSize = std::get<0>(adaptiveChunkInfo);
-    if (options.wait) {
-      // Wait path: caller participates → numWorkers = numToLaunch + 1.
-      size_type numStripeWorkers = numToLaunch + 1;
-      detail::StripeState<IntegerT> stripeState;
-      detail::initStripeState(
-          stripeState,
-          parRange.start,
-          parRange.end,
-          static_cast<uint32_t>(numStripeWorkers),
-          static_cast<IntegerT>(adaptiveChunkSize),
-          granularity);
-      auto stateBegin = states.begin();
-      auto worker = [&stripeState, &f](auto& userState, uint32_t myIdx) {
-        auto recurseInfo = detail::PerPoolPerThreadInfo::parForRecurse();
-        detail::runStripeWorker(stripeState, myIdx, userState, f);
-      };
-      if (numToLaunch > 0) {
-        taskSet.scheduleBulk(static_cast<size_t>(numToLaunch), [stateBegin, worker](size_t idx) {
-          auto stateIt = stateBegin;
-          std::advance(stateIt, static_cast<ptrdiff_t>(idx));
-          uint32_t myIdx = static_cast<uint32_t>(idx);
-          return [&userState = *stateIt, myIdx, worker]() { worker(userState, myIdx); };
-        });
-      }
-      auto callerIt = states.begin();
-      std::advance(callerIt, static_cast<ptrdiff_t>(numToLaunch));
-      worker(*callerIt, static_cast<uint32_t>(numToLaunch));
-      taskSet.wait();
-      runTail();
-      return;
-    }
-    // No-wait adaptive path is not yet implemented for the stripe variant;
-    // fall through to the dynamic-chunked path below. A heap-allocated
-    // StripeState with shared_ptr lifetime would be the natural extension.
+
+  if (useAdaptive && options.wait) {
+    detail::parallel_for_adaptiveWaitDispatch(
+        taskSet,
+        states,
+        parRange,
+        std::forward<F>(f),
+        static_cast<size_t>(numToLaunch),
+        minItemsPerChunk,
+        granularity);
+    runTail();
+    return;
   }
 
   if (options.wait) {
@@ -1023,43 +672,16 @@ void parallel_for(
         options.wait);
     runTail();
   } else {
-    using SizeType = decltype(numChunks);
-    struct ChunkIndex {
-      std::atomic<SizeType> index;
-    };
-    static_assert(sizeof(ChunkIndex) <= kCacheLineSize, "ChunkIndex must fit in one cache line");
-    char* mem = allocSmallBuffer<kCacheLineSize>();
-    auto* ci = new (mem) ChunkIndex{{0}};
-    SizeType lastExit = numChunks + static_cast<SizeType>(numToLaunch) - 1;
-    // Capture the tail as part of the last-worker exit action so the contract holds
-    // even when there is no external wait.
-    IntegerT tailStart = trimmedEnd;
-    IntegerT tailEnd = range.end;
-    bool tailNeeded = hasTail;
-    auto& tailState = *states.begin();
-    // Copy f before std::forward may move it — the exitAction outlives this scope
-    // when wait=false.
-    auto tailFunc = f;
-    detail::parallel_for_dynamicImpl(
+    detail::parallel_for_dynamicNoWaitDispatch(
         taskSet,
         states,
-        parRange.start,
-        parRange.end,
+        parRange,
         std::forward<F>(f),
         static_cast<size_t>(numToLaunch),
         chunkSize,
         numChunks,
-        ci->index,
-        [ci, lastExit, tailFunc = std::move(tailFunc), &tailState, tailStart, tailEnd, tailNeeded](
-            auto cur) {
-          if (cur == lastExit) {
-            if (tailNeeded) {
-              tailFunc(tailState, tailStart, tailEnd);
-            }
-            deallocSmallBuffer<kCacheLineSize>(ci);
-          }
-        },
-        options.wait);
+        range.end,
+        hasTail);
   }
 }
 
