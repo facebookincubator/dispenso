@@ -57,6 +57,12 @@ class EpochWaiter {
     futex(&ftx_, FUTEX_WAKE_PRIVATE, 1, nullptr, nullptr, 0);
   }
 
+  // Bump the epoch without issuing a futex syscall. Safe when the caller
+  // knows no thread is currently parked on this waiter — used by wake
+  // paths that have observed sleepMask == 0 for the group. Spinning
+  // threads see the new epoch on their next waitOnThread call and return
+  // immediately without sleeping; threads that are already in
+  // tryFindAndExecuteWork pick up the just-queued task naturally.
   void bump() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
   }
@@ -124,6 +130,7 @@ class EpochWaiter {
     mac_futex_wake_one(&epoch_, sizeof(uint32_t));
   }
 
+  // See Linux variant for semantics — bump epoch only, no syscall.
   void bump() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
   }
@@ -193,6 +200,7 @@ class EpochWaiter {
     WakeByAddressAll(&epoch_);
   }
 
+  // See Linux variant for semantics — bump epoch only, no kernel call.
   void bump() {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
   }

@@ -32,63 +32,70 @@ PoolWakeState::PoolWakeState(int32_t numThreads, int32_t groupSize, int32_t bran
       nextGroupTable_[static_cast<size_t>(i)] = i + 1;
     }
     nextGroupTable_[static_cast<size_t>(numGroups_ - 1)] = 0;
+
+    // Build the Pattern C cascade table. Level 1: g0's threads cascade to
+    // g1..gG. Level 2: g1..gG's threads cascade to g(G+1)..g(G+G*G).
+    // Each thread is at most one cascade host.
+    //
+    // For 192 threads / G=8 / 24 groups:
+    //   threads 0..7  (g0) -> g1..g8        (8 lambdas)
+    //   threads 8..15 (g1) -> g9..g16       (8 lambdas)
+    //   threads 16..23 (g2) -> g17..g24 (cap at 23)
+    //   ... continue until all groups assigned.
+    cascadeTargets_.assign(static_cast<size_t>(numThreads_), -1);
+    int32_t nextTarget = 1; // g0 is the seed; cascade fills g1..gN-1
+    for (int32_t hostGroup = 0; hostGroup < numGroups_ && nextTarget < numGroups_; ++hostGroup) {
+      for (int32_t slot = 0; slot < groupSize_ && nextTarget < numGroups_; ++slot) {
+        int32_t hostThread = hostGroup * groupSize_ + slot;
+        if (hostThread >= numThreads_) {
+          break;
+        }
+        cascadeTargets_[static_cast<size_t>(hostThread)] = nextTarget;
+        ++nextTarget;
+      }
+    }
   }
 }
 
 PoolWakeState::~PoolWakeState() = default;
 
-bool PoolWakeState::wakeOne() {
-  if (totalSleeping_.load(std::memory_order_relaxed) <= 0) {
-    return false;
-  }
-  int32_t g = nextWakeGroup_.load(std::memory_order_relaxed);
-  if (g >= numGroups_) {
-    g = 0;
-  }
-  for (int32_t gi = 0; gi < numGroups_; ++gi) {
-    uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
-    if (mask) {
-      int bit = detail::countTrailingZeros(mask);
-      int32_t threadIdx = g * groupSize_ + bit;
-      if (threadIdx < numThreads_) {
-        // Wake one thread from this group's shared waiter. The kernel picks
-        // any one of the parked waiters; that's fine since group threads
-        // share a steal ring and any of them can grab the work.
-        waiterFor(threadIdx).bumpAndWake();
-        nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g)], std::memory_order_relaxed);
-        return true;
-      }
-    }
-    g = nextGroupTable_[static_cast<size_t>(g)];
-  }
-  return false;
-}
-
 void PoolWakeState::wakeRange(int32_t count) {
   if (count <= 0) {
     return;
   }
-  // Only scan groups that contain threads in [0, count). With one waiter
-  // per group, issue ONE bump-and-wake per group sized to the number of
-  // sleepers in range — avoids the redundant per-bit wake the old
-  // sg=4 layout needed.
+  // For each group in [0, count), bump the group's epoch so spinning
+  // workers won't park, and additionally issue a futex syscall only if
+  // some thread in the group is actually sleeping. The epoch bump alone
+  // costs one relaxed atomic; the futex syscall costs ~1us. Skipping
+  // the syscall when sleepMask == 0 (entire group spinning) cuts the
+  // warm-pool wake cost by ~100x.
+  //
+  // Correctness: a spinning worker that hasn't yet looped back to the
+  // top of its scheduler loop will pick up the scheduled task on its
+  // next iteration of tryFindAndExecuteWork. If a worker later transitions
+  // into waitOnThread(epoch), the bumped epoch causes wait to return
+  // immediately without sleeping.
   int32_t lastGroup = (count - 1) / groupSize_;
   for (int32_t g = 0; g <= lastGroup && g < numGroups_; ++g) {
     uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
-    if (!mask) {
-      continue;
-    }
     if (g == lastGroup) {
       int32_t bitsInLastGroup = count - g * groupSize_;
       if (bitsInLastGroup < 64) {
         mask &= (uint64_t{1} << bitsInLastGroup) - 1;
       }
     }
-    if (!mask) {
-      continue;
+    auto& waiter = waiterFor(g * groupSize_);
+    if (mask == 0) {
+      // All workers in this group are spinning — epoch bump prevents
+      // them from parking on their next waitOnThread without paying
+      // for a syscall.
+      waiter.bump();
+    } else {
+      // At least one worker is parked — need a real wake. Wake just
+      // the parked ones (bumpAndWakeN counts).
+      int32_t numSleepers = detail::countSetBits(mask);
+      waiter.bumpAndWakeN(numSleepers, groupSize_);
     }
-    int32_t numSleepers = detail::countSetBits(mask);
-    waiterFor(g * groupSize_).bumpAndWakeN(numSleepers, groupSize_);
   }
 }
 
@@ -119,155 +126,49 @@ int32_t PoolWakeState::claimAndWakeOne() {
   return -1;
 }
 
-// Find a group with sleepers, starting from `from`, walking via
-// nextGroupTable_. Returns -1 if none.
-int32_t PoolWakeState::findGroupWithSleepers(int32_t from) const {
-  int32_t g = from;
-  for (int32_t gi = 0; gi < numGroups_; ++gi) {
-    if (groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed)) {
-      return g;
-    }
-    g = nextGroupTable_[static_cast<size_t>(g)];
+bool PoolWakeState::cascadeWakeSeed(int32_t count) {
+  if (count <= 0) {
+    return false;
   }
-  return -1;
-}
-
-void PoolWakeState::setupCascade(int32_t g0, int32_t remaining) {
-  int32_t numToCascade = (remaining + groupSize_ - 1) / groupSize_;
-
-#ifndef DISPENSO_TUNE_PROMOTE_SEED
-// On Windows, promote-seed is a small net loss (~1.5% mean across the
-// per-bench tuning sweep, with the clearest losses on
-// BM_dispenso_blocking/*). Each WakeByAddressSingle is expensive enough
-// that the extra in-thread wake to bootstrap g1 doesn't pay for itself
-// against a single seed cascading from g0. On Linux/macOS the second
-// seed runs in parallel with g0's cascade for free, so keep it on.
-#if defined(_WIN32)
-#define DISPENSO_TUNE_PROMOTE_SEED 0
-#else
-#define DISPENSO_TUNE_PROMOTE_SEED 1
-#endif
-#endif
-  int32_t g1 = -1;
-#if DISPENSO_TUNE_PROMOTE_SEED
-  if (numToCascade > groupSize_) {
-    g1 = findGroupWithSleepers(nextGroupTable_[static_cast<size_t>(g0)]);
-    if (g1 == g0) {
-      g1 = -1;
-    }
+  int32_t lastGroup = (count - 1) / groupSize_;
+  if (lastGroup >= numGroups_) {
+    lastGroup = numGroups_ - 1;
   }
-#endif
 
-  uint64_t bits0 = 0, bits1 = 0;
-  int32_t scan = nextGroupTable_[static_cast<size_t>(g0)];
-  int32_t bitIdx = 0;
-  for (int32_t gi = 0; gi < numGroups_ - 1 && numToCascade > 0; ++gi) {
-    if (scan == g1) {
-      scan = nextGroupTable_[static_cast<size_t>(scan)];
-      continue;
+  // Pool-wide fast path: no sleepers anywhere. Just bump every affected
+  // group's epoch (so any racing parker sees the bump and skips sleep) and
+  // return. Zero syscalls, ~N atomic stores. This matches the warm-pool
+  // path of the original wakeRange.
+  if (totalSleeping_.load(std::memory_order_relaxed) == 0) {
+    for (int32_t g = 0; g <= lastGroup; ++g) {
+      waiterFor(g * groupSize_).bump();
     }
-    if (scan < 64 &&
-        groupStates_[static_cast<size_t>(scan)].sleepMask.load(std::memory_order_relaxed)) {
-      if (g1 >= 0 && (bitIdx & 1)) {
-        bits1 |= (uint64_t{1} << scan);
-      } else {
-        bits0 |= (uint64_t{1} << scan);
+    return false;
+  }
+
+  // Single pass: bump every affected group's epoch and wake any sleepers.
+  // The ring-dispatch path pre-stages cascade-host lambdas into g0 rings
+  // that call cascadeWake() for g1+, but the central-queue path has no
+  // such lambdas. Wake all groups with sleepers directly so both paths
+  // get prompt futex wakes. The extra syscalls are negligible — they only
+  // fire when threads are actually sleeping.
+  for (int32_t g = 0; g <= lastGroup; ++g) {
+    uint64_t mask = groupStates_[static_cast<size_t>(g)].sleepMask.load(std::memory_order_relaxed);
+    if (g == lastGroup) {
+      int32_t bitsInLastGroup = count - g * groupSize_;
+      if (bitsInLastGroup < 64) {
+        mask &= (uint64_t{1} << bitsInLastGroup) - 1;
       }
-      --numToCascade;
-      ++bitIdx;
     }
-    scan = nextGroupTable_[static_cast<size_t>(scan)];
-  }
-  if (bits0 != 0) {
-    groupStates_[static_cast<size_t>(g0)].wakePending.fetch_or(bits0, std::memory_order_release);
-  }
-  if (g1 >= 0) {
-    if (bits1 != 0) {
-      groupStates_[static_cast<size_t>(g1)].wakePending.fetch_or(bits1, std::memory_order_release);
-    }
-    groupStates_[static_cast<size_t>(g0)].promoteSeed.store(g1, std::memory_order_release);
-  }
-}
-
-void PoolWakeState::wakeN(int32_t n) {
-  // Relaxed loads on totalSleeping_/sleepMask are intentional: a missed
-  // sleeper here is a bounded latency hit (the sleeper wakes via the
-  // sleepLengthUs_ timeout and re-checks for work), not a deadlock.
-  if (n <= 0 || totalSleeping_.load(std::memory_order_relaxed) <= 0) {
-    return;
-  }
-  if (n == 1) {
-    wakeOne();
-    return;
-  }
-
-  int32_t startGroup = nextWakeGroup_.load(std::memory_order_relaxed);
-  if (startGroup >= numGroups_) {
-    startGroup = 0;
-  }
-  int32_t g0 = findGroupWithSleepers(startGroup);
-  if (g0 < 0) {
-    return;
-  }
-
-  // K0 = up to groupSize threads from g0; remainder wakes other groups via
-  // the bitmask cascade.
-  int32_t k0 = std::min(n, groupSize_);
-  int32_t remaining = n - k0;
-
-  if (remaining > 0) {
-    setupCascade(g0, remaining);
-  }
-
-  // Broadcast to g0. Workers in g0 will see promoteSeed (if set) and
-  // wakePending bits (if any) and CAS-claim them in cascadeStepSlow.
-  waiterFor(g0 * groupSize_).bumpAndWakeN(k0, groupSize_);
-  nextWakeGroup_.store(nextGroupTable_[static_cast<size_t>(g0)], std::memory_order_relaxed);
-}
-
-int32_t PoolWakeState::cascadeStepSlow(int32_t group) {
-  auto& gs = groupStates_[static_cast<size_t>(group)];
-
-  // First, try to claim the promoteSeed (one thread wins, others fall through).
-  // If we win, bumpAndWake the promote target to bootstrap parallel cascade.
-  // We then continue to claim a wakePending bit so this thread also fans out.
-  //
-  // The relaxed load is safe: this thread just returned from EpochWaiter::wait,
-  // which provides a happens-after edge with the producer's bumpAndWakeN, which
-  // in turn happens-after the producer's release-store of promoteSeed. The
-  // exchange's acquire ordering guarantees we observe g1.wakePending bits if
-  // we successfully claim — relaxed-then-acquire avoids a redundant fence on
-  // the common no-promote path.
-  //
-  // We use bumpAndWakeAll here rather than bumpAndWakeN(popcount(bits1)+1, ...)
-  // for simplicity. The trade-off: when g1 has more parked threads than bits1
-  // cascade work, the extra threads wake, find no work, and re-sleep (spurious
-  // wake CPU bounded by spurious_round_trip * (groupSize - popcount(bits1)),
-  // running in parallel on otherwise-idle cores). Acceptable for the rare case
-  // promote-seed engages; revisit if measurements show it dominates.
-  int32_t promote = gs.promoteSeed.load(std::memory_order_relaxed);
-  if (promote >= 0) {
-    int32_t claimed = gs.promoteSeed.exchange(-1, std::memory_order_acquire);
-    if (claimed >= 0) {
-      waiterFor(claimed * groupSize_).bumpAndWakeAll();
+    auto& waiter = waiterFor(g * groupSize_);
+    if (mask == 0) {
+      waiter.bump();
+    } else {
+      int32_t numSleepers = detail::countSetBits(mask);
+      waiter.bumpAndWakeN(numSleepers, groupSize_);
     }
   }
-
-  uint64_t pending = gs.wakePending.load(std::memory_order_acquire);
-  while (pending != 0) {
-    int target = detail::countTrailingZeros(pending);
-    uint64_t bit = uint64_t{1} << target;
-    uint64_t prev = gs.wakePending.fetch_and(~bit, std::memory_order_acq_rel);
-    if (prev & bit) {
-      // We claimed this bit — wake the target group fully.
-      waiterFor(target * groupSize_).bumpAndWakeAll();
-      return target;
-    }
-    // Lost the race; another worker took this bit. Re-load to pick up
-    // any new bits that were set between our previous load and now.
-    pending = gs.wakePending.load(std::memory_order_acquire);
-  }
-  return -1;
+  return true;
 }
 
 void PoolWakeState::wakeAll() {

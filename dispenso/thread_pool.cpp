@@ -139,7 +139,7 @@ ThreadPool::PerThreadData::~PerThreadData() {}
 // Fixed-spin sleep strategy: workers iterate the work-finding loop up to
 // kSpinLimit times before parking. kSpinCheckInterval bounds the "lean
 // spin" warmup phase where threads only check their own ring (no central
-// queue, no processBudget).
+// queue).
 // Override via -DDISPENSO_TUNE_SPIN_CHECK_INTERVAL / -DDISPENSO_TUNE_FIXED_SPIN_ITERS.
 #if defined(DISPENSO_TUNE_SPIN_CHECK_INTERVAL)
 static constexpr int kSpinCheckInterval = DISPENSO_TUNE_SPIN_CHECK_INTERVAL;
@@ -236,7 +236,7 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       continue;
     }
 
-    // --- Full machinery: steal ring, processBudget, fixed-count backoff ---
+    // --- Full machinery: steal ring, fixed-count backoff ---
 
     // Outer steal ring check (deferred from lean phase). No empty() guard:
     // try_pop already fast-paths the empty case with a relaxed head/tail compare
@@ -258,7 +258,6 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
 
     if (spinLimit_ > 0) {
       // Fixed-spin mode: sleep after N total iterations, no time checks.
-      ws->processBudget(ringIndex);
       detail::cpuRelax();
 
       if (failCount >= spinLimit_) {
@@ -278,7 +277,6 @@ void ThreadPool::threadLoopWake(PerThreadData& data, int32_t ringIndex) {
       }
     } else {
       // Fallback when spinLimit_ == 0: use kDefaultSpinLimit directly.
-      ws->processBudget(ringIndex);
       detail::cpuRelax();
 
       if (failCount >= kDefaultSpinLimit) {
@@ -367,7 +365,6 @@ void ThreadPool::threadLoopPoll(PerThreadData& data, int32_t ringIndex) {
 
     detail::cpuRelax();
 
-    ws->processBudget(ringIndex);
     if (failCount >= kDefaultSpinLimit) {
       if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
         failCount = kDefaultSpinLimit;

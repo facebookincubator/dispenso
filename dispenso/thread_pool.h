@@ -432,6 +432,21 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   template <typename Generator>
   void scheduleBulkToRings(size_t count, Generator&& gen, moodycamel::ProducerToken* fallbackToken);
 
+  template <typename Generator>
+  DISPENSO_INLINE void scheduleBulkToRingsFastPath(
+      size_t count,
+      size_t ringCount,
+      Generator&& gen,
+      moodycamel::ProducerToken* fallbackToken);
+
+  template <typename Generator>
+  DISPENSO_INLINE void scheduleBulkToRingsBatched(
+      size_t count,
+      size_t ringCount,
+      size_t tasksPerRing,
+      Generator&& gen,
+      moodycamel::ProducerToken* fallbackToken);
+
   // Shared work-finding logic for both loop variants. Checks own ring,
   // central queue, and steal ring as third tier.
   // Returns true if work was found and executed.
@@ -855,6 +870,81 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
 }
 
 template <typename Generator>
+DISPENSO_INLINE void ThreadPool::scheduleBulkToRingsFastPath(
+    size_t count,
+    size_t ringCount,
+    Generator&& gen,
+    moodycamel::ProducerToken* fallbackToken) {
+#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)
+  // Pattern C cascade: wrap each cascade-host thread's task in a lambda
+  // that wakes its target group BEFORE running user work. Producer issues
+  // one wake-all on the seed group; the woken threads cascade in parallel
+  // to all other groups, then run their own user work.
+  auto* wsCascade = detail::consumeLoad(wakeState_);
+  bool useCascade = enableEpochWaiter_.load(std::memory_order_acquire) && wsCascade &&
+      wsCascade->totalSleeping() > 0;
+  for (size_t ring = 0; ring < count && ring < ringCount; ++ring) {
+    OnceFunction task = gen(ring);
+    int32_t target = useCascade
+        ? wsCascade->cascadeTargetFor(static_cast<int32_t>(ring), static_cast<int32_t>(count))
+        : -1;
+    if (target >= 0) {
+      OnceFunction wrapped = [wsCascade, target, inner = std::move(task)]() mutable {
+        wsCascade->cascadeWake(target);
+        inner();
+      };
+      if (!rings_[ring].try_push(std::move(wrapped))) {
+        enqueueToCentralQueue(std::move(wrapped), fallbackToken);
+      }
+    } else {
+      if (!rings_[ring].try_push(std::move(task))) {
+        enqueueToCentralQueue(std::move(task), fallbackToken);
+      }
+    }
+  }
+#else
+  for (size_t ring = 0; ring < count && ring < ringCount; ++ring) {
+    OnceFunction task = gen(ring);
+    if (!rings_[ring].try_push(std::move(task))) {
+      enqueueToCentralQueue(std::move(task), fallbackToken);
+    }
+  }
+#endif
+}
+
+template <typename Generator>
+DISPENSO_INLINE void ThreadPool::scheduleBulkToRingsBatched(
+    size_t count,
+    size_t ringCount,
+    size_t tasksPerRing,
+    Generator&& gen,
+    moodycamel::ProducerToken* fallbackToken) {
+  constexpr size_t kMaxStage = Ring::capacity();
+  size_t taskIdx = 0;
+  for (size_t ring = 0; ring < ringCount && taskIdx < count; ++ring) {
+    size_t blockEnd = std::min(taskIdx + tasksPerRing, count);
+    size_t blockSize = blockEnd - taskIdx;
+
+    size_t toStage = std::min(blockSize, kMaxStage);
+    OnceFunction staged[kMaxStage];
+    for (size_t j = 0; j < toStage; ++j) {
+      staged[j] = gen(taskIdx + j);
+    }
+
+    size_t pushed = rings_[ring].try_push_batch(staged, toStage);
+
+    for (size_t j = pushed; j < toStage; ++j) {
+      enqueueToCentralQueue(std::move(staged[j]), fallbackToken);
+    }
+
+    for (size_t j = taskIdx + toStage; j < blockEnd; ++j) {
+      enqueueToCentralQueue(gen(j), fallbackToken);
+    }
+    taskIdx += blockSize;
+  }
+}
+
+template <typename Generator>
 void ThreadPool::scheduleBulkToRings(
     size_t count,
     Generator&& gen,
@@ -864,64 +954,28 @@ void ThreadPool::scheduleBulkToRings(
   }
   assert(count <= numRings_.load(std::memory_order_relaxed));
 
-  // Increment before enqueuing, consistent with schedule() and scheduleBulkEnqueue().
-  // This ensures threads that wake and find work in a ring see a positive workRemaining_,
-  // preventing premature re-sleep or incorrect load-balancing decisions.
   workRemaining_.fetch_add(static_cast<ssize_t>(count), std::memory_order_release);
 
-  // No lock needed: ConcurrentObjectArena rings have stable pointers.
-
-  // Linear layout: task i goes to ring i (1 task per ring, kStatic pattern).
-  // Tasks that don't fit in their ring overflow to central queue.
   // Acquire: see tryExecuteNextFromRings. Pairs with the release store in
   // resizeLocked so we observe the freshly-constructed rings, not merely the
   // updated count.
   size_t ringCount = numRings_.load(std::memory_order_acquire);
   size_t tasksPerRing = (count + ringCount - 1) / ringCount;
 
-  size_t taskIdx = 0;
   if (tasksPerRing <= 1) {
-    // Fast path for kStatic (1 task per ring): no staging array needed.
-    for (size_t ring = 0; ring < count && ring < ringCount; ++ring) {
-      OnceFunction task = gen(ring);
-      if (!rings_[ring].try_push(std::move(task))) {
-        enqueueToCentralQueue(std::move(task), fallbackToken);
-      }
-    }
+    scheduleBulkToRingsFastPath(count, ringCount, std::forward<Generator>(gen), fallbackToken);
   } else {
-    // Batched path for kAuto (multiple tasks per ring).
-    constexpr size_t kMaxStage = Ring::capacity();
-    for (size_t ring = 0; ring < ringCount && taskIdx < count; ++ring) {
-      size_t blockEnd = std::min(taskIdx + tasksPerRing, count);
-      size_t blockSize = blockEnd - taskIdx;
-
-      // Stage tasks for this ring
-      size_t toStage = std::min(blockSize, kMaxStage);
-      OnceFunction staged[kMaxStage];
-      for (size_t j = 0; j < toStage; ++j) {
-        staged[j] = gen(taskIdx + j);
-      }
-
-      size_t pushed = rings_[ring].try_push_batch(staged, toStage);
-
-      // Overflow: staged tasks that didn't fit
-      for (size_t j = pushed; j < toStage; ++j) {
-        enqueueToCentralQueue(std::move(staged[j]), fallbackToken);
-      }
-
-      // Tasks beyond ring capacity that weren't staged go straight to central queue
-      for (size_t j = taskIdx + toStage; j < blockEnd; ++j) {
-        enqueueToCentralQueue(gen(j), fallbackToken);
-      }
-      taskIdx += blockSize;
-    }
+    scheduleBulkToRingsBatched(
+        count, ringCount, tasksPerRing, std::forward<Generator>(gen), fallbackToken);
   }
 
-  // Wake only the threads whose rings received work (threads 0..count-1).
-  // This avoids waking threads with empty rings, which would spin wastefully.
   auto* ws = detail::consumeLoad(wakeState_);
   if (enableEpochWaiter_.load(std::memory_order_acquire) && ws) {
+#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)
+    ws->cascadeWakeSeed(static_cast<int32_t>(count));
+#else
     ws->wakeRange(static_cast<int32_t>(count));
+#endif
   }
 }
 
@@ -998,15 +1052,18 @@ void ThreadPool::scheduleBulkEnqueue(
       int32_t toWake = std::max(int32_t{0}, static_cast<int32_t>(count) - effectiveSpinners);
       toWake = std::min(toWake, sleeping);
       if (toWake <= ws->branchFactor()) {
-        // Small N: direct claim+wake, no cascade overhead
+        // Small N: direct claim+wake, no cascade overhead.
         for (int32_t i = 0; i < toWake; ++i) {
           if (ws->claimAndWakeOne() < 0) {
             break;
           }
         }
       } else {
-        // Large N: budget cascade for parallel fan-out
-        ws->wakeN(toWake);
+        // Large N: Pattern C cascade. Producer wakes seed g0; cascade-host
+        // threads wake their target groups in parallel as they spin up.
+        // Central-queue work is found by the standard tryFindAndExecuteWork
+        // loop on each woken thread — no per-thread ring pre-staging needed.
+        ws->cascadeWakeSeed(toWake);
       }
     }
   }

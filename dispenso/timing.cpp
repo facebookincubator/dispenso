@@ -10,9 +10,7 @@
 #include <chrono>
 #include <cmath>
 
-#if defined(_MSC_VER)
-#include <intrin.h>
-#endif // _MSC_VER
+#include <dispenso/detail/timestamp.h>
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -24,34 +22,6 @@
 #endif // __MACH__
 
 namespace dispenso {
-namespace {
-#if defined(__x86_64__) || defined(_M_AMD64)
-#define DISPENSO_HAS_TIMESTAMP
-#if defined(_MSC_VER)
-inline uint64_t rdtscp() {
-  _mm_lfence();
-  return __rdtsc();
-}
-
-#else
-inline uint64_t rdtscp() {
-  uint32_t lo, hi;
-  __asm__ volatile("lfence\n\trdtsc"
-                   : /* outputs */ "=a"(lo), "=d"(hi)
-                   : /* inputs */
-                   : /* clobbers */ "memory");
-  return (uint64_t)lo | (((uint64_t)hi) << 32);
-}
-#endif // OS
-#elif (defined(__GNUC__) || defined(__clang__)) && defined(__aarch64__)
-#define DISPENSO_HAS_TIMESTAMP
-uint64_t rdtscp(void) {
-  uint64_t val;
-  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(val));
-  return val;
-}
-#endif // ARCH
-} // namespace
 
 #if defined(DISPENSO_HAS_TIMESTAMP)
 
@@ -93,9 +63,9 @@ static double fallbackTicksPerSecond() {
   constexpr double kChronoOverheadBias = 250e-9;
 
   auto baseStart = std::chrono::high_resolution_clock::now();
-  auto start = rdtscp();
+  auto start = detail::timestamp();
   std::this_thread::sleep_for(50ms);
-  auto end = rdtscp();
+  auto end = detail::timestamp();
   auto baseEnd = std::chrono::high_resolution_clock::now();
 
   auto base = std::chrono::duration<double>(baseEnd - baseStart).count() - kChronoOverheadBias;
@@ -152,9 +122,9 @@ double ticksPerSecond() {
 
 double getTime() {
   static double secondsPerTick = 1.0 / ticksPerSecond();
-  static double startTime = static_cast<double>(rdtscp()) * secondsPerTick;
+  static double startTime = static_cast<double>(detail::timestamp()) * secondsPerTick;
 
-  double t = static_cast<double>(rdtscp()) * secondsPerTick;
+  double t = static_cast<double>(detail::timestamp()) * secondsPerTick;
   return t - startTime;
 }
 #else
