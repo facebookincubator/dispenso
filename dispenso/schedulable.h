@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cassert>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -112,11 +113,17 @@ class NewThreadInvoker {
   // decRefCountMaybeDestroy + thread-local-storage teardown, which extends past the user-visible
   // future.get() return.
   //
-  // ThreadWaiter blocks the atexit handler until every detached thread has called remove(), so
-  // no thread is mid-execution when _cexit / DLL unload runs. The SmallBufferAllocator
-  // controlled-leak fix (small_buffer_allocator.cpp) addresses a different hazard (returning
-  // small buffers to a destroyed central store) and is NOT a substitute for this. Both
-  // mitigations are needed.
+  // Two mitigations, both needed:
+  //   1. pinModuleForNewThread() (schedulable.cpp, Windows-only) pins the module that contains
+  //      dispenso's code so it is never unmapped while a detached thread is still executing in it.
+  //      This removes the access-violation regardless of how long the thread runs, and also covers
+  //      a host FreeLibrary() at runtime, which the atexit path cannot. (Only Windows eagerly
+  //      unmaps a module's code under a running thread; POSIX/other loaders don't, so no analog.)
+  //   2. ThreadWaiter gives outstanding threads a BOUNDED grace period at exit to reach remove(),
+  //      narrowing the post-future.get() teardown window. It is bounded (never blocks shutdown
+  //      indefinitely) precisely because (1) makes a thread that runs past the deadline non-fatal.
+  // The SmallBufferAllocator controlled-leak fix (small_buffer_allocator.cpp) addresses a separate
+  // hazard (returning small buffers to a destroyed central store) and is also needed.
   //
   // The relevant tests are future_test_sans_exceptions and future_shared_test, the
   // Future.AsyncNotAsyncSpecifyNewThread / NewThreadInvoker / AsyncSpecifyNewThread cases.
@@ -144,7 +151,10 @@ class NewThreadInvoker {
 
     void wait() {
       std::unique_lock<std::mutex> lk(mtx_);
-      cond_.wait(lk, [this]() { return count_ == 0; });
+      // Bounded best-effort: pinModuleForNewThread() keeps our code mapped, so a thread still
+      // running past this deadline cannot fault on unload — this only narrows the teardown window
+      // and must never wedge shutdown, so it times out rather than blocking forever.
+      cond_.wait_for(lk, std::chrono::seconds(2), [this]() { return count_ == 0; });
     }
   };
 
