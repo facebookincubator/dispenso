@@ -46,7 +46,7 @@ jobs:
             os: windows-latest
             cmake_args: -DCMAKE_CXX_STANDARD=20 -DDISPENSO_SHARED_LIB=OFF
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: |
           mkdir build && cd build
@@ -68,7 +68,7 @@ jobs:
     name: Linux x86 (32-bit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install 32-bit support
         run: sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
       - name: Configure
@@ -87,7 +87,7 @@ jobs:
     name: macOS GCC C++14 (ARM64)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up GCC
         run: |
           brew list gcc || brew install gcc
@@ -111,7 +111,7 @@ jobs:
     name: Windows x86 (32-bit)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: |
           mkdir build && cd build
@@ -141,7 +141,7 @@ jobs:
           - name: Address Sanitizer
             cmake_args: -DADDRESS_SANITIZER=ON
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: |
           mkdir build && cd build
@@ -163,7 +163,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Doxygen
         run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
       - name: Build documentation
@@ -186,7 +186,7 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Configure with coverage
