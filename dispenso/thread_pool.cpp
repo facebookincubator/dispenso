@@ -109,7 +109,7 @@ ThreadPool::ThreadPool(size_t n, size_t poolLoadMultiplier)
     numRings_.store(adjustedN, std::memory_order_release);
     numStealRings_.store(
         (adjustedN + stealRingSharing_ - 1) / stealRingSharing_, std::memory_order_release);
-    auto ws = detail::makeAligned<PoolWakeState>(static_cast<int32_t>(adjustedN));
+    auto ws = detail::makeAligned<detail::PoolWakeState>(static_cast<int32_t>(adjustedN));
     auto* rawWs = ws.get();
     wakeStateGraveyard_.push_back(std::move(ws));
     DISPENSO_TSAN_ANNOTATE_HAPPENS_BEFORE(&wakeState_);
@@ -344,7 +344,7 @@ void ThreadPool::resizeLocked(ssize_t sn) {
     }
     numStealRings_.store(newNumSteal, std::memory_order_release);
 
-    auto newWake = detail::makeAligned<PoolWakeState>(static_cast<int32_t>(n));
+    auto newWake = detail::makeAligned<detail::PoolWakeState>(static_cast<int32_t>(n));
     auto* rawNewWake = newWake.get();
     // Retained for the lifetime of the pool — never freed here. Freeing a retired
     // PoolWakeState would race a concurrent lock-free schedule() that still holds
