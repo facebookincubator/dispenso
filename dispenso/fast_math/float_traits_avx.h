@@ -359,6 +359,51 @@ struct FloatTraits<AvxFloat> {
   static constexpr uint32_t kOne = 0x3f800000;
   static constexpr float kMagic = 12582912.f;
   static constexpr bool kBoolIsMask = true;
+  static constexpr uint32_t kLanes = 8;
+
+  static DISPENSO_INLINE AvxFloat load(const float* ptr) {
+    return _mm256_loadu_ps(ptr);
+  }
+  static DISPENSO_INLINE void store(float* ptr, AvxFloat val) {
+    _mm256_storeu_ps(ptr, val.v);
+  }
+  static DISPENSO_INLINE float extract(AvxFloat val, uint32_t lane) {
+    alignas(32) float tmp[8];
+    _mm256_store_ps(tmp, val.v);
+    return tmp[lane];
+  }
+  static DISPENSO_INLINE bool testBit(AvxFloat mask, uint32_t lane) {
+    return (_mm256_movemask_ps(mask.v) >> lane) & 1;
+  }
+  static DISPENSO_INLINE uint32_t maskBits(AvxFloat mask) {
+    return static_cast<uint32_t>(_mm256_movemask_ps(mask.v));
+  }
+  static DISPENSO_INLINE AvxFloat maskLoad(const float* ptr, uint32_t count) {
+    if (count >= 8) {
+      return _mm256_loadu_ps(ptr);
+    }
+    // AVX2 maskload: lanes with sign bit set in mask are loaded, others zero.
+    static constexpr int32_t kAllBits = -1;
+    alignas(32) int32_t maskData[8] = {};
+    for (uint32_t i = 0; i < count; ++i) {
+      maskData[i] = kAllBits;
+    }
+    __m256i mask = _mm256_load_si256(reinterpret_cast<const __m256i*>(maskData));
+    return _mm256_maskload_ps(ptr, mask);
+  }
+  static DISPENSO_INLINE void maskStore(float* ptr, uint32_t count, AvxFloat val) {
+    if (count >= 8) {
+      _mm256_storeu_ps(ptr, val.v);
+      return;
+    }
+    static constexpr int32_t kAllBits = -1;
+    alignas(32) int32_t maskData[8] = {};
+    for (uint32_t i = 0; i < count; ++i) {
+      maskData[i] = kAllBits;
+    }
+    __m256i mask = _mm256_load_si256(reinterpret_cast<const __m256i*>(maskData));
+    _mm256_maskstore_ps(ptr, mask, val.v);
+  }
 
   static DISPENSO_INLINE AvxFloat sqrt(AvxFloat x) {
     return _mm256_sqrt_ps(x.v);

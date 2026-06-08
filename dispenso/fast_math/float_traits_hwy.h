@@ -383,6 +383,25 @@ struct FloatTraits<HwyFloat> {
   static constexpr uint32_t kOne = 0x3f800000;
   static constexpr float kMagic = 12582912.f;
   static constexpr bool kBoolIsMask = true;
+  static constexpr uint32_t kLanes = HWY_MAX_LANES_D(HwyFloatTag);
+
+  static DISPENSO_INLINE HwyFloat load(const float* ptr) {
+    return hn::LoadU(HwyFloatTag{}, ptr);
+  }
+  static DISPENSO_INLINE void store(float* ptr, HwyFloat val) {
+    hn::StoreU(val.v, HwyFloatTag{}, ptr);
+  }
+  static DISPENSO_INLINE float extract(HwyFloat val, uint32_t lane) {
+    return hn::ExtractLane(val.v, lane);
+  }
+  static DISPENSO_INLINE bool testBit(HwyFloat mask, uint32_t lane) {
+    // Convert float mask (all-bits-set/-zero lanes) to an integer bitmask
+    // via StoreMaskBits and test the requested lane.
+    const auto m = hn::MaskFromVec(mask.v);
+    uint8_t bits[HWY_MAX(size_t{8}, HWY_MAX_LANES_D(HwyFloatTag) / 8)] = {};
+    hn::StoreMaskBits(HwyFloatTag{}, m, bits);
+    return (bits[lane / 8] >> (lane % 8)) & 1;
+  }
 
   static DISPENSO_INLINE HwyFloat sqrt(HwyFloat x) {
     return hn::Sqrt(x.v);

@@ -346,6 +346,51 @@ struct FloatTraits<NeonFloat> {
   static constexpr uint32_t kOne = 0x3f800000;
   static constexpr float kMagic = 12582912.f;
   static constexpr bool kBoolIsMask = true;
+  static constexpr uint32_t kLanes = 4;
+
+  static DISPENSO_INLINE NeonFloat load(const float* ptr) {
+    return vld1q_f32(ptr);
+  }
+  static DISPENSO_INLINE void store(float* ptr, NeonFloat val) {
+    vst1q_f32(ptr, val.v);
+  }
+  static DISPENSO_INLINE float extract(NeonFloat val, uint32_t lane) {
+    float tmp[4];
+    vst1q_f32(tmp, val.v);
+    return tmp[lane];
+  }
+  static DISPENSO_INLINE bool testBit(NeonFloat mask, uint32_t lane) {
+    uint32_t tmp[4];
+    vst1q_u32(tmp, vreinterpretq_u32_f32(mask.v));
+    return tmp[lane] != 0;
+  }
+  static DISPENSO_INLINE uint32_t maskBits(NeonFloat mask) {
+    static const int32_t kShifts[4] = {0, 1, 2, 3};
+    uint32x4_t bits = vshrq_n_u32(vreinterpretq_u32_f32(mask.v), 31);
+    bits = vshlq_u32(bits, vld1q_s32(kShifts));
+    return vaddvq_u32(bits);
+  }
+  static DISPENSO_INLINE NeonFloat maskLoad(const float* ptr, uint32_t count) {
+    if (count >= 4) {
+      return vld1q_f32(ptr);
+    }
+    float tmp[4] = {};
+    for (uint32_t i = 0; i < count; ++i) {
+      tmp[i] = ptr[i];
+    }
+    return vld1q_f32(tmp);
+  }
+  static DISPENSO_INLINE void maskStore(float* ptr, uint32_t count, NeonFloat val) {
+    if (count >= 4) {
+      vst1q_f32(ptr, val.v);
+      return;
+    }
+    float tmp[4];
+    vst1q_f32(tmp, val.v);
+    for (uint32_t i = 0; i < count; ++i) {
+      ptr[i] = tmp[i];
+    }
+  }
 
   static DISPENSO_INLINE NeonFloat sqrt(NeonFloat x) {
     return vsqrtq_f32(x.v);

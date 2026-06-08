@@ -359,6 +359,46 @@ struct FloatTraits<SseFloat> {
   static constexpr uint32_t kOne = 0x3f800000;
   static constexpr float kMagic = 12582912.f;
   static constexpr bool kBoolIsMask = true;
+  static constexpr uint32_t kLanes = 4;
+
+  static DISPENSO_INLINE SseFloat load(const float* ptr) {
+    return _mm_loadu_ps(ptr);
+  }
+  static DISPENSO_INLINE void store(float* ptr, SseFloat val) {
+    _mm_storeu_ps(ptr, val.v);
+  }
+  static DISPENSO_INLINE float extract(SseFloat val, uint32_t lane) {
+    alignas(16) float tmp[4];
+    _mm_store_ps(tmp, val.v);
+    return tmp[lane];
+  }
+  static DISPENSO_INLINE bool testBit(SseFloat mask, uint32_t lane) {
+    return (_mm_movemask_ps(mask.v) >> lane) & 1;
+  }
+  static DISPENSO_INLINE uint32_t maskBits(SseFloat mask) {
+    return static_cast<uint32_t>(_mm_movemask_ps(mask.v));
+  }
+  static DISPENSO_INLINE SseFloat maskLoad(const float* ptr, uint32_t count) {
+    if (count >= 4) {
+      return _mm_loadu_ps(ptr);
+    }
+    alignas(16) float tmp[4] = {};
+    for (uint32_t i = 0; i < count; ++i) {
+      tmp[i] = ptr[i];
+    }
+    return _mm_load_ps(tmp);
+  }
+  static DISPENSO_INLINE void maskStore(float* ptr, uint32_t count, SseFloat val) {
+    if (count >= 4) {
+      _mm_storeu_ps(ptr, val.v);
+      return;
+    }
+    alignas(16) float tmp[4];
+    _mm_store_ps(tmp, val.v);
+    for (uint32_t i = 0; i < count; ++i) {
+      ptr[i] = tmp[i];
+    }
+  }
 
   static DISPENSO_INLINE SseFloat sqrt(SseFloat x) {
     return _mm_sqrt_ps(x.v);

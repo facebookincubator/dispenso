@@ -43,6 +43,31 @@ struct FloatTraits<float> {
   static constexpr float kMagic = 12582912.f; // 1.5 * 2**23
 
   static constexpr bool kBoolIsMask = false;
+  static constexpr uint32_t kLanes = 1;
+
+  static DISPENSO_INLINE float load(const float* ptr) {
+    return *ptr;
+  }
+  static DISPENSO_INLINE void store(float* ptr, float val) {
+    *ptr = val;
+  }
+  static DISPENSO_INLINE float extract(float val, uint32_t /*lane*/) {
+    return val;
+  }
+  static DISPENSO_INLINE bool testBit(bool val, uint32_t /*lane*/) {
+    return val;
+  }
+  static DISPENSO_INLINE uint32_t maskBits(bool val) {
+    return val ? 1u : 0u;
+  }
+  static DISPENSO_INLINE float maskLoad(const float* ptr, uint32_t count) {
+    return count > 0 ? *ptr : 0.0f;
+  }
+  static DISPENSO_INLINE void maskStore(float* ptr, uint32_t count, float val) {
+    if (count > 0) {
+      *ptr = val;
+    }
+  }
 
   static DISPENSO_INLINE float sqrt(float x) {
     return std::sqrt(x);

@@ -417,6 +417,33 @@ struct FloatTraits<Avx512Float> {
   static constexpr uint32_t kOne = 0x3f800000;
   static constexpr float kMagic = 12582912.f;
   static constexpr bool kBoolIsMask = true;
+  static constexpr uint32_t kLanes = 16;
+
+  static DISPENSO_INLINE Avx512Float load(const float* ptr) {
+    return _mm512_loadu_ps(ptr);
+  }
+  static DISPENSO_INLINE void store(float* ptr, Avx512Float val) {
+    _mm512_storeu_ps(ptr, val.v);
+  }
+  static DISPENSO_INLINE float extract(Avx512Float val, uint32_t lane) {
+    alignas(64) float tmp[16];
+    _mm512_store_ps(tmp, val.v);
+    return tmp[lane];
+  }
+  static DISPENSO_INLINE bool testBit(Avx512Mask mask, uint32_t lane) {
+    return (mask.m >> lane) & 1;
+  }
+  static DISPENSO_INLINE uint32_t maskBits(Avx512Mask mask) {
+    return mask.m;
+  }
+  static DISPENSO_INLINE Avx512Float maskLoad(const float* ptr, uint32_t count) {
+    __mmask16 mask = (count >= 16) ? __mmask16(0xFFFF) : static_cast<__mmask16>((1u << count) - 1);
+    return _mm512_maskz_loadu_ps(mask, ptr);
+  }
+  static DISPENSO_INLINE void maskStore(float* ptr, uint32_t count, Avx512Float val) {
+    __mmask16 mask = (count >= 16) ? __mmask16(0xFFFF) : static_cast<__mmask16>((1u << count) - 1);
+    _mm512_mask_storeu_ps(ptr, mask, val.v);
+  }
 
   static DISPENSO_INLINE Avx512Float sqrt(Avx512Float x) {
     return _mm512_sqrt_ps(x.v);
