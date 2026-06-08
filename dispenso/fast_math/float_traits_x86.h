@@ -533,6 +533,26 @@ DISPENSO_INLINE SseFloat signof(SseFloat x) {
   return bit_cast<SseFloat>((xi & 0x80000000u) | FloatTraits<SseFloat>::kOne);
 }
 
+DISPENSO_INLINE SseFloat rsqrt_approx(SseFloat x) {
+  return _mm_rsqrt_ps(x.v);
+}
+
+template <>
+DISPENSO_INLINE float rsqrt_approx<float>(float x) {
+  return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(x)));
+}
+
+DISPENSO_INLINE SseFloat rsqrt(SseFloat x) {
+  SseFloat y = _mm_rsqrt_ps(x.v);
+  return y * FloatTraits<SseFloat>::fma(y * y, SseFloat(-0.5f) * x, SseFloat(1.5f));
+}
+
+template <>
+DISPENSO_INLINE float rsqrt<float>(float x) {
+  float y = rsqrt_approx(x);
+  return y * std::fma(y * y, -0.5f * x, 1.5f);
+}
+
 DISPENSO_INLINE SseInt32 signofi(SseInt32 i) {
   return SseInt32(1) - (SseInt32(2) & (i < SseInt32(0)));
 }

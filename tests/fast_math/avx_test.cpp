@@ -378,6 +378,27 @@ TEST(AvxUtil, Nonnormal) {
   EXPECT_EQ(lane(result, 7), 0); // normal max
 }
 
+TEST(AvxUtil, RsqrtApprox) {
+  AvxFloat x = make8(1.0f, 4.0f, 9.0f, 100.0f, 0.25f, 0.01f, 1e4f, 16.0f);
+  AvxFloat result = dfm::rsqrt_approx(x);
+  float expected[] = {1.0f, 0.5f, 1.0f / 3.0f, 0.1f, 2.0f, 10.0f, 0.01f, 0.25f};
+  for (int i = 0; i < kLanes; ++i) {
+    float relErr = std::abs(lane(result, i) - expected[i]) / expected[i];
+    EXPECT_LT(relErr, 2e-3f) << "Lane " << i;
+  }
+}
+
+TEST(AvxUtil, Rsqrt) {
+  AvxFloat x = make8(1.0f, 4.0f, 0.25f, 1e6f, 9.0f, 16.0f, 0.01f, 100.0f);
+  AvxFloat result = dfm::rsqrt(x);
+  float expected[] = {1.0f, 0.5f, 2.0f, 0.001f, 1.0f / 3.0f, 0.25f, 10.0f, 0.1f};
+  for (int i = 0; i < kLanes; ++i) {
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected[i]);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected "
+                        << expected[i] << ", " << ulps << " ULP";
+  }
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

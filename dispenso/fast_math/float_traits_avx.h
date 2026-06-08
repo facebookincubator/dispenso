@@ -533,6 +533,15 @@ DISPENSO_INLINE AvxFloat signof(AvxFloat x) {
   return bit_cast<AvxFloat>((xi & 0x80000000u) | FloatTraits<AvxFloat>::kOne);
 }
 
+DISPENSO_INLINE AvxFloat rsqrt_approx(AvxFloat x) {
+  return _mm256_rsqrt_ps(x.v);
+}
+
+DISPENSO_INLINE AvxFloat rsqrt(AvxFloat x) {
+  AvxFloat y = _mm256_rsqrt_ps(x.v);
+  return y * FloatTraits<AvxFloat>::fma(y * y, AvxFloat(-0.5f) * x, AvxFloat(1.5f));
+}
+
 DISPENSO_INLINE AvxInt32 signofi(AvxInt32 i) {
   return AvxInt32(1) - (AvxInt32(2) & (i < AvxInt32(0)));
 }

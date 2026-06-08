@@ -479,4 +479,25 @@ TEST(NeonUtil, ClampNoNan) {
   EXPECT_EQ(lane(nan_result, 3), 0.5f);
 }
 
+TEST(NeonUtil, RsqrtApprox) {
+  NeonFloat x = make4(1.0f, 4.0f, 9.0f, 100.0f);
+  NeonFloat result = dfm::rsqrt_approx(x);
+  float expected[] = {1.0f, 0.5f, 1.0f / 3.0f, 0.1f};
+  for (int i = 0; i < kLanes; ++i) {
+    float relErr = std::abs(lane(result, i) - expected[i]) / expected[i];
+    EXPECT_LT(relErr, 0.05f) << "Lane " << i;
+  }
+}
+
+TEST(NeonUtil, Rsqrt) {
+  NeonFloat x = make4(1.0f, 4.0f, 0.25f, 100.0f);
+  NeonFloat result = dfm::rsqrt(x);
+  float expected[] = {1.0f, 0.5f, 2.0f, 0.1f};
+  for (int i = 0; i < kLanes; ++i) {
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected[i]);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected "
+                        << expected[i] << ", " << ulps << " ULP";
+  }
+}
+
 #endif // defined(__aarch64__)

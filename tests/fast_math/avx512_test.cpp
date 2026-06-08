@@ -715,6 +715,59 @@ TEST(Avx512Util, BoolApplyOrZero) {
   }
 }
 
+TEST(Avx512Util, RsqrtApprox) {
+  Avx512Float x = make16(
+      1.0f,
+      4.0f,
+      9.0f,
+      100.0f,
+      0.25f,
+      0.01f,
+      1e4f,
+      16.0f,
+      25.0f,
+      36.0f,
+      49.0f,
+      64.0f,
+      81.0f,
+      0.04f,
+      0.0625f,
+      400.0f);
+  Avx512Float result = dfm::rsqrt_approx(x);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = 1.0f / std::sqrt(lane(x, i));
+    float relErr = std::abs(lane(result, i) - expected) / expected;
+    EXPECT_LT(relErr, 2e-3f) << "Lane " << i;
+  }
+}
+
+TEST(Avx512Util, Rsqrt) {
+  Avx512Float x = make16(
+      1.0f,
+      4.0f,
+      0.25f,
+      1e6f,
+      9.0f,
+      16.0f,
+      0.01f,
+      100.0f,
+      25.0f,
+      36.0f,
+      49.0f,
+      64.0f,
+      81.0f,
+      0.04f,
+      0.0625f,
+      400.0f);
+  Avx512Float result = dfm::rsqrt(x);
+  for (int i = 0; i < kLanes; ++i) {
+    float expected = 1.0f / std::sqrt(lane(x, i));
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected " << expected
+                        << ", " << ulps << " ULP";
+  }
+}
+
 #else // !defined(__AVX512F__)
 
 TEST(Avx512, Unavailable) {

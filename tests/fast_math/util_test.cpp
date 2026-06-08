@@ -396,3 +396,37 @@ TEST(IntDivBy3, LargeValues) {
     EXPECT_EQ(dfm::int_div_by_3(i), i / 3) << "Mismatch at " << i;
   }
 }
+
+// ---- rsqrt_approx ----
+
+#if defined(__SSE__) || defined(__aarch64__)
+
+TEST(RsqrtApprox, BasicValues) {
+  float vals[] = {0.25f, 1.0f, 4.0f, 9.0f, 100.0f, 0.01f, 1e6f};
+  for (float v : vals) {
+    float expected = 1.0f / std::sqrt(v);
+    float result = dfm::rsqrt_approx(v);
+    float relErr = std::abs(result - expected) / expected;
+    EXPECT_LT(relErr, 2e-3f) << "rsqrt_approx(" << v << "): got " << result << ", expected "
+                             << expected;
+  }
+}
+
+// ---- rsqrt ----
+
+TEST(Rsqrt, FullPrecision) {
+  float vals[] = {0.25f, 1.0f, 4.0f, 9.0f, 100.0f, 0.01f, 0.001f, 1e6f, 1e-6f};
+  for (float v : vals) {
+    float expected = 1.0f / std::sqrt(v);
+    float result = dfm::rsqrt(v);
+    uint32_t ulps = dfm::float_distance(result, expected);
+    EXPECT_LE(ulps, 2u) << "rsqrt(" << v << "): got " << result << ", expected " << expected << ", "
+                        << ulps << " ULP";
+  }
+}
+
+TEST(Rsqrt, Identity) {
+  EXPECT_FLOAT_EQ(dfm::rsqrt(1.0f), 1.0f);
+}
+
+#endif

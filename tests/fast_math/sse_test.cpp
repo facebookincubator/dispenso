@@ -223,6 +223,27 @@ TEST(SseUtil, Signofi) {
   EXPECT_EQ(lane(result, 3), -1);
 }
 
+TEST(SseUtil, RsqrtApprox) {
+  SseFloat x = make4(1.0f, 4.0f, 9.0f, 100.0f);
+  SseFloat result = dfm::rsqrt_approx(x);
+  float expected[] = {1.0f, 0.5f, 1.0f / 3.0f, 0.1f};
+  for (int i = 0; i < 4; ++i) {
+    float relErr = std::abs(lane(result, i) - expected[i]) / expected[i];
+    EXPECT_LT(relErr, 2e-3f) << "Lane " << i;
+  }
+}
+
+TEST(SseUtil, Rsqrt) {
+  SseFloat x = make4(1.0f, 4.0f, 0.25f, 1e6f);
+  SseFloat result = dfm::rsqrt(x);
+  float expected[] = {1.0f, 0.5f, 2.0f, 0.001f};
+  for (int i = 0; i < 4; ++i) {
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected[i]);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected "
+                        << expected[i] << ", " << ulps << " ULP";
+  }
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

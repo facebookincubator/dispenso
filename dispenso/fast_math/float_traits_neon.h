@@ -525,6 +525,30 @@ DISPENSO_INLINE NeonFloat signof(NeonFloat x) {
   return bit_cast<NeonFloat>((xi & 0x80000000u) | FloatTraits<NeonFloat>::kOne);
 }
 
+DISPENSO_INLINE NeonFloat rsqrt_approx(NeonFloat x) {
+  return vrsqrteq_f32(x.v);
+}
+
+template <>
+DISPENSO_INLINE float rsqrt_approx<float>(float x) {
+  return vrsqrtes_f32(x);
+}
+
+DISPENSO_INLINE NeonFloat rsqrt(NeonFloat x) {
+  float32x4_t y = vrsqrteq_f32(x.v);
+  y = vmulq_f32(y, vrsqrtsq_f32(vmulq_f32(x.v, y), y));
+  y = vmulq_f32(y, vrsqrtsq_f32(vmulq_f32(x.v, y), y));
+  return y;
+}
+
+template <>
+DISPENSO_INLINE float rsqrt<float>(float x) {
+  float y = vrsqrtes_f32(x);
+  y *= vrsqrtss_f32(x * y, y);
+  y *= vrsqrtss_f32(x * y, y);
+  return y;
+}
+
 DISPENSO_INLINE NeonInt32 signofi(NeonInt32 i) {
   return NeonInt32(1) - (NeonInt32(2) & (i < NeonInt32(0)));
 }
