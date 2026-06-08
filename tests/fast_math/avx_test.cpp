@@ -420,6 +420,40 @@ TEST(AvxUtil, Rcp) {
   }
 }
 
+// ---- any_true ----
+
+TEST(AvxFloat, AnyTrueAllFalse) {
+  AvxInt32 mask(_mm256_setzero_si256());
+  EXPECT_FALSE(dfm::any_true(mask));
+  AvxFloat fmask(_mm256_setzero_ps());
+  EXPECT_FALSE(dfm::any_true(fmask));
+}
+
+TEST(AvxFloat, AnyTrueAllTrue) {
+  AvxInt32 mask(_mm256_set1_epi32(-1));
+  EXPECT_TRUE(dfm::any_true(mask));
+  AvxFloat fmask(_mm256_castsi256_ps(_mm256_set1_epi32(-1)));
+  EXPECT_TRUE(dfm::any_true(fmask));
+}
+
+TEST(AvxFloat, AnyTrueSomeTrue) {
+  AvxInt32 mask(_mm256_set_epi32(0, 0, 0, 0, 0, -1, 0, 0));
+  EXPECT_TRUE(dfm::any_true(mask));
+  AvxFloat fmask(_mm256_castsi256_ps(_mm256_set_epi32(0, 0, 0, 0, 0, -1, 0, 0)));
+  EXPECT_TRUE(dfm::any_true(fmask));
+}
+
+TEST(AvxFloat, AnyTrueFromComparison) {
+  AvxFloat a = make8(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f);
+  AvxFloat b = make8(9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f);
+  EXPECT_TRUE(dfm::any_true(a < b));
+  EXPECT_FALSE(dfm::any_true(a > b));
+
+  AvxFloat c = make8(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f);
+  AvxFloat d = make8(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 9.0f);
+  EXPECT_TRUE(dfm::any_true(c < d));
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

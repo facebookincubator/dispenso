@@ -265,6 +265,36 @@ TEST(SseUtil, Rcp) {
   }
 }
 
+// ---- any_true ----
+
+TEST(SseFloat, AnyTrueAllFalse) {
+  SseInt32 mask(_mm_setzero_si128());
+  EXPECT_FALSE(dfm::any_true(mask));
+  SseFloat fmask(_mm_setzero_ps());
+  EXPECT_FALSE(dfm::any_true(fmask));
+}
+
+TEST(SseFloat, AnyTrueAllTrue) {
+  SseInt32 mask(_mm_set1_epi32(-1));
+  EXPECT_TRUE(dfm::any_true(mask));
+  SseFloat fmask(_mm_castsi128_ps(_mm_set1_epi32(-1)));
+  EXPECT_TRUE(dfm::any_true(fmask));
+}
+
+TEST(SseFloat, AnyTrueSomeTrue) {
+  SseInt32 mask(_mm_set_epi32(0, 0, -1, 0));
+  EXPECT_TRUE(dfm::any_true(mask));
+  SseFloat fmask(_mm_castsi128_ps(_mm_set_epi32(0, 0, -1, 0)));
+  EXPECT_TRUE(dfm::any_true(fmask));
+}
+
+TEST(SseFloat, AnyTrueFromComparison) {
+  SseFloat a = make4(1.0f, 2.0f, 3.0f, 4.0f);
+  SseFloat b = make4(5.0f, 5.0f, 5.0f, 5.0f);
+  EXPECT_TRUE(dfm::any_true(a < b));
+  EXPECT_FALSE(dfm::any_true(a > b));
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

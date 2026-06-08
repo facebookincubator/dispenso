@@ -591,6 +591,10 @@ DISPENSO_INLINE bool any_true(HwyInt32 mask) {
   hn::ScalableTag<int32_t> d;
   return !hn::AllFalse(d, hn::Ne(mask.v, hn::Zero(d)));
 }
+DISPENSO_INLINE bool any_true(HwyFloat mask) {
+  hn::ScalableTag<float> d;
+  return !hn::AllFalse(d, hn::Ne(mask.v, hn::Zero(d)));
+}
 
 DISPENSO_INLINE HwyFloat signof(HwyFloat x) {
   HwyUint32 xi = bit_cast<HwyUint32>(x);

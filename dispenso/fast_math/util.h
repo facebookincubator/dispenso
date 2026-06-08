@@ -352,6 +352,11 @@ DISPENSO_INLINE T bool_as_mask(BoolT b) {
   return ~(mask - 1);
 }
 
+// Scalar any_true: identity. Enables Flt=float in code templated on SIMD type.
+DISPENSO_INLINE bool any_true(bool b) {
+  return b;
+}
+
 // Return val if b is true, 0 otherwise. Uses bitwise AND via bool_as_mask.
 template <typename T, typename BoolT>
 DISPENSO_INLINE T bool_apply_or_zero(BoolT b, T val) {

@@ -472,3 +472,13 @@ TEST(Rcp, Identity) {
 }
 
 #endif
+
+// ---- any_true (scalar) ----
+
+TEST(AnyTrue, ScalarTrue) {
+  EXPECT_TRUE(dfm::any_true(true));
+}
+
+TEST(AnyTrue, ScalarFalse) {
+  EXPECT_FALSE(dfm::any_true(false));
+}

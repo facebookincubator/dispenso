@@ -519,6 +519,9 @@ DISPENSO_INLINE NeonInt32 nonnormal(NeonFloat f) {
 DISPENSO_INLINE bool any_true(NeonInt32 mask) {
   return vmaxvq_u32(vreinterpretq_u32_s32(mask.v)) != 0;
 }
+DISPENSO_INLINE bool any_true(NeonFloat mask) {
+  return vmaxvq_u32(vreinterpretq_u32_f32(mask.v)) != 0;
+}
 
 DISPENSO_INLINE NeonFloat signof(NeonFloat x) {
   NeonUint32 xi = bit_cast<NeonUint32>(x);
