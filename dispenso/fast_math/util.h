@@ -113,6 +113,19 @@ DISPENSO_INLINE Flt rsqrt_approx(Flt x);
 template <typename Flt>
 DISPENSO_INLINE Flt rsqrt(Flt x);
 
+// Reciprocal — hardware estimate only.
+// ~12 bits on x86 (SSE/AVX), ~14 bits on AVX-512, ~8 bits on NEON.
+// No software fallback: intentional compile error on unsupported platforms.
+template <typename Flt>
+DISPENSO_INLINE Flt rcp_approx(Flt x);
+
+// Reciprocal — hardware estimate + Newton refinement.
+// ~23 bits (full float32 precision) on all supported platforms.
+// x86: 1 Newton iteration on ~12-bit seed.  NEON: 2 iterations on ~8-bit seed.
+// No software fallback: intentional compile error on unsupported platforms.
+template <typename Flt>
+DISPENSO_INLINE Flt rcp(Flt x);
+
 // True if the float (as int bits) has all exponent bits set (inf or NaN).
 // Returns bool for scalar types, SIMD lane mask for SIMD types.
 template <typename Flt>

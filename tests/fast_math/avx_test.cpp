@@ -399,6 +399,27 @@ TEST(AvxUtil, Rsqrt) {
   }
 }
 
+TEST(AvxUtil, RcpApprox) {
+  AvxFloat x = make8(1.0f, 2.0f, 4.0f, 10.0f, 0.25f, 0.5f, 100.0f, 0.01f);
+  AvxFloat result = dfm::rcp_approx(x);
+  float expected[] = {1.0f, 0.5f, 0.25f, 0.1f, 4.0f, 2.0f, 0.01f, 100.0f};
+  for (int i = 0; i < kLanes; ++i) {
+    float relErr = std::abs(lane(result, i) - expected[i]) / expected[i];
+    EXPECT_LT(relErr, 2e-3f) << "Lane " << i;
+  }
+}
+
+TEST(AvxUtil, Rcp) {
+  AvxFloat x = make8(1.0f, 2.0f, 0.25f, 100.0f, 4.0f, 0.5f, 10.0f, 0.01f);
+  AvxFloat result = dfm::rcp(x);
+  float expected[] = {1.0f, 0.5f, 4.0f, 0.01f, 0.25f, 2.0f, 0.1f, 100.0f};
+  for (int i = 0; i < kLanes; ++i) {
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected[i]);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected "
+                        << expected[i] << ", " << ulps << " ULP";
+  }
+}
+
 #else // !defined(__AVX2__)
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.

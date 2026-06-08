@@ -244,6 +244,27 @@ TEST(SseUtil, Rsqrt) {
   }
 }
 
+TEST(SseUtil, RcpApprox) {
+  SseFloat x = make4(1.0f, 2.0f, 4.0f, 10.0f);
+  SseFloat result = dfm::rcp_approx(x);
+  float expected[] = {1.0f, 0.5f, 0.25f, 0.1f};
+  for (int i = 0; i < 4; ++i) {
+    float relErr = std::abs(lane(result, i) - expected[i]) / expected[i];
+    EXPECT_LT(relErr, 2e-3f) << "Lane " << i;
+  }
+}
+
+TEST(SseUtil, Rcp) {
+  SseFloat x = make4(1.0f, 2.0f, 0.25f, 100.0f);
+  SseFloat result = dfm::rcp(x);
+  float expected[] = {1.0f, 0.5f, 4.0f, 0.01f};
+  for (int i = 0; i < 4; ++i) {
+    uint32_t ulps = dfm::float_distance(lane(result, i), expected[i]);
+    EXPECT_LE(ulps, 2u) << "Lane " << i << ": got " << lane(result, i) << ", expected "
+                        << expected[i] << ", " << ulps << " ULP";
+  }
+}
+
 #else // !defined(__SSE4_1__)
 
 // Dummy test so the binary has at least one test on non-SSE platforms.

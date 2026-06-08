@@ -616,6 +616,15 @@ DISPENSO_INLINE Avx512Float rsqrt(Avx512Float x) {
   return y * FloatTraits<Avx512Float>::fma(y * y, Avx512Float(-0.5f) * x, Avx512Float(1.5f));
 }
 
+DISPENSO_INLINE Avx512Float rcp_approx(Avx512Float x) {
+  return _mm512_rcp14_ps(x.v);
+}
+
+DISPENSO_INLINE Avx512Float rcp(Avx512Float x) {
+  Avx512Float y = _mm512_rcp14_ps(x.v);
+  return y * FloatTraits<Avx512Float>::fma(y, -x, Avx512Float(2.0f));
+}
+
 DISPENSO_INLINE Avx512Int32 signofi(Avx512Int32 i) {
   // Use mask blend: +1 for i >= 0, -1 for i < 0.
   __mmask16 neg = _mm512_cmplt_epi32_mask(i.v, _mm512_setzero_si512());

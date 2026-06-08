@@ -429,4 +429,46 @@ TEST(Rsqrt, Identity) {
   EXPECT_FLOAT_EQ(dfm::rsqrt(1.0f), 1.0f);
 }
 
+// ---- rcp_approx ----
+
+TEST(RcpApprox, BasicValues) {
+  float vals[] = {0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 10.0f, 100.0f, 0.01f, 1e6f};
+  for (float v : vals) {
+    float expected = 1.0f / v;
+    float result = dfm::rcp_approx(v);
+    float relErr = std::abs(result - expected) / std::abs(expected);
+    EXPECT_LT(relErr, 2e-3f) << "rcp_approx(" << v << "): got " << result << ", expected "
+                             << expected;
+  }
+}
+
+// ---- rcp ----
+
+TEST(Rcp, FullPrecision) {
+  float vals[] = {0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 10.0f, 100.0f, 0.01f, 0.001f, 1e6f, 1e-6f};
+  for (float v : vals) {
+    float expected = 1.0f / v;
+    float result = dfm::rcp(v);
+    uint32_t ulps = dfm::float_distance(result, expected);
+    EXPECT_LE(ulps, 2u) << "rcp(" << v << "): got " << result << ", expected " << expected << ", "
+                        << ulps << " ULP";
+  }
+}
+
+TEST(Rcp, NegativeValues) {
+  float vals[] = {-0.25f, -1.0f, -4.0f, -100.0f};
+  for (float v : vals) {
+    float expected = 1.0f / v;
+    float result = dfm::rcp(v);
+    uint32_t ulps = dfm::float_distance(result, expected);
+    EXPECT_LE(ulps, 2u) << "rcp(" << v << "): got " << result << ", expected " << expected << ", "
+                        << ulps << " ULP";
+  }
+}
+
+TEST(Rcp, Identity) {
+  uint32_t ulps = dfm::float_distance(dfm::rcp(1.0f), 1.0f);
+  EXPECT_LE(ulps, 1u);
+}
+
 #endif

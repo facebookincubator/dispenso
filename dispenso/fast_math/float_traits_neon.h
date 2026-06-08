@@ -549,6 +549,30 @@ DISPENSO_INLINE float rsqrt<float>(float x) {
   return y;
 }
 
+DISPENSO_INLINE NeonFloat rcp_approx(NeonFloat x) {
+  return vrecpeq_f32(x.v);
+}
+
+template <>
+DISPENSO_INLINE float rcp_approx<float>(float x) {
+  return vrecpes_f32(x);
+}
+
+DISPENSO_INLINE NeonFloat rcp(NeonFloat x) {
+  float32x4_t y = vrecpeq_f32(x.v);
+  y = vmulq_f32(y, vrecpsq_f32(x.v, y));
+  y = vmulq_f32(y, vrecpsq_f32(x.v, y));
+  return y;
+}
+
+template <>
+DISPENSO_INLINE float rcp<float>(float x) {
+  float y = vrecpes_f32(x);
+  y *= vrecpss_f32(x, y);
+  y *= vrecpss_f32(x, y);
+  return y;
+}
+
 DISPENSO_INLINE NeonInt32 signofi(NeonInt32 i) {
   return NeonInt32(1) - (NeonInt32(2) & (i < NeonInt32(0)));
 }
