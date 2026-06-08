@@ -29,10 +29,10 @@
 #include <dispenso/cpu_set.h>
 #include <dispenso/detail/math.h>
 #include <dispenso/detail/per_thread_info.h>
+#include <dispenso/detail/thread_pool_wake.h>
 #include <dispenso/mpmc_ring_buffer.h>
 #include <dispenso/once_function.h>
 #include <dispenso/platform.h>
-#include <dispenso/thread_pool_wake.h>
 #include <dispenso/tsan_annotations.h>
 
 namespace dispenso {
@@ -559,8 +559,8 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // accumulate meaningful memory. See docs/design/roadmap.md ("Bounded
   // PoolWakeState reclamation") for the planned asymmetric-fence / hazard-pointer
   // scheme to bound this without taxing the schedule() hot path.
-  std::atomic<PoolWakeState*> wakeState_{nullptr};
-  std::vector<decltype(detail::makeAligned<PoolWakeState>(0))> wakeStateGraveyard_;
+  std::atomic<detail::PoolWakeState*> wakeState_{nullptr};
+  std::vector<decltype(detail::makeAligned<detail::PoolWakeState>(0))> wakeStateGraveyard_;
 
   // Per-thread rings for fork-join scheduling. ConcurrentObjectArena provides
   // stable pointers (grow-only, never freed), eliminating the need for a resize

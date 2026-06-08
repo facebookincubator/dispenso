@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <dispenso/thread_pool_wake.h>
+#include <dispenso/detail/thread_pool_wake.h>
 
 #include <dispenso/detail/math.h>
 
@@ -13,6 +13,7 @@
 #include <cassert>
 
 namespace dispenso {
+namespace detail {
 
 PoolWakeState::PoolWakeState(int32_t numThreads, int32_t groupSize, int32_t branchFactor)
     : numThreads_(numThreads),
@@ -186,4 +187,5 @@ void PoolWakeState::wakeAll() {
   }
 }
 
+} // namespace detail
 } // namespace dispenso

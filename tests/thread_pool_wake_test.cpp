@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <dispenso/thread_pool_wake.h>
+#include <dispenso/detail/thread_pool_wake.h>
 
 #include <atomic>
 #include <thread>
@@ -13,7 +13,7 @@
 
 #include <gtest/gtest.h>
 
-using dispenso::PoolWakeState;
+using dispenso::detail::PoolWakeState;
 
 // =============================================================================
 // Construction Tests
