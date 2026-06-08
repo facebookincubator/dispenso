@@ -21,7 +21,6 @@ var annotated_dup =
       [ "Future< Result & >", "classdispenso_1_1_future_3_01_result_01_6_01_4.html", "classdispenso_1_1_future_3_01_result_01_6_01_4" ],
       [ "Future< void >", "classdispenso_1_1_future_3_01void_01_4.html", "classdispenso_1_1_future_3_01void_01_4" ],
       [ "GraphT", "classdispenso_1_1_graph_t.html", "classdispenso_1_1_graph_t" ],
-      [ "GroupWakeState", "structdispenso_1_1_group_wake_state.html", "structdispenso_1_1_group_wake_state" ],
       [ "ImmediateInvoker", "classdispenso_1_1_immediate_invoker.html", "classdispenso_1_1_immediate_invoker" ],
       [ "Latch", "classdispenso_1_1_latch.html", "classdispenso_1_1_latch" ],
       [ "MpmcRingBuffer", "classdispenso_1_1_mpmc_ring_buffer.html", "classdispenso_1_1_mpmc_ring_buffer" ],
@@ -31,7 +30,6 @@ var annotated_dup =
       [ "ParallelForExecutor", "classdispenso_1_1_parallel_for_executor.html", null ],
       [ "ParForOptions", "structdispenso_1_1_par_for_options.html", "structdispenso_1_1_par_for_options" ],
       [ "PoolAllocatorT", "classdispenso_1_1_pool_allocator_t.html", "classdispenso_1_1_pool_allocator_t" ],
-      [ "PoolWakeState", "classdispenso_1_1_pool_wake_state.html", "classdispenso_1_1_pool_wake_state" ],
       [ "ReserveTagS", "structdispenso_1_1_reserve_tag_s.html", null ],
       [ "Resource", "classdispenso_1_1_resource.html", "classdispenso_1_1_resource" ],
       [ "ResourcePool", "classdispenso_1_1_resource_pool.html", "classdispenso_1_1_resource_pool" ],
@@ -45,7 +43,6 @@ var annotated_dup =
       [ "ThreadPool", "classdispenso_1_1_thread_pool.html", "classdispenso_1_1_thread_pool" ],
       [ "TimedTask", "classdispenso_1_1_timed_task.html", "classdispenso_1_1_timed_task" ],
       [ "TimedTaskScheduler", "classdispenso_1_1_timed_task_scheduler.html", "classdispenso_1_1_timed_task_scheduler" ],
-      [ "UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ],
-      [ "WaiterBlock", "structdispenso_1_1_waiter_block.html", "structdispenso_1_1_waiter_block" ]
+      [ "UnalignedRWLock", "classdispenso_1_1_unaligned_r_w_lock.html", null ]
     ] ]
 ];

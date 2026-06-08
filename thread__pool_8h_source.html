@@ -126,10 +126,10 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &lt;<a class="code" href="cpu__set_8h.html">dispenso/cpu_set.h</a>&gt;</span></div>
 <div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;dispenso/detail/math.h&gt;</span></div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">#include &lt;dispenso/detail/per_thread_info.h&gt;</span></div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#include &lt;<a class="code" href="mpmc__ring__buffer_8h.html">dispenso/mpmc_ring_buffer.h</a>&gt;</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="preprocessor">#include &lt;<a class="code" href="once__function_8h.html">dispenso/once_function.h</a>&gt;</span></div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#include &lt;<a class="code" href="thread__pool__wake_8h.html">dispenso/thread_pool_wake.h</a>&gt;</span></div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#include &lt;dispenso/detail/thread_pool_wake.h&gt;</span></div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="preprocessor">#include &lt;<a class="code" href="mpmc__ring__buffer_8h.html">dispenso/mpmc_ring_buffer.h</a>&gt;</span></div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#include &lt;<a class="code" href="once__function_8h.html">dispenso/once_function.h</a>&gt;</span></div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
 <div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#include &lt;<a class="code" href="tsan__annotations_8h.html">dispenso/tsan_annotations.h</a>&gt;</span></div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="keyword">namespace </span>dispenso {</div>
@@ -571,8 +571,8 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>  <span class="comment">// accumulate meaningful memory. See docs/design/roadmap.md (&quot;Bounded</span></div>
 <div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span>  <span class="comment">// PoolWakeState reclamation&quot;) for the planned asymmetric-fence / hazard-pointer</span></div>
 <div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span>  <span class="comment">// scheme to bound this without taxing the schedule() hot path.</span></div>
-<div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span>  std::atomic&lt;PoolWakeState*&gt; wakeState_{<span class="keyword">nullptr</span>};</div>
-<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span>  std::vector&lt;decltype(detail::makeAligned&lt;PoolWakeState&gt;(0))&gt; wakeStateGraveyard_;</div>
+<div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span>  std::atomic&lt;detail::PoolWakeState*&gt; wakeState_{<span class="keyword">nullptr</span>};</div>
+<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span>  std::vector&lt;decltype(detail::makeAligned&lt;detail::PoolWakeState&gt;(0))&gt; wakeStateGraveyard_;</div>
 <div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span> </div>
 <div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span>  <span class="comment">// Per-thread rings for fork-join scheduling. ConcurrentObjectArena provides</span></div>
 <div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>  <span class="comment">// stable pointers (grow-only, never freed), eliminating the need for a resize</span></div>
@@ -1166,7 +1166,6 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00114">platform.h:114</a></div></div>
 <div class="ttc" id="athread__pool_8h_html_a482a36a8ab5d9a9c8667474bf0ec92d8"><div class="ttname"><a href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">dispenso::globalThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ThreadPool &amp; globalThreadPool()</div></div>
 <div class="ttc" id="athread__pool_8h_html_afd8ebfe35a57387b3be0648b55efcd2b"><div class="ttname"><a href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">dispenso::resizeGlobalThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void resizeGlobalThreadPool(size_t numThreads)</div></div>
-<div class="ttc" id="athread__pool__wake_8h_html"><div class="ttname"><a href="thread__pool__wake_8h.html">thread_pool_wake.h</a></div></div>
 <div class="ttc" id="atsan__annotations_8h_html"><div class="ttname"><a href="tsan__annotations_8h.html">tsan_annotations.h</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

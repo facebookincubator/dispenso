@@ -30,7 +30,6 @@ var dir_ff109a5d4b8a833924ba8452f0ad7d5d =
     [ "task_set.h", "task__set_8h.html", "task__set_8h" ],
     [ "thread_id.h", "thread__id_8h.html", "thread__id_8h" ],
     [ "thread_pool.h", "thread__pool_8h.html", "thread__pool_8h" ],
-    [ "thread_pool_wake.h", "thread__pool__wake_8h.html", "thread__pool__wake_8h" ],
     [ "timed_task.h", "timed__task_8h.html", "timed__task_8h" ],
     [ "timing.h", "timing_8h.html", "timing_8h" ],
     [ "tsan_annotations.h", "tsan__annotations_8h.html", null ],
