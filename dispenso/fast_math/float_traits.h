@@ -22,6 +22,25 @@
 namespace dispenso {
 namespace fast_math {
 
+namespace detail {
+// Compile-time bounds check for shuffle/bitmask indices. Extracted to a helper
+// so that static_assert doesn't inflate lizard's cyclomatic complexity count.
+template <int kMax, int... Is>
+constexpr bool indicesInRange() {
+  return ((Is >= 0 && Is <= kMax) && ...);
+}
+
+// Build a bitmask from compile-time 0/1 values. Each Bi contributes bit i.
+// Extracted to avoid lizard counting each ternary as a branch.
+template <int... Bs>
+constexpr uint32_t buildBitmask() {
+  uint32_t mask = 0;
+  int bit = 0;
+  ((mask |= (Bs ? (1u << bit) : 0u), ++bit), ...);
+  return mask;
+}
+} // namespace detail
+
 // Float-precision math constants, avoiding repeated static_cast<float>(M_PI) etc.
 constexpr float kPi = static_cast<float>(M_PI);
 constexpr float kPi_2 = static_cast<float>(M_PI_2);
@@ -104,6 +123,20 @@ struct FloatTraits<float> {
 
   static DISPENSO_INLINE float fma(float a, float b, float c) {
     return std::fma(a, b, c);
+  }
+
+  // shuffle: for scalar, only identity permutation (index 0) is valid.
+  template <int I0>
+  static DISPENSO_INLINE float shuffle(float v) {
+    static_assert(I0 == 0, "scalar shuffle index must be 0");
+    return v;
+  }
+
+  // bitmask: for scalar, returns bool.
+  template <int B0>
+  static DISPENSO_INLINE bool bitmask() {
+    static_assert(B0 == 0 || B0 == 1, "bitmask values must be 0 or 1");
+    return B0 != 0;
   }
 };
 

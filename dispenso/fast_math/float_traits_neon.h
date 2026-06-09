@@ -422,6 +422,42 @@ struct FloatTraits<NeonFloat> {
   static DISPENSO_INLINE NeonFloat max(NeonFloat a, NeonFloat b) {
     return vmaxnmq_f32(a.v, b.v);
   }
+
+  // shuffle: rearrange lanes by compile-time indices. Lowest lane on the left.
+  // shuffle<I0,I1,I2,I3>(v) → result[0]=v[I0], result[1]=v[I1], ...
+  template <int I0, int I1, int I2, int I3>
+  static DISPENSO_INLINE NeonFloat shuffle(NeonFloat v) {
+    static_assert(detail::indicesInRange<3, I0, I1, I2, I3>(), "shuffle indices must be in [0, 3]");
+    static constexpr uint8_t idx[16] = {
+        uint8_t(I0 * 4),
+        uint8_t(I0 * 4 + 1),
+        uint8_t(I0 * 4 + 2),
+        uint8_t(I0 * 4 + 3),
+        uint8_t(I1 * 4),
+        uint8_t(I1 * 4 + 1),
+        uint8_t(I1 * 4 + 2),
+        uint8_t(I1 * 4 + 3),
+        uint8_t(I2 * 4),
+        uint8_t(I2 * 4 + 1),
+        uint8_t(I2 * 4 + 2),
+        uint8_t(I2 * 4 + 3),
+        uint8_t(I3 * 4),
+        uint8_t(I3 * 4 + 1),
+        uint8_t(I3 * 4 + 2),
+        uint8_t(I3 * 4 + 3),
+    };
+    uint8x16_t tbl = vld1q_u8(idx);
+    return vreinterpretq_f32_u8(vqtbl1q_u8(vreinterpretq_u8_f32(v.v), tbl));
+  }
+
+  // bitmask: compile-time constant mask. Lowest lane on the left.
+  // bitmask<B0,B1,B2,B3>() → lane-wide mask (all-ones where Bi=1, all-zeros where Bi=0).
+  template <int B0, int B1, int B2, int B3>
+  static DISPENSO_INLINE NeonFloat bitmask() {
+    static constexpr uint32_t vals[4] = {
+        B0 ? 0xFFFFFFFFu : 0u, B1 ? 0xFFFFFFFFu : 0u, B2 ? 0xFFFFFFFFu : 0u, B3 ? 0xFFFFFFFFu : 0u};
+    return vreinterpretq_f32_u32(vld1q_u32(vals));
+  }
 };
 
 // conditional specializations (NeonFloat mask).

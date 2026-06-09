@@ -478,6 +478,76 @@ struct FloatTraits<Avx512Float> {
   static DISPENSO_INLINE Avx512Float max(Avx512Float a, Avx512Float b) {
     return _mm512_max_ps(a.v, b.v);
   }
+
+  // shuffle: rearrange lanes by compile-time indices. Lowest lane on the left.
+  // shuffle<I0,...,I15>(v) → result[0]=v[I0], result[1]=v[I1], ...
+  template <
+      int I0,
+      int I1,
+      int I2,
+      int I3,
+      int I4,
+      int I5,
+      int I6,
+      int I7,
+      int I8,
+      int I9,
+      int I10,
+      int I11,
+      int I12,
+      int I13,
+      int I14,
+      int I15>
+  static DISPENSO_INLINE Avx512Float shuffle(Avx512Float v) {
+    static_assert(
+        detail::indicesInRange<
+            15,
+            I0,
+            I1,
+            I2,
+            I3,
+            I4,
+            I5,
+            I6,
+            I7,
+            I8,
+            I9,
+            I10,
+            I11,
+            I12,
+            I13,
+            I14,
+            I15>(),
+        "shuffle indices must be in [0, 15]");
+    return _mm512_permutexvar_ps(
+        _mm512_setr_epi32(I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15),
+        v.v);
+  }
+
+  // bitmask: compile-time constant mask. Lowest lane on the left.
+  // bitmask<B0,...,B15>() → Avx512Mask with bit i set where Bi=1.
+  template <
+      int B0,
+      int B1,
+      int B2,
+      int B3,
+      int B4,
+      int B5,
+      int B6,
+      int B7,
+      int B8,
+      int B9,
+      int B10,
+      int B11,
+      int B12,
+      int B13,
+      int B14,
+      int B15>
+  static DISPENSO_INLINE Avx512Mask bitmask() {
+    return static_cast<__mmask16>(
+        detail::
+            buildBitmask<B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15>());
+  }
 };
 
 // conditional specializations (Avx512Mask).

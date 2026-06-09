@@ -438,6 +438,31 @@ struct FloatTraits<AvxFloat> {
   static DISPENSO_INLINE AvxFloat max(AvxFloat a, AvxFloat b) {
     return _mm256_max_ps(a.v, b.v);
   }
+
+  // shuffle: rearrange lanes by compile-time indices. Lowest lane on the left.
+  // shuffle<I0,...,I7>(v) → result[0]=v[I0], result[1]=v[I1], ...
+  template <int I0, int I1, int I2, int I3, int I4, int I5, int I6, int I7>
+  static DISPENSO_INLINE AvxFloat shuffle(AvxFloat v) {
+    static_assert(
+        detail::indicesInRange<7, I0, I1, I2, I3, I4, I5, I6, I7>(),
+        "shuffle indices must be in [0, 7]");
+    return _mm256_permutevar8x32_ps(v.v, _mm256_setr_epi32(I0, I1, I2, I3, I4, I5, I6, I7));
+  }
+
+  // bitmask: compile-time constant mask. Lowest lane on the left.
+  // bitmask<B0,...,B7>() → lane-wide mask (all-ones where Bi=1, all-zeros where Bi=0).
+  template <int B0, int B1, int B2, int B3, int B4, int B5, int B6, int B7>
+  static DISPENSO_INLINE AvxFloat bitmask() {
+    return _mm256_castsi256_ps(_mm256_setr_epi32(
+        B0 ? -1 : 0,
+        B1 ? -1 : 0,
+        B2 ? -1 : 0,
+        B3 ? -1 : 0,
+        B4 ? -1 : 0,
+        B5 ? -1 : 0,
+        B6 ? -1 : 0,
+        B7 ? -1 : 0));
+  }
 };
 
 // conditional specializations.

@@ -433,6 +433,22 @@ struct FloatTraits<SseFloat> {
   static DISPENSO_INLINE SseFloat max(SseFloat a, SseFloat b) {
     return _mm_max_ps(a.v, b.v);
   }
+
+  // shuffle: rearrange lanes by compile-time indices. Lowest lane on the left.
+  // shuffle<I0,I1,I2,I3>(v) → result[0]=v[I0], result[1]=v[I1], ...
+  template <int I0, int I1, int I2, int I3>
+  static DISPENSO_INLINE SseFloat shuffle(SseFloat v) {
+    static_assert(detail::indicesInRange<3, I0, I1, I2, I3>(), "shuffle indices must be in [0, 3]");
+    // _MM_SHUFFLE takes indices in reverse order (highest lane first).
+    return _mm_shuffle_ps(v.v, v.v, _MM_SHUFFLE(I3, I2, I1, I0));
+  }
+
+  // bitmask: compile-time constant mask. Lowest lane on the left.
+  // bitmask<B0,B1,B2,B3>() → lane-wide mask (all-ones where Bi=1, all-zeros where Bi=0).
+  template <int B0, int B1, int B2, int B3>
+  static DISPENSO_INLINE SseFloat bitmask() {
+    return _mm_castsi128_ps(_mm_setr_epi32(B0 ? -1 : 0, B1 ? -1 : 0, B2 ? -1 : 0, B3 ? -1 : 0));
+  }
 };
 
 // conditional specializations.
