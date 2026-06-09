@@ -96,7 +96,9 @@ namespace dispenso {
 
 using ssize_t = std::make_signed<std::size_t>::type;
 
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(__CUDACC__)
+#define DISPENSO_INLINE __host__ __device__ __forceinline__
+#elif defined(__clang__) || defined(__GNUC__)
 #define DISPENSO_INLINE __attribute__((always_inline)) inline
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #define DISPENSO_INLINE __forceinline

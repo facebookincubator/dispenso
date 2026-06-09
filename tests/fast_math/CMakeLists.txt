@@ -93,3 +93,34 @@ foreach(TEST_FILE ${SIMD_TEST_FILES})
     LABELS "fast_math")
   set_target_properties(${TEST_NAME} PROPERTIES FOLDER tests/fast_math)
 endforeach()
+
+# CUDA tests: compile .cu files with nvcc, verify fast_math works on GPU.
+if(DISPENSO_FAST_MATH_CUDA)
+  # Minimal compile test — verifies headers compile under nvcc.
+  add_executable(fast_math_cuda_minimal_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda_minimal_test.cu)
+  target_compile_features(fast_math_cuda_minimal_test PRIVATE cxx_std_17)
+  target_compile_options(fast_math_cuda_minimal_test PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr --expt-extended-lambda -Werror=cross-execution-space-call>)
+  target_link_libraries(fast_math_cuda_minimal_test dispenso CUDA::cudart_static)
+  set_target_properties(fast_math_cuda_minimal_test PROPERTIES
+    CUDA_SEPARABLE_COMPILATION OFF
+    FOLDER tests/fast_math)
+  add_test(NAME fast_math_cuda_minimal_test COMMAND fast_math_cuda_minimal_test)
+  set_tests_properties(fast_math_cuda_minimal_test PROPERTIES LABELS "fast_math")
+
+  # Full correctness test — runs fast_math functions on GPU, compares to CPU.
+  add_executable(fast_math_cuda_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda_test.cu)
+  target_compile_features(fast_math_cuda_test PRIVATE cxx_std_17)
+  target_compile_options(fast_math_cuda_test PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr --expt-extended-lambda -Werror=cross-execution-space-call>)
+  target_link_libraries(fast_math_cuda_test gmock_main gtest dispenso CUDA::cudart_static)
+  gtest_discover_tests(fast_math_cuda_test
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    LABELS "fast_math")
+  set_target_properties(fast_math_cuda_test PROPERTIES
+    CUDA_SEPARABLE_COMPILATION OFF
+    FOLDER tests/fast_math)
+endif()

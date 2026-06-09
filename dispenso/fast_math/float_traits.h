@@ -7,14 +7,15 @@
 
 #pragma once
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
+#if !defined(__CUDACC__)
 #if defined(__SSE__)
 #include <immintrin.h>
 #elif defined(__aarch64__)
 #include <arm_neon.h>
+#endif
 #endif
 
 #include <dispenso/platform.h>
@@ -89,11 +90,29 @@ struct FloatTraits<float> {
   }
 
   static DISPENSO_INLINE float sqrt(float x) {
+#if defined(__CUDACC__)
+    return sqrtf(x);
+#else
     return std::sqrt(x);
+#endif
+  }
+
+  static DISPENSO_INLINE float floor(float x) {
+#if defined(__CUDACC__)
+    return floorf(x);
+#else
+    return std::floor(x);
+#endif
   }
 
   static DISPENSO_INLINE float rcp(float x) {
-#if defined(__SSE__)
+#if defined(__CUDACC__)
+#if defined(__CUDA_ARCH__)
+    return __frcp_rn(x);
+#else
+    return 1.0f / x;
+#endif
+#elif defined(__SSE__)
     return _mm_cvtss_f32(_mm_rcp_ss(_mm_set_ss(x)));
 #elif defined(__aarch64__)
     return vrecpes_f32(x);
@@ -114,15 +133,27 @@ struct FloatTraits<float> {
   }
 
   static DISPENSO_INLINE float min(float a, float b) {
-    return std::min(a, b);
+    return a < b ? a : b;
   }
 
   static DISPENSO_INLINE float max(float a, float b) {
-    return std::max(a, b);
+    return a > b ? a : b;
   }
 
   static DISPENSO_INLINE float fma(float a, float b, float c) {
+#if defined(__CUDACC__)
+#if defined(__CUDA_ARCH__)
+    return __fmaf_rn(a, b, c);
+#elif defined(_MSC_VER)
+    return fmaf(a, b, c);
+#else
+    return __builtin_fmaf(a, b, c);
+#endif
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_fmaf(a, b, c);
+#else
     return std::fma(a, b, c);
+#endif
   }
 
   // shuffle: for scalar, only identity permutation (index 0) is valid.
@@ -148,6 +179,52 @@ struct FloatTraits<int32_t> {
 template <>
 struct FloatTraits<uint32_t> {
   using IntType = uint32_t;
+};
+
+#if defined(__CUDACC__)
+namespace detail {
+DISPENSO_INLINE double doubleSqrt(double x) {
+#if defined(__CUDA_ARCH__)
+  return __dsqrt_rn(x);
+#elif defined(_MSC_VER)
+  return sqrt(x);
+#else
+  return __builtin_sqrt(x);
+#endif
+}
+
+DISPENSO_INLINE double doubleFma(double a, double b, double c) {
+#if defined(__CUDA_ARCH__)
+  return __fma_rn(a, b, c);
+#elif defined(_MSC_VER)
+  return fma(a, b, c);
+#else
+  return __builtin_fma(a, b, c);
+#endif
+}
+} // namespace detail
+#endif
+
+template <>
+struct FloatTraits<double> {
+  using IntType = int64_t;
+  using UintType = uint64_t;
+
+  static DISPENSO_INLINE double sqrt(double x) {
+#if defined(__CUDACC__)
+    return detail::doubleSqrt(x);
+#else
+    return std::sqrt(x);
+#endif
+  }
+
+  static DISPENSO_INLINE double fma(double a, double b, double c) {
+#if defined(__CUDACC__)
+    return detail::doubleFma(a, b, c);
+#else
+    return std::fma(a, b, c);
+#endif
+  }
 };
 
 // Non-deduced context helper: prevents template argument deduction on a parameter.

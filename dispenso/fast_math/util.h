@@ -10,9 +10,9 @@
 #include <cstdint>
 #include <tuple>
 
-#if defined(__SSE__) || defined(__AVX__)
+#if !defined(__CUDACC__) && (defined(__SSE__) || defined(__AVX__))
 #include <immintrin.h>
-#endif // __SSE__
+#endif
 
 #include <cstring>
 #include <type_traits>
@@ -102,29 +102,67 @@ DISPENSO_INLINE std::enable_if_t<FloatTraits<Flt>::kBoolIsMask, IntType_t<Flt>> 
 
 // Reciprocal square root — hardware estimate only.
 // ~12 bits on x86 (SSE/AVX), ~14 bits on AVX-512, ~8 bits on NEON.
-// No software fallback: intentional compile error on unsupported platforms.
+// CUDA: __frsqrt_rn (single hardware instruction).
 template <typename Flt>
 DISPENSO_INLINE Flt rsqrt_approx(Flt x);
 
 // Reciprocal square root — hardware estimate + Newton refinement.
 // ~23 bits (full float32 precision) on all supported platforms.
 // x86: 1 Newton iteration on ~12-bit seed.  NEON: 2 iterations on ~8-bit seed.
-// No software fallback: intentional compile error on unsupported platforms.
+// CUDA: __frsqrt_rn (IEEE round-to-nearest, single instruction).
 template <typename Flt>
 DISPENSO_INLINE Flt rsqrt(Flt x);
 
+#if defined(__CUDACC__)
+template <>
+DISPENSO_INLINE float rsqrt_approx<float>(float x) {
+#if defined(__CUDA_ARCH__)
+  return __frsqrt_rn(x);
+#else
+  return rsqrtf(x);
+#endif
+}
+template <>
+DISPENSO_INLINE float rsqrt<float>(float x) {
+#if defined(__CUDA_ARCH__)
+  return __frsqrt_rn(x);
+#else
+  return rsqrtf(x);
+#endif
+}
+#endif
+
 // Reciprocal — hardware estimate only.
 // ~12 bits on x86 (SSE/AVX), ~14 bits on AVX-512, ~8 bits on NEON.
-// No software fallback: intentional compile error on unsupported platforms.
+// CUDA: __frcp_rn (IEEE round-to-nearest, single instruction).
 template <typename Flt>
 DISPENSO_INLINE Flt rcp_approx(Flt x);
 
 // Reciprocal — hardware estimate + Newton refinement.
 // ~23 bits (full float32 precision) on all supported platforms.
 // x86: 1 Newton iteration on ~12-bit seed.  NEON: 2 iterations on ~8-bit seed.
-// No software fallback: intentional compile error on unsupported platforms.
+// CUDA: __frcp_rn (IEEE round-to-nearest, single instruction).
 template <typename Flt>
 DISPENSO_INLINE Flt rcp(Flt x);
+
+#if defined(__CUDACC__)
+template <>
+DISPENSO_INLINE float rcp_approx<float>(float x) {
+#if defined(__CUDA_ARCH__)
+  return __frcp_rn(x);
+#else
+  return 1.0f / x;
+#endif
+}
+template <>
+DISPENSO_INLINE float rcp<float>(float x) {
+#if defined(__CUDA_ARCH__)
+  return __frcp_rn(x);
+#else
+  return 1.0f / x;
+#endif
+}
+#endif
 
 // True if the float (as int bits) has all exponent bits set (inf or NaN).
 // Returns bool for scalar types, SIMD lane mask for SIMD types.
@@ -180,7 +218,13 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return convert_to_int(SimdType_t<Flt>(f)).v;
   } else {
-#if defined(__SSE__)
+#if defined(__CUDACC__)
+    auto fi = bit_cast<IntType_t<Flt>>(f);
+    if ((fi & 0x7f800000) == 0x7f800000) {
+      return 0;
+    }
+    return static_cast<IntType_t<Flt>>(lrintf(f));
+#elif defined(__SSE__)
     return _mm_cvtss_si32(_mm_set_ss(f));
 #else
     // Round to nearest even via magic number addition, guard non-normals → 0.
@@ -198,7 +242,18 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
 // For non-normal inputs (inf/NaN), returns 0 to avoid undefined behavior.
 template <typename Flt, IntType_t<Flt> kMin, IntType_t<Flt> kMax>
 DISPENSO_INLINE IntType_t<Flt> convert_to_int_clamped(Flt f) {
-#if defined(__SSE4_1__)
+#if defined(__CUDACC__)
+  auto fi = bit_cast<IntType_t<Flt>>(f);
+  if ((fi & 0x7f800000) == 0x7f800000) {
+    return 0;
+  }
+  auto rounded = static_cast<IntType_t<Flt>>(lrintf(f));
+  if (rounded > kMax)
+    return kMax;
+  if (rounded < kMin)
+    return kMin;
+  return rounded;
+#elif defined(__SSE4_1__)
   static const __m128i kMn = _mm_set1_epi32(kMin);
   static const __m128i kMx = _mm_set1_epi32(kMax);
   __m128i i = _mm_cvtps_epi32(_mm_set_ss(f));
@@ -240,13 +295,15 @@ DISPENSO_INLINE Flt floor_small(Flt x) {
 
 template <>
 DISPENSO_INLINE float floor_small(float x) {
-#if defined(__SSE4_1__)
+#if defined(__CUDACC__)
+  return floorf(x);
+#elif defined(__SSE4_1__)
   __m128 f = _mm_set_ss(x);
   __m128 r = _mm_floor_ss(f, f);
   return _mm_cvtss_f32(r);
 #else
-  return std::floor(x);
-#endif // __SSE4_1__
+  return FloatTraits<float>::floor(x);
+#endif
 }
 
 // Minimum of x and mn. If x is NaN and mn is not, returns mn (relied-upon NaN behavior).
@@ -255,7 +312,9 @@ DISPENSO_INLINE Flt min(Flt x, Flt mn);
 
 template <>
 DISPENSO_INLINE float min(float x, float mn) {
-#if defined(__SSE4_1__)
+#if defined(__CUDACC__)
+  return fminf(x, mn);
+#elif defined(__SSE4_1__)
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   // Ordering matters here for NaN behavior
@@ -263,7 +322,7 @@ DISPENSO_INLINE float min(float x, float mn) {
   return _mm_cvtss_f32(r);
 #else
   return x < mn ? x : mn;
-#endif //__SSE4_1__
+#endif
 }
 
 // Clamp x to [mn, mx]. If x is NaN, NaN propagates (result is NaN).
@@ -273,7 +332,10 @@ DISPENSO_INLINE Flt clamp_allow_nan(Flt x, Flt mn, Flt mx);
 
 template <>
 DISPENSO_INLINE float clamp_allow_nan(float x, float mn, float mx) {
-#if defined(__SSE4_1__)
+#if defined(__CUDACC__)
+  mx = (mx < x) ? mx : x;
+  return (mx < mn) ? mn : mx;
+#elif defined(__SSE4_1__)
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   __m128 fmx = _mm_set_ss(mx);
@@ -283,7 +345,7 @@ DISPENSO_INLINE float clamp_allow_nan(float x, float mn, float mx) {
 #else
   mx = (mx < x) ? mx : x;
   return (mx < mn) ? mn : mx;
-#endif // __SSE4_1__
+#endif
 }
 
 // Clamp x to [mn, mx]. If x is NaN, returns a value in [mn, mx] (NaN is suppressed).
@@ -293,7 +355,10 @@ DISPENSO_INLINE Flt clamp_no_nan(Flt x, Flt mn, Flt mx);
 
 template <>
 DISPENSO_INLINE float clamp_no_nan(float x, float mn, float mx) {
-#if defined(__SSE4_1__)
+#if defined(__CUDACC__)
+  mx = (mx > x) ? x : mx;
+  return (mx > mn) ? mx : mn;
+#elif defined(__SSE4_1__)
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   __m128 fmx = _mm_set_ss(mx);
@@ -306,7 +371,7 @@ DISPENSO_INLINE float clamp_no_nan(float x, float mn, float mx) {
 #else
   mx = (mx > x) ? x : mx;
   return (mx > mn) ? mx : mn;
-#endif // __SSE4_1__
+#endif
 }
 
 // Load table[index]. Scalar version is a plain array access; SIMD versions use gather instructions.
@@ -415,6 +480,8 @@ DISPENSO_INLINE Flt hornerImpl(Flt x, Flt accum, Flt next, Cs... rest) {
   return hornerImpl(x, FloatTraits<Flt>::fma(accum, x, next), rest...);
 }
 
+} // namespace detail
+
 // --- Estrin evaluation ---
 // Tree-reduces paired coefficients at each level, cutting critical-path depth
 // from N to ceil(log2(N+1)) at the cost of extra multiplies for x powers.
@@ -428,6 +495,11 @@ DISPENSO_INLINE Flt hornerImpl(Flt x, Flt accum, Flt next, Cs... rest) {
 // All tuple operations (make_tuple, tuple_cat, apply) are eliminated by the
 // optimizer — verified to produce identical assembly to hand-written FMA trees
 // with clang 21, GCC 11, and GCC 15 at -O2.
+//
+// Not available under CUDA: std::apply is not __host__ __device__.
+#if !defined(__CUDACC__)
+
+namespace detail {
 
 template <typename Flt>
 struct EstrinImpl {
@@ -469,20 +541,22 @@ struct EstrinImpl {
 
 } // namespace detail
 
-// Horner evaluation: hornerEval(x, cn, cn-1, ..., c0) = ((cn*x + cn-1)*x + ...)*x + c0
-// Coefficients HIGH-to-LOW (highest degree first).
-// Flt is deduced from x; coefficients are converted to Flt internally.
-template <typename Flt, typename C0, typename... Cs>
-DISPENSO_INLINE Flt hornerEval(Flt x, C0 cn, Cs... rest) {
-  return detail::hornerImpl(x, Flt(cn), Flt(rest)...);
-}
-
 // Estrin evaluation: same semantics as hornerEval, but uses tree-reduction
 // for lower critical-path depth (ceil(log2(N)) vs N dependent FMAs).
 // Coefficients HIGH-to-LOW.
 template <typename Flt, typename C0, typename... Cs>
 DISPENSO_INLINE Flt estrinEval(Flt x, C0 cn, Cs... rest) {
   return detail::EstrinImpl<Flt>::reduce(x, std::make_tuple(Flt(cn), Flt(rest)...));
+}
+
+#endif // !__CUDACC__
+
+// Horner evaluation: hornerEval(x, cn, cn-1, ..., c0) = ((cn*x + cn-1)*x + ...)*x + c0
+// Coefficients HIGH-to-LOW (highest degree first).
+// Flt is deduced from x; coefficients are converted to Flt internally.
+template <typename Flt, typename C0, typename... Cs>
+DISPENSO_INLINE Flt hornerEval(Flt x, C0 cn, Cs... rest) {
+  return detail::hornerImpl(x, Flt(cn), Flt(rest)...);
 }
 
 // Platform-adaptive polynomial evaluation.
@@ -494,7 +568,7 @@ DISPENSO_INLINE Flt estrinEval(Flt x, C0 cn, Cs... rest) {
 // Coefficients HIGH-to-LOW: polyEval(x, cn, ..., c0).
 template <typename Flt, typename C0, typename... Cs>
 DISPENSO_INLINE Flt polyEval(Flt x, C0 cn, Cs... rest) {
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(__CUDACC__) || defined(__HIP_DEVICE_COMPILE__)
   return hornerEval(x, cn, rest...);
 #else
   return estrinEval(x, cn, rest...);
@@ -505,6 +579,9 @@ DISPENSO_INLINE Flt polyEval(Flt x, C0 cn, Cs... rest) {
 } // namespace dispenso
 
 // Auto-detect SIMD backends and include FloatTraits specializations.
+// Skip under CUDA compiler — SIMD vector types are not supported in device code.
+#if !defined(__CUDACC__)
+
 #if defined(__SSE4_1__)
 #include <dispenso/fast_math/float_traits_x86.h>
 #endif
@@ -525,13 +602,18 @@ DISPENSO_INLINE Flt polyEval(Flt x, C0 cn, Cs... rest) {
 #include <dispenso/fast_math/float_traits_hwy.h>
 #endif
 
+#endif // !__CUDACC__
+
 namespace dispenso {
 namespace fast_math {
 
 // Best available SIMD float type for the current platform.
 // Prefer native intrinsic wrappers over Highway for lower overhead.
 // Highway is a fallback for platforms without a native wrapper.
-#if defined(__aarch64__)
+// Under CUDA, only scalar float is available.
+#if defined(__CUDACC__)
+using DefaultSimdFloat = float;
+#elif defined(__aarch64__)
 using DefaultSimdFloat = NeonFloat;
 #elif defined(__AVX512F__)
 using DefaultSimdFloat = Avx512Float;

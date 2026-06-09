@@ -111,56 +111,75 @@ struct PowLog2Entry {
   double logc;
 };
 
-// EXP2F_TABLE_BITS = 5 → 32 entries.
-// tab[i] = uint64(2^(i/32)) - (i << (52-5)).
-// To reconstruct 2^(k/32): double(tab[k%32] + (k << 47)).
-constexpr uint64_t kPowExp2Tab[32] = {
-    0x3ff0000000000000, 0x3fefd9b0d3158574, 0x3fefb5586cf9890f, 0x3fef9301d0125b51,
-    0x3fef72b83c7d517b, 0x3fef54873168b9aa, 0x3fef387a6e756238, 0x3fef1e9df51fdee1,
-    0x3fef06fe0a31b715, 0x3feef1a7373aa9cb, 0x3feedea64c123422, 0x3feece086061892d,
-    0x3feebfdad5362a27, 0x3feeb42b569d4f82, 0x3feeab07dd485429, 0x3feea47eb03a5585,
-    0x3feea09e667f3bcd, 0x3fee9f75e8ec5f74, 0x3feea11473eb0187, 0x3feea589994cce13,
-    0x3feeace5422aa0db, 0x3feeb737b0cdc5e5, 0x3feec49182a3f090, 0x3feed503b23e255d,
-    0x3feee89f995ad3ad, 0x3feeff76f2fb5e47, 0x3fef199bdd85529c, 0x3fef3720dcef9069,
-    0x3fef5818dcfba487, 0x3fef7c97337b9b5f, 0x3fefa4afa2a490da, 0x3fefd0765b6e4540,
-};
+// Pow lookup tables and polynomial coefficients. Wrapped in DISPENSO_INLINE
+// accessor functions so that the constexpr arrays are function-local, which
+// nvcc handles correctly for both __host__ and __device__ code (namespace-scope
+// constexpr arrays are not implicitly __host__ __device__).
 
-constexpr PowLog2Entry kPowLog2Tab[16] = {
-    {0x1.661ec6a5122f9p+0, -0x1.efec61b011f85p-2}, // i=0,  c=0.71484375
-    {0x1.571ed3c506b3ap+0, -0x1.b0b67f4f46810p-2}, // i=1,  c=0.74609375
-    {0x1.49539e3b2d067p+0, -0x1.7418acebbf18fp-2}, // i=2,  c=0.77734375
-    {0x1.3c995a47babe7p+0, -0x1.39de8e1559f6fp-2}, // i=3,  c=0.80859375
-    {0x1.30d190130d190p+0, -0x1.01d9bbcfa61d4p-2}, // i=4,  c=0.83984375
-    {0x1.25e22708092f1p+0, -0x1.97c1cb13c7ec1p-3}, // i=5,  c=0.87109375
-    {0x1.1bb4a4046ed29p+0, -0x1.2f9e32d5bfdd1p-3}, // i=6,  c=0.90234375
-    {0x1.12358e75d3033p+0, -0x1.960caf9abb7cap-4}, // i=7,  c=0.93359375
-    {0x1.0953f39010954p+0, -0x1.a6f9c377dd31bp-5}, // i=8,  c=0.96484375
-    {0x1p+0, 0x0p+0}, // i=9,  c=1.0 (exact)
-    {0x1.e573ac901e574p-1, 0x1.3aa2fdd27f1c3p-4}, // i=10, c=1.05468750
-    {0x1.ca4b3055ee191p-1, 0x1.476a9f983f74dp-3}, // i=11, c=1.11718750
-    {0x1.b2036406c80d9p-1, 0x1.e840be74e6a4dp-3}, // i=12, c=1.17968750
-    {0x1.9c2d14ee4a102p-1, 0x1.406463b1b0449p-2}, // i=13, c=1.24218750
-    {0x1.886e5f0abb04ap-1, 0x1.88e9c72e0b226p-2}, // i=14, c=1.30468750
-    {0x1.767dce434a9b1p-1, 0x1.ce0a4923a587dp-2}, // i=15, c=1.36718750
-};
+DISPENSO_INLINE const uint64_t* powExp2Tab() {
+  // EXP2F_TABLE_BITS = 5 → 32 entries.
+  // tab[i] = uint64(2^(i/32)) - (i << (52-5)).
+  // To reconstruct 2^(k/32): double(tab[k%32] + (k << 47)).
+  static constexpr uint64_t kTab[32] = {
+      0x3ff0000000000000, 0x3fefd9b0d3158574, 0x3fefb5586cf9890f, 0x3fef9301d0125b51,
+      0x3fef72b83c7d517b, 0x3fef54873168b9aa, 0x3fef387a6e756238, 0x3fef1e9df51fdee1,
+      0x3fef06fe0a31b715, 0x3feef1a7373aa9cb, 0x3feedea64c123422, 0x3feece086061892d,
+      0x3feebfdad5362a27, 0x3feeb42b569d4f82, 0x3feeab07dd485429, 0x3feea47eb03a5585,
+      0x3feea09e667f3bcd, 0x3fee9f75e8ec5f74, 0x3feea11473eb0187, 0x3feea589994cce13,
+      0x3feeace5422aa0db, 0x3feeb737b0cdc5e5, 0x3feec49182a3f090, 0x3feed503b23e255d,
+      0x3feee89f995ad3ad, 0x3feeff76f2fb5e47, 0x3fef199bdd85529c, 0x3fef3720dcef9069,
+      0x3fef5818dcfba487, 0x3fef7c97337b9b5f, 0x3fefa4afa2a490da, 0x3fefd0765b6e4540,
+  };
+  return kTab;
+}
+
+// log2 table: 16 entries, each {1/c, log2(c)} where c is the center of
+// the ith subinterval of [OFF, 2*OFF] (OFF = 0x3f330000).
+DISPENSO_INLINE const PowLog2Entry* powLog2Tab() {
+  static constexpr PowLog2Entry kTab[16] = {
+      {0x1.661ec6a5122f9p+0, -0x1.efec61b011f85p-2}, // i=0,  c=0.71484375
+      {0x1.571ed3c506b3ap+0, -0x1.b0b67f4f46810p-2}, // i=1,  c=0.74609375
+      {0x1.49539e3b2d067p+0, -0x1.7418acebbf18fp-2}, // i=2,  c=0.77734375
+      {0x1.3c995a47babe7p+0, -0x1.39de8e1559f6fp-2}, // i=3,  c=0.80859375
+      {0x1.30d190130d190p+0, -0x1.01d9bbcfa61d4p-2}, // i=4,  c=0.83984375
+      {0x1.25e22708092f1p+0, -0x1.97c1cb13c7ec1p-3}, // i=5,  c=0.87109375
+      {0x1.1bb4a4046ed29p+0, -0x1.2f9e32d5bfdd1p-3}, // i=6,  c=0.90234375
+      {0x1.12358e75d3033p+0, -0x1.960caf9abb7cap-4}, // i=7,  c=0.93359375
+      {0x1.0953f39010954p+0, -0x1.a6f9c377dd31bp-5}, // i=8,  c=0.96484375
+      {0x1p+0, 0x0p+0}, // i=9,  c=1.0 (exact)
+      {0x1.e573ac901e574p-1, 0x1.3aa2fdd27f1c3p-4}, // i=10, c=1.05468750
+      {0x1.ca4b3055ee191p-1, 0x1.476a9f983f74dp-3}, // i=11, c=1.11718750
+      {0x1.b2036406c80d9p-1, 0x1.e840be74e6a4dp-3}, // i=12, c=1.17968750
+      {0x1.9c2d14ee4a102p-1, 0x1.406463b1b0449p-2}, // i=13, c=1.24218750
+      {0x1.886e5f0abb04ap-1, 0x1.88e9c72e0b226p-2}, // i=14, c=1.30468750
+      {0x1.767dce434a9b1p-1, 0x1.ce0a4923a587dp-2}, // i=15, c=1.36718750
+  };
+  return kTab;
+}
 
 // log2(1+r)/r polynomial coefficients (degree 4, Sollya fpminimax).
 // Relative error < 2^-32 on |r| < 0.0297.
-constexpr double kPowLog2Poly[5] = {
-    0x1.27bc533354f16p-2, // P[0]: r^4 coeff
-    -0x1.719a02b5d4c08p-2, // P[1]: r^3 coeff
-    0x1.ec70982733e8fp-2, // P[2]: r^2 coeff
-    -0x1.7154745c0af07p-1, // P[3]: r   coeff (approx -1/(2*ln2))
-    0x1.71547652bc3ep0, // P[4]: r^0 coeff (approx 1/ln2)
-};
+DISPENSO_INLINE const double* powLog2Poly() {
+  static constexpr double kPoly[5] = {
+      0x1.27bc533354f16p-2, // P[0]: r^4 coeff
+      -0x1.719a02b5d4c08p-2, // P[1]: r^3 coeff
+      0x1.ec70982733e8fp-2, // P[2]: r^2 coeff
+      -0x1.7154745c0af07p-1, // P[3]: r   coeff (approx -1/(2*ln2))
+      0x1.71547652bc3ep0, // P[4]: r^0 coeff (approx 1/ln2)
+  };
+  return kPoly;
+}
 
 // exp2 polynomial coefficients (degree 3 on [-1/64, 1/64], Sollya fpminimax).
 // Relative error < 2^-27 on (2^r - 1)/r.
-constexpr double kPowExp2Poly[3] = {
-    0x1.c6b08d7047f43p-5, // C[0]: r^2 coeff
-    0x1.ebfccc582d012p-3, // C[1]: r   coeff
-    0x1.62e42fefe5286p-1, // C[2]: r^0 coeff (approx ln2)
-};
+DISPENSO_INLINE const double* powExp2Poly() {
+  static constexpr double kPoly[3] = {
+      0x1.c6b08d7047f43p-5, // C[0]: r^2 coeff
+      0x1.ebfccc582d012p-3, // C[1]: r   coeff
+      0x1.62e42fefe5286p-1, // C[2]: r^0 coeff (approx ln2)
+  };
+  return kPoly;
+}
 
 DISPENSO_INLINE float pow_double_core(float ax, float y) {
   constexpr uint32_t kOff = 0x3f330000;
@@ -172,8 +191,8 @@ DISPENSO_INLINE float pow_double_core(float ax, float y) {
   uint32_t top = tmp & 0xff800000u;
   uint32_t iz = ix - top;
   int32_t k = static_cast<int32_t>(top) >> 23; // exponent (arithmetic shift)
-  double invc = kPowLog2Tab[i].invc;
-  double logc = kPowLog2Tab[i].logc;
+  double invc = powLog2Tab()[i].invc;
+  double logc = powLog2Tab()[i].logc;
   double z = static_cast<double>(bit_cast<float>(iz));
 
   // log2(x) = log1p(z/c - 1)/ln2 + log2(c) + k
@@ -182,10 +201,10 @@ DISPENSO_INLINE float pow_double_core(float ax, float y) {
 
   // Pipelined polynomial: two parallel chains merged via r4.
   double r2 = r * r;
-  double p0 = kPowLog2Poly[0] * r + kPowLog2Poly[1];
-  double p1 = kPowLog2Poly[2] * r + kPowLog2Poly[3];
+  double p0 = powLog2Poly()[0] * r + powLog2Poly()[1];
+  double p1 = powLog2Poly()[2] * r + powLog2Poly()[3];
   double r4 = r2 * r2;
-  double p2 = kPowLog2Poly[4] * r + y0;
+  double p2 = powLog2Poly()[4] * r + y0;
   p2 = p1 * r2 + p2;
   double logx = p0 * r4 + p2;
 
@@ -214,13 +233,13 @@ DISPENSO_INLINE float pow_double_core(float ax, float y) {
 
   // exp2(x) = 2^(k/N) * (C0*r^3 + C1*r^2 + C2*r + 1)
   //         = s * poly(r)
-  uint64_t t = kPowExp2Tab[ki & 31];
+  uint64_t t = powExp2Tab()[ki & 31];
   t += ki << (52 - 5); // add exponent
   double s = bit_cast<double>(t);
 
   double r2e = rd * rd;
-  double pe = kPowExp2Poly[0] * rd + kPowExp2Poly[1];
-  double qe = kPowExp2Poly[2] * rd + 1.0;
+  double pe = powExp2Poly()[0] * rd + powExp2Poly()[1];
+  double qe = powExp2Poly()[2] * rd + 1.0;
   qe = pe * r2e + qe;
   return static_cast<float>(qe * s);
 }
@@ -255,7 +274,7 @@ DISPENSO_INLINE Flt pow_double_hybrid_core(Flt ax, Flt y) {
 
   // --- Table lookups: 4 lanes × {invc, logc} = 8 scalar loads ---
   // Table is 16 × {double, double} = 256 bytes, stride 2 doubles per entry.
-  const double* tab = reinterpret_cast<const double*>(kPowLog2Tab);
+  const double* tab = reinterpret_cast<const double*>(powLog2Tab());
   IntT i2 = i + i; // stride: 2 doubles per entry
   DV invc = DV::gather(tab, i2); // tab[2*i + 0] = invc
   DV logc = DV::gather(tab, i2 + IntT(1)); // tab[2*i + 1] = logc
@@ -267,11 +286,11 @@ DISPENSO_INLINE Flt pow_double_hybrid_core(Flt ax, Flt y) {
 
   // Degree-4 Horner for log2 (chain too short for Estrin benefit).
   // log2(x) = y0 + r * P(r), |r| < 0.03.
-  DV p(kPowLog2Poly[0]);
-  p = fma(p, r, DV(kPowLog2Poly[1]));
-  p = fma(p, r, DV(kPowLog2Poly[2]));
-  p = fma(p, r, DV(kPowLog2Poly[3]));
-  p = fma(p, r, DV(kPowLog2Poly[4]));
+  DV p(powLog2Poly()[0]);
+  p = fma(p, r, DV(powLog2Poly()[1]));
+  p = fma(p, r, DV(powLog2Poly()[2]));
+  p = fma(p, r, DV(powLog2Poly()[3]));
+  p = fma(p, r, DV(powLog2Poly()[4]));
   DV logx = fma(p, r, y0);
 
   // --- y * log2(x) ---
@@ -541,9 +560,9 @@ pow_scalar_y_fast_path(Flt x, float y, bool& y_is_int, bool& y_is_odd, Flt& out)
     return true;
   }
 
-  float ay = std::fabs(y);
-  y_is_int = (std::floor(y) == y);
-  y_is_odd = y_is_int && (std::fmod(ay, 2.0f) == 1.0f);
+  float ay = fabs(y);
+  y_is_int = (FloatTraits<float>::floor(y) == y);
+  y_is_odd = y_is_int && (static_cast<int32_t>(ay) & 1);
 
   if (y_is_int && ay < 64.0f) {
     // Binary squaring with uniform SIMD multiplies.
@@ -595,7 +614,7 @@ DISPENSO_INLINE Flt sqrt(Flt x) {
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
     return FloatTraits<SimdType_t<Flt>>::sqrt(SimdType_t<Flt>(x)).v;
   } else {
-    return std::sqrt(x);
+    return FloatTraits<Flt>::sqrt(x);
   }
 }
 
@@ -1528,7 +1547,7 @@ DISPENSO_INLINE Flt hypot(Flt x, Flt y) {
     // Scalar: cast to double for correctly-rounded result.
     double xd = static_cast<double>(x);
     double yd = static_cast<double>(y);
-    return static_cast<float>(std::sqrt(std::fma(xd, xd, yd * yd)));
+    return static_cast<float>(FloatTraits<double>::sqrt(FloatTraits<double>::fma(xd, xd, yd * yd)));
   } else {
     // SIMD: dynamically scale inputs based on their exponent to keep
     // intermediates in normal float range.  Extracts the exponent of
@@ -1640,7 +1659,7 @@ DISPENSO_INLINE Flt pow(Flt x, NonDeduced<Flt> y) {
     if constexpr (AccuracyTraits::kMaxAccuracy) {
       // Tableless core: logarithmSep handles subnormals internally (pre-scales
       // by 2^23), so pass the original |x| — not the bounds-adjusted ix.
-      r = detail::pow_double_poly_core(std::fabs(x), y);
+      r = detail::pow_double_poly_core(fabs(x), y);
     } else {
       // Table core: uses ix directly. The bounds path above already normalized
       // subnormals (scale by 2^23, subtract 23 from exponent) so ix is valid.
@@ -1917,7 +1936,7 @@ DISPENSO_INLINE Flt log1p(Flt x) {
 
     if constexpr (std::is_same_v<Flt, float>) {
       // Scalar: branch on magnitude.
-      if (std::fabs(x) < 0.25f)
+      if (fabs(x) < 0.25f)
         return poly_r;
     }
 
@@ -1988,7 +2007,8 @@ DISPENSO_INLINE Flt tanh(Flt x) {
     // Scalar: Sollya fpminimax polynomial for |x| < 1.0 (degree 6 in u = x²).
     // tanh(x) = x * (1 + u * Q(u)), where Q is fitted to tanh(x)/x - 1.
     // Error: ~0.52 ULP at the boundary. 6 FMAs.
-    float ax = std::fabs(x);
+    using Ft = FloatTraits<float>;
+    float ax = fabs(x);
     if (!(ax >= 1.0f)) { // !(>=) so NaN enters polynomial path and propagates
       constexpr float t1 = -0x1.555482p-2f;
       constexpr float t2 = 0x1.10ef12p-3f;
@@ -1998,8 +2018,8 @@ DISPENSO_INLINE Flt tanh(Flt x) {
       constexpr float t6 = 0x1.189ec2p-10f;
       float u = x * x;
       float poly =
-          std::fma(std::fma(std::fma(std::fma(std::fma(t6, u, t5), u, t4), u, t3), u, t2), u, t1);
-      return x * std::fma(poly, u, 1.0f);
+          Ft::fma(Ft::fma(Ft::fma(Ft::fma(Ft::fma(t6, u, t5), u, t4), u, t3), u, t2), u, t1);
+      return x * Ft::fma(poly, u, 1.0f);
     }
     // Large |x|: use expm1 formula (no cancellation, result far from 0).
     float x_safe = ax < 10.0f ? x : (x < 0.0f ? -10.0f : 10.0f);
@@ -2047,6 +2067,7 @@ DISPENSO_INLINE Flt erf(Flt x) {
   } else if constexpr (std::is_same_v<Flt, float>) {
     // Scalar path: branching for efficiency.
     // Save sign and work with |x|; restore sign at end via bit-OR.
+    using Ft = FloatTraits<float>;
     uint32_t sign = bit_cast<uint32_t>(x) & 0x80000000u;
     float ax = dispenso::fast_math::fabs(x);
     float result;
@@ -2055,7 +2076,7 @@ DISPENSO_INLINE Flt erf(Flt x) {
     } else if (!(ax < 0.875f)) { // !(< ) so NaN goes to erfc path and propagates
       // erfc formula: erf(x) = 1 - t * P(t) * exp(-x²), t = 1/(1+p*x).
       constexpr float p = 0.45f;
-      float t = 1.0f / std::fma(p, ax, 1.0f);
+      float t = 1.0f / Ft::fma(p, ax, 1.0f);
 
       // Sollya fpminimax degree 5 P(t), float coefficients.
       constexpr float c0 = 0x1.04873ep-2f;
@@ -2064,23 +2085,23 @@ DISPENSO_INLINE Flt erf(Flt x) {
       constexpr float c3 = 0x1.15aaa6p-5f;
       constexpr float c4 = 0x1.65d24ep-2f;
       constexpr float c5 = -0x1.4432a4p-3f;
-      float poly = t *
-          std::fma(std::fma(std::fma(std::fma(std::fma(c5, t, c4), t, c3), t, c2), t, c1), t, c0);
+      float poly =
+          t * Ft::fma(Ft::fma(Ft::fma(Ft::fma(Ft::fma(c5, t, c4), t, c3), t, c2), t, c1), t, c0);
 
       // Inline exp(-x²) via Cody-Waite range reduction.
       float u = ax * ax;
       constexpr float kLog2e = 0x1.715476p+0f;
       constexpr float kLn2hi = 0x1.62e400p-1f;
       constexpr float kLn2lo = 0x1.7f7d1cp-20f;
-      float k = std::floor(u * kLog2e);
-      float f = std::fma(k, -kLn2hi, u);
-      f = std::fma(k, -kLn2lo, f);
+      float k = Ft::floor(u * kLog2e);
+      float f = Ft::fma(k, -kLn2hi, u);
+      f = Ft::fma(k, -kLn2lo, f);
       // Degree-5 Horner for exp(-f), f in [0, ln2).
       constexpr float e0 = 0x1.fffffep-1f, e1 = -0x1.ffff1ep-1f;
       constexpr float e2 = 0x1.ffe314p-2f, e3 = -0x1.53f876p-3f;
       constexpr float e4 = 0x1.462f16p-5f, e5 = -0x1.80e5b2p-8f;
       float exp_neg_f =
-          std::fma(std::fma(std::fma(std::fma(std::fma(e5, f, e4), f, e3), f, e2), f, e1), f, e0);
+          Ft::fma(Ft::fma(Ft::fma(Ft::fma(Ft::fma(e5, f, e4), f, e3), f, e2), f, e1), f, e0);
       int32_t ki = convert_to_int_trunc_safe(k);
       float pow2_neg_k = bit_cast<float>((127 - ki) << 23);
 
@@ -2092,9 +2113,8 @@ DISPENSO_INLINE Flt erf(Flt x) {
       constexpr float q0 = -0x1.812746p-2f, q1 = 0x1.ce2ec6p-4f, q2 = -0x1.b81edep-6f;
       constexpr float q3 = 0x1.556b48p-8f, q4 = -0x1.b0255p-11f, q5 = 0x1.7149c8p-14f;
       float u = ax * ax;
-      float q =
-          std::fma(std::fma(std::fma(std::fma(std::fma(q5, u, q4), u, q3), u, q2), u, q1), u, q0);
-      result = ax * std::fma(q, u, c0);
+      float q = Ft::fma(Ft::fma(Ft::fma(Ft::fma(Ft::fma(q5, u, q4), u, q3), u, q2), u, q1), u, q0);
+      result = ax * Ft::fma(q, u, c0);
     }
     return bit_cast<float>(bit_cast<uint32_t>(result) | sign);
   } else {

@@ -79,6 +79,7 @@ set(DISPENSO_BUILD_EXAMPLES OFF CACHE BOOL "Should examples be built?")
 set(DISPENSO_BUILD_FAST_MATH OFF CACHE BOOL "Build experimental fast_math sublibrary (API unstable)")
 set(DISPENSO_FAST_MATH_SIMD "none" CACHE STRING "SIMD ISA for fast_math targets: none, native, sse4.1, avx2, avx512, neon")
 set(DISPENSO_FAST_MATH_HIGHWAY OFF CACHE BOOL "Enable Highway SIMD backend for fast_math (fetches Highway if not found)")
+set(DISPENSO_FAST_MATH_CUDA OFF CACHE BOOL "Build CUDA tests for fast_math (requires CUDA toolkit)")
 
 if(DISPENSO_BUILD_FAST_MATH)
   # Set compiler flags for the chosen SIMD backend.
@@ -130,6 +131,15 @@ if(DISPENSO_BUILD_FAST_MATH)
       set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
       set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "" FORCE)
       FetchContent_MakeAvailable(highway)
+    endif()
+  endif()
+
+  # Enable CUDA language and find toolkit if requested.
+  if(DISPENSO_FAST_MATH_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES "native")
     endif()
   endif()
 endif()
