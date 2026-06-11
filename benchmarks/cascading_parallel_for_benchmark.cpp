@@ -193,7 +193,6 @@ inline void compositePixel(ImageBuffers& ib, int32_t i) {
 // Benchmarks
 // ---------------------------------------------------------------------------
 
-static constexpr int32_t kSmallSize = 1000;
 static constexpr int32_t kMediumSize = 100000;
 static constexpr int32_t kLargeSize = 10000000;
 
@@ -386,14 +385,14 @@ void BM_tbb_task_group(benchmark::State& state) {
 // ---------------------------------------------------------------------------
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
-  for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
+  for (int j : {kMediumSize, kLargeSize}) {
     for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
   }
 }
 
-BENCHMARK(BM_serial)->Args({kSmallSize})->Args({kMediumSize})->Args({kLargeSize})->UseRealTime();
+BENCHMARK(BM_serial)->Args({kMediumSize})->Args({kLargeSize})->UseRealTime();
 
 #if defined(_OPENMP)
 BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
