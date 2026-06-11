@@ -230,7 +230,6 @@ BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
 BENCHMARK(BM_taskflow)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_static_chunk)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_auto_chunk)->Apply(CustomArguments)->UseRealTime();
 
