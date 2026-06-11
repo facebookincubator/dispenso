@@ -36,7 +36,6 @@ struct alignas(dispenso::kCacheLineSize) AlignedSum {
 };
 
 // Image dimensions.
-static constexpr int kSmallDim = 256;
 static constexpr int kMediumDim = 1024;
 static constexpr int kLargeDim = 4096;
 
@@ -391,53 +390,30 @@ void BM_omp_guided(benchmark::State& state) {
 #endif // _OPENMP
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
-  for (int dim : {kSmallDim, kMediumDim, kLargeDim}) {
+  for (int dim : {kMediumDim, kLargeDim}) {
     for (int i : benchmarkThreadCounts()) {
       b->Args({i, dim});
     }
   }
 }
 
-// Serial baselines: one per region+size combo.
-BENCHMARK_TEMPLATE(BM_serial, Region::kFullSet, kSmallDim);
+// Serial baselines: FullSet (realistic mix) and Boundary (work-stealing stress test).
+// kInterior omitted — uniformly cheap pixels, similar to trivial_compute_benchmark.
+// kSmallDim (256) omitted — too few pixels to meaningfully parallelize at high thread counts.
 BENCHMARK_TEMPLATE(BM_serial, Region::kFullSet, kMediumDim);
-BENCHMARK_TEMPLATE(BM_serial, Region::kBoundary, kSmallDim);
 BENCHMARK_TEMPLATE(BM_serial, Region::kBoundary, kMediumDim);
-BENCHMARK_TEMPLATE(BM_serial, Region::kInterior, kSmallDim);
-BENCHMARK_TEMPLATE(BM_serial, Region::kInterior, kMediumDim);
 
 #if defined(_OPENMP)
-BENCHMARK_TEMPLATE(BM_omp_static, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_omp_static, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_omp_static, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_omp_guided, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_omp_guided, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_omp_guided, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
 #endif
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK_TEMPLATE(BM_tbb, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tbb, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_simple, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_simple, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_simple, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_static, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_static, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_static, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
 #endif
 
-BENCHMARK_TEMPLATE(BM_dispenso_static, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static_l2, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static_l2, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static_l2, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_auto, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_auto, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_auto, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_fine, Region::kFullSet)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_fine, Region::kBoundary)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_fine, Region::kInterior)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();
