@@ -153,6 +153,7 @@ if(DISPENSO_BUILD_BENCHMARKS)
   # Sadly any given release of folly seems to have some problem or another.  Leave disabled by default.
   set(BENCHMARK_WITHOUT_FOLLY ON CACHE BOOL "Should folly benchmarks be disabled?")
   add_subdirectory(benchmarks)
+  add_subdirectory(tools)
 endif()
 
 if(DISPENSO_BUILD_EXAMPLES)
