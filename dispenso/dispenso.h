@@ -23,6 +23,7 @@
 // Parallel algorithms
 #include <dispenso/for_each.h>
 #include <dispenso/parallel_for.h>
+#include <dispenso/parallel_invoke.h>
 #include <dispenso/pipeline.h>
 
 // Graph-based task scheduling
@@ -30,8 +31,12 @@
 #include <dispenso/graph_executor.h>
 
 // Concurrent containers
+#include <dispenso/chase_lev_deque.h>
 #include <dispenso/concurrent_object_arena.h>
 #include <dispenso/concurrent_vector.h>
+#include <dispenso/mpmc_ring_buffer.h>
+#include <dispenso/small_vector.h>
+#include <dispenso/spsc_ring_buffer.h>
 
 // Synchronization primitives
 #include <dispenso/completion_event.h>
@@ -50,6 +55,7 @@
 #include <dispenso/timed_task.h>
 
 // Utilities
+#include <dispenso/cpu_set.h>
 #include <dispenso/platform.h>
 #include <dispenso/priority.h>
 #include <dispenso/thread_id.h>
