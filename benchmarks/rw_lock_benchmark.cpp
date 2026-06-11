@@ -12,6 +12,7 @@
 #include <dispenso/rw_lock.h>
 
 #include <map>
+#include <set>
 
 #include <shared_mutex>
 
@@ -64,7 +65,7 @@ void BM_serial(benchmark::State& state) {
 }
 
 static void CustomArgumentsSerial(benchmark::internal::Benchmark* b) {
-  for (int j : {2, 8, 32, 128, 512}) {
+  for (int j : {2, 8, 128, 512}) {
     b->Args({j});
   }
 }
@@ -96,11 +97,13 @@ void BM_parallel(benchmark::State& state) {
 }
 
 static void CustomArgumentsParallel(benchmark::internal::Benchmark* b) {
-  for (int j : {2, 8, 32, 128, 512}) {
-    for (int s : {1, 2, 4, 8, 16, 32}) {
-      if (s > static_cast<int>(std::thread::hardware_concurrency())) {
-        break;
-      }
+  int hw = static_cast<int>(std::thread::hardware_concurrency());
+  if (hw == 0) {
+    hw = 4;
+  }
+  std::set<int> threads = {2, 8, hw, 2 * hw};
+  for (int j : {2, 8, 128, 512}) {
+    for (int s : threads) {
       b->Args({s, j});
     }
   }
