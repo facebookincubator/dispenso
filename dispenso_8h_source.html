@@ -120,51 +120,60 @@ $(function(){initNavTree('dispenso_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="comment">// Parallel algorithms</span></div>
 <div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &lt;<a class="code" href="for__each_8h.html">dispenso/for_each.h</a>&gt;</span></div>
 <div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#include &lt;<a class="code" href="parallel__for_8h.html">dispenso/parallel_for.h</a>&gt;</span></div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &lt;<a class="code" href="pipeline_8h.html">dispenso/pipeline.h</a>&gt;</span></div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="comment">// Graph-based task scheduling</span></div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &lt;<a class="code" href="graph_8h.html">dispenso/graph.h</a>&gt;</span></div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;<a class="code" href="graph__executor_8h.html">dispenso/graph_executor.h</a>&gt;</span></div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="comment">// Concurrent containers</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="preprocessor">#include &lt;<a class="code" href="concurrent__object__arena_8h.html">dispenso/concurrent_object_arena.h</a>&gt;</span></div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#include &lt;<a class="code" href="concurrent__vector_8h.html">dispenso/concurrent_vector.h</a>&gt;</span></div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="comment">// Synchronization primitives</span></div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#include &lt;<a class="code" href="completion__event_8h.html">dispenso/completion_event.h</a>&gt;</span></div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="preprocessor">#include &lt;<a class="code" href="distributed__rw__lock_8h.html">dispenso/distributed_rw_lock.h</a>&gt;</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &lt;<a class="code" href="latch_8h.html">dispenso/latch.h</a>&gt;</span></div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#include &lt;<a class="code" href="rw__lock_8h.html">dispenso/rw_lock.h</a>&gt;</span></div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="comment">// Memory management</span></div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#include &lt;<a class="code" href="pool__allocator_8h.html">dispenso/pool_allocator.h</a>&gt;</span></div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#include &lt;<a class="code" href="resource__pool_8h.html">dispenso/resource_pool.h</a>&gt;</span></div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &lt;<a class="code" href="small__buffer__allocator_8h.html">dispenso/small_buffer_allocator.h</a>&gt;</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &lt;dispenso/parallel_invoke.h&gt;</span></div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="preprocessor">#include &lt;<a class="code" href="pipeline_8h.html">dispenso/pipeline.h</a>&gt;</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span> </div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="comment">// Graph-based task scheduling</span></div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;<a class="code" href="graph_8h.html">dispenso/graph.h</a>&gt;</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">#include &lt;<a class="code" href="graph__executor_8h.html">dispenso/graph_executor.h</a>&gt;</span></div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span> </div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="comment">// Concurrent containers</span></div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#include &lt;<a class="code" href="chase__lev__deque_8h.html">dispenso/chase_lev_deque.h</a>&gt;</span></div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#include &lt;<a class="code" href="concurrent__object__arena_8h.html">dispenso/concurrent_object_arena.h</a>&gt;</span></div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#include &lt;<a class="code" href="concurrent__vector_8h.html">dispenso/concurrent_vector.h</a>&gt;</span></div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#include &lt;<a class="code" href="mpmc__ring__buffer_8h.html">dispenso/mpmc_ring_buffer.h</a>&gt;</span></div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="preprocessor">#include &lt;<a class="code" href="small__vector_8h.html">dispenso/small_vector.h</a>&gt;</span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &lt;<a class="code" href="spsc__ring__buffer_8h.html">dispenso/spsc_ring_buffer.h</a>&gt;</span></div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span> </div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="comment">// Synchronization primitives</span></div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#include &lt;<a class="code" href="completion__event_8h.html">dispenso/completion_event.h</a>&gt;</span></div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#include &lt;<a class="code" href="distributed__rw__lock_8h.html">dispenso/distributed_rw_lock.h</a>&gt;</span></div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#include &lt;<a class="code" href="latch_8h.html">dispenso/latch.h</a>&gt;</span></div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &lt;<a class="code" href="rw__lock_8h.html">dispenso/rw_lock.h</a>&gt;</span></div>
 <div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span> </div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="comment">// Async utilities</span></div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#include &lt;<a class="code" href="async__request_8h.html">dispenso/async_request.h</a>&gt;</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#include &lt;<a class="code" href="once__function_8h.html">dispenso/once_function.h</a>&gt;</span></div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="preprocessor">#include &lt;<a class="code" href="timed__task_8h.html">dispenso/timed_task.h</a>&gt;</span></div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="comment">// Memory management</span></div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#include &lt;<a class="code" href="pool__allocator_8h.html">dispenso/pool_allocator.h</a>&gt;</span></div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#include &lt;<a class="code" href="resource__pool_8h.html">dispenso/resource_pool.h</a>&gt;</span></div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="preprocessor">#include &lt;<a class="code" href="small__buffer__allocator_8h.html">dispenso/small_buffer_allocator.h</a>&gt;</span></div>
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="comment">// Utilities</span></div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><span class="preprocessor">#include &lt;<a class="code" href="priority_8h.html">dispenso/priority.h</a>&gt;</span></div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="preprocessor">#include &lt;<a class="code" href="thread__id_8h.html">dispenso/thread_id.h</a>&gt;</span></div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="preprocessor">#include &lt;<a class="code" href="timing_8h.html">dispenso/timing.h</a>&gt;</span></div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span><span class="preprocessor">#include &lt;<a class="code" href="util_8h.html">dispenso/util.h</a>&gt;</span></div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span><span class="comment">// Sanitizer support</span></div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="preprocessor">#include &lt;<a class="code" href="tsan__annotations_8h.html">dispenso/tsan_annotations.h</a>&gt;</span></div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="comment">// Async utilities</span></div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="preprocessor">#include &lt;<a class="code" href="async__request_8h.html">dispenso/async_request.h</a>&gt;</span></div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><span class="preprocessor">#include &lt;<a class="code" href="once__function_8h.html">dispenso/once_function.h</a>&gt;</span></div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="preprocessor">#include &lt;<a class="code" href="timed__task_8h.html">dispenso/timed_task.h</a>&gt;</span></div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span> </div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span><span class="comment">// Utilities</span></div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span><span class="preprocessor">#include &lt;<a class="code" href="cpu__set_8h.html">dispenso/cpu_set.h</a>&gt;</span></div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="preprocessor">#include &lt;<a class="code" href="priority_8h.html">dispenso/priority.h</a>&gt;</span></div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="preprocessor">#include &lt;<a class="code" href="thread__id_8h.html">dispenso/thread_id.h</a>&gt;</span></div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span><span class="preprocessor">#include &lt;<a class="code" href="timing_8h.html">dispenso/timing.h</a>&gt;</span></div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="preprocessor">#include &lt;<a class="code" href="util_8h.html">dispenso/util.h</a>&gt;</span></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span> </div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="comment">// Sanitizer support</span></div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span><span class="preprocessor">#include &lt;<a class="code" href="tsan__annotations_8h.html">dispenso/tsan_annotations.h</a>&gt;</span></div>
 <div class="ttc" id="aasync__request_8h_html"><div class="ttname"><a href="async__request_8h.html">async_request.h</a></div></div>
+<div class="ttc" id="achase__lev__deque_8h_html"><div class="ttname"><a href="chase__lev__deque_8h.html">chase_lev_deque.h</a></div></div>
 <div class="ttc" id="acompletion__event_8h_html"><div class="ttname"><a href="completion__event_8h.html">completion_event.h</a></div></div>
 <div class="ttc" id="aconcurrent__object__arena_8h_html"><div class="ttname"><a href="concurrent__object__arena_8h.html">concurrent_object_arena.h</a></div></div>
 <div class="ttc" id="aconcurrent__vector_8h_html"><div class="ttname"><a href="concurrent__vector_8h.html">concurrent_vector.h</a></div></div>
+<div class="ttc" id="acpu__set_8h_html"><div class="ttname"><a href="cpu__set_8h.html">cpu_set.h</a></div></div>
 <div class="ttc" id="adistributed__rw__lock_8h_html"><div class="ttname"><a href="distributed__rw__lock_8h.html">distributed_rw_lock.h</a></div></div>
 <div class="ttc" id="afor__each_8h_html"><div class="ttname"><a href="for__each_8h.html">for_each.h</a></div></div>
 <div class="ttc" id="afuture_8h_html"><div class="ttname"><a href="future_8h.html">future.h</a></div></div>
 <div class="ttc" id="agraph_8h_html"><div class="ttname"><a href="graph_8h.html">graph.h</a></div></div>
 <div class="ttc" id="agraph__executor_8h_html"><div class="ttname"><a href="graph__executor_8h.html">graph_executor.h</a></div></div>
 <div class="ttc" id="alatch_8h_html"><div class="ttname"><a href="latch_8h.html">latch.h</a></div></div>
+<div class="ttc" id="ampmc__ring__buffer_8h_html"><div class="ttname"><a href="mpmc__ring__buffer_8h.html">mpmc_ring_buffer.h</a></div></div>
 <div class="ttc" id="aonce__function_8h_html"><div class="ttname"><a href="once__function_8h.html">once_function.h</a></div></div>
 <div class="ttc" id="aparallel__for_8h_html"><div class="ttname"><a href="parallel__for_8h.html">parallel_for.h</a></div></div>
 <div class="ttc" id="apipeline_8h_html"><div class="ttname"><a href="pipeline_8h.html">pipeline.h</a></div></div>
@@ -175,6 +184,8 @@ $(function(){initNavTree('dispenso_8h_source.html',''); initResizable(true); });
 <div class="ttc" id="arw__lock_8h_html"><div class="ttname"><a href="rw__lock_8h.html">rw_lock.h</a></div></div>
 <div class="ttc" id="aschedulable_8h_html"><div class="ttname"><a href="schedulable_8h.html">schedulable.h</a></div></div>
 <div class="ttc" id="asmall__buffer__allocator_8h_html"><div class="ttname"><a href="small__buffer__allocator_8h.html">small_buffer_allocator.h</a></div></div>
+<div class="ttc" id="asmall__vector_8h_html"><div class="ttname"><a href="small__vector_8h.html">small_vector.h</a></div></div>
+<div class="ttc" id="aspsc__ring__buffer_8h_html"><div class="ttname"><a href="spsc__ring__buffer_8h.html">spsc_ring_buffer.h</a></div></div>
 <div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
 <div class="ttc" id="athread__id_8h_html"><div class="ttname"><a href="thread__id_8h.html">thread_id.h</a></div></div>
 <div class="ttc" id="athread__pool_8h_html"><div class="ttname"><a href="thread__pool_8h.html">thread_pool.h</a></div></div>
