@@ -58,6 +58,7 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 
 **Parallel algorithms:**
 * **[`parallel_for`](docs/getting_started.md#your-first-parallel-loop)** — parallel loops over indices, blocking or non-blocking (cascaded); cascading `parallel_for` enables overlapping independent loops without oversubscription
+* **[`parallel_invoke`](docs/getting_started.md#parallel-invoke)** — fork-join invocation of heterogeneous tasks; composes naturally with recursive divide-and-conquer
 * **[`for_each`](docs/getting_started.md#parallel-iteration-with-for_each)** — parallel `std::for_each` / `std::for_each_n`
 * **[`Future`](docs/getting_started.md#futures-for-async-results)** — high-performance thread-safe shared futures with `then()`, `when_all()`, and an API matching `std::experimental::shared_future`
 * **[`Graph`](docs/getting_started.md#task-graphs)** — task graph execution with subgraph support and incremental re-evaluation
@@ -72,7 +73,8 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 * **[`RWLock`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_r_w_lock.html)** — reader-writer spin lock, outperforms `std::shared_mutex` under low write contention
 
 **General-purpose utilities:**
-* **`SmallVector`** — inline-storage vector (not thread-aware; similar to `folly::small_vector`)
+* **[`CpuSet`](docs/getting_started.md#cpu-affinity-and-topology)** — portable CPU affinity, NUMA topology, and cache-aware thread group building
+* **[`SmallVector`](docs/getting_started.md#smallvector)** — inline-storage vector (not thread-aware; similar to `folly::small_vector`)
 * **`OnceFunction`** — lightweight move-only `void()` callable
 * **`PoolAllocator`** — pool allocator with pluggable backing allocation (e.g. CUDA)
 * **`SmallBufferAllocator`** — fast concurrent allocation for temporary objects
@@ -319,9 +321,6 @@ benchmarking, see [docs/building.md](docs/building.md).
 ## Known Issues
 
 * A subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
-
-## TODO
-* Enable Windows benchmarks through CMake. *(may be resolved soon — actively being worked on)*
 
 <div id='license'/>
 

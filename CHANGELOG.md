@@ -1,3 +1,67 @@
+1.6.0 (June 2026)
+
+### New features
+* **`ChaseLevDeque`** — lock-free single-producer multi-consumer work-stealing deque with dynamic resizing. Classic data structure for work-stealing schedulers.
+* **`MpmcRingBuffer`** — bounded multi-producer multi-consumer ring buffer with power-of-two capacity and CAS-based push/pop.
+* **`CpuSet`** — portable CPU affinity and NUMA topology facility. Supports thread-to-core binding, L2/L3 cache group detection, and cache-aware thread group building. Full support on Linux and Windows; topology-only on macOS.
+* **`parallel_invoke`** — fork-join invocation of heterogeneous tasks. Schedules N-1 tasks to the pool and runs the last inline. Composes naturally with recursive divide-and-conquer.
+* **`kAdaptive` parallel_for** — new chunking strategy inspired by Callisto-RTS (Harris/Kaestle, USENIX ATC 2015). The iteration space is partitioned into P contiguous stripes (one per worker), each consumed front-to-back via per-stripe atomic cursors. When a worker's stripe is exhausted, it steals from peers, preferring same-L3 victims for cache locality. Bitmasks prevent probing exhausted stripes. Competitive with TBB on SpMM benchmarks (3–12% faster at 8–32 threads, within noise at 64–192 threads on 1M-row workloads).
+* **`when_any` combinator** — returns a future that completes when any input future is ready, with the index of the first completed future.
+* **`AwakeRef` / `keepAwake()`** — RAII handle to prevent worker threads from sleeping, avoiding futex wake latency between closely-spaced `parallel_for` calls.
+
+### Thread pool rework
+* **Per-thread rings** — each worker thread gets a dedicated SPMC ring buffer (16 slots). `schedule()` distributes work round-robin across rings, eliminating central queue contention at high thread counts. Foundation for fork-join scheduling — threads check their own ring before the central queue.
+* **Steal-ring scheduling** — shared steal rings (one per `kStealRingSharing` threads) provide a secondary work-distribution tier between the per-thread ring and the central queue, enabling same-group work stealing without central queue CAS contention.
+* **Wake cascade** — replaced `wakeN()` bitmask scanning with a promote-seed cascade pattern (O(log N) wake latency). One thread is woken and propagates wakes through the group via pre-staged lambdas in per-thread rings. Pattern C cascade is within ±5% of the old scheme on all benchmarks while being 6x faster on the mandelbrot workload (reverting to old wakeN was +615% on mandelbrot).
+* **Lean-spin warmup** — idle threads first check only their own ring (no central queue, no CAS contention) for `kSpinCheckInterval` iterations before engaging full work-finding machinery. Minimizes cache-line traffic from idle threads during sustained parallel_for bursts.
+* **Fixed-spin termination** — replaced adaptive time-based spin backoff with a simple fixed iteration count (`kDefaultSpinLimit`). Eliminates `getTime()` calls from the idle path. Windows defaults to 200 iterations; Linux/macOS to 400. Platform constants are tunable via `-DDISPENSO_TUNE_FIXED_SPIN_ITERS` and `-DDISPENSO_TUNE_SPIN_CHECK_INTERVAL`.
+* **Separate poll-mode / wake-mode timeouts** — poll-mode timeout (200µs Linux, 1ms Windows) controls how often threads check for work when wake signaling is disabled. Wake-mode backstop (100ms) bounds worst-case latency from rare races. Previously these shared a single confusing constant.
+* **Unified thread loop** — `threadLoopWake` and `threadLoopPoll` merged into a single `threadLoopImpl<kUseWakeSleep>` template, eliminating code duplication.
+* **`PoolWakeState` moved to `detail/`** — wake infrastructure is now properly namespaced under `dispenso::detail`.
+
+### Performance improvements
+* `OnceFunction` inline SBO storage: small functors (≤56 bytes) stored inline in a 64-byte cache-line-sized object, eliminating pool allocation for the common case. Bulk scheduling 19–49% faster (allocation elimination); futures tree 4–12% faster; graph scene 2–11% faster. Medium/large functor moves are 29–58% slower as expected (64B vs 16B copy), but these are rare in practice. (166-thread EPYC)
+* `TaskCost` routing: dual-path dispatch for lightweight vs heavyweight tasks, reducing scheduling overhead for small tasks.
+* Windows spin tuning: `spin_fixed_200` was ~6% faster (geomean across full tuning set) than the adaptive baseline on a 48-thread Xeon Platinum 8259CL.
+
+### Bug fixes
+* Fixed `try_pop_into` race in `MpmcRingBuffer`: read slot value before CAS in the last-element case to prevent use-after-overwrite.
+* Fixed `NewThreadInvoker` rare Windows hang on process exit: pinned the module and bounded the shutdown drain.
+* Fixed `scheduleBulkImpl` inline boundary oscillation: prevented enqueue/inline mode switching on every iteration.
+* Fixed `DistributedRWLock` to use OS-level writer drain.
+* Fixed `-Wconversion` warning on narrow `parallel_for` index types.
+* Fixed Doxygen warnings in OSS CI.
+* Fixed `util_test` warning suppression for both Clang and GCC.
+* Replaced `rdtscp` with `lfence; rdtsc` in timing code — some simulators don't support `rdtscp`.
+* Restored `ThreadWaiter` to make `NewThreadInvoker` safe at process exit.
+* Added `static_assert` for trivially-copyable types in `ConcurrentObjectArena` copy constructor.
+
+### fast_math (experimental)
+* Added `rsqrt_approx`, `rsqrt`, `rcp_approx`, `rcp` with configurable accuracy.
+* Added SIMD building blocks: `shuffle`, `maskBits`, `maskLoad`/`maskStore`, `extract`, `testBit`, `kLanes`, `load`/`store`, `any_true`.
+* Added CUDA compilation support and exhaustive GPU correctness tests.
+
+### Benchmarks
+* Added `mandelbrot_benchmark` — escape-time workload for testing dynamic load balancing with non-uniform per-pixel work.
+* Added `spmm_benchmark` — sparse matrix-dense matrix multiply with power-law row distribution, realistic density (<1%), and 64 RHS columns.
+* Added `mandelbrot_instrument` — standalone scheduler quality analysis tool (chunk distribution, affinity hit rate). Moved to `tools/`.
+* Added `wake_cost_bench` — platform syscall cost measurement for wake tuning. Moved to `tools/`.
+* Added benchmark runner infrastructure for Windows/Buck (`facebook/run_benchmarks_buck.py`).
+* Added Windows tuning sweep results and data.
+
+### Documentation
+* Added examples for `CpuSet`, `ChaseLevDeque`, `parallel_invoke`, and `SmallVector`.
+* Updated Getting Started guide with sections for all new public APIs.
+* Updated README feature list with new containers and algorithms.
+* Added all missing public headers to `dispenso.h` umbrella include.
+* Added C++20 concept constraints for `parallel_for` and graph SFINAE.
+
+### Build system and infrastructure
+* Added CMake build for `tools/` directory (development utilities).
+* Added three missing benchmark targets to Buck benchmark runner.
+* Bumped GitHub Actions checkout to v5 (Node 20 deprecation).
+* Removed dead `run_bench.bat` and duplicate `benchmarks/run_benchmarks.py`.
+
 1.5.1 (March 28, 2026)
 
 ### Bug fixes
