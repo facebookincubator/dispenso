@@ -294,7 +294,6 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
-BENCHMARK(BM_dispenso)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_auto)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();
