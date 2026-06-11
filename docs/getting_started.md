@@ -328,6 +328,79 @@ Key points:
 
 ---
 
+## Parallel Invoke
+
+For launching a fixed set of heterogeneous tasks in parallel (not a loop),
+use `parallel_invoke`. It's the classic fork-join idiom: submit siblings to
+the pool, run the last one inline on the calling thread.
+
+<!-- @example parallel_invoke_example.cpp -->
+
+**Fork-join with parallel_invoke:**
+
+```cpp
+#include <dispenso/parallel_invoke.h>
+
+dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
+
+double a = 0.0, b = 0.0, c = 0.0;
+dispenso::parallel_invoke(
+    tasks,
+    [&]() { a = expensiveComputation1(); },
+    [&]() { b = expensiveComputation2(); },
+    [&]() { c = expensiveComputation3(); }  // runs inline
+);
+
+tasks.wait();
+double result = a + b + c;
+```
+
+See [full example](../examples/parallel_invoke_example.cpp).
+
+Key points:
+- The last functor runs inline on the calling thread
+- Does *not* call `wait()` — the caller drives synchronization
+- Composes naturally with recursive divide-and-conquer algorithms
+- No type erasure or allocation overhead
+
+---
+
+## CPU Affinity and Topology
+
+`CpuSet` provides portable CPU affinity and NUMA topology detection:
+
+<!-- @example cpu_set_example.cpp -->
+
+**Query topology and pin threads:**
+
+```cpp
+#include <dispenso/cpu_set.h>
+
+// Query available CPUs
+int32_t available = dispenso::CpuSet::availableCount();
+printf("Available CPUs: %d\n", available);
+
+// Get cache-sharing groups for cache-aware scheduling
+const auto& l3Groups = dispenso::CpuSet::l3CacheGroups();
+for (const auto& group : l3Groups) {
+  printf("L3 cache group (id %d): %zu CPUs\n", group.cacheId, group.cpus.size());
+}
+
+// Pin the current thread to a specific CPU
+dispenso::CpuSet pinSet;
+pinSet.add(0);
+pinSet.bindCurrentThread();
+```
+
+See [full example](../examples/cpu_set_example.cpp).
+
+Key points:
+- Works on Linux (full support), Windows (full support), macOS (topology only)
+- `CpuSet::l2CacheGroups()` / `l3CacheGroups()` return CPU groups that share cache levels
+- Use for NUMA-aware thread placement and cache-friendly scheduling
+
+---
+
 ## Thread-Safe Containers
 
 ### ConcurrentVector
@@ -373,6 +446,70 @@ Key points:
 - Use `grow_by()` for efficient batch insertion
 - Reserve capacity upfront when size is known
 - Not all operations are concurrent-safe (see docs)
+
+### SmallVector
+
+A vector-like container with inline storage for small sizes, avoiding heap
+allocation when element count stays below a compile-time threshold:
+
+<!-- @example small_vector_example.cpp -->
+
+```cpp
+#include <dispenso/small_vector.h>
+
+// Store up to 8 elements inline (on the stack)
+dispenso::SmallVector<int, 8> vec;
+
+for (int i = 0; i < 6; ++i) {
+  vec.push_back(i);  // No heap allocation — fits inline
+}
+
+vec.push_back(100);  // Still inline
+vec.push_back(200);  // Still inline (8 elements)
+vec.push_back(300);  // Transitions to heap — transparent to the caller
+```
+
+See [full example](../examples/small_vector_example.cpp).
+
+Key points:
+- Template parameter `N` controls inline capacity (default 4)
+- Transparent fallback to heap when size exceeds `N`
+- Once on heap, stays on heap until `clear()` — preserves `reserve()` guarantees
+- Same API as `std::vector` (iterators, `push_back`, `operator[]`, etc.)
+
+### ChaseLevDeque
+
+A lock-free single-producer, multi-consumer work-stealing deque. The owner
+pushes and pops from the bottom; thieves steal from the top:
+
+<!-- @example chase_lev_deque_example.cpp -->
+
+```cpp
+#include <dispenso/chase_lev_deque.h>
+
+dispenso::ChaseLevDeque<int, 256> deque;
+
+// Owner pushes work
+for (int i = 0; i < 100; ++i) {
+  deque.try_push(i);
+}
+
+// Owner pops (LIFO — most recent first)
+int val = 0;
+bool ok = deque.try_pop(val);
+
+// Thieves steal (FIFO — oldest first, from other threads)
+int stolen = 0;
+bool got = deque.try_steal(stolen);
+```
+
+See [full example](../examples/chase_lev_deque_example.cpp).
+
+Key points:
+- Lock-free and wait-free for the owner (push/pop)
+- `steal()` is lock-free for thieves
+- Dynamically resizable — grows as needed
+- Classic data structure for work-stealing schedulers
 
 ---
 

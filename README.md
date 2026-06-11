@@ -65,12 +65,14 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 
 **Concurrent containers and synchronization:**
 * **[`ConcurrentVector`](docs/getting_started.md#concurrentvector)** — concurrent growable vector, superset of TBB `concurrent_vector` API
+* **[`ChaseLevDeque`](docs/getting_started.md#chaselevdeque)** — lock-free SPMC work-stealing deque
+* **[`MpmcRingBuffer`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_mpmc_ring_buffer.html)** — bounded multi-producer multi-consumer ring buffer
+* **`SPSCRingBuffer`** — lock-free single-producer single-consumer ring buffer
 * **[`Latch`](docs/getting_started.md#latch)** — one-shot barrier for thread synchronization
 * **[`RWLock`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_r_w_lock.html)** — reader-writer spin lock, outperforms `std::shared_mutex` under low write contention
-* **`SPSCRingBuffer`** — lock-free single-producer single-consumer ring buffer *(1.5.0)*
 
 **General-purpose utilities:**
-* **`SmallVector`** — inline-storage vector (not thread-aware; similar to `folly::small_vector`) *(1.5.0)*
+* **`SmallVector`** — inline-storage vector (not thread-aware; similar to `folly::small_vector`)
 * **`OnceFunction`** — lightweight move-only `void()` callable
 * **`PoolAllocator`** — pool allocator with pluggable backing allocation (e.g. CUDA)
 * **`SmallBufferAllocator`** — fast concurrent allocation for temporary objects
