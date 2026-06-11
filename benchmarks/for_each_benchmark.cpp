@@ -106,6 +106,7 @@ void BM_for_each_n_deque(benchmark::State& state) {
   benchmark::DoNotOptimize(sum.load());
 }
 
+#if defined(DISPENSO_BENCH_ALL_CONTAINERS)
 void BM_for_each_n_list(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);
@@ -146,18 +147,10 @@ void BM_for_each_n_set(benchmark::State& state) {
   }
   benchmark::DoNotOptimize(sum.load());
 }
+#endif
 
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int j : {kSmallSize, kMediumSize, kLargeSize}) {
-    for (int i : benchmarkThreadCounts()) {
-      b->Args({i, j});
-    }
-  }
-}
-
-// Smaller argument set for containers where 100M elements is impractical
-static void SmallArguments(benchmark::internal::Benchmark* b) {
-  for (int j : {kSmallSize, kMediumSize}) {
     for (int i : benchmarkThreadCounts()) {
       b->Args({i, j});
     }
@@ -170,7 +163,17 @@ BENCHMARK_TEMPLATE(BM_serial, kLargeSize);
 
 BENCHMARK(BM_for_each_n)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_for_each_n_deque)->Apply(CustomArguments)->UseRealTime();
+#if defined(DISPENSO_BENCH_ALL_CONTAINERS)
+// Smaller argument set for containers where 100M elements is impractical
+static void SmallArguments(benchmark::internal::Benchmark* b) {
+  for (int j : {kSmallSize, kMediumSize}) {
+    for (int i : benchmarkThreadCounts()) {
+      b->Args({i, j});
+    }
+  }
+}
 BENCHMARK(BM_for_each_n_list)->Apply(SmallArguments)->UseRealTime();
 BENCHMARK(BM_for_each_n_set)->Apply(SmallArguments)->UseRealTime();
+#endif
 
 BENCHMARK_MAIN();
