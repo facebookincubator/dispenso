@@ -26,7 +26,6 @@ Dispenso is a modern **C++ parallel computing library** that provides work-steal
 - [Quick Start](#quickstart)
 - [Comparison vs Other Libraries](#comparison)
 - [Migration Guides](#migrationguides)
-- [When Not to Use Dispenso](#nottouse)
 - [Documentation and Examples](#examples)
 - [Benchmark Results](#benchresults)
 - [Installing](#installing)
@@ -155,118 +154,13 @@ GCD is Apple-specific with ports to other platforms. C++ parallel algorithms are
 - **[Migrating from TBB](docs/migrating_from_tbb.md)** — API mappings, thread pool differences, and common porting patterns
 - **[Migrating from OpenMP](docs/migrating_from_openmp.md)** — Replacing `#pragma omp` with dispenso equivalents, handling reductions and nested parallelism
 
-<div id='nottouse'/>
-
-## When Not to Use Dispenso
-Dispenso isn't really designed for high-latency task offload, it works best for compute-bound tasks.  Using the thread pool for networking, disk, or in cases with frequent TLB misses (really any scenario with kernel context switches) may result in less than ideal performance.
-
-In these kernel context switch scenarios, `dispenso::Future` can be used with `dispenso::NewThreadInvoker`, which should be roughly equivalent with std::future performance.
-
-If you need async I/O, Folly is likely a good choice (though it still doesn't fix e.g. TLB misses).
-
 <div id='examples'/>
 
 ## Documentation and Examples
-[Documentation can be found here](https://facebookincubator.github.io/dispenso)
 
-Here are some simple examples of what you can do in dispenso. See tests and benchmarks for more examples.
-
-### parallel\_for
-
-A simple sequential loop can be parallelized with minimal changes:
-
-```cpp
-for(size_t j = 0; j < kLoops; ++j) {
-  vec[j] = someFunction(j);
-}
-```
-
-Becomes:
-
-```cpp
-dispenso::parallel_for(0, kLoops, [&vec] (size_t j) {
-  vec[j] = someFunction(j);
-});
-```
-
-### TaskSet
-
-Schedule multiple tasks and wait for them to complete:
-
-```cpp
-void randomWorkConcurrently() {
-  dispenso::TaskSet tasks(dispenso::globalThreadPool());
-  tasks.schedule([&stateA]() { stateA = doA(); });
-  tasks.schedule([]() { doB(); });
-  // Do some work on current thread
-  tasks.wait(); // After this, A, B done.
-  tasks.schedule(doC);
-  tasks.schedule([&stateD]() { doD(stateD); });
-} // TaskSet's destructor waits for all scheduled tasks to finish
-```
-
-### ConcurrentTaskSet
-
-Build a tree in parallel using recursive task scheduling:
-
-```cpp
-struct Node {
-  int val;
-  std::unique_ptr<Node> left, right;
-};
-void buildTree(dispenso::ConcurrentTaskSet& tasks, std::unique_ptr<Node>& node, int depth) {
-  if (depth) {
-    node = std::make_unique<Node>();
-    node->val = depth;
-    tasks.schedule([&tasks, &left = node->left, depth]() { buildTree(tasks, left, depth - 1); });
-    tasks.schedule([&tasks, &right = node->right, depth]() { buildTree(tasks, right, depth - 1); });
-  }
-}
-void buildTreeParallel() {
-  std::unique_ptr<Node> root;
-  dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
-  buildTree(tasks, root, 20);
-  tasks.wait();  // tasks would also wait here in destructor if we omitted this line
-}
-```
-
-### Future
-
-Compose asynchronous operations with futures:
-
-```cpp
-dispenso::Future<size_t> ThingProcessor::processThings() {
-  auto expensiveFuture = dispenso::async([this]() {
-    return processExpensiveThing(expensive_);
-  });
-  auto futureOfManyCheap = dispenso::async([this]() {
-    size_t sum = 0;
-    for (auto &thing : cheapThings_) {
-      sum += processCheapThing(thing);
-    }
-    return sum;
-  });
-  return dispenso::when_all(expensiveFuture, futureOfManyCheap).then([](auto &&tuple) {
-    return std::get<0>(tuple).get() + std::get<1>(tuple).get();
-  });
-}
-
-auto result = thingProc->processThings();
-useResult(result.get());
-```
-
-### ConcurrentVector
-
-Safely grow a vector from multiple threads:
-
-```cpp
-ConcurrentVector<std::unique_ptr<int>> values;
-dispenso::parallel_for(
-  dispenso::makeChunkedRange(0, length, dispenso::ParForChunking::kStatic),
-  [&values](int i, int end) {
-    values.grow_by_generator(end - i, [i]() mutable { return std::make_unique<int>(i++); });
-  });
-```
+- **[Getting Started](docs/getting_started.md)** — tutorials with compilable examples for parallel_for, tasks, futures, graphs, pipelines, containers, and more
+- **[API Reference](https://facebookincubator.github.io/dispenso)** — full Doxygen documentation
+- **[FAQ](docs/faq.md)** — common questions about performance, exception behavior, and when to use dispenso vs alternatives
 
 <div id='benchresults'/>
 
@@ -318,9 +212,11 @@ benchmarking, see [docs/building.md](docs/building.md).
 
 <div id='knownissues'/>
 
-## Known Issues
+## Known Issues and Limitations
 
-* A subset of dispenso tests are known to fail on 32-bit PPC Mac.  If you have access to such a machine and are willing to help debug, it would be appreciated!
+* **Parallel reduction** is not a first-class operation. Use `parallel_for` with per-thread state accumulation (see [Getting Started](docs/getting_started.md#your-first-parallel-loop)). A dedicated reduction API is planned.
+* **macOS CPU affinity**: `CpuSet::bindCurrentThread()` is a no-op on macOS — the OS does not support explicit CPU pinning. Topology queries work.
+* See [GitHub Issues](https://github.com/facebookincubator/dispenso/issues) for the full list.
 
 <div id='license'/>
 

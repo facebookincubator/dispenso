@@ -3,6 +3,10 @@
 This guide walks through the core features of dispenso with working examples.
 Each section includes a complete, compilable example that you can build and run.
 
+> **Coming from another library?** Jump directly to the migration guide:
+> [Migrating from TBB](migrating_from_tbb.md) |
+> [Migrating from OpenMP](migrating_from_openmp.md)
+
 ## Installation
 
 See the [README](https://github.com/facebookincubator/dispenso) for installation
