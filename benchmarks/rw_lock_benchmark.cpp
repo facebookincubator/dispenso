@@ -96,7 +96,29 @@ void BM_parallel(benchmark::State& state) {
   benchmark::DoNotOptimize(total.load(std::memory_order_acquire));
 }
 
-static void CustomArgumentsParallel(benchmark::internal::Benchmark* b) {
+// RWLock is a single-word spin lock — cache-line bouncing makes it impractical
+// above ~16 threads. Default benchmark caps at 16; enable DISPENSO_BENCH_ALL_RWLOCK
+// to test up to hw threads (very slow on high-core machines).
+static void CustomArgumentsRWLock(benchmark::internal::Benchmark* b) {
+  int hw = static_cast<int>(std::thread::hardware_concurrency());
+  if (hw == 0) {
+    hw = 4;
+  }
+#if defined(DISPENSO_BENCH_ALL_RWLOCK)
+  std::set<int> threads = {2, 8, std::min(hw, 64), hw};
+#else
+  std::set<int> threads = {2, 8, std::min(hw, 16)};
+#endif
+  for (int j : {2, 8, 128, 512}) {
+    for (int s : threads) {
+      b->Args({s, j});
+    }
+  }
+}
+
+// Scalable locks (shared_mutex, DistributedRWLock) are designed for high thread
+// counts. Test up to 2x hw to measure oversubscription behavior.
+static void CustomArgumentsScalable(benchmark::internal::Benchmark* b) {
   int hw = static_cast<int>(std::thread::hardware_concurrency());
   if (hw == 0) {
     hw = 4;
@@ -127,20 +149,20 @@ BENCHMARK_TEMPLATE(BM_serial, dispenso::DistributedRWLock<128>)
     ->Apply(CustomArgumentsSerial)
     ->UseRealTime();
 
-BENCHMARK_TEMPLATE(BM_parallel, std::shared_mutex)->Apply(CustomArgumentsParallel)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_parallel, std::shared_mutex)->Apply(CustomArgumentsScalable)->UseRealTime();
 
-BENCHMARK_TEMPLATE(BM_parallel, dispenso::RWLock)->Apply(CustomArgumentsParallel)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_parallel, dispenso::RWLock)->Apply(CustomArgumentsRWLock)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<8>)
-    ->Apply(CustomArgumentsParallel)
+    ->Apply(CustomArgumentsScalable)
     ->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<16>)
-    ->Apply(CustomArgumentsParallel)
+    ->Apply(CustomArgumentsScalable)
     ->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_parallel, dispenso::DistributedRWLock<128>)
-    ->Apply(CustomArgumentsParallel)
+    ->Apply(CustomArgumentsScalable)
     ->UseRealTime();
 
 #endif // C++17
