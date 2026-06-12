@@ -8,6 +8,7 @@
 #pragma once
 
 #include <limits>
+#include <thread>
 
 #include <dispenso/detail/completion_event_impl.h>
 #include <dispenso/platform.h>
@@ -90,6 +91,7 @@ class RWLockImpl {
   // gives up, rolls back its writer bit, and reports failure. Kept small so
   // try_lock() stays effectively non-blocking.
   static constexpr int kTryLockDrainSpins = 16;
+  static constexpr int kSpinBeforeYield = 256;
 
   /**
    * Try to claim the writer bit without blocking, failing only if another writer
@@ -143,7 +145,11 @@ class RWLockImpl {
 
 inline void RWLockImpl::setWriteBit() {
   int val = lockWord().fetch_or(kWriteBit, std::memory_order_acq_rel);
-  while (val & kWriteBit) {
+  for (int spin = 0; val & kWriteBit; ++spin) {
+    if (spin >= kSpinBeforeYield) {
+      std::this_thread::yield();
+      spin = 0;
+    }
     val = lockWord().fetch_or(kWriteBit, std::memory_order_acq_rel);
   }
 }
@@ -203,7 +209,11 @@ inline void RWLockImpl::lock_shared() {
   int val = lockWord().fetch_add(1, std::memory_order_acq_rel);
   while (val & kWriteBit) {
     readerRelease();
-    while (val & kWriteBit) {
+    for (int spin = 0; val & kWriteBit; ++spin) {
+      if (spin >= kSpinBeforeYield) {
+        std::this_thread::yield();
+        spin = 0;
+      }
       val = lockWord().load(std::memory_order_acquire);
     }
     val = lockWord().fetch_add(1, std::memory_order_acq_rel);
@@ -224,10 +234,7 @@ inline void RWLockImpl::unlock_shared() {
 }
 
 inline void RWLockImpl::lock_upgrade() {
-  int val = lockWord().fetch_or(kWriteBit, std::memory_order_acq_rel);
-  while (val & kWriteBit) {
-    val = lockWord().fetch_or(kWriteBit, std::memory_order_acq_rel);
-  }
+  setWriteBit();
   // We've claimed single write ownership now.  We need to drain off readers, including ourself
   lockWord().fetch_sub(1, std::memory_order_acq_rel);
   waitForReaderDrain();

@@ -35,6 +35,7 @@
 * Replaced `rdtscp` with `lfence; rdtsc` in timing code — some simulators don't support `rdtscp`.
 * Restored `ThreadWaiter` to make `NewThreadInvoker` safe at process exit.
 * Added `static_assert` for trivially-copyable types in `ConcurrentObjectArena` copy constructor.
+* Fixed `RWLock` livelock under oversubscription: pure spin loops in `lock_shared()`, `setWriteBit()`, and `lock_upgrade()` now yield after 256 iterations, preventing permanent writer starvation when thread count exceeds physical cores.
 
 ### fast_math (experimental)
 * Added `rsqrt_approx`, `rsqrt`, `rcp_approx`, `rcp` with configurable accuracy.
