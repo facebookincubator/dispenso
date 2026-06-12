@@ -65,7 +65,8 @@ LIST(REMOVE_ITEM TEST_FILES
 # possibly an even better test for both priority and timed_task behavior is to use the timed_task_benchmark.
 LIST(REMOVE_ITEM TEST_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/timing_test.cpp)
 
 foreach(TEST_FILE ${TEST_FILES})
   set(TEST_NAME)
@@ -73,7 +74,7 @@ foreach(TEST_FILE ${TEST_FILES})
   package_add_test(${TEST_NAME} unittest ${TEST_FILE})
 endforeach()
 
-SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp)
+SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timing_test.cpp)
 
 foreach(TEST_FILE ${FLAKY_TEST_FILES})
   set(TEST_NAME)
