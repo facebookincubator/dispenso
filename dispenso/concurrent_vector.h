@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#pragma once
+
 /**
  * @file concurrent_vector.h
  * @ingroup group_containers
@@ -50,8 +52,6 @@
  * 2990WX), ConcurrentVector is between about 5x and 20x faster than std::vector + std::mutex, and
  * is about 1.6x faster than tbb::concurrent_vector.
  **/
-
-#pragma once
 
 #include <algorithm>
 #include <cassert>

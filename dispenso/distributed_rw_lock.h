@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#pragma once
+
 /**
  * @file distributed_rw_lock.h
  * @ingroup group_sync
@@ -57,8 +59,6 @@
  * Ideal use case: a data structure resized only on rare events (e.g. a
  * thread pool's per-thread ring array, which only changes on pool resize).
  **/
-
-#pragma once
 
 #include <dispenso/detail/distributed_rw_lock_impl.h>
 #include <dispenso/thread_id.h>
