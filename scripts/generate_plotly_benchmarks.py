@@ -211,7 +211,7 @@ def _parse_line_benchmarks(benchmarks):
 
 
 def build_line_charts(benchmarks, suite):
-    """Thread-scaling line charts for simple_for, summing_for, trivial_compute, nested_for."""
+    """Thread-scaling line charts for simple_for, summing_for, nested_for."""
     grouped, serial_points = _parse_line_benchmarks(benchmarks)
 
     charts = []
@@ -1162,7 +1162,6 @@ def build_generic_bar_charts(benchmarks, suite):
 SPECIALIZED_LINE = {
     "simple_for",
     "summing_for",
-    "trivial_compute",
     "nested_for",
     "cascading_parallel_for",
 }

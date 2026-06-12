@@ -626,7 +626,7 @@ def generate_concurrent_vector_charts(
 def generate_simple_for_charts(
     suite_df: "pd.DataFrame", output_dir: Path, suite: str = "simple_for"
 ):
-    """Generate specialized charts for simple_for/summing_for/trivial_compute benchmarks.
+    """Generate specialized charts for simple_for/summing_for benchmarks.
 
     - Filters out auto_chunk and static_chunk variants (just uses 'dispenso')
     - Creates zoomed charts focused on competitive range
@@ -1978,7 +1978,6 @@ def generate_charts(df: "pd.DataFrame", output_dir: Path):
     specialized_thread_scaling = [
         "simple_for",
         "summing_for",
-        "trivial_compute",
         "nested_for",
     ]
 
@@ -2025,7 +2024,7 @@ def generate_charts(df: "pd.DataFrame", output_dir: Path):
             generate_timed_task_charts(suite_df, output_dir)
             continue
 
-        # Special handling for simple_for, summing_for, trivial_compute
+        # Special handling for simple_for, summing_for
         if suite in specialized_thread_scaling:
             generate_simple_for_charts(suite_df, output_dir, suite)
             continue
@@ -2107,7 +2106,7 @@ _SUITE_CHART_REGISTRY = {
 }
 
 # Suites that use worksize-based thread scaling charts (with zoomed variants)
-_THREAD_SCALING_SUITES = {"simple_for", "summing_for", "trivial_compute", "nested_for"}
+_THREAD_SCALING_SUITES = {"simple_for", "summing_for", "nested_for"}
 
 # RW lock contention levels for parallel sub-charts
 _RW_LOCK_CONTENTIONS = [2, 8, 32, 128, 512]
