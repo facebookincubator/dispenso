@@ -136,12 +136,12 @@ class NewThreadInvoker {
     std::mutex mtx_;
     std::condition_variable cond_;
 
-    void add() {
+    void add() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
       std::lock_guard<std::mutex> lk(mtx_);
       ++count_;
     }
 
-    void remove() {
+    void remove() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
       std::lock_guard<std::mutex> lk(mtx_);
       assert(count_ > 0 && "remove() called without matching add()");
       if (--count_ == 0) {

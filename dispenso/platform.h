@@ -94,6 +94,15 @@ namespace dispenso {
 #define DISPENSO_DLL_ACCESS
 #endif // DISPENSO_DLL_ACCESS
 
+// Suppresses Clang thread-safety-analysis warnings for a single function.
+// Expands to the attribute on Clang; a no-op on all other compilers (MSVC, GCC, etc.)
+// that do not support thread-safety analysis.
+#if defined(__clang__)
+#define DISPENSO_NO_THREAD_SAFETY_ANALYSIS __attribute__((no_thread_safety_analysis))
+#else
+#define DISPENSO_NO_THREAD_SAFETY_ANALYSIS
+#endif
+
 using ssize_t = std::make_signed<std::size_t>::type;
 
 #if defined(__CUDACC__)

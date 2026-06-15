@@ -336,7 +336,7 @@ class TaskSetBase {
   DISPENSO_DLL_ACCESS void trySetCurrentException();
   bool testAndResetException();
 
-  void registerChild(TaskSetBase* child) {
+  void registerChild(TaskSetBase* child) DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
     std::lock_guard<std::mutex> lk(mtx_);
 
     child->prev_ = tail_;
@@ -349,7 +349,7 @@ class TaskSetBase {
     }
   }
 
-  void unregisterChild(TaskSetBase* child) {
+  void unregisterChild(TaskSetBase* child) DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
     std::lock_guard<std::mutex> lk(mtx_);
 
     if (child->prev_) {
@@ -368,7 +368,7 @@ class TaskSetBase {
     }
   }
 
-  void cancelChildren() {
+  void cancelChildren() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
     std::lock_guard<std::mutex> lk(mtx_);
 
     auto* node = head_;

@@ -151,7 +151,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
    *
    * @param n The number of threads in use after call completion
    **/
-  DISPENSO_DLL_ACCESS void resize(ssize_t n) {
+  DISPENSO_DLL_ACCESS void resize(ssize_t n) DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
     std::lock_guard<std::mutex> lk(threadsMutex_);
     resizeLocked(n);
   }
@@ -288,7 +288,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
 
   DISPENSO_DLL_ACCESS uint32_t waitOnThread(int32_t threadIdx, uint32_t priorEpoch);
 
-  void setSignalingWake(bool enable, uint32_t sleepDurationUs) {
+  void setSignalingWake(bool enable, uint32_t sleepDurationUs) DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
     std::lock_guard<std::mutex> lk(threadsMutex_);
     ssize_t currentPoolSize = numThreads();
     resizeLocked(0);
