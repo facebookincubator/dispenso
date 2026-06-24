@@ -173,8 +173,9 @@ bool CpuSet::bindCurrentThread() const {
 }
 
 int32_t CpuSet::currentHardwareThread() {
-#if defined(__linux__)
-  // sched_getcpu() uses the vDSO on modern kernels (~15 ns, no syscall).
+#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
+  // Linux: sched_getcpu() uses the vDSO on modern kernels (~15 ns, no syscall).
+  // FreeBSD (13.1+): sched_getcpu() is a syscall.
   int cpu = sched_getcpu();
   return (cpu >= 0) ? static_cast<int32_t>(cpu) : -1;
 #else
@@ -188,6 +189,7 @@ int32_t CpuSet::currentHardwareThread() {
 
 namespace {
 
+#if defined(__linux__)
 // Read a small file into a NUL-terminated buffer. Returns empty string on failure.
 std::vector<char> readSmallFile(int dirFd, const char* path) {
   int fd = ::openat(dirFd, path, O_RDONLY);
@@ -226,7 +228,9 @@ std::vector<char> readSmallFile(int dirFd, const char* path) {
   buf.resize(static_cast<size_t>(totalRead) + 1);
   return buf;
 }
+#endif
 
+#if defined(__linux__)
 // Parse a "nodeN" sysfs directory name, returning the node index, or -1.
 int32_t parseNodeDirName(const char* name) {
   if (name[0] != 'n' || name[1] != 'o' || name[2] != 'd' || name[3] != 'e' || name[4] == '\0') {
@@ -234,6 +238,7 @@ int32_t parseNodeDirName(const char* name) {
   }
   return detail::parseIntClamped(name + 4);
 }
+#endif
 
 const std::vector<CpuSet>& getNumaSets() {
   static const std::vector<CpuSet> numaSets = []() {
@@ -354,6 +359,7 @@ bool readCacheCpuList(
 // Parses L2 or L3 cache sharing groups from sysfs.
 // cacheIndex: 2 for L2, 3 for L3
 std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
+  (void)cacheIndex;
   std::vector<CacheGroup> groups;
 #if defined(__linux__)
   char indexStr[8];
@@ -854,6 +860,11 @@ int32_t CpuSet::availableCount() {
 #if defined(__linux__)
   cpu_set_t mask;
   if (sched_getaffinity(0, sizeof(mask), &mask) == 0) {
+    return static_cast<int32_t>(CPU_COUNT(&mask));
+  }
+#elif defined(__FreeBSD__)
+  cpu_set_t mask;
+  if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_TID, -1, sizeof(mask), &mask) == 0) {
     return static_cast<int32_t>(CPU_COUNT(&mask));
   }
 #elif defined(_WIN32)

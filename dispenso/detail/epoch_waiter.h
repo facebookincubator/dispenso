@@ -30,7 +30,7 @@ namespace detail {
 // -DDISPENSO_TUNE_WAKE_ALL_THRESHOLD=N.
 #if defined(DISPENSO_TUNE_WAKE_ALL_THRESHOLD)
 constexpr int kWakeAllThreshold = DISPENSO_TUNE_WAKE_ALL_THRESHOLD;
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__FreeBSD__)
 // Single-syscall exact-K — no threshold needed.
 constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
 #elif defined(__APPLE__)
@@ -46,7 +46,7 @@ constexpr int kWakeAllThreshold = 3;
 constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 
 class EpochWaiter {
  public:

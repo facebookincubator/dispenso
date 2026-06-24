@@ -38,6 +38,12 @@
 #if defined(DISPENSO_CPUSET_LINUXY)
 #include <pthread.h>
 #include <sched.h>
+#if defined(__FreeBSD__)
+#include <sys/param.h>
+#include <sys/cpuset.h>
+#include <pthread_np.h>
+typedef cpuset_t cpu_set_t;
+#endif
 #elif defined(_WIN32)
 #define DISPENSO_CPUSET_WINDOWS
 #endif // supported os
