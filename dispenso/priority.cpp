@@ -159,7 +159,9 @@ bool setCurrentThreadPriority(ThreadPriority prio) {
   return true;
 }
 #elif defined(__FreeBSD__)
-// TODO: Find someone who has a FreeBSD system to test this code.
+// Tested on FreeBSD 15.1. kLow/kNormal/kHigh all use RTP_PRIO_NORMAL (recomputed
+// by ULE), so only kRealtime is meaningfully differentiated. IDLE/REALTIME would
+// separate them but require privilege and IDLE starves under load, so keep NORMAL.
 bool setCurrentThreadPriority(ThreadPriority prio) {
   struct rtprio rtp;
 
