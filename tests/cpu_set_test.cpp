@@ -110,6 +110,123 @@ TEST(CpuSet, ParseTrailingComma) {
 }
 
 // =============================================================================
+// FreeBSD topology_spec Parsing Tests
+//
+// These drive the pure string parser directly with synthetic kern.sched.
+// topology_spec XML, so the nested / multi-socket paths are covered on every
+// platform -- not just on whatever topology the test host happens to expose.
+// =============================================================================
+
+using dispenso::detail::parseCacheGroupsFromTopologySpec;
+
+// Flat single-L3, no L2 -- the shape FreeBSD 15.1 arm64 (4 cores) actually emits.
+TEST(CpuSet, TopologySpecFlatL3) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="3">
+  <cpu count="4" mask="f,0,0,0">0, 1, 2, 3</cpu>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 1u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+}
+
+// L3 over two L2 sibling groups: the matching group's own <cpu> must be taken,
+// not a nested child's, and both nested L2 groups must be found.
+TEST(CpuSet, TopologySpecNestedL3OverL2) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="3">
+  <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+  <children>
+   <group level="2" cache-level="2">
+    <cpu count="2" mask="3">0, 1</cpu>
+   </group>
+   <group level="2" cache-level="2">
+    <cpu count="2" mask="c">2, 3</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 1u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+
+  auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+  ASSERT_EQ(l2.size(), 2u);
+  EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0, 1}));
+  EXPECT_EQ(l2[1].cpus, (std::vector<int32_t>{2, 3}));
+}
+
+// Two sockets: top group shares no cache (cache-level=0), each socket an L3.
+TEST(CpuSet, TopologySpecMultiSocketL3) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="0">
+  <cpu count="8" mask="ff">0, 1, 2, 3, 4, 5, 6, 7</cpu>
+  <children>
+   <group level="2" cache-level="3">
+    <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+   </group>
+   <group level="2" cache-level="3">
+    <cpu count="4" mask="f0">4, 5, 6, 7</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 2u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+  EXPECT_EQ(l3[1].cpus, (std::vector<int32_t>{4, 5, 6, 7}));
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+}
+
+// Groups emitted out of CPU order must come back sorted by first CPU id.
+TEST(CpuSet, TopologySpecSortsByFirstCpu) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="2">
+  <cpu count="2" mask="30">4, 5</cpu>
+ </group>
+ <group level="1" cache-level="2">
+  <cpu count="2" mask="3">0, 1</cpu>
+ </group>
+</groups>)";
+  auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+  ASSERT_EQ(l2.size(), 2u);
+  EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0, 1}));
+  EXPECT_EQ(l2[1].cpus, (std::vector<int32_t>{4, 5}));
+}
+
+// Kernel reports no cache levels (cf. the SMP(4) example): both queries empty.
+TEST(CpuSet, TopologySpecNoMatchingCacheLevel) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="0">
+  <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+  <children>
+   <group level="2" cache-level="0">
+    <cpu count="2" mask="3">0, 1</cpu>
+   </group>
+   <group level="2" cache-level="0">
+    <cpu count="2" mask="c">2, 3</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 3).empty());
+}
+
+// Empty, non-XML, and truncated inputs must not crash and yield no groups.
+TEST(CpuSet, TopologySpecMalformedIsSafe) {
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("", 3).empty());
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("not xml at all", 3).empty());
+  // Matching group but the CPU list is never closed with </cpu>.
+  EXPECT_TRUE(
+      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu count=\"2\">0, 1", 3).empty());
+  // Group tag itself never closed.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"", 3).empty());
+}
+
+// =============================================================================
 // CpuSet Manipulation Tests
 // =============================================================================
 

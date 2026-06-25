@@ -26,6 +26,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -384,6 +385,16 @@ namespace detail {
  * This is an internal helper exposed for testing.
  */
 DISPENSO_DLL_ACCESS CpuSet parseLinuxCpuList(const char* input);
+
+/**
+ * @brief Parses FreeBSD's kern.sched.topology_spec XML into the cache sharing
+ * groups at the given level (2 = L2, 3 = L3), sorted by first CPU id.
+ *
+ * Pure string parsing with no platform APIs; exposed for testing.
+ */
+DISPENSO_DLL_ACCESS std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(
+    const std::string& xml,
+    int cacheIndex);
 } // namespace detail
 
 } // namespace dispenso
