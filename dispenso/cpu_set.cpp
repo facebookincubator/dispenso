@@ -28,6 +28,10 @@
 #include <unistd.h>
 #endif // __linux__
 
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#endif
+
 #if defined(__APPLE__)
 #include <dlfcn.h>
 
@@ -184,7 +188,7 @@ int32_t CpuSet::currentHardwareThread() {
 }
 
 // =============================================================================
-// NUMA topology detection (Linux)
+// NUMA topology detection (Linux, FreeBSD)
 // =============================================================================
 
 namespace {
@@ -267,6 +271,25 @@ const std::vector<CpuSet>& getNumaSets() {
         }
       }
       ::closedir(nodeDir);
+    }
+#elif defined(__FreeBSD__)
+    int ndomains = 0;
+    size_t len = sizeof(ndomains);
+    if (sysctlbyname("vm.ndomains", &ndomains, &len, nullptr, 0) == 0 && ndomains > 0) {
+      for (int i = 0; i < ndomains; ++i) {
+        cpu_set_t mask;
+        if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_DOMAIN, i, sizeof(mask), &mask) == 0) {
+          CpuSet s;
+          for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+            if (CPU_ISSET(cpu, &mask)) {
+              s.add(cpu);
+            }
+          }
+          if (s.count() > 0) {
+            sets.push_back(std::move(s));
+          }
+        }
+      }
     }
 #endif // __linux__
     // Fallback: if no NUMA nodes were found (missing sysfs, container, etc.),
@@ -356,7 +379,7 @@ bool readCacheCpuList(
 
 #endif // __linux__
 
-// Parses L2 or L3 cache sharing groups from sysfs.
+// Parses L2 or L3 cache sharing groups (Linux sysfs, FreeBSD kern.sched.topology_spec).
 // cacheIndex: 2 for L2, 3 for L3
 std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
   (void)cacheIndex;
@@ -393,6 +416,91 @@ std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
   groups.reserve(byId.size());
   for (auto& kv : byId) {
     groups.push_back(std::move(kv.second));
+  }
+  std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
+    return a.cpus.front() < b.cpus.front();
+  });
+#elif defined(__FreeBSD__)
+  size_t len = 0;
+  if (sysctlbyname("kern.sched.topology_spec", nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len);
+    if (sysctlbyname("kern.sched.topology_spec", buf.data(), &len, nullptr, 0) == 0 && len > 0) {
+      buf[len - 1] = '\0';
+      std::string xml(buf.data());
+      size_t pos = 0;
+      int nextCacheId = 0;
+      while ((pos = xml.find("<group", pos)) != std::string::npos) {
+        size_t startPos = pos;
+        size_t endGroupTag = xml.find(">", pos);
+        if (endGroupTag == std::string::npos) break;
+        pos = endGroupTag + 1;
+
+        size_t cacheLevelPos = xml.find("cache-level=\"", startPos);
+        if (cacheLevelPos != std::string::npos && cacheLevelPos < endGroupTag) {
+          cacheLevelPos += 13; // past `cache-level="`
+          size_t cacheLevelEnd = xml.find("\"", cacheLevelPos);
+          if (cacheLevelEnd != std::string::npos && cacheLevelEnd < endGroupTag) {
+            size_t levelLen = cacheLevelEnd - cacheLevelPos;
+            int32_t cacheLevel = -1;
+            if (levelLen < 8) {
+              char levelBuf[8];
+              std::memcpy(levelBuf, xml.c_str() + cacheLevelPos, levelLen);
+              levelBuf[levelLen] = '\0';
+              cacheLevel = detail::parseIntClamped(levelBuf);
+            }
+
+            if (cacheLevel == cacheIndex) {
+              size_t cpuPos = xml.find("<cpu", pos);
+              if (cpuPos == std::string::npos) continue;
+
+              // Take only this group's own <cpu>, not one from a nested child group.
+              size_t nextGroupPos = xml.find("<group", pos);
+              size_t closeGroupPos = xml.find("</group>", pos);
+              if (nextGroupPos != std::string::npos && nextGroupPos < cpuPos) {
+                continue;
+              }
+              if (closeGroupPos != std::string::npos && closeGroupPos < cpuPos) {
+                continue;
+              }
+
+              size_t cpuTagEnd = xml.find(">", cpuPos);
+              if (cpuTagEnd == std::string::npos) continue;
+              size_t cpuClose = xml.find("</cpu>", cpuTagEnd);
+              if (cpuClose == std::string::npos) continue;
+
+              const char* xmlStart = xml.c_str();
+              const char* p = xmlStart + cpuTagEnd + 1;
+              const char* endPtr = xmlStart + cpuClose;
+              std::vector<int32_t> cpus;
+              while (p < endPtr) {
+                while (p < endPtr && (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
+                  p++;
+                }
+                if (p >= endPtr) break;
+
+                char* parsedEnd = nullptr;
+                long val = std::strtol(p, &parsedEnd, 10);
+                if (parsedEnd == p) {
+                  break;
+                }
+                if (val >= 0 && val <= detail::kMaxReasonableCpuId) {
+                  cpus.push_back(static_cast<int32_t>(val));
+                }
+                p = parsedEnd;
+              }
+
+              if (!cpus.empty()) {
+                CacheGroup g;
+                g.cpus = std::move(cpus);
+                g.cacheId = nextCacheId++;
+                groups.push_back(std::move(g));
+                pos = cpuClose + 6; // past `</cpu>`
+              }
+            }
+          }
+        }
+      }
+    }
   }
   std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
     return a.cpus.front() < b.cpus.front();

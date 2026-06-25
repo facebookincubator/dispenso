@@ -335,6 +335,13 @@ TEST(CpuSet, L2GroupsAreNonEmpty) {
   for (const auto& group : l2Groups) {
     EXPECT_GT(group.cpus.size(), 0u) << "L2 group with cacheId=" << group.cacheId << " has no CPUs";
   }
+#elif defined(__FreeBSD__)
+  if (l2Groups.empty()) {
+    GTEST_SKIP() << "No L2 cache groups detected on this FreeBSD machine";
+  }
+  for (const auto& group : l2Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L2 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
 #else
   // On unsupported platforms (e.g. macOS), l2CacheGroups() returns empty
   EXPECT_TRUE(l2Groups.empty());
@@ -346,6 +353,13 @@ TEST(CpuSet, L3GroupsAreNonEmpty) {
 #if defined(__linux__) || defined(_WIN32)
   EXPECT_GT(l3Groups.size(), 0u) << "No L3 cache groups detected";
 
+  for (const auto& group : l3Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L3 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
+#elif defined(__FreeBSD__)
+  if (l3Groups.empty()) {
+    GTEST_SKIP() << "No L3 cache groups detected on this FreeBSD machine";
+  }
   for (const auto& group : l3Groups) {
     EXPECT_GT(group.cpus.size(), 0u) << "L3 group with cacheId=" << group.cacheId << " has no CPUs";
   }
