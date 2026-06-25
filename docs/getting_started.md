@@ -399,7 +399,7 @@ pinSet.bindCurrentThread();
 See [full example](../examples/cpu_set_example.cpp).
 
 Key points:
-- Works on Linux (full support), Windows (full support), macOS (topology only)
+- Works on Linux (full support), Windows (full support), FreeBSD (full support), macOS (topology only)
 - `CpuSet::l2CacheGroups()` / `l3CacheGroups()` return CPU groups that share cache levels
 - Use for NUMA-aware thread placement and cache-friendly scheduling
 

@@ -15,7 +15,7 @@
  *
  * Platform support:
  * - **Linux**: Full support (binding via pthread_setaffinity_np, topology via sysfs)
- * - **FreeBSD**: Binding supported (cpuset_setaffinity), topology detection deferred
+ * - **FreeBSD**: Full support (binding via pthread_setaffinity_np, topology via sysctl)
  * - **macOS**: Topology query only (binding is not supported by the OS)
  * - **Windows**: Full support (binding via SetThreadGroupAffinity, topology via
  *   GetLogicalProcessorInformationEx)
@@ -54,8 +54,12 @@ typedef cpuset_t cpu_set_t;
 // macOS does not support explicit CPU pinning. bindCurrentThread() is a no-op and
 // returns false. Topology queries return a single-node fallback.
 //
-// FreeBSD binding support is present (cpuset_setaffinity uses a similar interface to
-// Linux), but topology detection requires test hardware and is deferred.
+// FreeBSD binding uses pthread_setaffinity_np (same interface as Linux). NUMA and
+// L2/L3 cache topology are detected via sysctl (vm.ndomains, kern.sched.topology_spec).
+// Cache-group detection depends on the kernel populating cache levels in
+// kern.sched.topology_spec; on topologies where it does not, l2CacheGroups()/
+// l3CacheGroups() return empty and buildThreadGroups() falls back to contiguous
+// chunking. See SMP(4) for the topology_spec format.
 
 /**
  * @brief Compile-time override for the default maximum threads per scheduling group.
@@ -213,8 +217,10 @@ class CpuSet {
   /**
    * @brief Returns the CPU ID of the calling thread's current core.
    *
-   * On Linux, uses the vDSO-accelerated getcpu(). On unsupported platforms,
-   * returns -1.
+   * On Linux, uses the vDSO-accelerated getcpu(); on FreeBSD 13.1+, uses
+   * sched_getcpu(); on Windows, GetCurrentProcessorNumberEx(); on macOS, the
+   * private _os_cpu_number(). On platforms without CPU-query support (including
+   * FreeBSD older than 13.1), returns -1.
    *
    * @note The result is instantaneous and may be stale by the time it is used
    *       (the OS may migrate the thread). Useful as a hint for scheduling
@@ -267,6 +273,8 @@ class CpuSet {
    * @brief Returns the number of hardware threads available to this process.
    *
    * On Linux, queries the process CPU affinity mask (respects taskset/cgroup).
+   * On FreeBSD, queries the calling thread's cpuset affinity mask via
+   * cpuset_getaffinity (respects cpuset(1) restrictions).
    * On Windows single-group systems, queries the process affinity mask.
    * On Windows multi-group systems, sums active processors per group (does not
    * reflect process-level restrictions).
