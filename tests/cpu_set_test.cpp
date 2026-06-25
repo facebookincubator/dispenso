@@ -304,7 +304,7 @@ TEST(CpuSet, AllSetCoversAllNodeSets) {
 
 TEST(CpuSet, CurrentHardwareThreadIsValid) {
   int32_t cpu = CpuSet::currentHardwareThread();
-#if defined(__linux__) || defined(_WIN32) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(_WIN32) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
   // Linux (sched_getcpu), Windows (GetCurrentProcessorNumberEx), and FreeBSD
   // (sched_getcpu, 13.1+) report a valid hardware thread that must be a member
   // of the full CPU set.
