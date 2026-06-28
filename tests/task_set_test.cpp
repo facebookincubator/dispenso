@@ -185,7 +185,7 @@ TEST_P(TaskSetTest, MultiSetTryWait) {
   }
 }
 
-TEST(TaskSetTest, ParamConstruction) {
+TEST(TaskSet, ParamConstruction) {
   dispenso::ThreadPool pool(10);
   dispenso::TaskSet taskSetA(pool);
   dispenso::TaskSet taskSetB(pool, 4);
