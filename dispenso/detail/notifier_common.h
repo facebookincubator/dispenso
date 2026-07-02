@@ -54,8 +54,13 @@ static int futex(
     int val3) {
   (void)val3;
   if (futex_op == FUTEX_WAIT_PRIVATE) {
+    // Zero-extend the compare value: the kernel compares the 32-bit value at
+    // uaddr zero-extended against the full u_long val, so sign-extending values
+    // with bit 31 set (e.g. epochs past 2^31) would never match and the wait
+    // would return immediately instead of sleeping.
+    const u_long uval = static_cast<uint32_t>(val);
     if (timeout == nullptr) {
-      return _umtx_op(uaddr, UMTX_OP_WAIT_UINT_PRIVATE, static_cast<u_long>(val), nullptr, nullptr);
+      return _umtx_op(uaddr, UMTX_OP_WAIT_UINT_PRIVATE, uval, nullptr, nullptr);
     } else {
       struct _umtx_time t;
       t._timeout = *timeout;
@@ -64,7 +69,7 @@ static int futex(
       return _umtx_op(
           uaddr,
           UMTX_OP_WAIT_UINT_PRIVATE,
-          static_cast<u_long>(val),
+          uval,
           reinterpret_cast<void*>(static_cast<uintptr_t>(sizeof(t))),
           &t);
     }
