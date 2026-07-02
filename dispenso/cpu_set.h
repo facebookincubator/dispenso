@@ -203,6 +203,10 @@ class CpuSet {
    * On Linux/FreeBSD, calls pthread_setaffinity_np. On unsupported platforms
    * (macOS, Windows without GROUP_AFFINITY support), returns false.
    *
+   * @note On FreeBSD, a mask containing nonexistent CPU ids fails with EINVAL,
+   *       whereas Linux intersects the mask with the online CPUs. Include only
+   *       real CPU ids for portable behavior.
+   *
    * @return true if binding succeeded, false on failure or unsupported platform.
    */
   DISPENSO_DLL_ACCESS bool bindCurrentThread() const;
