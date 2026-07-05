@@ -113,7 +113,8 @@ std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(const std::string& xml,
   while ((pos = xml.find("<group", pos)) != std::string::npos) {
     size_t startPos = pos;
     size_t endGroupTag = xml.find(">", pos);
-    if (endGroupTag == std::string::npos) break;
+    if (endGroupTag == std::string::npos)
+      break;
     pos = endGroupTag + 1;
 
     size_t cacheLevelPos = xml.find("cache-level=\"", startPos);
@@ -132,7 +133,8 @@ std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(const std::string& xml,
 
         if (cacheLevel == cacheIndex) {
           size_t cpuPos = xml.find("<cpu", pos);
-          if (cpuPos == std::string::npos) continue;
+          if (cpuPos == std::string::npos)
+            continue;
 
           // Take only this group's own <cpu>, not one from a nested child group.
           size_t nextGroupPos = xml.find("<group", pos);
@@ -145,19 +147,23 @@ std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(const std::string& xml,
           }
 
           size_t cpuTagEnd = xml.find(">", cpuPos);
-          if (cpuTagEnd == std::string::npos) continue;
+          if (cpuTagEnd == std::string::npos)
+            continue;
           size_t cpuClose = xml.find("</cpu>", cpuTagEnd);
-          if (cpuClose == std::string::npos) continue;
+          if (cpuClose == std::string::npos)
+            continue;
 
           const char* xmlStart = xml.c_str();
           const char* p = xmlStart + cpuTagEnd + 1;
           const char* endPtr = xmlStart + cpuClose;
           std::vector<int32_t> cpus;
           while (p < endPtr) {
-            while (p < endPtr && (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
+            while (p < endPtr &&
+                   (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
               p++;
             }
-            if (p >= endPtr) break;
+            if (p >= endPtr)
+              break;
 
             char* parsedEnd = nullptr;
             long val = std::strtol(p, &parsedEnd, 10);

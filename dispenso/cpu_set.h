@@ -40,9 +40,9 @@
 #include <pthread.h>
 #include <sched.h>
 #if defined(__FreeBSD__)
-#include <sys/param.h>
-#include <sys/cpuset.h>
 #include <pthread_np.h>
+#include <sys/cpuset.h>
+#include <sys/param.h>
 typedef cpuset_t cpu_set_t;
 #endif
 #elif defined(_WIN32)

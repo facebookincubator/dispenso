@@ -220,8 +220,8 @@ TEST(CpuSet, TopologySpecMalformedIsSafe) {
   EXPECT_TRUE(parseCacheGroupsFromTopologySpec("", 3).empty());
   EXPECT_TRUE(parseCacheGroupsFromTopologySpec("not xml at all", 3).empty());
   // Matching group but the CPU list is never closed with </cpu>.
-  EXPECT_TRUE(
-      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu count=\"2\">0, 1", 3).empty());
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu count=\"2\">0, 1", 3)
+                  .empty());
   // Group tag itself never closed.
   EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"", 3).empty());
 }
