@@ -102,90 +102,102 @@ CpuSet parseLinuxCpuList(const char* input) {
   return set;
 }
 
-// Parses FreeBSD's kern.sched.topology_spec XML for the given cache level
-// (2 = L2, 3 = L3). Pure string parsing, so it compiles and is unit-tested on
-// every platform; parseCacheGroups() feeds it the sysctl output on FreeBSD.
-// Groups are returned sorted by first CPU id.
+namespace {
+
+constexpr char kCacheLevelAttr[] = "cache-level=\"";
+constexpr size_t kCacheLevelAttrLen = sizeof(kCacheLevelAttr) - 1;
+constexpr char kCpuCloseTag[] = "</cpu>";
+constexpr size_t kCpuCloseTagLen = sizeof(kCpuCloseTag) - 1;
+
+// Parse the cache-level attribute within a group's opening tag [tagStart,
+// tagEnd), returning -1 if absent or malformed.
+int32_t parseGroupCacheLevel(const std::string& xml, size_t tagStart, size_t tagEnd) {
+  size_t attrPos = xml.find(kCacheLevelAttr, tagStart);
+  if (attrPos == std::string::npos || attrPos >= tagEnd) {
+    return -1;
+  }
+  attrPos += kCacheLevelAttrLen;
+  size_t attrEnd = xml.find('"', attrPos);
+  if (attrEnd == std::string::npos || attrEnd >= tagEnd) {
+    return -1;
+  }
+  // strtol stops at the first non-digit, so this cannot read past the closing quote.
+  return parseIntClamped(xml.c_str() + attrPos);
+}
+
+// Parse the group's own <cpu>...</cpu> id list, with `pos` just past the
+// group's opening tag; a nested child group's <cpu> is not consumed.
+// Advances `pos` past </cpu> only when ids were parsed.
+std::vector<int32_t> parseGroupOwnCpuList(const std::string& xml, size_t& pos) {
+  std::vector<int32_t> cpus;
+  size_t cpuPos = xml.find("<cpu", pos);
+  if (cpuPos == std::string::npos) {
+    return cpus;
+  }
+  // Take only this group's own <cpu>, not one from a nested child group.
+  if (xml.find("<group", pos) < cpuPos || xml.find("</group>", pos) < cpuPos) {
+    return cpus;
+  }
+  size_t cpuTagEnd = xml.find('>', cpuPos);
+  if (cpuTagEnd == std::string::npos) {
+    return cpus;
+  }
+  size_t cpuClose = xml.find(kCpuCloseTag, cpuTagEnd);
+  if (cpuClose == std::string::npos) {
+    return cpus;
+  }
+
+  const char* p = xml.c_str() + cpuTagEnd + 1;
+  const char* endPtr = xml.c_str() + cpuClose;
+  while (p < endPtr) {
+    while (p < endPtr && (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
+      p++;
+    }
+    if (p >= endPtr) {
+      break;
+    }
+    char* parsedEnd = nullptr;
+    long val = std::strtol(p, &parsedEnd, 10);
+    if (parsedEnd == p) {
+      break;
+    }
+    if (val >= 0 && val <= kMaxReasonableCpuId) {
+      cpus.push_back(static_cast<int32_t>(val));
+    }
+    p = parsedEnd;
+  }
+
+  if (!cpus.empty()) {
+    pos = cpuClose + kCpuCloseTagLen;
+  }
+  return cpus;
+}
+
+} // namespace
+
 std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(const std::string& xml, int cacheIndex) {
   std::vector<CacheGroup> groups;
   size_t pos = 0;
   int nextCacheId = 0;
   while ((pos = xml.find("<group", pos)) != std::string::npos) {
-    size_t startPos = pos;
-    size_t endGroupTag = xml.find(">", pos);
-    if (endGroupTag == std::string::npos)
+    size_t tagStart = pos;
+    size_t tagEnd = xml.find('>', pos);
+    if (tagEnd == std::string::npos) {
       break;
-    pos = endGroupTag + 1;
-
-    size_t cacheLevelPos = xml.find("cache-level=\"", startPos);
-    if (cacheLevelPos != std::string::npos && cacheLevelPos < endGroupTag) {
-      cacheLevelPos += 13; // past `cache-level="`
-      size_t cacheLevelEnd = xml.find("\"", cacheLevelPos);
-      if (cacheLevelEnd != std::string::npos && cacheLevelEnd < endGroupTag) {
-        size_t levelLen = cacheLevelEnd - cacheLevelPos;
-        int32_t cacheLevel = -1;
-        if (levelLen < 8) {
-          char levelBuf[8];
-          std::memcpy(levelBuf, xml.c_str() + cacheLevelPos, levelLen);
-          levelBuf[levelLen] = '\0';
-          cacheLevel = parseIntClamped(levelBuf);
-        }
-
-        if (cacheLevel == cacheIndex) {
-          size_t cpuPos = xml.find("<cpu", pos);
-          if (cpuPos == std::string::npos)
-            continue;
-
-          // Take only this group's own <cpu>, not one from a nested child group.
-          size_t nextGroupPos = xml.find("<group", pos);
-          size_t closeGroupPos = xml.find("</group>", pos);
-          if (nextGroupPos != std::string::npos && nextGroupPos < cpuPos) {
-            continue;
-          }
-          if (closeGroupPos != std::string::npos && closeGroupPos < cpuPos) {
-            continue;
-          }
-
-          size_t cpuTagEnd = xml.find(">", cpuPos);
-          if (cpuTagEnd == std::string::npos)
-            continue;
-          size_t cpuClose = xml.find("</cpu>", cpuTagEnd);
-          if (cpuClose == std::string::npos)
-            continue;
-
-          const char* xmlStart = xml.c_str();
-          const char* p = xmlStart + cpuTagEnd + 1;
-          const char* endPtr = xmlStart + cpuClose;
-          std::vector<int32_t> cpus;
-          while (p < endPtr) {
-            while (p < endPtr &&
-                   (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
-              p++;
-            }
-            if (p >= endPtr)
-              break;
-
-            char* parsedEnd = nullptr;
-            long val = std::strtol(p, &parsedEnd, 10);
-            if (parsedEnd == p) {
-              break;
-            }
-            if (val >= 0 && val <= kMaxReasonableCpuId) {
-              cpus.push_back(static_cast<int32_t>(val));
-            }
-            p = parsedEnd;
-          }
-
-          if (!cpus.empty()) {
-            CacheGroup g;
-            g.cpus = std::move(cpus);
-            g.cacheId = nextCacheId++;
-            groups.push_back(std::move(g));
-            pos = cpuClose + 6; // past `</cpu>`
-          }
-        }
-      }
     }
+    pos = tagEnd + 1;
+
+    if (parseGroupCacheLevel(xml, tagStart, tagEnd) != cacheIndex) {
+      continue;
+    }
+    std::vector<int32_t> cpus = parseGroupOwnCpuList(xml, pos);
+    if (cpus.empty()) {
+      continue;
+    }
+    CacheGroup g;
+    g.cpus = std::move(cpus);
+    g.cacheId = nextCacheId++;
+    groups.push_back(std::move(g));
   }
   std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
     return a.cpus.front() < b.cpus.front();

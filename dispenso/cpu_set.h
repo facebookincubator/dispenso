@@ -55,12 +55,10 @@ typedef cpuset_t cpu_set_t;
 // macOS does not support explicit CPU pinning. bindCurrentThread() is a no-op and
 // returns false. Topology queries return a single-node fallback.
 //
-// FreeBSD binding uses pthread_setaffinity_np (same interface as Linux). NUMA and
-// L2/L3 cache topology are detected via sysctl (vm.ndomains, kern.sched.topology_spec).
-// Cache-group detection depends on the kernel populating cache levels in
-// kern.sched.topology_spec; on topologies where it does not, l2CacheGroups()/
-// l3CacheGroups() return empty and buildThreadGroups() falls back to contiguous
-// chunking. See SMP(4) for the topology_spec format.
+// FreeBSD binding uses pthread_setaffinity_np, as on Linux. NUMA and cache
+// topology are read from sysctl (vm.ndomains, kern.sched.topology_spec); when
+// the kernel reports no cache levels, cache group queries return empty and
+// buildThreadGroups() falls back to contiguous chunking.
 
 /**
  * @brief Compile-time override for the default maximum threads per scheduling group.

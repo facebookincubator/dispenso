@@ -112,14 +112,13 @@ TEST(CpuSet, ParseTrailingComma) {
 // =============================================================================
 // FreeBSD topology_spec Parsing Tests
 //
-// These drive the pure string parser directly with synthetic kern.sched.
-// topology_spec XML, so the nested / multi-socket paths are covered on every
-// platform -- not just on whatever topology the test host happens to expose.
+// These drive the parser directly with synthetic kern.sched.topology_spec XML,
+// so nested and multi-socket paths are covered on every platform.
 // =============================================================================
 
 using dispenso::detail::parseCacheGroupsFromTopologySpec;
 
-// Flat single-L3, no L2 -- the shape FreeBSD 15.1 arm64 (4 cores) actually emits.
+// Flat single L3 and no L2, the shape a 4-core FreeBSD 15.1 arm64 machine emits.
 TEST(CpuSet, TopologySpecFlatL3) {
   const std::string xml = R"(<groups>
  <group level="1" cache-level="3">
@@ -224,6 +223,50 @@ TEST(CpuSet, TopologySpecMalformedIsSafe) {
                   .empty());
   // Group tag itself never closed.
   EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"", 3).empty());
+}
+
+// One input per defensive early-out in the parser.
+TEST(CpuSet, TopologySpecDefensiveBranches) {
+  // cache-level attribute quote is never closed.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3><cpu>1</cpu>", 3).empty());
+  // Matching group with no <cpu> element at all.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"></group>", 3).empty());
+  // The only <cpu> belongs to a nested child group, not the matching parent.
+  {
+    const std::string xml = R"(<group cache-level="3">
+ <children>
+  <group cache-level="2">
+   <cpu count="1" mask="1">0</cpu>
+  </group>
+ </children>
+</group>)";
+    EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 3).empty());
+    auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+    ASSERT_EQ(l2.size(), 1u);
+    EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0}));
+  }
+  // Matching group closes before a stray <cpu> that is not its own.
+  EXPECT_TRUE(
+      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"></group><cpu>5</cpu>", 3).empty());
+  // <cpu tag never closed with '>'.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu", 3).empty());
+  // Trailing separators after the last id.
+  {
+    auto g = parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu>1, </cpu>", 3);
+    ASSERT_EQ(g.size(), 1u);
+    EXPECT_EQ(g[0].cpus, (std::vector<int32_t>{1}));
+  }
+  // Non-numeric id list.
+  EXPECT_TRUE(
+      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu>abc</cpu>", 3).empty());
+}
+
+// A zero-padded cache-level value parses by numeric value, regardless of width.
+TEST(CpuSet, TopologySpecPaddedCacheLevel) {
+  auto g = parseCacheGroupsFromTopologySpec(
+      "<group cache-level=\"00000003\"><cpu count=\"1\" mask=\"2\">1</cpu></group>", 3);
+  ASSERT_EQ(g.size(), 1u);
+  EXPECT_EQ(g[0].cpus, (std::vector<int32_t>{1}));
 }
 
 // =============================================================================

@@ -74,9 +74,8 @@ static int futex(
           &t);
     }
   } else if (futex_op == FUTEX_WAKE_PRIVATE) {
-    // NB: unlike Linux futex(FUTEX_WAKE), _umtx_op returns 0 on success rather than
-    // the number of threads woken. `val` still caps how many are woken (INT_MAX wakes
-    // all), so exact-K wake works; callers must not rely on the return value as a count.
+    // Unlike Linux futex(FUTEX_WAKE), _umtx_op returns 0 on success rather than
+    // the count of threads woken; `val` still caps how many are woken.
     return _umtx_op(uaddr, UMTX_OP_WAKE_PRIVATE, static_cast<u_long>(val), nullptr, nullptr);
   }
   errno = ENOTSUP;
