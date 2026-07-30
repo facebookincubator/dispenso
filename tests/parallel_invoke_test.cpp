@@ -87,7 +87,9 @@ TEST(ParallelInvokeTest, RecursiveDivideAndConquer) {
 
 TEST(ParallelInvokeTest, HeavyWorkload) {
   dispenso::ConcurrentTaskSet tasks(dispenso::globalThreadPool());
-  constexpr int kSize = 100000;
+  // static so the lambdas below can use it without an explicit capture; MSVC
+  // (unlike GCC/Clang) otherwise rejects the reference with C3493.
+  static constexpr int kSize = 100000;
   std::vector<double> a(kSize), b(kSize);
 
   dispenso::parallel_invoke(
