@@ -26,6 +26,8 @@ var NAVTREE =
 [
   [ "dispenso", "index.html", [
     [ "Getting Started", "getting_started.html", null ],
+    [ "Migrating from Intel TBB to Dispenso", "md_migrating__from__tbb.html", null ],
+    [ "Migrating from OpenMP to Dispenso", "md_migrating__from__openmp.html", null ],
     [ "Topics", "topics.html", "topics" ],
     [ "Classes", "annotated.html", [
       [ "Class List", "annotated.html", "annotated_dup" ],

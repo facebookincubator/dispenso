@@ -10,7 +10,7 @@ var indexSectionsWithContent =
   7: "k",
   8: "m",
   9: "acfglpsu",
-  10: "dgs"
+  10: "dfgimost"
 };
 
 var indexSectionNames =
