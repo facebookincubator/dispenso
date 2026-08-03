@@ -16,11 +16,11 @@ Usage:
     python run_benchmarks.py --build -B pipeline      # build + run matching
     python run_benchmarks.py --build --cmake-args="-DCMAKE_CXX_COMPILER=g++-13"
 
-The output JSON can then be processed by generate_charts.py to create
-visualizations and reports.
+The output JSON can then be processed by generate_plotly_benchmarks.py to
+create an interactive HTML dashboard.
 
 Requirements:
-    None (matplotlib/pandas only needed for generate_charts.py)
+    None (uses only the Python standard library)
 """
 
 import argparse

@@ -1,13 +1,13 @@
 # Benchmark Generation Guide
 
-This guide covers building dispenso benchmarks and generating performance
-charts for the 1.5.0 release across Linux, Mac, and Windows.
+This guide covers building dispenso benchmarks and generating an interactive
+performance dashboard across Linux, Mac, and Windows.
 
 ## Prerequisites
 
-```bash
-pip install matplotlib pandas
-```
+None beyond a C++ toolchain, CMake, and Python 3. The dashboard generator
+(`generate_plotly_benchmarks.py`) uses only the Python standard library and
+emits a self-contained HTML file with Plotly.js loaded from a CDN.
 
 ## Quick Start (Build + Run)
 
@@ -135,47 +135,29 @@ Where `<platform-name>` is a descriptive identifier like `linux-threadripper-96c
 - `--tcmalloc <path>` — use tcmalloc via LD_PRELOAD
 - `-p <name>` — override auto-detected platform identifier
 
-## Step 2: Generate Charts
+## Step 2: Generate the Interactive Dashboard
 
-Generate per-platform charts from the JSON results:
-
-```bash
-python3 scripts/generate_charts.py \
-  -i results/<platform-name>.json \
-  -o docs/benchmarks/ \
-  --platform <platform-name>
-```
-
-Charts are written to `docs/benchmarks/<platform-name>/`.
-
-## Step 3: Compose Multi-Platform Landing Page
-
-After collecting JSON from all platforms, generate a unified landing page:
+Turn one or more JSON result files into a single self-contained HTML
+dashboard with interactive charts, dark/light theme, sidebar navigation,
+and per-platform switching:
 
 ```bash
-python3 scripts/update_benchmarks.py --compose \
-  linux-threadripper:results/linux.json \
-  macos-m2:results/macos.json \
-  windows-zen4:results/windows.json
+# Single platform
+python3 scripts/generate_plotly_benchmarks.py \
+  results/<platform-name>.json \
+  -o docs/benchmarks/index.html
+
+# Multiple platforms in one dashboard (switch between them in the UI)
+python3 scripts/generate_plotly_benchmarks.py \
+  results/linux-threadripper-96c.json \
+  results/macos-m4-pro-12c.json \
+  results/windows-zen4-24c.json \
+  -o docs/benchmarks/index.html
 ```
 
-This creates per-platform subdirectories under `docs/benchmarks/` and a
-unified `benchmark_results.md` landing page.
-
-## All-in-One (Single Platform)
-
-`update_benchmarks.py` can build, run, chart, and update docs in one command:
-
-```bash
-python3 scripts/update_benchmarks.py \
-  --platform linux-threadripper
-
-# Or with an existing build:
-python3 scripts/update_benchmarks.py \
-  -b /tmp/dispenso-bench \
-  --skip-build \
-  --platform linux-threadripper
-```
+The generator reads the embedded machine info to label each platform, so no
+separate compose or landing-page step is needed. `-o` defaults to
+`/tmp/dispenso-benchmarks.html` if omitted.
 
 ## Notes
 
@@ -185,5 +167,5 @@ python3 scripts/update_benchmarks.py \
 - The benchmark runner automatically collects machine info (CPU, cores, memory)
   and includes it in the JSON output
 - Platform identifiers are auto-detected from machine info when not specified
-- Chart names are mapped to README-expected filenames via `README_CHART_MAPPING`
-  in `update_benchmarks.py`
+- The dashboard embeds the result data directly; Plotly.js itself is loaded
+  from a CDN, so viewing the HTML requires internet access

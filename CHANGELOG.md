@@ -49,6 +49,7 @@
 * Added `wake_cost_bench` — platform syscall cost measurement for wake tuning. Moved to `tools/`.
 * Added benchmark runner infrastructure for Windows/Buck (`facebook/run_benchmarks_buck.py`).
 * Added Windows tuning sweep results and data.
+* Replaced the matplotlib chart pipeline (`generate_charts.py`, `update_benchmarks.py`) with an interactive Plotly dashboard (`scripts/generate_plotly_benchmarks.py`, output at `docs/benchmarks/index.html`).
 
 ### Documentation
 * Added examples for `CpuSet`, `ChaseLevDeque`, `parallel_invoke`, and `SmallVector`.

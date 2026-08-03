@@ -23,7 +23,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-# ─── Color palette (consistent with generate_charts.py) ────────────────────
+# ─── Color palette ─────────────────────────────────────────────────────────
 
 LIBRARY_COLORS = {
     # Primary libraries - must be visually distinct from each other
@@ -190,7 +190,7 @@ def _parse_line_benchmarks(benchmarks):
         lib = parsed["library"]
 
         # Filter out auto_chunk, static_chunk, and other variants (auto, static)
-        # to keep charts clean - matches generate_charts.py behavior
+        # to keep charts clean
         lib_lower = lib.lower()
         if "auto" in lib_lower or "static" in lib_lower:
             continue
