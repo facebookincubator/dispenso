@@ -401,14 +401,24 @@ TEST(IntDivBy3, LargeValues) {
 
 #if defined(__SSE__) || defined(__aarch64__)
 
+// rcp_approx / rsqrt_approx are hardware *estimates*, and their accuracy is
+// platform-dependent: x86 SSE/AVX give ~12-14 bits (relErr ~3e-4), while ARM
+// NEON vrecpe/vrsqrte give only ~8 bits (relErr up to 2^-8 ~= 3.9e-3). Hold the
+// NEON estimate to a looser bound rather than x86 precision.
+#if defined(__aarch64__)
+constexpr float kApproxRelErrTol = 5e-3f;
+#else
+constexpr float kApproxRelErrTol = 2e-3f;
+#endif
+
 TEST(RsqrtApprox, BasicValues) {
   float vals[] = {0.25f, 1.0f, 4.0f, 9.0f, 100.0f, 0.01f, 1e6f};
   for (float v : vals) {
     float expected = 1.0f / std::sqrt(v);
     float result = dfm::rsqrt_approx(v);
     float relErr = std::abs(result - expected) / expected;
-    EXPECT_LT(relErr, 2e-3f) << "rsqrt_approx(" << v << "): got " << result << ", expected "
-                             << expected;
+    EXPECT_LT(relErr, kApproxRelErrTol)
+        << "rsqrt_approx(" << v << "): got " << result << ", expected " << expected;
   }
 }
 
@@ -437,8 +447,8 @@ TEST(RcpApprox, BasicValues) {
     float expected = 1.0f / v;
     float result = dfm::rcp_approx(v);
     float relErr = std::abs(result - expected) / std::abs(expected);
-    EXPECT_LT(relErr, 2e-3f) << "rcp_approx(" << v << "): got " << result << ", expected "
-                             << expected;
+    EXPECT_LT(relErr, kApproxRelErrTol)
+        << "rcp_approx(" << v << "): got " << result << ", expected " << expected;
   }
 }
 
