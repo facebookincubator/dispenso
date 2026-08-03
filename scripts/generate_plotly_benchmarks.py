@@ -1006,11 +1006,13 @@ def build_pipeline_charts(benchmarks, suite):
 def _parse_generic_line_benchmarks(benchmarks):
     """Parse benchmarks into thread-scaling data and error tracking.
 
-    Returns (grouped, errored) where:
+    Returns (grouped, errored, grouped_cpu) where:
     - grouped: {worksize: {(lib, threads): real_time}}
     - errored: {worksize: set of libs with error_occurred}
+    - grouped_cpu: {worksize: {(lib, threads): cpu_time}}
     """
     grouped = defaultdict(dict)
+    grouped_cpu = defaultdict(dict)
     errored = defaultdict(set)
 
     for bm in benchmarks:
@@ -1025,8 +1027,9 @@ def _parse_generic_line_benchmarks(benchmarks):
                 errored[ws].add(lib)
                 continue
             grouped[ws][(lib, threads)] = bm["real_time"]
+            grouped_cpu[ws][(lib, threads)] = bm.get("cpu_time", bm["real_time"])
 
-    return grouped, errored
+    return grouped, errored, grouped_cpu
 
 
 def _skipped_libs_list(errored_libs, valid_libs):
@@ -1039,13 +1042,16 @@ def _skipped_libs_list(errored_libs, valid_libs):
 
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
-    grouped, errored = _parse_generic_line_benchmarks(benchmarks)
+    grouped, errored, grouped_cpu = _parse_generic_line_benchmarks(benchmarks)
 
     charts = []
     for ws in sorted(grouped.keys(), key=lambda x: int(x) if x.isdigit() else 0):
         by_lib = defaultdict(list)
         for (lib, threads), t in grouped[ws].items():
             by_lib[lib].append((threads, t))
+        by_lib_cpu = defaultdict(list)
+        for (lib, threads), t in grouped_cpu.get(ws, {}).items():
+            by_lib_cpu[lib].append((threads, t))
 
         traces = []
         for lib in sorted(by_lib.keys(), key=_lib_sort_key):
@@ -1059,6 +1065,22 @@ def build_generic_line_charts(benchmarks, suite):
             if "bulk" in lib.lower():
                 trace["dash"] = "dash"
             traces.append(trace)
+
+            # idle_pool is dual-objective: low burst latency (real_time) AND low
+            # CPU spent staying responsive. Show cpu_time as a dotted companion so
+            # the latency-vs-CPU tradeoff (e.g. a runtime that wins wall time by
+            # spinning/burning cores) is visible rather than hidden.
+            if suite == "idle_pool" and lib in by_lib_cpu:
+                cpu_points = sorted(by_lib_cpu[lib])
+                traces.append(
+                    {
+                        "name": f"{lib} (CPU)",
+                        "x": [p[0] for p in cpu_points],
+                        "y": [p[1] for p in cpu_points],
+                        "color": get_color(lib),
+                        "dash": "dot",
+                    }
+                )
 
         label = _format_worksize(ws)
         suite_display = suite.replace("_", " ").title()
@@ -1711,9 +1733,15 @@ def load_platform(json_path):
 
     machine = data["machine_info"]
     platform_id = machine.get("platform_id", Path(json_path).stem)
-    label = (
-        f"{machine.get('cpu_model', 'Unknown')} ({machine.get('cpu_cores', '?')} cores)"
-    )
+    # Android results carry device_model/soc_model instead of cpu_model; derive a
+    # display name and backfill cpu_model so the info card renders it too.
+    if not machine.get("cpu_model"):
+        device = machine.get("device_model")
+        soc = machine.get("soc_model")
+        machine["cpu_model"] = (
+            f"{device} ({soc})" if device and soc else (device or soc or "Unknown")
+        )
+    label = f"{machine['cpu_model']} ({machine.get('cpu_cores', '?')} cores)"
 
     charts = []
     for result in data["results"]:
