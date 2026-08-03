@@ -363,8 +363,15 @@ def configure_and_build(
         "-DDISPENSO_BUILD_BENCHMARKS=ON",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DCMAKE_CXX_STANDARD=20",
+        # dispenso's CMakeLists defaults BENCHMARK_WITHOUT_FOLLY to ON, which
+        # silently drops the folly comparison benchmarks. Opt in here; the
+        # benchmarks CMake only links folly when it is actually found and
+        # otherwise compiles the folly cases out, so this is safe on platforms
+        # without folly.
+        "-DBENCHMARK_WITHOUT_FOLLY=OFF",
     ]
 
+    # User-supplied flags come last so they win on conflicting -D options.
     if extra_cmake_args:
         cmake_cmd.extend(extra_cmake_args)
 
