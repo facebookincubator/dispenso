@@ -256,101 +256,6 @@ void BM_folly_tree(benchmark::State& state) {
 }
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
-void dispensoTaskSetTree(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo]() {
-        node->left = allocator.alloc();
-        dispensoTaskSetTree(tasks, node->left, allocator, depth, (bitset << 1), modulo);
-      },
-      true);
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo]() {
-        node->right = allocator.alloc();
-        dispensoTaskSetTree(tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
-      },
-      true);
-}
-
-void dispensoTaskSetTreeBulk(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-
-  std::array<Node**, 2> children = {&node->left, &node->right};
-  tasks.scheduleBulk(2, [&tasks, &allocator, children, depth, bitset, modulo](size_t i) {
-    return [&tasks,
-            &allocator,
-            child = children[i],
-            depth,
-            bitset = (bitset << 1) | static_cast<uint32_t>(i),
-            modulo]() {
-      *child = allocator.alloc();
-      dispensoTaskSetTreeBulk(tasks, *child, allocator, depth, bitset, modulo);
-    };
-  });
-}
-
-void dispensoTaskSetTreeHybrid(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo,
-    uint32_t serialThreshold) {
-  node->setValue(bitset, modulo);
-  --depth;
-
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-
-  if (depth <= serialThreshold) {
-    node->left = serialTree(allocator, depth, (bitset << 1), modulo);
-    node->right = serialTree(allocator, depth, (bitset << 1) | 1, modulo);
-    return;
-  }
-
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo, serialThreshold]() {
-        node->left = allocator.alloc();
-        dispensoTaskSetTreeHybrid(
-            tasks, node->left, allocator, depth, (bitset << 1), modulo, serialThreshold);
-      },
-      true);
-  node->right = allocator.alloc();
-  dispensoTaskSetTreeHybrid(
-      tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, serialThreshold);
-}
-
 void dispensoTaskSetTreeInline(
     dispenso::ConcurrentTaskSet& tasks,
     Node* node,
@@ -400,31 +305,6 @@ void BM_dispenso_taskset_tree_inline(benchmark::State& state) {
   }
 
   checkTree(&root, depth, modulo);
-}
-
-dispenso::Future<Node*>
-dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32_t modulo) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValue(bitset, modulo);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return dispenso::make_ready_future(node);
-  }
-
-  auto left = dispenso::async([depth, bitset, modulo, &allocator]() {
-    return dispensoTreeWhenAll(allocator, depth, (bitset << 1), modulo);
-  });
-  auto right = dispenso::async([depth, bitset, modulo, &allocator]() {
-    return dispensoTreeWhenAll(allocator, depth, (bitset << 1) | 1, modulo);
-  });
-  return dispenso::when_all(left, right).then([node](auto&& both) {
-    auto& tuple = both.get();
-    node->left = std::get<0>(tuple).get().get();
-    node->right = std::get<1>(tuple).get().get();
-    return node;
-  });
 }
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
@@ -553,92 +433,6 @@ void BM_serial_tree_work(benchmark::State& state) {
   checkTree(root, depth, modulo);
 }
 
-Node* dispensoTreeWork(
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo,
-    size_t workIters) {
-  --depth;
-  Node* node = allocator.alloc();
-  node->setValueWithWork(bitset, modulo, workIters);
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return node;
-  }
-  auto left = dispenso::async([=, &allocator]() {
-    return dispensoTreeWork(allocator, depth, (bitset << 1), modulo, workIters);
-  });
-  auto right = dispenso::async([=, &allocator]() {
-    return dispensoTreeWork(allocator, depth, (bitset << 1) | 1, modulo, workIters);
-  });
-  node->left = left.get();
-  node->right = right.get();
-  return node;
-}
-
-void dispensoTaskSetTreeWork(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo,
-    size_t workIters) {
-  node->setValueWithWork(bitset, modulo, workIters);
-  --depth;
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo, workIters]() {
-        node->left = allocator.alloc();
-        dispensoTaskSetTreeWork(
-            tasks, node->left, allocator, depth, (bitset << 1), modulo, workIters);
-      },
-      true);
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo, workIters]() {
-        node->right = allocator.alloc();
-        dispensoTaskSetTreeWork(
-            tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, workIters);
-      },
-      true);
-}
-
-void dispensoTaskSetTreeBulkWork(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo,
-    size_t workIters) {
-  node->setValueWithWork(bitset, modulo, workIters);
-  --depth;
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-  std::array<Node**, 2> children = {&node->left, &node->right};
-  tasks.scheduleBulk(2, [&tasks, &allocator, children, depth, bitset, modulo, workIters](size_t i) {
-    return [&tasks,
-            &allocator,
-            child = children[i],
-            depth,
-            bitset = (bitset << 1) | static_cast<uint32_t>(i),
-            modulo,
-            workIters]() {
-      *child = allocator.alloc();
-      dispensoTaskSetTreeBulkWork(tasks, *child, allocator, depth, bitset, modulo, workIters);
-    };
-  });
-}
-
 // dispenso::parallel_invoke (binary) — fork-join idiom: schedule one sibling,
 // run the other inline on the calling thread.
 void dispensoTaskSetTreeParInvokeWork(
@@ -754,33 +548,6 @@ void BM_dispenso_taskset_tree_hybrid_work(benchmark::State& state) {
   }
 
   checkTree(&root, depth, modulo);
-}
-
-void dispensoTaskSetTreeInlineWork(
-    dispenso::ConcurrentTaskSet& tasks,
-    Node* node,
-    Allocator& allocator,
-    uint32_t depth,
-    uint32_t bitset,
-    uint32_t modulo,
-    size_t workIters) {
-  node->setValueWithWork(bitset, modulo, workIters);
-  --depth;
-  if (!depth) {
-    node->left = nullptr;
-    node->right = nullptr;
-    return;
-  }
-  tasks.schedule(
-      [&tasks, &allocator, node, depth, bitset, modulo, workIters]() {
-        node->left = allocator.alloc();
-        dispensoTaskSetTreeInlineWork(
-            tasks, node->left, allocator, depth, (bitset << 1), modulo, workIters);
-      },
-      true);
-  node->right = allocator.alloc();
-  dispensoTaskSetTreeInlineWork(
-      tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, workIters);
 }
 
 // ============================================================================
