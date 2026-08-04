@@ -423,7 +423,7 @@ static void BM_scene_graph_concurrent_task_set(benchmark::State& state) {
   }
 }
 
-static void BM_scene_graph_partial_revaluation(benchmark::State& state) {
+static void BM_scene_graph_partial_reeval(benchmark::State& state) {
   dispenso::ThreadPool& threadPool = dispenso::globalThreadPool();
 
   std::mt19937 rng(123456);
@@ -495,9 +495,9 @@ BENCHMARK(BM_scene_graph_concurrent_task_set)->UseRealTime();
 BENCHMARK(BM_scene_graph_taskflow)->UseRealTime();
 
 #ifndef NDEBUG
-BENCHMARK(BM_scene_graph_partial_revaluation)->UseRealTime()->Iterations(50);
+BENCHMARK(BM_scene_graph_partial_reeval)->UseRealTime()->Iterations(50);
 #else
-BENCHMARK(BM_scene_graph_partial_revaluation)->UseRealTime();
+BENCHMARK(BM_scene_graph_partial_reeval)->UseRealTime();
 #endif
 
 BENCHMARK_MAIN();
