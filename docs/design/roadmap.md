@@ -162,6 +162,13 @@ Single-threaded raw numbers (8192 allocs):
 - `nl_pool_allocator`: Linux 30-34K ns, Windows 34-37K ns (1.1x)
 - `pool_allocator` (locked): Linux 35-42K ns, Windows 152K ns (3.6-4.1x)
 
+**Multi-threaded contention (Linux EPYC-Genoa 166c, `pool_allocator_threaded`,
+kSmallSize/8192).** The locked pool scales *negatively*: vs `malloc`/`free` it is
+~6x faster at 2 threads, but ~7x slower at 8 threads and ~20x slower at 16
+threads. glibc/tcmalloc's per-thread caches absorb concurrency the shared central
+lock cannot — the thread-local-free-list fix below is what closes this, so the
+multi-threaded case is the strongest motivation for it.
+
 **Proposed approach:** Thread-local free lists that batch allocations from the
 shared pool. Each thread maintains a small local free list (e.g. 64-256 entries).
 Allocate from local list first (no atomics). When empty, grab a batch from the
@@ -234,6 +241,146 @@ threads on a single steal-ring, or if a future architecture extension
 (e.g. NUMA-node-aware wake) wants different sharding for wakes vs steal.
 Otherwise, the current coupling is the simplest design that's correct.
 
+### Idle-Pool Wake Latency vs CPU Cost (mostly-idle then burst)
+
+**Objective — dual.** This suite targets *both* low burst latency (wall time)
+**and** low CPU spent staying responsive. A keep-alive strategy that only
+minimized wall time by spinning would just trade the problem for idle CPU/power
+(mobile battery, shared hosts), so future work must be judged on both axes. The
+Plotly dashboard now plots `cpu_time` as a dotted companion to wall time on the
+idle_pool charts to make the tradeoff visible.
+
+**Context.** The `idle_pool_benchmark` `mostly_idle` scenario — a pool that sits
+idle and then receives periodic bursts of work — is dispenso's weakest suite
+versus TBB, consistently ~0.24-0.26x (TBB ~4x faster by geomean) across
+platforms, with far larger worst-case gaps:
+
+| Platform | Case | dispenso | TBB | Ratio |
+|----------|------|----------|-----|-------|
+| Apple M4 Pro (12c) | `mostly_idle/12/1e6` | 3.76 s | 30 ms | ~125x |
+| Pixel 9 Pro XL / Tensor G4 (8c) | `mostly_idle/8/1e6` | 2.3 s | 166 ms | ~14x |
+
+**Why.** dispenso aggressively parks idle workers (futex / `WaitOnAddress` /
+ulock) to yield the CPU when there is no work; waking them for each burst pays
+the full wake-from-park latency (scheduler + context switch + cache warm-up),
+which dominates when the burst itself is small. TBB keeps workers alive/spinning
+adaptively so a burst finds them ready, and its SPMC-deque self-stealing tends
+to re-run a repeating burst on the same core with a warm cache. dispenso has no
+special-casing for the mostly-idle-then-burst pattern.
+
+**Related: sustained static loops vs OpenMP.** The same park/wake cost — plus
+dispenso's runtime chunk/steal-ring setup vs OpenMP's compile-time static
+scheduling — leaves dispenso ~15-20% behind OpenMP on *large, sustained*
+`parallel_for` (simple_for / summing_for / locality at large sizes, ~0.81-0.86x;
+far worse at small sizes where OpenMP's `OMP_WAIT_POLICY=active` team is already
+hot). dispenso still beats TBB ~2x on the same locality cases, so this is
+specific to OpenMP's persistent hot team. The removed `AwakeRef`/`keepAwake` API
+targeted part of this; a bounded keep-alive hint (below) would help here too.
+
+**Possible approaches:**
+- Adaptive park delay / hysteresis: keep recently-active workers spinning longer
+  before parking when the pool has seen recent bursty activity, trading a little
+  idle CPU for burst latency. Composes with the adaptive spin backoff and
+  wake-cascade tuning (see [wake_cascade.md](wake_cascade.md)).
+- Locality-preserving burst placement: bias re-scheduling of a repeating burst
+  back onto the cores that last ran it (warm cache), analogous to TBB's
+  self-steal.
+- An opt-in pool hint/mode for latency-sensitive intermittent workloads that
+  favors keep-alive over CPU yield.
+
+**Cost / tradeoff.** Any keep-alive strategy burns CPU while "idle", so it must
+be opt-in or bounded (e.g. decay after N idle periods) to avoid regressing the
+genuinely-idle case and hurting battery/thermals on mobile. Validate with
+`idle_pool_benchmark` on frequency-pinned runs (the retail-Pixel numbers above
+are unpinned and carry extra variance).
+
+### Recursive fork-join vs TBB task_group (deep / heavy trees)
+
+**Context.** With fork-join scheduling complete (per-thread + steal rings),
+dispenso is on par with `tbb::task_group` on shallow traversal — basic tree
+~1.03x, kdtree ~1.01x, light-per-node work ~1.13x — but trails on deep and
+heavy-per-node recursion: `tree_work` heavy-per-node ~0.71x and 4-ary deep
+fork-join ~0.69x vs TBB (EPYC-Genoa 166c). It beats folly ~5.7x throughout, so
+the gap is TBB-specific and is the clearest remaining fork-join weakness.
+
+**Why.** TBB's continuation stealing keeps a deep recursion's working set on the
+stealing core and avoids re-scheduling overhead at every node; dispenso
+re-schedules each `parallel_invoke` / recursive TaskSet child through the pool.
+
+**Possible approaches:**
+- Continuation-style stealing for `parallel_invoke` / recursive TaskSet so a
+  stolen child resumes its parent on the stealing thread (warm working set).
+- A recursion-depth / subtree-size cutoff that runs deep sub-trees inline past a
+  threshold — the fork-join analogue of `parallel_for`'s `minItemsPerChunk`
+  guardrail, which already wins the trivial-work cases.
+- Validate against `tbb::task_group` on the `tree_work` (heavy) and `4ary` suites.
+
+### Topology-hierarchy-aware scheduling (beyond L3-as-NUMA-proxy)
+
+**Context.** `kAdaptive` prefers same-L3 steal victims and `buildThreadGroups`
+groups by L2/L3, using L3 as a lightweight NUMA proxy. Holds on AMD
+(CCX ≈ L3 ≈ domain) but breaks where L3 ≠ memory domain: monolithic-L3 Intel SNC,
+and virtualized hosts. Would give the "NUMA and topology awareness" backlog item
+below a shared substrate.
+
+**Sourcing (tested on the EPYC-Genoa dev VM).**
+- **OS topology (Linux sysfs / FreeBSD sysctl) is the portable primary** — the
+  only source that works on x86 *and* ARM and carries NUMA memory domains
+  (firmware ACPI SRAT/SLIT; ARM ACPI PPTT). `CpuSet` already reads NUMA domains;
+  the gap is that scheduling only consumes the L2/L3 levels.
+- **x86 CPUID** (`0x1F`/`0x0B`, `0x8000001D`/`0x04`, AMD `0x8000001E`) is a
+  bare-metal enrichment only, and needs a sanity check. On this VM it is fully
+  flattened — no leaf `0x1F`, a synthetic 256-way L3, x2APIC IDs a flat `0..165`
+  with no die/socket bits, `0x8000001E` reporting one node — so it adds nothing
+  over sysfs, and is meaningless under vCPU migration anyway. `/proc/cpuinfo` is
+  a weaker rendering of the same data, not a distinct source.
+- **Core-to-core latency probe** (atomic cacheline ping-pong across pinned
+  vCPUs) is the *only* method that saw through this VM: a clean two-tier split
+  (~40 ns near vs ~200 ns far) that CPUID and sysfs both reported as flat. Worth
+  an **opt-in, coarse, stability-gated** discovery mode — but numbers are ~10x
+  inflated on a shared VM and drift with vCPU migration, so trust it only when
+  placement is stable, and use it for CPU/cache grouping, not level labeling.
+- CPU **model-string → SKU-layout** lookup is a last-resort bare-metal heuristic;
+  the VM reports a generic "EPYC-Genoa" with no SKU, and a real SKU still would
+  not reveal the vCPU→pCPU mapping.
+
+**Actionability caveat.** In a NUMA-flattened guest you can act on CPU/cache
+grouping (vCPU affinity) but **cannot** place memory in a hidden domain (only
+node 0 exists to `mbind`); realistic VM payoff is thread grouping, not memory
+locality. Proper validation needs bare metal (multi-CCX AMD NPS4 / Intel SNC).
+
+**Goal.** A real hierarchy (socket ⊃ NUMA/SNC domain ⊃ L3 ⊃ L2/SMP) in
+`CpuSet`, exposed as ordered levels + nearest-common-level/distance, consumed by
+`buildThreadGroups` and kAdaptive victim ranking
+(same-L2 > L3 > domain > socket > remote); prefer NUMA domains over L3, degrade
+to the finest level the OS differentiates.
+
+### Experiment: externalize per-group locality; simplify thread-pool tiers
+
+**Context.** The pool has three tiers — per-thread rings, per-group steal rings,
+central queue. `kAdaptive` already shows algorithms can own their locality
+(stripes + own victim policy). Hypothesis: letting known-layout algorithms
+(`parallel_for`/`reduce`/…) manage locality externally — **in addition to**, not
+replacing, the steal rings — could give better-tailored behavior and trim
+per-iteration `threadLoop` work (also helping the idle-pool CPU objective above).
+
+**Keep.** Per-thread rings stay — the preferred path for bulk known-layout
+scheduling of `parallel_for`/`reduce`/etc.
+
+**Key risk.** Steal rings are the *universal* cross-algorithm work-stealing
+fallback. If each algorithm only manages its own structure, a thread committed to
+algorithm A's work cannot be stolen for algorithm B — risking load imbalance and,
+for nested / `wait`-blocking patterns, potential **deadlock**. So steal rings
+most likely remain as the safety net and external management layers on top,
+rather than replacing them.
+
+**Scope.** (1) Profile `threadLoopImpl` to quantify each tier's per-iteration
+cost, so any simplification is justified by measured idle-path savings.
+(2) Prototype an external placed-locality hook for `parallel_for`/`reduce`
+alongside steal rings. (3) Prove cross-algorithm steal and deadlock-freedom hold.
+Supersedes the "steal-ring round-robin for placed scheduling" backlog idea;
+interacts with "Decouple sleep mask from group concept".
+
 ## Ideas / Backlog
 
 These are ideas that may be pursued based on community feedback:
@@ -241,6 +388,7 @@ These are ideas that may be pursued based on community feedback:
 - Steal-ring round-robin for non-sleeping placed scheduling: `scheduleImplPlaced` currently only pushes to steal rings when it can claim a sleeping thread. When no threads are sleeping, the task falls through to the central queue. A round-robin steal-ring path for pool-worker callers could improve locality by keeping work near the scheduling thread. Requires benchmarking to confirm benefit over the central queue path.
 - CUDA graph mappings (TaskFlow has this; worth exploring for dispenso's Graph)
 - Lock-free stack
+- Speculative `Future` latency: the `future_benchmark` speculative suite runs ~1.5-3x behind `folly::Future` (while dispenso is ~2.2x faster on the kv-cache workload), so the gap is speculative-execution-specific — worth profiling folly's speculative fast path.
 - Range-based API wrappers (explicit opt-in)
 - SIMD-optimized algorithms
 - Integration examples (game engines, scientific computing)
