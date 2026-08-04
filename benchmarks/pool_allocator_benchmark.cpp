@@ -64,7 +64,7 @@ void runArena(benchmark::State& state, PoolAlloc& allocator) {
 }
 
 template <size_t kSize>
-void BM_mallocfree(benchmark::State& state) {
+void BM_mallocfree_baseline(benchmark::State& state) {
   run(
       state,
       []() { return reinterpret_cast<char*>(::malloc(kSize)); },
@@ -118,7 +118,7 @@ void runThreaded(benchmark::State& state, Alloc alloc, Free dealloc) {
 }
 
 template <size_t kSize, size_t kThreads>
-void BM_mallocfree_threaded(benchmark::State& state) {
+void BM_mallocfree_threaded_baseline(benchmark::State& state) {
   runThreaded<kThreads>(
       state,
       []() { return reinterpret_cast<char*>(::malloc(kSize)); },
@@ -205,15 +205,15 @@ void allocRange(benchmark::internal::Benchmark* b) {
 
 } // namespace
 
-BENCHMARK_TEMPLATE(BM_mallocfree, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
+BENCHMARK_TEMPLATE(BM_mallocfree_baseline, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
 
-BENCHMARK_TEMPLATE(BM_mallocfree, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
+BENCHMARK_TEMPLATE(BM_mallocfree_baseline, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
 
-BENCHMARK_TEMPLATE(BM_mallocfree, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
+BENCHMARK_TEMPLATE(BM_mallocfree_baseline, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 
@@ -221,32 +221,41 @@ BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kSmallSize)->Apply(allocRange<kSm
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 2)->Apply(allocRange<kSmallSize, 2>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kSmallSize, 2)
+    ->Apply(allocRange<kSmallSize, 2>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kSmallSize, 2)->Apply(allocRange<kSmallSize, 2>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kMediumSize, 2)->Apply(allocRange<kMediumSize, 2>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kMediumSize, 2)
+    ->Apply(allocRange<kMediumSize, 2>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kMediumSize, 2)->Apply(allocRange<kMediumSize, 2>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kLargeSize, 2)->Apply(allocRange<kLargeSize, 2>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kLargeSize, 2)
+    ->Apply(allocRange<kLargeSize, 2>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kLargeSize, 2)->Apply(allocRange<kLargeSize, 2>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 8)->Apply(allocRange<kSmallSize, 8>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kSmallSize, 8)
+    ->Apply(allocRange<kSmallSize, 8>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kSmallSize, 8)->Apply(allocRange<kSmallSize, 8>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kMediumSize, 8)->Apply(allocRange<kMediumSize, 8>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kMediumSize, 8)
+    ->Apply(allocRange<kMediumSize, 8>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kMediumSize, 8)->Apply(allocRange<kMediumSize, 8>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kLargeSize, 8)->Apply(allocRange<kLargeSize, 8>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kLargeSize, 8)
+    ->Apply(allocRange<kLargeSize, 8>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kLargeSize, 8)->Apply(allocRange<kLargeSize, 8>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 16)->Apply(allocRange<kSmallSize, 16>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kSmallSize, 16)
+    ->Apply(allocRange<kSmallSize, 16>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kSmallSize, 16)->Apply(allocRange<kSmallSize, 16>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kMediumSize, 16)->Apply(allocRange<kMediumSize, 16>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kMediumSize, 16)
+    ->Apply(allocRange<kMediumSize, 16>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kMediumSize, 16)
     ->Apply(allocRange<kMediumSize, 16>);
 
-BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kLargeSize, 16)->Apply(allocRange<kLargeSize, 16>);
+BENCHMARK_TEMPLATE2(BM_mallocfree_threaded_baseline, kLargeSize, 16)
+    ->Apply(allocRange<kLargeSize, 16>);
 BENCHMARK_TEMPLATE2(BM_pool_allocator_threaded, kLargeSize, 16)->Apply(allocRange<kLargeSize, 16>);
 
 BENCHMARK_MAIN();
