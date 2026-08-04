@@ -2,6 +2,24 @@
 
 Post-release tasks and reminders for package manager updates.
 
+## Compiler Explorer (Godbolt)
+
+Compiler Explorer pins each library version to an explicit git ref; it does not
+track HEAD. Each release must be registered so the README "Try on Godbolt" link
+offers the new version.
+
+On each release (after the `vX.Y.Z` tag exists on GitHub):
+
+1. Add the new tag as a version in the Compiler Explorer library config via PRs
+   to `compiler-explorer/infra` (the build recipe) and
+   `compiler-explorer/compiler-explorer` (the version list). Follow their
+   current library-onboarding docs for exact file locations.
+2. dispenso is **not** header-only — it uses the compiled-library path (a build
+   recipe producing `libdispenso` per compiler), not just an include path. This
+   is a one-time onboarding; subsequent releases only add the new version.
+3. After the PRs merge, confirm the new version is selectable and that a minimal
+   `parallel_for` example compiles and runs on godbolt.org.
+
 ## vcpkg: Remove temporary patches
 
 The v1.5.0 vcpkg port (`microsoft/vcpkg` PR #49633) includes two workarounds
