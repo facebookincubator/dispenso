@@ -124,32 +124,6 @@ void BM_dispenso_static_chunk(benchmark::State& state) {
   checkResults(input, output);
 }
 
-void BM_dispenso_auto_chunk(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
-
-  std::vector<int> output(num_elements, 0);
-  dispenso::ThreadPool pool(num_threads);
-  dispenso::ParForOptions options;
-  options.minItemsPerChunk = kMinSizePerChunk;
-
-  auto& input = getInputs(num_elements);
-  for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
-    auto range = dispenso::makeChunkedRange(0, num_elements, dispenso::ParForChunking::kAdaptive);
-    dispenso::parallel_for(
-        tasks,
-        range,
-        [&input, &output](size_t begin, size_t end) {
-          for (size_t i = begin; i < end; ++i) {
-            output[i] = input[i] * input[i] - 3 * input[i];
-          }
-        },
-        options);
-  }
-  checkResults(input, output);
-}
-
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
   const int num_threads = state.range(0);
@@ -213,6 +187,5 @@ BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK(BM_taskflow)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_dispenso_static_chunk)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK(BM_dispenso_auto_chunk)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();
