@@ -16,7 +16,6 @@
 #include <cmath>
 #include <cstdint>
 
-#include <dispenso/cpu_set.h>
 #include <dispenso/parallel_for.h>
 
 #if defined(_OPENMP)
@@ -152,117 +151,6 @@ void BM_dispenso_auto(benchmark::State& state) {
   benchmark::DoNotOptimize(sum);
 }
 
-// Explicit fine-grained chunking: aim for ~256 chunks per thread instead of
-// kAuto's 16-per-thread cap. Useful as a comparison point — shows whether
-// the kAuto default chunk granularity is the bottleneck for uneven loads.
-template <Region region>
-void BM_dispenso_fine(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  dispenso::resizeGlobalThreadPool(static_cast<size_t>(num_threads));
-  auto& pool = dispenso::globalThreadPool();
-  const int chunkSize = std::max(1, numPixels / (256 * std::max(1, num_threads)));
-
-  uint64_t sum = 0;
-  for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
-    std::vector<AlignedSum> sums;
-    sums.reserve(num_threads + 1);
-    dispenso::parallel_for(
-        tasks,
-        sums,
-        []() { return AlignedSum{}; },
-        dispenso::makeChunkedRange(0, numPixels, chunkSize),
-        [dim, vp](AlignedSum& lsumStore, int i, int end) {
-          uint64_t lsum = 0;
-          for (; i != end; ++i) {
-            lsum += pixelIters(i, dim, vp);
-          }
-          lsumStore.value += lsum;
-        });
-    sum = 0;
-    for (auto& s : sums) {
-      sum += s.value;
-    }
-  }
-  benchmark::DoNotOptimize(sum);
-}
-
-template <Region region>
-void BM_dispenso_static(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  // Use globalThreadPool + resize for fairness with TBB, which keeps a single
-  // long-lived worker pool across benchmark invocations. Constructing a fresh
-  // ThreadPool per benchmark run incurs first-touch cache penalties (cold TLS,
-  // ring init, wakeState init) that TBB amortizes once.
-  dispenso::resizeGlobalThreadPool(static_cast<size_t>(num_threads));
-  auto& pool = dispenso::globalThreadPool();
-
-  // Pure-compute variant: no per-chunk reduction writes, no shared state in
-  // the body. Each chunk computes an iteration sum and uses DoNotOptimize on
-  // it directly. This isolates the framework/cache cost from any reduction-
-  // storage cost (per-thread AlignedSum allocation + writebacks).
-  for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
-    dispenso::parallel_for(
-        tasks,
-        dispenso::makeChunkedRange(0, numPixels, dispenso::ParForChunking::kStatic),
-        [dim, vp](int i, int end) {
-          uint64_t lsum = 0;
-          for (; i != end; ++i) {
-            lsum += pixelIters(i, dim, vp);
-          }
-          benchmark::DoNotOptimize(lsum);
-        });
-  }
-}
-
-// EXPERIMENT: kStatic with maxThreads limited to the number of L2-sharing
-// groups (== physical cores on AMD Zen / Intel without SMT-shared L2).
-// Tests whether reducing chunk count from numHWThreads to numL2Groups
-// (letting SMT siblings cooperate on the same range via the kernel scheduler)
-// matches TBB's parallel utilization advantage.
-template <Region region>
-void BM_dispenso_static_l2(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  dispenso::resizeGlobalThreadPool(static_cast<size_t>(num_threads));
-  auto& pool = dispenso::globalThreadPool();
-
-  // Limit maxThreads to numL2Groups so we get one chunk per L2-cache group.
-  // On Zen 4 with SMT, this is one chunk per physical core; SMT siblings end
-  // up not getting a chunk and (ideally) stay quiet so they don't compete
-  // for execution units with the worker.
-  const int32_t numL2Groups = static_cast<int32_t>(dispenso::CpuSet::l2CacheGroups().size());
-  dispenso::ParForOptions options;
-  options.maxThreads = static_cast<uint32_t>(std::max(1, numL2Groups));
-
-  for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
-    dispenso::parallel_for(
-        tasks,
-        dispenso::makeChunkedRange(0, numPixels, dispenso::ParForChunking::kStatic),
-        [dim, vp](int i, int end) {
-          uint64_t lsum = 0;
-          for (; i != end; ++i) {
-            lsum += pixelIters(i, dim, vp);
-          }
-          benchmark::DoNotOptimize(lsum);
-        },
-        options);
-  }
-}
-
 #if !defined(BENCHMARK_WITHOUT_TBB)
 template <Region region>
 void BM_tbb(benchmark::State& state) {
@@ -288,86 +176,9 @@ void BM_tbb(benchmark::State& state) {
   benchmark::DoNotOptimize(sum);
 }
 
-template <Region region>
-void BM_tbb_simple(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  uint64_t sum = 0;
-  for (auto UNUSED_VAR : state) {
-    tbb_compat::task_scheduler_init initsched(num_threads);
-    // simple_partitioner: splits down to the grain size and stops. With grain
-    // size = numPixels / (num_threads * 16) we mimic dispenso's kAuto chunk
-    // count, so any TBB advantage from auto_partitioner's reactive splitting
-    // is removed and the remaining gap reflects runtime/scheduling overhead.
-    int grainSize = std::max(1, numPixels / (num_threads * 16));
-    sum = tbb::parallel_reduce(
-        tbb::blocked_range<int>(0, numPixels, grainSize),
-        uint64_t{0},
-        [dim, vp](const tbb::blocked_range<int>& r, uint64_t init) -> uint64_t {
-          for (int i = r.begin(); i != r.end(); ++i) {
-            init += pixelIters(i, dim, vp);
-          }
-          return init;
-        },
-        [](uint64_t x, uint64_t y) { return x + y; },
-        tbb::simple_partitioner{});
-  }
-  benchmark::DoNotOptimize(sum);
-}
-
-template <Region region>
-void BM_tbb_static(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  uint64_t sum = 0;
-  for (auto UNUSED_VAR : state) {
-    tbb_compat::task_scheduler_init initsched(num_threads);
-    // static_partitioner: one chunk per thread, no work stealing — direct
-    // analog of dispenso's kStatic. Lets us isolate TBB's per-iteration
-    // overhead from any partitioning differences.
-    sum = tbb::parallel_reduce(
-        tbb::blocked_range<int>(0, numPixels),
-        uint64_t{0},
-        [dim, vp](const tbb::blocked_range<int>& r, uint64_t init) -> uint64_t {
-          for (int i = r.begin(); i != r.end(); ++i) {
-            init += pixelIters(i, dim, vp);
-          }
-          return init;
-        },
-        [](uint64_t x, uint64_t y) { return x + y; },
-        tbb::static_partitioner{});
-  }
-  benchmark::DoNotOptimize(sum);
-}
 #endif // !BENCHMARK_WITHOUT_TBB
 
 #if defined(_OPENMP)
-template <Region region>
-void BM_omp_static(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int dim = static_cast<int>(state.range(1));
-  const int numPixels = dim * dim;
-  const Viewport vp = viewportFor(region);
-
-  omp_set_num_threads(num_threads);
-
-  uint64_t sum = 0;
-  for (auto UNUSED_VAR : state) {
-    sum = 0;
-#pragma omp parallel for schedule(static) reduction(+ : sum)
-    for (int i = 0; i < numPixels; ++i) {
-      sum += pixelIters(i, dim, vp);
-    }
-  }
-  benchmark::DoNotOptimize(sum);
-}
-
 template <Region region>
 void BM_omp_guided(benchmark::State& state) {
   const int num_threads = state.range(0);

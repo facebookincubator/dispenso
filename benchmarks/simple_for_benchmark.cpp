@@ -73,29 +73,6 @@ void checkResults(const std::vector<int>& input, const std::vector<int>& output)
   }
 }
 
-void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
-
-  std::vector<int> output(num_elements, 0);
-  dispenso::ThreadPool pool(num_threads);
-
-  dispenso::ParForOptions options;
-  options.minItemsPerChunk = kMinSizePerChunk;
-
-  auto& input = getInputs(num_elements);
-  for (auto UNUSED_VAR : state) {
-    dispenso::TaskSet tasks(pool);
-    dispenso::parallel_for(
-        tasks,
-        0,
-        num_elements,
-        [&input, &output](size_t i) { output[i] = input[i] * input[i] - 3 * input[i]; },
-        options);
-  }
-  checkResults(input, output);
-}
-
 void BM_taskflow(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);

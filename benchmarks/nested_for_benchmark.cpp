@@ -81,63 +81,6 @@ void BM_serial(benchmark::State& state) {
   checkResults(input, sum, foo, numElements);
 }
 
-uint64_t calculateInnerDispenso(uint64_t input, size_t foo, int numElements) {
-  std::vector<uint64_t> sums;
-  sums.reserve(g_numThreads + 1);
-  dispenso::parallel_for(
-      sums,
-      []() { return uint64_t{0}; },
-      0,
-      kWorkMultiplier * numElements,
-      [input, foo](uint64_t& lsumStore, size_t i, size_t end) {
-        uint64_t lsum = 0;
-        for (; i != end; ++i) {
-          lsum += calculate(input, i, foo);
-        }
-        lsumStore += lsum;
-      });
-  uint64_t sum = 0;
-  for (auto s : sums) {
-    sum += s;
-  }
-  return sum;
-}
-
-void BM_dispenso(benchmark::State& state) {
-  g_numThreads = state.range(0) - 1;
-  const int numElements = state.range(1);
-
-  dispenso::resizeGlobalThreadPool(g_numThreads);
-
-  uint64_t sum = 0;
-  int foo = 0;
-
-  auto input = getInputs(numElements);
-  for (auto UNUSED_VAR : state) {
-    std::vector<uint64_t> sums;
-    sums.reserve(g_numThreads + 1);
-    ++foo;
-    dispenso::parallel_for(
-        sums,
-        []() { return uint64_t{0}; },
-        0,
-        numElements,
-        [numElements, input, foo](uint64_t& lsumStore, size_t j, size_t end) {
-          uint64_t lsum = 0;
-          for (; j != end; ++j) {
-            lsum += calculateInnerDispenso(input, foo, numElements);
-          }
-          lsumStore += lsum;
-        });
-    sum = 0;
-    for (auto s : sums) {
-      sum += s;
-    }
-  }
-
-  checkResults(input, sum, foo, numElements);
-}
-
 uint64_t calculateInnerDispensoAuto(uint64_t input, size_t foo, int numElements) {
   std::vector<uint64_t> sums;
   sums.reserve(g_numThreads + 1);
