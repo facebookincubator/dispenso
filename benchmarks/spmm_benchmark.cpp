@@ -133,7 +133,7 @@ BENCHMARK_TEMPLATE(BM_serial, kMedRows);
 BENCHMARK_TEMPLATE(BM_serial, kLargeRows);
 
 template <int32_t kRows>
-void BM_dispenso_static(benchmark::State& state) {
+void BM_dispenso_static_reference(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const CsrMatrix& m = getMatrix(kRows, kMeanNnz);
   std::vector<double> B(static_cast<size_t>(m.numCols) * kRhsCols, 1.0);
@@ -210,8 +210,8 @@ static void CustomArguments(benchmark::internal::Benchmark* b) {
   }
 }
 
-BENCHMARK_TEMPLATE(BM_dispenso_static, kMedRows)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_static, kLargeRows)->Apply(CustomArguments)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_static_reference, kMedRows)->Apply(CustomArguments)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_static_reference, kLargeRows)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_auto, kMedRows)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_auto, kLargeRows)->Apply(CustomArguments)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)

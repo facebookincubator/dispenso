@@ -122,7 +122,7 @@ void BM_dispenso_static(benchmark::State& state) {
   checkOutput(input.data(), num_elements);
 }
 
-void BM_dispenso_auto(benchmark::State& state) {
+void BM_dispenso_auto_reference(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const size_t num_elements = state.range(1);
 
@@ -218,6 +218,6 @@ BENCHMARK(BM_omp)->Apply(CustomArguments)->UseRealTime();
 BENCHMARK(BM_tbb)->Apply(CustomArguments)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_dispenso_static)->Apply(CustomArguments)->UseRealTime();
-BENCHMARK(BM_dispenso_auto)->Apply(CustomArguments)->UseRealTime();
+BENCHMARK(BM_dispenso_auto_reference)->Apply(CustomArguments)->UseRealTime();
 
 BENCHMARK_MAIN();
