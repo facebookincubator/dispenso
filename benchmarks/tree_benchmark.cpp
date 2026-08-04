@@ -175,8 +175,13 @@ Node* dispensoTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32
   return node;
 }
 
+// Naive baseline: forks both children with dispenso::async and blocks on each
+// child's .get() at every recursion level, which starves the pool (real_time
+// dwarfs cpu_time). Kept only as a cautionary "how not to do it" reference --
+// not a representative dispenso fork-join result. See the taskset/parallel_invoke
+// variants for the real idioms.
 template <size_t depth>
-void BM_dispenso_tree(benchmark::State& state) {
+void BM_dispenso_tree_naive(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
@@ -1110,9 +1115,9 @@ BENCHMARK_TEMPLATE(BM_folly_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_folly_tree, kLargeSize)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree, kLargeSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kMediumSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kLargeSize)->UseRealTime();
 
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kMediumSize)->UseRealTime();
