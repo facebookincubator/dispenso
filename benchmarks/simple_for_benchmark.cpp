@@ -104,9 +104,14 @@ void BM_taskflow(benchmark::State& state) {
   auto& input = getInputs(num_elements);
 
   tf::Executor executor(num_threads);
-  tf::Taskflow taskflow;
 
   for (auto UNUSED_VAR : state) {
+    // Build a fresh taskflow each iteration. Reusing one object and appending
+    // to it (the previous behavior) accumulated a for_each task per iteration,
+    // so iteration k ran k passes and Taskflow timings grew unboundedly. The
+    // other frameworks construct their work fresh each iteration too, so this
+    // is the apples-to-apples comparison.
+    tf::Taskflow taskflow;
     taskflow.for_each_index(0, num_elements, 1, [&input, &output](int i) {
       output[i] = input[i] * input[i] - 3 * input[i];
     });
