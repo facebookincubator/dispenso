@@ -13,8 +13,12 @@
 // asymmetry. Work-stealing schedulers (dispenso kAuto, TBB auto_partitioner,
 // OpenMP guided/dynamic) should rebalance and win.
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <set>
+#include <thread>
+#include <vector>
 
 #include <dispenso/parallel_for.h>
 
@@ -200,9 +204,31 @@ void BM_omp_guided(benchmark::State& state) {
 }
 #endif // _OPENMP
 
+// A sparser low end than the shared benchmarkThreadCounts(). Two reasons, both
+// specific to this benchmark:
+//   1. BM_serial is registered separately below, so the parallel variants do not
+//      need a 1-thread point to establish the serial reference (unlike the
+//      parallel_for suites, where 1-thread-vs-serial shows framework overhead).
+//   2. Runtime here is dominated by the low end -- time scales as work/threads,
+//      so across 1,2,4,...,hw the 1- and 4-thread points alone are ~60% of the
+//      sweep, and at kLargeDim (4096^2 = 16.7M pixels) they are simply serial
+//      mandelbrot measured repeatedly.
+// hw is always included so the fully-parallel point is never dropped.
+inline std::vector<int> mandelbrotThreadCounts() {
+  const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+  std::set<int> counts;
+  for (int n : {2, 8, 16, 32, 64, 128}) {
+    if (n <= hw) {
+      counts.insert(n);
+    }
+  }
+  counts.insert(hw);
+  return std::vector<int>(counts.begin(), counts.end());
+}
+
 static void CustomArguments(benchmark::internal::Benchmark* b) {
   for (int dim : {kMediumDim, kLargeDim}) {
-    for (int i : benchmarkThreadCounts()) {
+    for (int i : mandelbrotThreadCounts()) {
       b->Args({i, dim});
     }
   }
