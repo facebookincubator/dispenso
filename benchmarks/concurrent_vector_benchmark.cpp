@@ -222,23 +222,8 @@ void iterateReverseImpl(benchmark::State& state, ContainerInit containerInit) {
   checkIotaSum(sum);
 }
 
-void BM_std_iterate_reverse(benchmark::State& state) {
-  iterateReverseImpl(state, []() { return std::vector<int>(); });
-}
-
-void BM_deque_iterate_reverse(benchmark::State& state) {
-  iterateReverseImpl(state, []() { return std::deque<int>(); });
-}
-
 #if !defined(BENCHMARK_WITHOUT_TBB)
-void BM_tbb_iterate_reverse(benchmark::State& state) {
-  iterateReverseImpl(state, []() { return tbb::concurrent_vector<int>(); });
-}
 #endif // !BENCHMARK_WITHOUT_TBB
-
-void BM_dispenso_iterate_reverse(benchmark::State& state) {
-  iterateReverseImpl(state, []() { return dispenso::ConcurrentVector<int>(); });
-}
 
 template <typename ContainerInit>
 void lowerBoundImpl(benchmark::State& state, ContainerInit containerInit) {
@@ -257,23 +242,8 @@ void lowerBoundImpl(benchmark::State& state, ContainerInit containerInit) {
   checkIotaSum(sum);
 }
 
-void BM_std_lower_bound(benchmark::State& state) {
-  lowerBoundImpl(state, []() { return std::vector<int>(); });
-}
-
-void BM_deque_lower_bound(benchmark::State& state) {
-  lowerBoundImpl(state, []() { return std::deque<int>(); });
-}
-
 #if !defined(BENCHMARK_WITHOUT_TBB)
-void BM_tbb_lower_bound(benchmark::State& state) {
-  lowerBoundImpl(state, []() { return tbb::concurrent_vector<int>(); });
-}
 #endif // !BENCHMARK_WITHOUT_TBB
-
-void BM_dispenso_lower_bound(benchmark::State& state) {
-  lowerBoundImpl(state, []() { return dispenso::ConcurrentVector<int>(); });
-}
 
 template <typename ContainerInit>
 void indexImpl(benchmark::State& state, ContainerInit containerInit) {
@@ -736,19 +706,11 @@ BENCHMARK(BM_tbb_iterate);
 #endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_dispenso_iterate);
 
-BENCHMARK(BM_std_iterate_reverse);
-BENCHMARK(BM_deque_iterate_reverse);
 #if !defined(BENCHMARK_WITHOUT_TBB)
-BENCHMARK(BM_tbb_iterate_reverse);
 #endif // !BENCHMARK_WITHOUT_TBB
-BENCHMARK(BM_dispenso_iterate_reverse);
 
-BENCHMARK(BM_std_lower_bound);
-BENCHMARK(BM_deque_lower_bound);
 #if !defined(BENCHMARK_WITHOUT_TBB)
-BENCHMARK(BM_tbb_lower_bound);
 #endif // !BENCHMARK_WITHOUT_TBB
-BENCHMARK(BM_dispenso_lower_bound);
 
 BENCHMARK(BM_std_index);
 BENCHMARK(BM_deque_index);
