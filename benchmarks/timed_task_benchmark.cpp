@@ -302,10 +302,8 @@ void BM_dispenso_mixed(benchmark::State& state) {
 }
 
 BENCHMARK_TEMPLATE2(BM_dispenso, 2, false)->UseManualTime();
-BENCHMARK_TEMPLATE2(BM_dispenso, 4, false)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_dispenso, 6, false)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_dispenso, 2, true)->UseManualTime();
-BENCHMARK_TEMPLATE2(BM_dispenso, 4, true)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_dispenso, 6, true)->UseManualTime();
 
 BENCHMARK_TEMPLATE(BM_dispenso_mixed, false)->UseManualTime();
@@ -313,10 +311,8 @@ BENCHMARK_TEMPLATE(BM_dispenso_mixed, true)->UseManualTime();
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 BENCHMARK_TEMPLATE2(BM_folly, 2, false)->UseManualTime();
-BENCHMARK_TEMPLATE2(BM_folly, 4, false)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_folly, 6, false)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_folly, 2, true)->UseManualTime();
-BENCHMARK_TEMPLATE2(BM_folly, 4, true)->UseManualTime();
 BENCHMARK_TEMPLATE2(BM_folly, 6, true)->UseManualTime();
 
 BENCHMARK_TEMPLATE(BM_folly_mixed, false)->UseManualTime();
