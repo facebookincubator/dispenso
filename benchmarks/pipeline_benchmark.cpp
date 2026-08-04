@@ -315,6 +315,10 @@ void BM_taskflow(benchmark::State& state) {
   checkResults(results);
 }
 
+// Capability difference (not a handicap): Taskflow requires the first pipe of a
+// tf::Pipeline to be SERIAL, so the image-generation stage cannot be
+// parallelized here. dispenso and TBB parallelize all three stages. When
+// comparing, attribute the first-stage gap to this Taskflow constraint.
 void runTaskflowPar(std::vector<std::unique_ptr<uint8_t[]>>& results, tf::Executor& exec) {
   results.resize(kNumImages);
   std::vector<std::unique_ptr<Work>> work(kNumImages);

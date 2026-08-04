@@ -130,6 +130,9 @@ void BM_folly(benchmark::State& state) {
   const int num_threads = state.range(0);
   const int num_elements = state.range(1);
 
+  // Folly's coroutine collectAllRange fan-out OOMs at the large size, so it is
+  // skipped there and the large-size comparison is dispenso-vs-TBB only. A
+  // missing large-size Folly bar on the dashboard means "skipped (OOM)", not 0.
   if (num_elements > 10000) {
     state.SkipWithError("We run out of memory here with too many elements");
   }
