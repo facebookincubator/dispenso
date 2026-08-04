@@ -293,9 +293,7 @@ BENCHMARK_TEMPLATE(BM_build_big_tree, dispenso::BiPropGraph);
 BENCHMARK(BM_build_bi_prop_dependency_chain);
 BENCHMARK(BM_build_bi_prop_dependency_group);
 BENCHMARK_TEMPLATE(BM_build_dependency_chain, dispenso::Graph);
-BENCHMARK_TEMPLATE(BM_build_dependency_chain, dispenso::BiPropGraph);
 BENCHMARK_TEMPLATE(BM_execute_dependency_chain, dispenso::Graph);
-BENCHMARK_TEMPLATE(BM_execute_dependency_chain, dispenso::BiPropGraph);
 BENCHMARK_TEMPLATE(BM_forward_propagator_node, dispenso::Graph);
 BENCHMARK_TEMPLATE(BM_forward_propagator_node, dispenso::BiPropGraph);
 
