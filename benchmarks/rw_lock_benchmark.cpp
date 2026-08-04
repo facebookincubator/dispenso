@@ -11,6 +11,7 @@
 #include <dispenso/distributed_rw_lock.h>
 #include <dispenso/rw_lock.h>
 
+#include <algorithm>
 #include <map>
 #include <set>
 
@@ -118,13 +119,24 @@ static void CustomArgumentsRWLock(benchmark::internal::Benchmark* b) {
 
 // Scalable locks (shared_mutex, DistributedRWLock) are designed for high thread
 // counts. Test up to 2x hw to measure oversubscription behavior.
+//
+// Write-heavy periods are capped well below that. A sharded lock's writer must
+// take every shard, so write-heavy contention convoys super-linearly: measured
+// on a 166-thread host, DistributedRWLock<16> at writePeriod=2 costs 298ms at 2
+// threads, 2.9s at 8, but 706s at 166 and 1720s at 332 -- roughly threads^1.8.
+// Those two cells alone were ~2/3 of this benchmark's entire runtime, spent
+// re-measuring a known and documented anti-pattern. Keeping 2/8/32/64 shows the
+// same trajectory (the blow-up is unmistakable across 100x) for ~1/15th the time,
+// and the full sweep is preserved for the read-heavy periods these locks target.
 static void CustomArgumentsScalable(benchmark::internal::Benchmark* b) {
   int hw = static_cast<int>(std::thread::hardware_concurrency());
   if (hw == 0) {
     hw = 4;
   }
-  std::set<int> threads = {2, 8, hw, 2 * hw};
+  const std::set<int> readHeavyThreads = {2, 8, hw, 2 * hw};
+  const std::set<int> writeHeavyThreads = {2, 8, std::min(hw, 32), std::min(hw, 64)};
   for (int j : {2, 8, 128, 512}) {
+    const std::set<int>& threads = (j <= 8) ? writeHeavyThreads : readHeavyThreads;
     for (int s : threads) {
       b->Args({s, j});
     }
