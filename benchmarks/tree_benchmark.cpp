@@ -286,31 +286,6 @@ void dispensoTaskSetTree(
       true);
 }
 
-template <size_t depth>
-void BM_dispenso_taskset_tree(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTree(tasks, &root, alloc, depth, 1, modulo);
-    tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(&root, depth, modulo);
-}
-
 void dispensoTaskSetTreeBulk(
     dispenso::ConcurrentTaskSet& tasks,
     Node* node,
@@ -339,31 +314,6 @@ void dispensoTaskSetTreeBulk(
       dispensoTaskSetTreeBulk(tasks, *child, allocator, depth, bitset, modulo);
     };
   });
-}
-
-template <size_t depth>
-void BM_dispenso_taskset_tree_bulk(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeBulk(tasks, &root, alloc, depth, 1, modulo);
-    tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(&root, depth, modulo);
 }
 
 void dispensoTaskSetTreeHybrid(
@@ -399,33 +349,6 @@ void dispensoTaskSetTreeHybrid(
   node->right = allocator.alloc();
   dispensoTaskSetTreeHybrid(
       tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, serialThreshold);
-}
-
-template <size_t depth>
-void BM_dispenso_taskset_tree_hybrid(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-
-  uint32_t modulo;
-  Node root;
-
-  auto& pool = dispenso::globalThreadPool();
-  dispenso::ConcurrentTaskSet tasks(pool, dispenso::ParentCascadeCancel::kOff, 2);
-
-  uint32_t serialThreshold = (depth > 10) ? depth - 10 : 0;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeHybrid(tasks, &root, alloc, depth, 1, modulo, serialThreshold);
-    tasks.wait();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(&root, depth, modulo);
 }
 
 void dispensoTaskSetTreeInline(
@@ -502,29 +425,6 @@ dispensoTreeWhenAll(Allocator& allocator, uint32_t depth, uint32_t bitset, uint3
     node->right = std::get<1>(tuple).get().get();
     return node;
   });
-}
-
-template <size_t depth>
-void BM_dispenso_tree_when_all(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  dispenso::globalThreadPool();
-
-  uint32_t modulo;
-
-  Node* root;
-
-  size_t m = 0;
-
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = dispensoTreeWhenAll(alloc, depth, 1, modulo).get();
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-
-  checkTree(root, depth, modulo);
 }
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
@@ -678,25 +578,6 @@ Node* dispensoTreeWork(
   return node;
 }
 
-template <size_t depth, size_t workIters>
-void BM_dispenso_tree_work(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  dispenso::globalThreadPool();
-  uint32_t modulo;
-  Node* root;
-  size_t m = 0;
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    root = dispensoTreeWork(alloc, depth, 1, modulo, workIters);
-    benchmark::DoNotOptimize(root->workResult);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-  checkTree(root, depth, modulo);
-}
-
 void dispensoTaskSetTreeWork(
     dispenso::ConcurrentTaskSet& tasks,
     Node* node,
@@ -728,27 +609,6 @@ void dispensoTaskSetTreeWork(
       true);
 }
 
-template <size_t depth, size_t workIters>
-void BM_dispenso_taskset_tree_work(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  uint32_t modulo;
-  Node root;
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2, taskCostFor(workIters));
-  size_t m = 0;
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeWork(tasks, &root, alloc, depth, 1, modulo, workIters);
-    tasks.wait();
-    benchmark::DoNotOptimize(root.workResult);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-  checkTree(&root, depth, modulo);
-}
-
 void dispensoTaskSetTreeBulkWork(
     dispenso::ConcurrentTaskSet& tasks,
     Node* node,
@@ -777,27 +637,6 @@ void dispensoTaskSetTreeBulkWork(
       dispensoTaskSetTreeBulkWork(tasks, *child, allocator, depth, bitset, modulo, workIters);
     };
   });
-}
-
-template <size_t depth, size_t workIters>
-void BM_dispenso_taskset_tree_bulk_work(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  uint32_t modulo;
-  Node root;
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2, taskCostFor(workIters));
-  size_t m = 0;
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeBulkWork(tasks, &root, alloc, depth, 1, modulo, workIters);
-    tasks.wait();
-    benchmark::DoNotOptimize(root.workResult);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-  checkTree(&root, depth, modulo);
 }
 
 // dispenso::parallel_invoke (binary) — fork-join idiom: schedule one sibling,
@@ -942,27 +781,6 @@ void dispensoTaskSetTreeInlineWork(
   node->right = allocator.alloc();
   dispensoTaskSetTreeInlineWork(
       tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, workIters);
-}
-
-template <size_t depth, size_t workIters>
-void BM_dispenso_taskset_tree_inline_work(benchmark::State& state) {
-  Allocator alloc;
-  alloc.reset(depth);
-  getModulos();
-  uint32_t modulo;
-  Node root;
-  dispenso::ConcurrentTaskSet tasks(
-      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2, taskCostFor(workIters));
-  size_t m = 0;
-  for (auto UNUSED_VAR : state) {
-    alloc.reset(depth);
-    modulo = getModulos()[m];
-    dispensoTaskSetTreeInlineWork(tasks, &root, alloc, depth, 1, modulo, workIters);
-    tasks.wait();
-    benchmark::DoNotOptimize(root.workResult);
-    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
-  }
-  checkTree(&root, depth, modulo);
 }
 
 // ============================================================================
