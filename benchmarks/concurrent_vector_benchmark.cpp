@@ -498,10 +498,10 @@ void parallelImplGrowBy(
   checkIotaSum(values, sum);
 }
 
-void BM_std_parallel_grow_by_10(benchmark::State& state) {
+void BM_std_parallel_grow_by(benchmark::State& state) {
   std::mutex mtx;
   parallelImplGrowBy(
-      10,
+      state.range(0),
       state,
       []() { return std::vector<int>(); },
       [&mtx](std::vector<int>& c, int i, int end) {
@@ -512,10 +512,10 @@ void BM_std_parallel_grow_by_10(benchmark::State& state) {
       });
 }
 
-void BM_deque_parallel_grow_by_10(benchmark::State& state) {
+void BM_deque_parallel_grow_by(benchmark::State& state) {
   std::mutex mtx;
   parallelImplGrowBy(
-      10,
+      state.range(0),
       state,
       []() { return std::deque<int>(); },
       [&mtx](std::deque<int>& c, int i, int end) {
@@ -527,9 +527,9 @@ void BM_deque_parallel_grow_by_10(benchmark::State& state) {
 }
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
-void BM_tbb_parallel_grow_by_10(benchmark::State& state) {
+void BM_tbb_parallel_grow_by(benchmark::State& state) {
   parallelImplGrowBy(
-      10,
+      state.range(0),
       state,
       []() { return tbb::concurrent_vector<int>(); },
       [](tbb::concurrent_vector<int>& c, int i, int end) {
@@ -541,68 +541,18 @@ void BM_tbb_parallel_grow_by_10(benchmark::State& state) {
 }
 #endif // !BENCHMARK_WITHOUT_TBB
 
-void BM_dispenso_parallel_grow_by_10(benchmark::State& state) {
+void BM_dispenso_parallel_grow_by(benchmark::State& state) {
   parallelImplGrowBy(
-      10,
+      state.range(0),
       state,
       []() { return dispenso::ConcurrentVector<int>(); },
       [](dispenso::ConcurrentVector<int>& c, int i, int end) {
         c.grow_by_generator(end - i, [i]() mutable { return i++; });
-      });
-}
-
-void BM_std_parallel_grow_by_100(benchmark::State& state) {
-  std::mutex mtx;
-  parallelImplGrowBy(
-      100,
-      state,
-      []() { return std::vector<int>(); },
-      [&mtx](std::vector<int>& c, int i, int end) {
-        std::lock_guard<std::mutex> lk(mtx);
-        for (; i != end; ++i) {
-          c.push_back(i);
-        }
-      });
-}
-
-void BM_deque_parallel_grow_by_100(benchmark::State& state) {
-  std::mutex mtx;
-  parallelImplGrowBy(
-      100,
-      state,
-      []() { return std::deque<int>(); },
-      [&mtx](std::deque<int>& c, int i, int end) {
-        std::lock_guard<std::mutex> lk(mtx);
-        for (; i != end; ++i) {
-          c.push_back(i);
-        }
       });
 }
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
-void BM_tbb_parallel_grow_by_100(benchmark::State& state) {
-  parallelImplGrowBy(
-      100,
-      state,
-      []() { return tbb::concurrent_vector<int>(); },
-      [](tbb::concurrent_vector<int>& c, int i, int end) {
-        auto it = c.grow_by(end - i);
-        for (; i != end; ++i, ++it) {
-          *it = i;
-        }
-      });
-}
 #endif // !BENCHMARK_WITHOUT_TBB
-
-void BM_dispenso_parallel_grow_by_100(benchmark::State& state) {
-  parallelImplGrowBy(
-      100,
-      state,
-      []() { return dispenso::ConcurrentVector<int>(); },
-      [](dispenso::ConcurrentVector<int>& c, int i, int end) {
-        c.grow_by_generator(end - i, [i]() mutable { return i++; });
-      });
-}
 
 template <typename ContainerInit, typename ContainerPush>
 void parallelImplGrowByMax(
@@ -746,19 +696,15 @@ BENCHMARK(BM_tbb_parallel_clear);
 #endif // !BENCHMARK_WITHOUT_TBB
 BENCHMARK(BM_dispenso_parallel_clear);
 
-BENCHMARK(BM_std_parallel_grow_by_10);
-BENCHMARK(BM_deque_parallel_grow_by_10);
+BENCHMARK(BM_std_parallel_grow_by)->Arg(10)->Arg(100);
+BENCHMARK(BM_deque_parallel_grow_by)->Arg(10)->Arg(100);
 #if !defined(BENCHMARK_WITHOUT_TBB)
-BENCHMARK(BM_tbb_parallel_grow_by_10);
+BENCHMARK(BM_tbb_parallel_grow_by)->Arg(10)->Arg(100);
 #endif // !BENCHMARK_WITHOUT_TBB
-BENCHMARK(BM_dispenso_parallel_grow_by_10);
+BENCHMARK(BM_dispenso_parallel_grow_by)->Arg(10)->Arg(100);
 
-BENCHMARK(BM_std_parallel_grow_by_100);
-BENCHMARK(BM_deque_parallel_grow_by_100);
 #if !defined(BENCHMARK_WITHOUT_TBB)
-BENCHMARK(BM_tbb_parallel_grow_by_100);
 #endif // !BENCHMARK_WITHOUT_TBB
-BENCHMARK(BM_dispenso_parallel_grow_by_100);
 
 BENCHMARK(BM_std_parallel_grow_by_max);
 BENCHMARK(BM_deque_parallel_grow_by_max);
