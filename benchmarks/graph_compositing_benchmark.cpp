@@ -391,9 +391,11 @@ static void BM_compositing_taskflow(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_compositing_parallel_for)->UseRealTime();
-BENCHMARK(BM_compositing_concurrent_task_set)->UseRealTime();
+// Lead with the incremental partial re-evaluation case -- dispenso's headline
+// graph strength (recompute only the dirty subgraph).
 BENCHMARK(BM_compositing_partial_reeval)->UseRealTime();
+BENCHMARK(BM_compositing_concurrent_task_set)->UseRealTime();
+BENCHMARK(BM_compositing_parallel_for)->UseRealTime();
 BENCHMARK(BM_compositing_taskflow)->UseRealTime();
 
 BENCHMARK_MAIN();

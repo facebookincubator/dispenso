@@ -490,14 +490,16 @@ static void BM_scene_graph_taskflow(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_scene_graph_parallel_for)->UseRealTime();
-BENCHMARK(BM_scene_graph_concurrent_task_set)->UseRealTime();
-BENCHMARK(BM_scene_graph_taskflow)->UseRealTime();
-
+// Lead with the incremental partial re-evaluation case -- dispenso's headline
+// graph strength (recompute only the dirty subgraph).
 #ifndef NDEBUG
 BENCHMARK(BM_scene_graph_partial_reeval)->UseRealTime()->Iterations(50);
 #else
 BENCHMARK(BM_scene_graph_partial_reeval)->UseRealTime();
 #endif
+
+BENCHMARK(BM_scene_graph_concurrent_task_set)->UseRealTime();
+BENCHMARK(BM_scene_graph_parallel_for)->UseRealTime();
+BENCHMARK(BM_scene_graph_taskflow)->UseRealTime();
 
 BENCHMARK_MAIN();
