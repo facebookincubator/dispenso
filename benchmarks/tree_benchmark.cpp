@@ -607,7 +607,6 @@ void BM_tbb_tree_work(benchmark::State& state) {
 // ============================================================================
 
 constexpr size_t kLightWork = 100;
-constexpr size_t kMediumWork = 1000;
 constexpr size_t kHeavyWork = 10000;
 
 // Pick the dispenso TaskCost hint that best matches a given per-task work
@@ -1105,94 +1104,58 @@ void BM_dispenso_parfor_tree_work(benchmark::State& state) {
   checkTree(&root, depth, modulo);
 }
 
+// Sizes bracket the overhead-amortization curve: small is scheduling-overhead
+// dominated, large is converged. (Medium interpolates and is omitted.)
 BENCHMARK_TEMPLATE(BM_serial_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_serial_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_serial_tree, kLargeSize)->UseRealTime();
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 BENCHMARK_TEMPLATE(BM_folly_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_folly_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_folly_tree, kLargeSize)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_FOLLY
 
-BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid, kLargeSize)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_when_all, kLargeSize)->UseRealTime();
-
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK_TEMPLATE(BM_tbb_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_tree, kMediumSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tbb_tree, kLargeSize)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
-// Graduated-work benchmarks at kMediumSize (depth 16, ~65K nodes).
-// Shows whether scheduling overhead matters as per-node work grows.
+// Canonical fork-join idiom for the pure-build tree.
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kLargeSize)->UseRealTime();
+
+// "Outside the box" restructured variant: flatten to a frontier and run one
+// parallel_for. A performance ceiling, not the general fork-join idiom.
+BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kLargeSize)->UseRealTime();
+
+// Cautionary reference: naive async + blocking .get() at every level.
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kLargeSize)->UseRealTime();
+
+// Graduated-work benchmarks at kMediumSize (depth 16, ~65K nodes). Light and
+// heavy work bracket the range where dynamic balancing starts to matter;
+// medium interpolates and is omitted.
 BENCHMARK_TEMPLATE(BM_serial_tree_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_serial_tree_work, kMediumSize, kMediumWork)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_serial_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
 
-BENCHMARK_TEMPLATE(BM_dispenso_tree_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
+#if !defined(BENCHMARK_WITHOUT_TBB)
+BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kLightWork)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
+#endif // !BENCHMARK_WITHOUT_TBB
 
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
-
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_bulk_work, kMediumSize, kHeavyWork)->UseRealTime();
-
+// Canonical fork-join idiom (parallel_invoke) — the ergonomic, performant way.
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke_work, kMediumSize, kLightWork)
-    ->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke_work, kMediumSize, kMediumWork)
     ->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke_work, kMediumSize, kHeavyWork)
     ->UseRealTime();
 
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline_work, kMediumSize, kHeavyWork)->UseRealTime();
-
-// Parallel-for tree experiment — base tree
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kMediumSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kLargeSize)->UseRealTime();
-
-// Parallel-for tree experiment — graduated work
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
-
+// Granularity control: serial cutoff near the leaves.
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work, kMediumSize, kMediumWork)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work, kMediumSize, kHeavyWork)->UseRealTime();
 
-#if !defined(BENCHMARK_WITHOUT_TBB)
-BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kMediumWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
-#endif // !BENCHMARK_WITHOUT_TBB
+// Restructured frontier variant (ceiling; note it degrades under heavy work).
+BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kLightWork)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
 
 // ============================================================================
 // KD-tree-style top-heavy fork-join benchmark.
