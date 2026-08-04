@@ -14,7 +14,6 @@
 #include "benchmark_common.h"
 
 constexpr size_t kSmallSize = 24;
-constexpr size_t kMediumSize = 120;
 constexpr size_t kLargeSize = 248;
 // 1000 is larger than our largest optimized chunk size, so we may expect to see performance falloff
 // here.
@@ -128,9 +127,6 @@ void BM_queue_once_function(benchmark::State& state) {
 BENCHMARK_TEMPLATE(BM_move_std_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_move_once_function, kSmallSize);
 
-BENCHMARK_TEMPLATE(BM_move_std_function, kMediumSize);
-BENCHMARK_TEMPLATE(BM_move_once_function, kMediumSize);
-
 BENCHMARK_TEMPLATE(BM_move_std_function, kLargeSize);
 BENCHMARK_TEMPLATE(BM_move_once_function, kLargeSize);
 
@@ -140,10 +136,6 @@ BENCHMARK_TEMPLATE(BM_move_once_function, kExtraLargeSize);
 BENCHMARK_TEMPLATE(BM_queue_inline_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_queue_std_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_queue_once_function, kSmallSize);
-
-BENCHMARK_TEMPLATE(BM_queue_inline_function, kMediumSize);
-BENCHMARK_TEMPLATE(BM_queue_std_function, kMediumSize);
-BENCHMARK_TEMPLATE(BM_queue_once_function, kMediumSize);
 
 BENCHMARK_TEMPLATE(BM_queue_inline_function, kLargeSize);
 BENCHMARK_TEMPLATE(BM_queue_std_function, kLargeSize);
