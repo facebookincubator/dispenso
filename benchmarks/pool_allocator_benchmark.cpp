@@ -90,12 +90,6 @@ void BM_nl_pool_allocator(benchmark::State& state) {
 }
 
 template <size_t kSize>
-void BM_pool_allocator_arena(benchmark::State& state) {
-  dispenso::PoolAllocator allocator(kSize, kSize * 32, ::malloc, ::free);
-  runArena(state, allocator);
-}
-
-template <size_t kSize>
 void BM_nl_pool_allocator_arena(benchmark::State& state) {
   dispenso::NoLockPoolAllocator allocator(kSize, kSize * 32, ::malloc, ::free);
   runArena(state, allocator);
@@ -223,13 +217,8 @@ BENCHMARK_TEMPLATE(BM_mallocfree, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 BENCHMARK_TEMPLATE(BM_pool_allocator, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 
-BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kSmallSize)->Apply(allocRange<kSmallSize, 1>);
-
-BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kMediumSize)->Apply(allocRange<kMediumSize, 1>);
-
-BENCHMARK_TEMPLATE(BM_pool_allocator_arena, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 BENCHMARK_TEMPLATE(BM_nl_pool_allocator_arena, kLargeSize)->Apply(allocRange<kLargeSize, 1>);
 
 BENCHMARK_TEMPLATE2(BM_mallocfree_threaded, kSmallSize, 2)->Apply(allocRange<kSmallSize, 2>);
