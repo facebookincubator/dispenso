@@ -470,14 +470,34 @@ def find_benchmarks(build_dir: Path, pattern: Optional[str] = None) -> List[Path
     return sorted(seen.values())
 
 
+# Most suites sweep thread counts up to the core count, so their wall time grows
+# with the machine. 30 minutes suits a ~32-core host; on a 166-thread server
+# mandelbrot and rw_lock exceed it and are killed mid-run, losing the whole
+# benchmark. Scale the budget with core count, but cap it so a genuinely hung
+# benchmark is still caught in reasonable time.
+_BASE_TIMEOUT_SECONDS = 1800
+_TIMEOUT_SCALE_CORES = 32
+_MAX_TIMEOUT_SECONDS = 7200
+
+
+def default_timeout_seconds(cpu_count: Optional[int] = None) -> int:
+    """Per-benchmark timeout, scaled by core count and capped."""
+    cores = cpu_count if cpu_count is not None else (os.cpu_count() or 1)
+    steps = max(1, -(-cores // _TIMEOUT_SCALE_CORES))  # ceil division
+    return min(_BASE_TIMEOUT_SECONDS * steps, _MAX_TIMEOUT_SECONDS)
+
+
 def run_benchmark(
     benchmark_path: Path,
     extra_args: Optional[List[str]] = None,
     filter_pattern: Optional[str] = None,
     env_override: Optional[Dict[str, str]] = None,
     name_suffix: str = "",
+    timeout_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run a single benchmark and return results."""
+    if timeout_seconds is None:
+        timeout_seconds = default_timeout_seconds()
     args = [str(benchmark_path), "--benchmark_format=json"]
     if extra_args:
         args.extend(extra_args)
@@ -507,7 +527,7 @@ def run_benchmark(
             args,
             capture_output=True,
             text=True,
-            timeout=1800,  # 30 minute timeout per benchmark
+            timeout=timeout_seconds,
             env=env,
         )
 
@@ -542,7 +562,7 @@ def run_benchmark(
         return {
             "name": benchmark_path.name,
             "success": False,
-            "error": "Timeout after 1800 seconds",
+            "error": f"Timeout after {timeout_seconds} seconds",
         }
     except Exception as e:
         return {
@@ -694,6 +714,15 @@ def main():
         "Produces mean/median/stddev/cv aggregate rows in the output.",
     )
     parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=None,
+        help="Timeout per benchmark target. Defaults to a core-count-scaled value "
+        f"({_BASE_TIMEOUT_SECONDS}s per {_TIMEOUT_SCALE_CORES} cores, capped at "
+        f"{_MAX_TIMEOUT_SECONDS}s), since thread-scaling suites take longer on "
+        "machines with more cores.",
+    )
+    parser.add_argument(
         "--platform",
         "-p",
         type=str,
@@ -760,6 +789,7 @@ def main():
             extra_args if extra_args else None,
             args.filter,
             env_override=env_override,
+            timeout_seconds=args.timeout_seconds,
         )
         results.append(result)
         if result["success"]:
