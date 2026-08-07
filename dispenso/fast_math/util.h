@@ -8,9 +8,22 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <tuple>
 
-#if !defined(__CUDACC__) && (defined(__SSE__) || defined(__AVX__))
+// MSVC never defines __SSE__/__SSE2__ -- it signals SSE availability through
+// _M_X64 (always) and _M_IX86_FP (>= 1 means /arch:SSE or better). Without this
+// every __SSE__-guarded path below silently falls back to the portable version
+// on Windows, which is both slower and, for non-finite input, not equivalent.
+#if defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
+#define DISPENSO_FAST_MATH_HAS_SSE 1
+#elif defined(__SSE__)
+#define DISPENSO_FAST_MATH_HAS_SSE 1
+#else
+#define DISPENSO_FAST_MATH_HAS_SSE 0
+#endif
+
+#if !defined(__CUDACC__) && (DISPENSO_FAST_MATH_HAS_SSE || defined(__AVX__))
 #include <immintrin.h>
 #endif
 
@@ -212,7 +225,16 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int_trunc_safe(Flt f) {
 }
 
 // Convert float to int using round-to-nearest-even (SSE cvtss2si semantics).
-// For non-normal inputs (inf/NaN), returns 0 to avoid undefined behavior.
+//
+// The result for non-finite input is unspecified and varies by target: the SIMD
+// backends and CUDA mask it to 0, while the scalar paths yield INT_MIN, which is
+// what cvtss2si produces in hardware. Do not branch on it.
+//
+// No sentinel can be safe here. 0 is what any x in (-0.5, 0.5) legitimately
+// converts to, so a caller treating it as "invalid" also catches its most common
+// valid inputs -- and every caller here consumes a range-reduced exponent, where
+// 0 is dead centre. Test the input instead (see nonnormal), or order the code so
+// bounds checks take precedence over value-dependent shortcuts, as expm1 does.
 template <typename Flt>
 DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
   if constexpr (!std::is_same_v<Flt, SimdType_t<Flt>>) {
@@ -224,17 +246,18 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
       return 0;
     }
     return static_cast<IntType_t<Flt>>(lrintf(f));
-#elif defined(__SSE__)
+#elif DISPENSO_FAST_MATH_HAS_SSE
     return _mm_cvtss_si32(_mm_set_ss(f));
 #else
-    // Round to nearest even via magic number addition, guard non-normals → 0.
+    // Round to nearest even via magic number addition. Non-finite input yields
+    // INT_MIN to match cvtss2si above; see the contract note on this function.
     auto fi = bit_cast<IntType_t<Flt>>(f);
     if ((fi & 0x7f800000) == 0x7f800000) {
-      return 0;
+      return std::numeric_limits<IntType_t<Flt>>::min();
     }
     constexpr float kMagic = FloatTraits<Flt>::kMagic; // 1.5f * 2^23
     return static_cast<IntType_t<Flt>>((f + kMagic) - kMagic);
-#endif // __SSE__
+#endif // DISPENSO_FAST_MATH_HAS_SSE
   }
 }
 

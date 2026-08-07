@@ -1865,15 +1865,22 @@ DISPENSO_INLINE Flt expm1(Flt x) {
     Flt result = fma_fn(two_n, em1_r, two_n_m1);
 
     if constexpr (std::is_same_v<Flt, float>) {
-      // For n == 0 (|x| < ln2/2 ≈ 0.347): return polynomial directly.
-      if (n == 0)
-        return em1_r;
+      // The clamps precede the n == 0 shortcut so they can override it, matching
+      // the SIMD path below, which blends the shortcut in and then lets the
+      // clamps win. Non-finite x reduces to a meaningless n -- 0 on the SIMD
+      // backends and CUDA, INT_MIN on the scalar paths -- so a shortcut allowed
+      // to return ahead of the clamps would answer from the polynomial instead
+      // of matching std.
       // For x < -25*ln2 ≈ -17.3: expm1(x) rounds to -1 in float.
       if (x < -17.5f)
         return -1.0f;
       // For x > 89: exp(x) overflows, expm1(x) = inf.
       if (x > 89.0f)
         return std::numeric_limits<float>::infinity();
+      // For n == 0 (|x| < ln2/2 ≈ 0.347): return polynomial directly. NaN
+      // reaches here only where n == 0 (CUDA), and em1_r is NaN there too.
+      if (n == 0)
+        return em1_r;
       // NaN propagation: rangeReduce maps NaN to finite r, producing a
       // garbage result.  x - x is 0 for finite, NaN for NaN.
       if constexpr (AccuracyTraits::kBoundsValues)
