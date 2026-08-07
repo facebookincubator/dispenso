@@ -110,6 +110,166 @@ TEST(CpuSet, ParseTrailingComma) {
 }
 
 // =============================================================================
+// FreeBSD topology_spec Parsing Tests
+//
+// These drive the parser directly with synthetic kern.sched.topology_spec XML,
+// so nested and multi-socket paths are covered on every platform.
+// =============================================================================
+
+using dispenso::detail::parseCacheGroupsFromTopologySpec;
+
+// Flat single L3 and no L2, the shape a 4-core FreeBSD 15.1 arm64 machine emits.
+TEST(CpuSet, TopologySpecFlatL3) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="3">
+  <cpu count="4" mask="f,0,0,0">0, 1, 2, 3</cpu>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 1u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+}
+
+// L3 over two L2 sibling groups: the matching group's own <cpu> must be taken,
+// not a nested child's, and both nested L2 groups must be found.
+TEST(CpuSet, TopologySpecNestedL3OverL2) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="3">
+  <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+  <children>
+   <group level="2" cache-level="2">
+    <cpu count="2" mask="3">0, 1</cpu>
+   </group>
+   <group level="2" cache-level="2">
+    <cpu count="2" mask="c">2, 3</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 1u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+
+  auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+  ASSERT_EQ(l2.size(), 2u);
+  EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0, 1}));
+  EXPECT_EQ(l2[1].cpus, (std::vector<int32_t>{2, 3}));
+}
+
+// Two sockets: top group shares no cache (cache-level=0), each socket an L3.
+TEST(CpuSet, TopologySpecMultiSocketL3) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="0">
+  <cpu count="8" mask="ff">0, 1, 2, 3, 4, 5, 6, 7</cpu>
+  <children>
+   <group level="2" cache-level="3">
+    <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+   </group>
+   <group level="2" cache-level="3">
+    <cpu count="4" mask="f0">4, 5, 6, 7</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  auto l3 = parseCacheGroupsFromTopologySpec(xml, 3);
+  ASSERT_EQ(l3.size(), 2u);
+  EXPECT_EQ(l3[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+  EXPECT_EQ(l3[1].cpus, (std::vector<int32_t>{4, 5, 6, 7}));
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+}
+
+// Groups emitted out of CPU order must come back sorted by first CPU id.
+TEST(CpuSet, TopologySpecSortsByFirstCpu) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="2">
+  <cpu count="2" mask="30">4, 5</cpu>
+ </group>
+ <group level="1" cache-level="2">
+  <cpu count="2" mask="3">0, 1</cpu>
+ </group>
+</groups>)";
+  auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+  ASSERT_EQ(l2.size(), 2u);
+  EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0, 1}));
+  EXPECT_EQ(l2[1].cpus, (std::vector<int32_t>{4, 5}));
+}
+
+// Kernel reports no cache levels (cf. the SMP(4) example): both queries empty.
+TEST(CpuSet, TopologySpecNoMatchingCacheLevel) {
+  const std::string xml = R"(<groups>
+ <group level="1" cache-level="0">
+  <cpu count="4" mask="f">0, 1, 2, 3</cpu>
+  <children>
+   <group level="2" cache-level="0">
+    <cpu count="2" mask="3">0, 1</cpu>
+   </group>
+   <group level="2" cache-level="0">
+    <cpu count="2" mask="c">2, 3</cpu>
+   </group>
+  </children>
+ </group>
+</groups>)";
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 2).empty());
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 3).empty());
+}
+
+// Empty, non-XML, and truncated inputs must not crash and yield no groups.
+TEST(CpuSet, TopologySpecMalformedIsSafe) {
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("", 3).empty());
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("not xml at all", 3).empty());
+  // Matching group but the CPU list is never closed with </cpu>.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu count=\"2\">0, 1", 3)
+                  .empty());
+  // Group tag itself never closed.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"", 3).empty());
+}
+
+// One input per defensive early-out in the parser.
+TEST(CpuSet, TopologySpecDefensiveBranches) {
+  // cache-level attribute quote is never closed.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3><cpu>1</cpu>", 3).empty());
+  // Matching group with no <cpu> element at all.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"></group>", 3).empty());
+  // The only <cpu> belongs to a nested child group, not the matching parent.
+  {
+    const std::string xml = R"(<group cache-level="3">
+ <children>
+  <group cache-level="2">
+   <cpu count="1" mask="1">0</cpu>
+  </group>
+ </children>
+</group>)";
+    EXPECT_TRUE(parseCacheGroupsFromTopologySpec(xml, 3).empty());
+    auto l2 = parseCacheGroupsFromTopologySpec(xml, 2);
+    ASSERT_EQ(l2.size(), 1u);
+    EXPECT_EQ(l2[0].cpus, (std::vector<int32_t>{0}));
+  }
+  // Matching group closes before a stray <cpu> that is not its own.
+  EXPECT_TRUE(
+      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"></group><cpu>5</cpu>", 3).empty());
+  // <cpu tag never closed with '>'.
+  EXPECT_TRUE(parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu", 3).empty());
+  // Trailing separators after the last id.
+  {
+    auto g = parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu>1, </cpu>", 3);
+    ASSERT_EQ(g.size(), 1u);
+    EXPECT_EQ(g[0].cpus, (std::vector<int32_t>{1}));
+  }
+  // Non-numeric id list.
+  EXPECT_TRUE(
+      parseCacheGroupsFromTopologySpec("<group cache-level=\"3\"><cpu>abc</cpu>", 3).empty());
+}
+
+// A zero-padded cache-level value parses by numeric value, regardless of width.
+TEST(CpuSet, TopologySpecPaddedCacheLevel) {
+  auto g = parseCacheGroupsFromTopologySpec(
+      "<group cache-level=\"00000003\"><cpu count=\"1\" mask=\"2\">1</cpu></group>", 3);
+  ASSERT_EQ(g.size(), 1u);
+  EXPECT_EQ(g[0].cpus, (std::vector<int32_t>{1}));
+}
+
+// =============================================================================
 // CpuSet Manipulation Tests
 // =============================================================================
 
@@ -304,9 +464,10 @@ TEST(CpuSet, AllSetCoversAllNodeSets) {
 
 TEST(CpuSet, CurrentHardwareThreadIsValid) {
   int32_t cpu = CpuSet::currentHardwareThread();
-#if defined(__linux__) || defined(_WIN32)
-  // Linux (sched_getcpu) and Windows (GetCurrentProcessorNumberEx) both report
-  // a valid hardware thread that must be a member of the full CPU set.
+#if defined(__linux__) || defined(_WIN32) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
+  // Linux (sched_getcpu), Windows (GetCurrentProcessorNumberEx), and FreeBSD
+  // (sched_getcpu, 13.1+) report a valid hardware thread that must be a member
+  // of the full CPU set.
   EXPECT_GE(cpu, 0);
   EXPECT_TRUE(CpuSet::all().contains(cpu));
 #elif defined(__APPLE__)
@@ -334,6 +495,13 @@ TEST(CpuSet, L2GroupsAreNonEmpty) {
   for (const auto& group : l2Groups) {
     EXPECT_GT(group.cpus.size(), 0u) << "L2 group with cacheId=" << group.cacheId << " has no CPUs";
   }
+#elif defined(__FreeBSD__)
+  if (l2Groups.empty()) {
+    GTEST_SKIP() << "No L2 cache groups detected on this FreeBSD machine";
+  }
+  for (const auto& group : l2Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L2 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
 #else
   // On unsupported platforms (e.g. macOS), l2CacheGroups() returns empty
   EXPECT_TRUE(l2Groups.empty());
@@ -345,6 +513,13 @@ TEST(CpuSet, L3GroupsAreNonEmpty) {
 #if defined(__linux__) || defined(_WIN32)
   EXPECT_GT(l3Groups.size(), 0u) << "No L3 cache groups detected";
 
+  for (const auto& group : l3Groups) {
+    EXPECT_GT(group.cpus.size(), 0u) << "L3 group with cacheId=" << group.cacheId << " has no CPUs";
+  }
+#elif defined(__FreeBSD__)
+  if (l3Groups.empty()) {
+    GTEST_SKIP() << "No L3 cache groups detected on this FreeBSD machine";
+  }
   for (const auto& group : l3Groups) {
     EXPECT_GT(group.cpus.size(), 0u) << "L3 group with cacheId=" << group.cacheId << " has no CPUs";
   }

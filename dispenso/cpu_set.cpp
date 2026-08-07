@@ -28,6 +28,10 @@
 #include <unistd.h>
 #endif // __linux__
 
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#endif
+
 #if defined(__APPLE__)
 #include <dlfcn.h>
 
@@ -96,6 +100,109 @@ CpuSet parseLinuxCpuList(const char* input) {
   }
   parseAndAddRange(buf, set);
   return set;
+}
+
+namespace {
+
+constexpr char kCacheLevelAttr[] = "cache-level=\"";
+constexpr size_t kCacheLevelAttrLen = sizeof(kCacheLevelAttr) - 1;
+constexpr char kCpuCloseTag[] = "</cpu>";
+constexpr size_t kCpuCloseTagLen = sizeof(kCpuCloseTag) - 1;
+
+// Parse the cache-level attribute within a group's opening tag [tagStart,
+// tagEnd), returning -1 if absent or malformed.
+int32_t parseGroupCacheLevel(const std::string& xml, size_t tagStart, size_t tagEnd) {
+  size_t attrPos = xml.find(kCacheLevelAttr, tagStart);
+  if (attrPos == std::string::npos || attrPos >= tagEnd) {
+    return -1;
+  }
+  attrPos += kCacheLevelAttrLen;
+  size_t attrEnd = xml.find('"', attrPos);
+  if (attrEnd == std::string::npos || attrEnd >= tagEnd) {
+    return -1;
+  }
+  // strtol stops at the first non-digit, so this cannot read past the closing quote.
+  return parseIntClamped(xml.c_str() + attrPos);
+}
+
+// Parse the group's own <cpu>...</cpu> id list, with `pos` just past the
+// group's opening tag; a nested child group's <cpu> is not consumed.
+// Advances `pos` past </cpu> only when ids were parsed.
+std::vector<int32_t> parseGroupOwnCpuList(const std::string& xml, size_t& pos) {
+  std::vector<int32_t> cpus;
+  size_t cpuPos = xml.find("<cpu", pos);
+  if (cpuPos == std::string::npos) {
+    return cpus;
+  }
+  // Take only this group's own <cpu>, not one from a nested child group.
+  if (xml.find("<group", pos) < cpuPos || xml.find("</group>", pos) < cpuPos) {
+    return cpus;
+  }
+  size_t cpuTagEnd = xml.find('>', cpuPos);
+  if (cpuTagEnd == std::string::npos) {
+    return cpus;
+  }
+  size_t cpuClose = xml.find(kCpuCloseTag, cpuTagEnd);
+  if (cpuClose == std::string::npos) {
+    return cpus;
+  }
+
+  const char* p = xml.c_str() + cpuTagEnd + 1;
+  const char* endPtr = xml.c_str() + cpuClose;
+  while (p < endPtr) {
+    while (p < endPtr && (*p == ' ' || *p == ',' || *p == '\t' || *p == '\r' || *p == '\n')) {
+      p++;
+    }
+    if (p >= endPtr) {
+      break;
+    }
+    char* parsedEnd = nullptr;
+    long val = std::strtol(p, &parsedEnd, 10);
+    if (parsedEnd == p) {
+      break;
+    }
+    if (val >= 0 && val <= kMaxReasonableCpuId) {
+      cpus.push_back(static_cast<int32_t>(val));
+    }
+    p = parsedEnd;
+  }
+
+  if (!cpus.empty()) {
+    pos = cpuClose + kCpuCloseTagLen;
+  }
+  return cpus;
+}
+
+} // namespace
+
+std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(const std::string& xml, int cacheIndex) {
+  std::vector<CacheGroup> groups;
+  size_t pos = 0;
+  int nextCacheId = 0;
+  while ((pos = xml.find("<group", pos)) != std::string::npos) {
+    size_t tagStart = pos;
+    size_t tagEnd = xml.find('>', pos);
+    if (tagEnd == std::string::npos) {
+      break;
+    }
+    pos = tagEnd + 1;
+
+    if (parseGroupCacheLevel(xml, tagStart, tagEnd) != cacheIndex) {
+      continue;
+    }
+    std::vector<int32_t> cpus = parseGroupOwnCpuList(xml, pos);
+    if (cpus.empty()) {
+      continue;
+    }
+    CacheGroup g;
+    g.cpus = std::move(cpus);
+    g.cacheId = nextCacheId++;
+    groups.push_back(std::move(g));
+  }
+  std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
+    return a.cpus.front() < b.cpus.front();
+  });
+  return groups;
 }
 
 } // namespace detail
@@ -173,8 +280,9 @@ bool CpuSet::bindCurrentThread() const {
 }
 
 int32_t CpuSet::currentHardwareThread() {
-#if defined(__linux__)
-  // sched_getcpu() uses the vDSO on modern kernels (~15 ns, no syscall).
+#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
+  // Linux: sched_getcpu() uses the vDSO on modern kernels (~15 ns, no syscall).
+  // FreeBSD (13.1+): sched_getcpu() is a syscall.
   int cpu = sched_getcpu();
   return (cpu >= 0) ? static_cast<int32_t>(cpu) : -1;
 #else
@@ -183,11 +291,12 @@ int32_t CpuSet::currentHardwareThread() {
 }
 
 // =============================================================================
-// NUMA topology detection (Linux)
+// NUMA topology detection (Linux, FreeBSD)
 // =============================================================================
 
 namespace {
 
+#if defined(__linux__)
 // Read a small file into a NUL-terminated buffer. Returns empty string on failure.
 std::vector<char> readSmallFile(int dirFd, const char* path) {
   int fd = ::openat(dirFd, path, O_RDONLY);
@@ -226,7 +335,9 @@ std::vector<char> readSmallFile(int dirFd, const char* path) {
   buf.resize(static_cast<size_t>(totalRead) + 1);
   return buf;
 }
+#endif
 
+#if defined(__linux__)
 // Parse a "nodeN" sysfs directory name, returning the node index, or -1.
 int32_t parseNodeDirName(const char* name) {
   if (name[0] != 'n' || name[1] != 'o' || name[2] != 'd' || name[3] != 'e' || name[4] == '\0') {
@@ -234,6 +345,7 @@ int32_t parseNodeDirName(const char* name) {
   }
   return detail::parseIntClamped(name + 4);
 }
+#endif
 
 const std::vector<CpuSet>& getNumaSets() {
   static const std::vector<CpuSet> numaSets = []() {
@@ -262,6 +374,25 @@ const std::vector<CpuSet>& getNumaSets() {
         }
       }
       ::closedir(nodeDir);
+    }
+#elif defined(__FreeBSD__)
+    int ndomains = 0;
+    size_t len = sizeof(ndomains);
+    if (sysctlbyname("vm.ndomains", &ndomains, &len, nullptr, 0) == 0 && ndomains > 0) {
+      for (int i = 0; i < ndomains; ++i) {
+        cpu_set_t mask;
+        if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_DOMAIN, i, sizeof(mask), &mask) == 0) {
+          CpuSet s;
+          for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+            if (CPU_ISSET(cpu, &mask)) {
+              s.add(cpu);
+            }
+          }
+          if (s.count() > 0) {
+            sets.push_back(std::move(s));
+          }
+        }
+      }
     }
 #endif // __linux__
     // Fallback: if no NUMA nodes were found (missing sysfs, container, etc.),
@@ -351,7 +482,7 @@ bool readCacheCpuList(
 
 #endif // __linux__
 
-// Parses L2 or L3 cache sharing groups from sysfs.
+// Parses L2 or L3 cache sharing groups (Linux sysfs, FreeBSD kern.sched.topology_spec).
 // cacheIndex: 2 for L2, 3 for L3
 std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
   std::vector<CacheGroup> groups;
@@ -391,6 +522,15 @@ std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
   std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
     return a.cpus.front() < b.cpus.front();
   });
+#elif defined(__FreeBSD__)
+  size_t len = 0;
+  if (sysctlbyname("kern.sched.topology_spec", nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len);
+    if (sysctlbyname("kern.sched.topology_spec", buf.data(), &len, nullptr, 0) == 0 && len > 0) {
+      buf[len - 1] = '\0';
+      groups = detail::parseCacheGroupsFromTopologySpec(std::string(buf.data()), cacheIndex);
+    }
+  }
 #endif // __linux__
   return groups;
 }
@@ -854,6 +994,11 @@ int32_t CpuSet::availableCount() {
 #if defined(__linux__)
   cpu_set_t mask;
   if (sched_getaffinity(0, sizeof(mask), &mask) == 0) {
+    return static_cast<int32_t>(CPU_COUNT(&mask));
+  }
+#elif defined(__FreeBSD__)
+  cpu_set_t mask;
+  if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_TID, -1, sizeof(mask), &mask) == 0) {
     return static_cast<int32_t>(CPU_COUNT(&mask));
   }
 #elif defined(_WIN32)

@@ -186,6 +186,8 @@ static int64_t measure_spurious_round_trip() {
 int main() {
 #ifdef __linux__
   printf("Platform: Linux (futex_wake supports exact K → kWakeAllThreshold = INT_MAX)\n");
+#elif defined(__FreeBSD__)
+  printf("Platform: FreeBSD (_umtx_op supports exact K → kWakeAllThreshold = INT_MAX)\n");
 #elif defined(__APPLE__)
   printf("Platform: macOS\n");
 #elif defined(_WIN32)

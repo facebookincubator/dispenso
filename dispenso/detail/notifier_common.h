@@ -31,6 +31,59 @@ static int futex(
 } // namespace detail
 } // namespace dispenso
 
+#elif defined(__FreeBSD__)
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/umtx.h>
+
+#ifndef FUTEX_WAIT_PRIVATE
+#define FUTEX_WAIT_PRIVATE 128
+#endif
+#ifndef FUTEX_WAKE_PRIVATE
+#define FUTEX_WAKE_PRIVATE 129
+#endif
+
+namespace dispenso {
+namespace detail {
+static int futex(
+    int* uaddr,
+    int futex_op,
+    int val,
+    const struct timespec* timeout,
+    int* /*uaddr2*/,
+    int val3) {
+  (void)val3;
+  if (futex_op == FUTEX_WAIT_PRIVATE) {
+    // Zero-extend the compare value: the kernel compares the 32-bit value at
+    // uaddr zero-extended against the full u_long val, so sign-extending values
+    // with bit 31 set (e.g. epochs past 2^31) would never match and the wait
+    // would return immediately instead of sleeping.
+    const u_long uval = static_cast<uint32_t>(val);
+    if (timeout == nullptr) {
+      return _umtx_op(uaddr, UMTX_OP_WAIT_UINT_PRIVATE, uval, nullptr, nullptr);
+    } else {
+      struct _umtx_time t;
+      t._timeout = *timeout;
+      t._flags = 0; // relative timeout
+      t._clockid = CLOCK_MONOTONIC;
+      return _umtx_op(
+          uaddr,
+          UMTX_OP_WAIT_UINT_PRIVATE,
+          uval,
+          reinterpret_cast<void*>(static_cast<uintptr_t>(sizeof(t))),
+          &t);
+    }
+  } else if (futex_op == FUTEX_WAKE_PRIVATE) {
+    // Unlike Linux futex(FUTEX_WAKE), _umtx_op returns 0 on success rather than
+    // the count of threads woken; `val` still caps how many are woken.
+    return _umtx_op(uaddr, UMTX_OP_WAKE_PRIVATE, static_cast<u_long>(val), nullptr, nullptr);
+  }
+  errno = ENOTSUP;
+  return -1;
+}
+} // namespace detail
+} // namespace dispenso
+
 #elif defined(__MACH__)
 #include <Availability.h>
 #include <errno.h>

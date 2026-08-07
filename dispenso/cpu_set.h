@@ -15,7 +15,7 @@
  *
  * Platform support:
  * - **Linux**: Full support (binding via pthread_setaffinity_np, topology via sysfs)
- * - **FreeBSD**: Binding supported (cpuset_setaffinity), topology detection deferred
+ * - **FreeBSD**: Full support (binding via pthread_setaffinity_np, topology via sysctl)
  * - **macOS**: Topology query only (binding is not supported by the OS)
  * - **Windows**: Full support (binding via SetThreadGroupAffinity, topology via
  *   GetLogicalProcessorInformationEx)
@@ -26,6 +26,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -38,6 +39,12 @@
 #if defined(DISPENSO_CPUSET_LINUXY)
 #include <pthread.h>
 #include <sched.h>
+#if defined(__FreeBSD__)
+#include <pthread_np.h>
+#include <sys/cpuset.h>
+#include <sys/param.h>
+typedef cpuset_t cpu_set_t;
+#endif
 #elif defined(_WIN32)
 #define DISPENSO_CPUSET_WINDOWS
 #endif // supported os
@@ -48,8 +55,10 @@
 // macOS does not support explicit CPU pinning. bindCurrentThread() is a no-op and
 // returns false. Topology queries return a single-node fallback.
 //
-// FreeBSD binding support is present (cpuset_setaffinity uses a similar interface to
-// Linux), but topology detection requires test hardware and is deferred.
+// FreeBSD binding uses pthread_setaffinity_np, as on Linux. NUMA and cache
+// topology are read from sysctl (vm.ndomains, kern.sched.topology_spec); when
+// the kernel reports no cache levels, cache group queries return empty and
+// buildThreadGroups() falls back to contiguous chunking.
 
 /**
  * @brief Compile-time override for the default maximum threads per scheduling group.
@@ -192,6 +201,10 @@ class CpuSet {
    * On Linux/FreeBSD, calls pthread_setaffinity_np. On unsupported platforms
    * (macOS, Windows without GROUP_AFFINITY support), returns false.
    *
+   * @note On FreeBSD, a mask containing nonexistent CPU ids fails with EINVAL,
+   *       whereas Linux intersects the mask with the online CPUs. Include only
+   *       real CPU ids for portable behavior.
+   *
    * @return true if binding succeeded, false on failure or unsupported platform.
    */
   DISPENSO_DLL_ACCESS bool bindCurrentThread() const;
@@ -207,8 +220,10 @@ class CpuSet {
   /**
    * @brief Returns the CPU ID of the calling thread's current core.
    *
-   * On Linux, uses the vDSO-accelerated getcpu(). On unsupported platforms,
-   * returns -1.
+   * On Linux, uses the vDSO-accelerated getcpu(); on FreeBSD 13.1+, uses
+   * sched_getcpu(); on Windows, GetCurrentProcessorNumberEx(); on macOS, the
+   * private _os_cpu_number(). On platforms without CPU-query support (including
+   * FreeBSD older than 13.1), returns -1.
    *
    * @note The result is instantaneous and may be stale by the time it is used
    *       (the OS may migrate the thread). Useful as a hint for scheduling
@@ -261,6 +276,8 @@ class CpuSet {
    * @brief Returns the number of hardware threads available to this process.
    *
    * On Linux, queries the process CPU affinity mask (respects taskset/cgroup).
+   * On FreeBSD, queries the calling thread's cpuset affinity mask via
+   * cpuset_getaffinity (respects cpuset(1) restrictions).
    * On Windows single-group systems, queries the process affinity mask.
    * On Windows multi-group systems, sums active processors per group (does not
    * reflect process-level restrictions).
@@ -370,6 +387,16 @@ namespace detail {
  * This is an internal helper exposed for testing.
  */
 DISPENSO_DLL_ACCESS CpuSet parseLinuxCpuList(const char* input);
+
+/**
+ * @brief Parses FreeBSD's kern.sched.topology_spec XML into the cache sharing
+ * groups at the given level (2 = L2, 3 = L3), sorted by first CPU id.
+ *
+ * Pure string parsing with no platform APIs; exposed for testing.
+ */
+DISPENSO_DLL_ACCESS std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(
+    const std::string& xml,
+    int cacheIndex);
 } // namespace detail
 
 } // namespace dispenso
