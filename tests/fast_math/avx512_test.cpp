@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 
 namespace dfm = dispenso::fast_math;
 using Avx512Float = dfm::Avx512Float;
@@ -821,10 +821,10 @@ TEST(Avx512Util, Rcp) {
   }
 }
 
-#else // !defined(__AVX512F__)
+#else // !DISPENSO_FAST_MATH_HAS_AVX512F
 
 TEST(Avx512, Unavailable) {
   GTEST_SKIP() << "AVX-512 not available";
 }
 
-#endif // defined(__AVX512F__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F

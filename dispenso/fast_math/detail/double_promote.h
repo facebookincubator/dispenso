@@ -101,7 +101,7 @@ DISPENSO_INLINE std::pair<DoubleVec<float>, DoubleVec<float>> exp2_split(DoubleV
 // ---------------------------------------------------------------------------
 // SSE: DoubleVec<SseFloat> holds two __m128d (4 float lanes → 2×2 doubles).
 // ---------------------------------------------------------------------------
-#if defined(__SSE4_1__) && !defined(__CUDACC__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1 && !defined(__CUDACC__)
 
 template <>
 struct DoubleVec<SseFloat> {
@@ -142,7 +142,7 @@ struct DoubleVec<SseFloat> {
   }
 
   friend DISPENSO_INLINE DoubleVec fma(DoubleVec a, DoubleVec b, DoubleVec c) {
-#if defined(__FMA__)
+#if DISPENSO_FAST_MATH_HAS_FMA
     return {_mm_fmadd_pd(a.lo, b.lo, c.lo), _mm_fmadd_pd(a.hi, b.hi, c.hi)};
 #else
     return {_mm_add_pd(_mm_mul_pd(a.lo, b.lo), c.lo), _mm_add_pd(_mm_mul_pd(a.hi, b.hi), c.hi)};
@@ -184,12 +184,12 @@ DISPENSO_INLINE std::pair<DoubleVec<SseFloat>, DoubleVec<SseFloat>> exp2_split(
   return {DV{r_lo, r_hi}, DV{scale_lo, scale_hi}};
 }
 
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
 
 // ---------------------------------------------------------------------------
 // AVX: DoubleVec<AvxFloat> holds two __m256d (8 float lanes → 2×4 doubles).
 // ---------------------------------------------------------------------------
-#if defined(__AVX2__) && !defined(__CUDACC__)
+#if DISPENSO_FAST_MATH_HAS_AVX2 && !defined(__CUDACC__)
 
 template <>
 struct DoubleVec<AvxFloat> {
@@ -231,7 +231,7 @@ struct DoubleVec<AvxFloat> {
   }
 
   friend DISPENSO_INLINE DoubleVec fma(DoubleVec a, DoubleVec b, DoubleVec c) {
-#if defined(__FMA__)
+#if DISPENSO_FAST_MATH_HAS_FMA
     return {_mm256_fmadd_pd(a.lo, b.lo, c.lo), _mm256_fmadd_pd(a.hi, b.hi, c.hi)};
 #else
     return {
@@ -275,12 +275,12 @@ DISPENSO_INLINE std::pair<DoubleVec<AvxFloat>, DoubleVec<AvxFloat>> exp2_split(
   return {DV{r_lo, r_hi}, DV{scale_lo, scale_hi}};
 }
 
-#endif // __AVX2__
+#endif // DISPENSO_FAST_MATH_HAS_AVX2
 
 // ---------------------------------------------------------------------------
 // AVX-512: DoubleVec<Avx512Float> holds two __m512d (16 floats → 2×8 doubles).
 // ---------------------------------------------------------------------------
-#if defined(__AVX512F__) && !defined(__CUDACC__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F && !defined(__CUDACC__)
 
 template <>
 struct DoubleVec<Avx512Float> {
@@ -365,12 +365,12 @@ DISPENSO_INLINE std::pair<DoubleVec<Avx512Float>, DoubleVec<Avx512Float>> exp2_s
   return {DV{r_lo, r_hi}, DV{scale_lo, scale_hi}};
 }
 
-#endif // __AVX512F__
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F
 
 // ---------------------------------------------------------------------------
 // NEON: DoubleVec<NeonFloat> holds two float64x2_t (4 floats → 2×2 doubles).
 // ---------------------------------------------------------------------------
-#if defined(__aarch64__) && !defined(__CUDACC__)
+#if DISPENSO_FAST_MATH_HAS_NEON && !defined(__CUDACC__)
 
 template <>
 struct DoubleVec<NeonFloat> {

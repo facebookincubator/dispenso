@@ -7,7 +7,7 @@
 
 #include "benchmark_helpers.h"
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;
@@ -234,11 +234,11 @@ BENCHMARK(BM_pow_sse_accurate);
 BENCHMARK(BM_pow_sse_scalar_exp);
 BENCHMARK(BM_pow_libc_sse);
 
-#else // !defined(__SSE4_1__)
+#else // !DISPENSO_FAST_MATH_HAS_SSE4_1
 
 int main() {
   std::cout << "SSE4.1 not available, skipping benchmarks." << std::endl;
   return 0;
 }
 
-#endif // defined(__SSE4_1__)
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1

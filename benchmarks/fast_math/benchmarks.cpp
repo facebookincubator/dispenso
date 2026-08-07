@@ -417,7 +417,7 @@ void BM_fastm_sincospi(benchmark::State& state) {
 
 // --- Batch benchmarks: explicit SIMD via SseFloat (4-wide SSE) ---
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #include <dispenso/fast_math/float_traits_x86.h>
 
 static void BM_batch_sinf(benchmark::State& state) {
@@ -496,7 +496,7 @@ BENCHMARK(BM_batch_sin_scalar);
 BENCHMARK(BM_batch_sin_sse);
 BENCHMARK(BM_batch_cos_scalar);
 BENCHMARK(BM_batch_cos_sse);
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
 
 // --- Registrations ---
 

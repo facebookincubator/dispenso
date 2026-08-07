@@ -10,12 +10,12 @@
 #include <cmath>
 #include <cstdint>
 
-#if !defined(__CUDACC__)
-#if defined(__SSE__)
+#include "simd_config.h"
+
+#if DISPENSO_FAST_MATH_X86_INTRIN
 #include <immintrin.h>
-#elif defined(__aarch64__)
+#elif !defined(__CUDACC__) && DISPENSO_FAST_MATH_HAS_NEON
 #include <arm_neon.h>
-#endif
 #endif
 
 #include <dispenso/platform.h>
@@ -112,9 +112,9 @@ struct FloatTraits<float> {
 #else
     return 1.0f / x;
 #endif
-#elif defined(__SSE__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
     return _mm_cvtss_f32(_mm_rcp_ss(_mm_set_ss(x)));
-#elif defined(__aarch64__)
+#elif DISPENSO_FAST_MATH_HAS_NEON
     return vrecpes_f32(x);
 #else
     return 1.0f / x;

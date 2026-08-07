@@ -7,7 +7,7 @@
 
 #include "benchmark_helpers.h"
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;
@@ -189,11 +189,11 @@ BENCHMARK(BM_pow_avx512_accurate);
 BENCHMARK(BM_pow_avx512_scalar_exp);
 BENCHMARK(BM_pow_libc_avx512);
 
-#else // !defined(__AVX512F__)
+#else // !DISPENSO_FAST_MATH_HAS_AVX512F
 
 int main() {
   std::cout << "AVX-512 not available, skipping benchmarks." << std::endl;
   return 0;
 }
 
-#endif // defined(__AVX512F__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F

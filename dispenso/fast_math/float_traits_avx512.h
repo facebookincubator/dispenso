@@ -5,9 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "simd_config.h"
+
 #pragma once
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 
 #include <immintrin.h>
 
@@ -811,4 +813,4 @@ bool_apply_or_zero<Avx512Uint32, Avx512Mask>(Avx512Mask b, Avx512Uint32 val) {
 } // namespace fast_math
 } // namespace dispenso
 
-#endif // defined(__AVX512F__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F

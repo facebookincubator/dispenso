@@ -48,7 +48,7 @@ static void pow_scalar_accurate(const float* xs, const float* ys, float* out, in
     out[i] = dfm::pow<float, dfm::MaxAccuracyTraits>(xs[i], ys[i]);
 }
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 static void pow_sse(const float* xs, const float* ys, float* out, int32_t n) {
   for (int32_t i = 0; i < n; i += 4) {
     dfm::SseFloat vx{_mm_load_ps(&xs[i])};
@@ -66,9 +66,9 @@ static void pow_sse_accurate(const float* xs, const float* ys, float* out, int32
     _mm_store_ps(&out[i], vr.v);
   }
 }
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 static void pow_avx(const float* xs, const float* ys, float* out, int32_t n) {
   for (int32_t i = 0; i < n; i += 8) {
     dfm::AvxFloat vx{_mm256_load_ps(&xs[i])};
@@ -86,9 +86,9 @@ static void pow_avx_accurate(const float* xs, const float* ys, float* out, int32
     _mm256_store_ps(&out[i], vr.v);
   }
 }
-#endif // __AVX2__
+#endif // DISPENSO_FAST_MATH_HAS_AVX2
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 static void pow_avx512(const float* xs, const float* ys, float* out, int32_t n) {
   for (int32_t i = 0; i < n; i += 16) {
     dfm::Avx512Float vx{_mm512_load_ps(&xs[i])};
@@ -106,7 +106,7 @@ static void pow_avx512_accurate(const float* xs, const float* ys, float* out, in
     _mm512_store_ps(&out[i], vr.v);
   }
 }
-#endif // __AVX512F__
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F
 
 // --- Main ---
 
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
     printf("\n");
   }
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
   if (dfm::shouldRun(opts, "sse")) {
     printf("=== pow SSE ===\n");
     dfm::evalFunc2D("pow SSE", gt_pow, pow_sse, kPowDomains, n);
@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
   if (dfm::shouldRun(opts, "avx")) {
     printf("=== pow AVX ===\n");
     dfm::evalFunc2D("pow AVX", gt_pow, pow_avx, kPowDomains, n);
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
   if (dfm::shouldRun(opts, "avx512")) {
     printf("=== pow AVX-512 ===\n");
     dfm::evalFunc2D("pow AVX-512", gt_pow, pow_avx512, kPowDomains, n);

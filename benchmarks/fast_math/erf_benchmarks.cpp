@@ -16,7 +16,7 @@
 #include <benchmark/benchmark.h>
 #include <dispenso/fast_math/fast_math.h>
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #include <immintrin.h>
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -60,7 +60,7 @@ const std::vector<__m128>& erfSseInputs() {
   return inputs;
 }
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 const std::vector<__m256>& erfAvxInputs() {
   static std::vector<__m256> inputs = []() {
     float delta = 8.0f / kNumInputs;
@@ -419,7 +419,7 @@ BENCHMARK(BM_erf_s21_scalar);
 BENCHMARK(BM_erf_s16_sse);
 BENCHMARK(BM_erf_s21_sse);
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 
 static void consumeSum256(__m256 sum) {
   alignas(32) float buf[8];
@@ -620,13 +620,13 @@ void BM_erf_s21_avx(benchmark::State& state) {
 BENCHMARK(BM_erf_s16_avx);
 BENCHMARK(BM_erf_s21_avx);
 
-#endif // __AVX2__
+#endif // DISPENSO_FAST_MATH_HAS_AVX2
 
-#else // !__SSE4_1__
+#else // !DISPENSO_FAST_MATH_HAS_SSE4_1
 
 int main() {
   std::cout << "SSE4.1 not available, skipping benchmarks." << std::endl;
   return 0;
 }
 
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1

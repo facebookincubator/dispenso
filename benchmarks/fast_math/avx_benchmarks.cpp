@@ -7,7 +7,7 @@
 
 #include "benchmark_helpers.h"
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;
@@ -211,11 +211,11 @@ BENCHMARK(BM_pow_avx_accurate);
 BENCHMARK(BM_pow_avx_scalar_exp);
 BENCHMARK(BM_pow_libc_avx);
 
-#else // !defined(__AVX2__)
+#else // !DISPENSO_FAST_MATH_HAS_AVX2
 
 int main() {
   std::cout << "AVX2 not available, skipping benchmarks." << std::endl;
   return 0;
 }
 
-#endif // defined(__AVX2__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX2

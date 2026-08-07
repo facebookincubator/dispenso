@@ -101,22 +101,22 @@ void checkLdexpSimd() {
   }
 }
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 TEST(LdexpSse, RoundTrip) {
   checkLdexpSimd<__m128>();
 }
 #endif
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 TEST(LdexpAvx, RoundTrip) {
   checkLdexpSimd<__m256>();
 }
 #endif
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 TEST(LdexpAvx512, RoundTrip) {
   checkLdexpSimd<__m512>();
 }
 #endif
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 TEST(LdexpNeon, RoundTrip) {
   checkLdexpSimd<float32x4_t>();
 }

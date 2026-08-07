@@ -7,7 +7,7 @@
 
 #include "benchmark_helpers.h"
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;

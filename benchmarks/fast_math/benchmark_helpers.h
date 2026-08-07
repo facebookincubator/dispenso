@@ -69,7 +69,7 @@ inline void consumeResult<float>(float sum) {
 
 // --- SSE (__m128) ---
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 
 template <>
 inline int32_t laneCount<__m128>() {
@@ -94,11 +94,11 @@ inline void consumeResult<__m128>(__m128 sum) {
   std::cout << buf[0] + buf[1] + buf[2] + buf[3] << std::endl;
 }
 
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
 
 // --- AVX (__m256) ---
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 
 template <>
 inline int32_t laneCount<__m256>() {
@@ -126,11 +126,11 @@ inline void consumeResult<__m256>(__m256 sum) {
   std::cout << total << std::endl;
 }
 
-#endif // __AVX2__
+#endif // DISPENSO_FAST_MATH_HAS_AVX2
 
 // --- AVX-512 (__m512) ---
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 
 template <>
 inline int32_t laneCount<__m512>() {
@@ -158,11 +158,11 @@ inline void consumeResult<__m512>(__m512 sum) {
   std::cout << total << std::endl;
 }
 
-#endif // __AVX512F__
+#endif // DISPENSO_FAST_MATH_HAS_AVX512F
 
 // --- NEON (float32x4_t) ---
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 
 template <>
 inline int32_t laneCount<float32x4_t>() {

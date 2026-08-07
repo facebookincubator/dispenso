@@ -411,8 +411,16 @@ struct FloatTraits<HwyFloat> {
     return hn::ApproximateReciprocal(x.v);
   }
 
-  // Highway always has FMA.
   static DISPENSO_INLINE HwyFloat fma(HwyFloat a, HwyFloat b, HwyFloat c) {
+    // NOTE: hn::MulAdd is only fused where the Highway target has native FMA
+    // (HWY_NATIVE_FMA). Highway deliberately supports targets without it --
+    // WASM SIMD128 among them, whose relaxed_madd may not fuse -- so this
+    // cannot assert -- unlike the x86 backends, which are gated off without
+    // FMA. Unfused, the Cody-Waite reductions degrade badly (>5e6 ULP for trig
+    // beyond +-pi), so where HWY_NATIVE_FMA is 0, prefer Highway's own
+    // transcendentals in hwy/contrib/math/math-inl.h. The double-precision
+    // reduction item in docs/design/fast_math_roadmap.md is what would let this
+    // backend be gated the way SSE now is.
     return hn::MulAdd(a.v, b.v, c.v);
   }
 

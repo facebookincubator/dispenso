@@ -78,15 +78,35 @@ float y = dfm::exp<float, BoundsOnly>(x);
 | Backend | Type | Width | Guard Macro |
 |:--------|:-----|:-----:|:------------|
 | Scalar | `float` | 1 | always |
-| SSE4.1 | `__m128` | 4 | `__SSE4_1__` |
-| AVX2 | `__m256` | 8 | `__AVX2__` |
-| AVX-512 | `__m512` | 16 | `__AVX512F__` |
-| NEON | `float32x4_t` | 4 | `__aarch64__` |
+| SSE4.1 | `__m128` | 4 | `DISPENSO_FAST_MATH_HAS_SSE4_1` |
+| AVX2 | `__m256` | 8 | `DISPENSO_FAST_MATH_HAS_AVX2` |
+| AVX-512 | `__m512` | 16 | `DISPENSO_FAST_MATH_HAS_AVX512F` |
+| NEON | `float32x4_t` | 4 | `DISPENSO_FAST_MATH_HAS_NEON` |
 | Highway | `HwyFloat` | variable | `__has_include("hwy/highway.h")` |
 
 All SIMD backends provide `FloatTraits` specializations with the required operations
 (`fma`, `sqrt`, `conditional`, `bit_cast`, etc.). Include `<dispenso/fast_math/fast_math.h>`
 and the appropriate backend headers are auto-included based on platform macros.
+
+#### Hardware FMA is required for the stated accuracy
+
+The range reductions are Cody-Waite and assume a fused multiply-add: the low
+correction term only means anything if the high product is not rounded first.
+Without fusion the error is not a gradual degradation. Measured on SSE4.1
+without FMA, `sin` and `cos` exceed 3.9e6 and 5.6e6 ULP beyond ±π.
+
+The x86 and NEON backends therefore require FMA and are simply not selected
+without it (`DISPENSO_FAST_MATH_HAS_SSE4_1` folds in the FMA check); such
+targets fall back to the scalar path, where `std::fma` is genuinely fused.
+AVX2, AVX-512 and AArch64 all imply FMA, so this only affects pre-2013 x86.
+
+**Highway is the exception.** It deliberately supports targets that lack native
+FMA — WASM SIMD128 among them, whose `relaxed_madd` is explicitly permitted not
+to fuse — so `HwyFloat` cannot be gated the same way and will still compile and
+run there. It will produce large errors. Check `HWY_NATIVE_FMA`; where it is 0,
+prefer Highway's own transcendental library
+(`hwy/contrib/math/math-inl.h`), which is designed for those targets. The
+`hwy_benchmarks` target already compares against it.
 
 ### How It Works
 

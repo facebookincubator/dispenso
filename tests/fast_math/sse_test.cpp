@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 
 namespace dfm = dispenso::fast_math;
 using SseFloat = dfm::SseFloat;
@@ -295,11 +295,11 @@ TEST(SseFloat, AnyTrueFromComparison) {
   EXPECT_FALSE(dfm::any_true(a > b));
 }
 
-#else // !defined(__SSE4_1__)
+#else // !DISPENSO_FAST_MATH_HAS_SSE4_1
 
 // Dummy test so the binary has at least one test on non-SSE platforms.
 TEST(SseFloat, NotAvailable) {
   GTEST_SKIP() << "SSE4.1 not available";
 }
 
-#endif // defined(__SSE4_1__)
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1

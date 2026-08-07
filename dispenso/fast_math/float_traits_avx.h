@@ -5,9 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "simd_config.h"
+
 #pragma once
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 
 #include <immintrin.h>
 
@@ -414,11 +416,11 @@ struct FloatTraits<AvxFloat> {
   }
 
   static DISPENSO_INLINE AvxFloat fma(AvxFloat a, AvxFloat b, AvxFloat c) {
-#if defined(__FMA__)
+    // No unfused fallback: this backend only exists under AVX2, and every part
+    // with AVX2 has FMA3. An unfused path here would silently break the
+    // Cody-Waite reductions, so assert the invariant rather than provide one.
+    static_assert(DISPENSO_FAST_MATH_HAS_FMA, "AVX2 implies FMA3; the reductions require it");
     return _mm256_fmadd_ps(a.v, b.v, c.v);
-#else
-    return _mm256_add_ps(_mm256_mul_ps(a.v, b.v), c.v);
-#endif
   }
 
   // conditional: select x where mask is true, y where false.
@@ -692,4 +694,4 @@ DISPENSO_INLINE AvxUint32 bool_as_mask<AvxUint32, AvxInt32>(AvxInt32 b) {
 } // namespace fast_math
 } // namespace dispenso
 
-#endif // defined(__AVX2__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX2

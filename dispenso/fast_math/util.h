@@ -11,19 +11,9 @@
 #include <limits>
 #include <tuple>
 
-// MSVC never defines __SSE__/__SSE2__ -- it signals SSE availability through
-// _M_X64 (always) and _M_IX86_FP (>= 1 means /arch:SSE or better). Without this
-// every __SSE__-guarded path below silently falls back to the portable version
-// on Windows, which is both slower and, for non-finite input, not equivalent.
-#if defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
-#define DISPENSO_FAST_MATH_HAS_SSE 1
-#elif defined(__SSE__)
-#define DISPENSO_FAST_MATH_HAS_SSE 1
-#else
-#define DISPENSO_FAST_MATH_HAS_SSE 0
-#endif
+#include "simd_config.h"
 
-#if !defined(__CUDACC__) && (DISPENSO_FAST_MATH_HAS_SSE || defined(__AVX__))
+#if DISPENSO_FAST_MATH_X86_INTRIN
 #include <immintrin.h>
 #endif
 
@@ -246,7 +236,7 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
       return 0;
     }
     return static_cast<IntType_t<Flt>>(lrintf(f));
-#elif DISPENSO_FAST_MATH_HAS_SSE
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
     return _mm_cvtss_si32(_mm_set_ss(f));
 #else
     // Round to nearest even via magic number addition. Non-finite input yields
@@ -257,7 +247,7 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int(Flt f) {
     }
     constexpr float kMagic = FloatTraits<Flt>::kMagic; // 1.5f * 2^23
     return static_cast<IntType_t<Flt>>((f + kMagic) - kMagic);
-#endif // DISPENSO_FAST_MATH_HAS_SSE
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
   }
 }
 
@@ -276,7 +266,7 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int_clamped(Flt f) {
   if (rounded < kMin)
     return kMin;
   return rounded;
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
   static const __m128i kMn = _mm_set1_epi32(kMin);
   static const __m128i kMx = _mm_set1_epi32(kMax);
   __m128i i = _mm_cvtps_epi32(_mm_set_ss(f));
@@ -297,7 +287,7 @@ DISPENSO_INLINE IntType_t<Flt> convert_to_int_clamped(Flt f) {
   if (rounded < kMin)
     return kMin;
   return rounded;
-#endif // __SSE4_1__
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1
 }
 
 // Floor for values within integer range. Uses SSE4.1 roundss when available.
@@ -320,7 +310,7 @@ template <>
 DISPENSO_INLINE float floor_small(float x) {
 #if defined(__CUDACC__)
   return floorf(x);
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
   __m128 f = _mm_set_ss(x);
   __m128 r = _mm_floor_ss(f, f);
   return _mm_cvtss_f32(r);
@@ -337,7 +327,7 @@ template <>
 DISPENSO_INLINE float min(float x, float mn) {
 #if defined(__CUDACC__)
   return fminf(x, mn);
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   // Ordering matters here for NaN behavior
@@ -358,7 +348,7 @@ DISPENSO_INLINE float clamp_allow_nan(float x, float mn, float mx) {
 #if defined(__CUDACC__)
   mx = (mx < x) ? mx : x;
   return (mx < mn) ? mn : mx;
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   __m128 fmx = _mm_set_ss(mx);
@@ -381,7 +371,7 @@ DISPENSO_INLINE float clamp_no_nan(float x, float mn, float mx) {
 #if defined(__CUDACC__)
   mx = (mx > x) ? x : mx;
   return (mx > mn) ? mx : mn;
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
   __m128 f = _mm_set_ss(x);
   __m128 fmn = _mm_set_ss(mn);
   __m128 fmx = _mm_set_ss(mx);
@@ -605,19 +595,19 @@ DISPENSO_INLINE Flt polyEval(Flt x, C0 cn, Cs... rest) {
 // Skip under CUDA compiler — SIMD vector types are not supported in device code.
 #if !defined(__CUDACC__)
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #include <dispenso/fast_math/float_traits_x86.h>
 #endif
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 #include <dispenso/fast_math/float_traits_avx.h>
 #endif
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 #include <dispenso/fast_math/float_traits_avx512.h>
 #endif
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 #include <dispenso/fast_math/float_traits_neon.h>
 #endif
 
@@ -636,13 +626,13 @@ namespace fast_math {
 // Under CUDA, only scalar float is available.
 #if defined(__CUDACC__)
 using DefaultSimdFloat = float;
-#elif defined(__aarch64__)
+#elif DISPENSO_FAST_MATH_HAS_NEON
 using DefaultSimdFloat = NeonFloat;
-#elif defined(__AVX512F__)
+#elif DISPENSO_FAST_MATH_HAS_AVX512F
 using DefaultSimdFloat = Avx512Float;
-#elif defined(__AVX2__)
+#elif DISPENSO_FAST_MATH_HAS_AVX2
 using DefaultSimdFloat = AvxFloat;
-#elif defined(__SSE4_1__)
+#elif DISPENSO_FAST_MATH_HAS_SSE4_1
 using DefaultSimdFloat = SseFloat;
 #elif __has_include("hwy/highway.h")
 using DefaultSimdFloat = HwyFloat;

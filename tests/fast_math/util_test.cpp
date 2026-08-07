@@ -399,13 +399,13 @@ TEST(IntDivBy3, LargeValues) {
 
 // ---- rsqrt_approx ----
 
-#if defined(__SSE__) || defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1 || DISPENSO_FAST_MATH_HAS_NEON
 
 // rcp_approx / rsqrt_approx are hardware *estimates*, and their accuracy is
 // platform-dependent: x86 SSE/AVX give ~12-14 bits (relErr ~3e-4), while ARM
 // NEON vrecpe/vrsqrte give only ~8 bits (relErr up to 2^-8 ~= 3.9e-3). Hold the
 // NEON estimate to a looser bound rather than x86 precision.
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 constexpr float kApproxRelErrTol = 5e-3f;
 #else
 constexpr float kApproxRelErrTol = 2e-3f;

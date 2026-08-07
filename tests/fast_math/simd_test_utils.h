@@ -77,7 +77,7 @@ struct SimdTestTraits {
 };
 
 // --- x86 SSE ---
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 template <>
 struct SimdTestTraits<__m128> {
   static int32_t laneCount() {
@@ -98,7 +98,7 @@ struct SimdTestTraits<__m128> {
 #endif
 
 // --- x86 AVX2 ---
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 template <>
 struct SimdTestTraits<__m256> {
   static int32_t laneCount() {
@@ -119,7 +119,7 @@ struct SimdTestTraits<__m256> {
 #endif
 
 // --- x86 AVX-512 ---
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 template <>
 struct SimdTestTraits<__m512> {
   static int32_t laneCount() {
@@ -140,7 +140,7 @@ struct SimdTestTraits<__m512> {
 #endif
 
 // --- ARM NEON ---
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 template <>
 struct SimdTestTraits<float32x4_t> {
   static int32_t laneCount() {
@@ -312,7 +312,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 
 // Per-backend macros: expand to a TEST or to nothing based on ISA availability.
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #define FAST_MATH_SSE_TEST(Suite, gt, func, lo, hi, maxUlps)                                     \
   TEST(Suite##Sse, Range) {                                                                      \
     EXPECT_LE((evalAccuracy<__m128>(gt, func<__m128>, lo, hi)), static_cast<uint32_t>(maxUlps)); \
@@ -321,7 +321,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_SSE_TEST(Suite, gt, func, lo, hi, maxUlps)
 #endif
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 #define FAST_MATH_AVX_TEST(Suite, gt, func, lo, hi, maxUlps)                                     \
   TEST(Suite##Avx, Range) {                                                                      \
     EXPECT_LE((evalAccuracy<__m256>(gt, func<__m256>, lo, hi)), static_cast<uint32_t>(maxUlps)); \
@@ -330,7 +330,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_AVX_TEST(Suite, gt, func, lo, hi, maxUlps)
 #endif
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 #define FAST_MATH_AVX512_TEST(Suite, gt, func, lo, hi, maxUlps)                                  \
   TEST(Suite##Avx512, Range) {                                                                   \
     EXPECT_LE((evalAccuracy<__m512>(gt, func<__m512>, lo, hi)), static_cast<uint32_t>(maxUlps)); \
@@ -339,7 +339,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_AVX512_TEST(Suite, gt, func, lo, hi, maxUlps)
 #endif
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 #define FAST_MATH_NEON_TEST(Suite, gt, func, lo, hi, maxUlps)       \
   TEST(Suite##Neon, Range) {                                        \
     EXPECT_LE(                                                      \
@@ -384,7 +384,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 // Uses checkLaneByLane to verify each output lane against scalar ground truth.
 // NaN inputs are checked for NaN output; finite inputs are checked within maxUlps.
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #define FAST_MATH_SSE_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
   TEST(Suite##Sse, SpecialVals) {                                    \
     checkLaneByLane<__m128>(                                         \
@@ -398,7 +398,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_SSE_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
 #endif
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 #define FAST_MATH_AVX_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
   TEST(Suite##Avx, SpecialVals) {                                    \
     checkLaneByLane<__m256>(                                         \
@@ -412,7 +412,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_AVX_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
 #endif
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 #define FAST_MATH_AVX512_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
   TEST(Suite##Avx512, SpecialVals) {                                    \
     checkLaneByLane<__m512>(                                            \
@@ -426,7 +426,7 @@ void checkLaneByLane(GT gt, FN fn, const float* inputs, int32_t numInputs, uint3
 #define FAST_MATH_AVX512_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps)
 #endif
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 #define FAST_MATH_NEON_SPECIAL_TEST(Suite, gt, func, inputs, maxUlps) \
   TEST(Suite##Neon, SpecialVals) {                                    \
     checkLaneByLane<float32x4_t>(                                     \
@@ -537,7 +537,7 @@ void checkLaneByLane2(
 
 // Per-backend macros for two-argument special tests.
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 #define FAST_MATH_SSE_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                       \
   TEST(Suite##Sse, SpecialVals) {                                                                 \
     checkLaneByLane2<__m128>(                                                                     \
@@ -547,7 +547,7 @@ void checkLaneByLane2(
 #define FAST_MATH_SSE_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
 #endif
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 #define FAST_MATH_AVX_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                       \
   TEST(Suite##Avx, SpecialVals) {                                                                 \
     checkLaneByLane2<__m256>(                                                                     \
@@ -557,7 +557,7 @@ void checkLaneByLane2(
 #define FAST_MATH_AVX_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
 #endif
 
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 #define FAST_MATH_AVX512_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)                    \
   TEST(Suite##Avx512, SpecialVals) {                                                              \
     checkLaneByLane2<__m512>(                                                                     \
@@ -567,7 +567,7 @@ void checkLaneByLane2(
 #define FAST_MATH_AVX512_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps)
 #endif
 
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 #define FAST_MATH_NEON_SPECIAL_TEST_2ARG(Suite, gt, func, aIn, bIn, maxUlps) \
   TEST(Suite##Neon, SpecialVals) {                                           \
     checkLaneByLane2<float32x4_t>(                                           \

@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if defined(__aarch64__)
+#include <dispenso/fast_math/simd_config.h>
+
+#if DISPENSO_FAST_MATH_HAS_NEON
 
 #include <arm_neon.h>
 

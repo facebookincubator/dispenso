@@ -5,9 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "simd_config.h"
+
 #pragma once
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 
 #include <immintrin.h>
 
@@ -409,11 +411,10 @@ struct FloatTraits<SseFloat> {
   }
 
   static DISPENSO_INLINE SseFloat fma(SseFloat a, SseFloat b, SseFloat c) {
-#if defined(__FMA__)
+    // See simd_config.h: this backend is gated on FMA precisely so no unfused
+    // path exists. SSE4.1-without-FMA hardware uses the scalar path instead.
+    static_assert(DISPENSO_FAST_MATH_HAS_FMA, "the SSE backend is gated on FMA availability");
     return _mm_fmadd_ps(a.v, b.v, c.v);
-#else
-    return _mm_add_ps(_mm_mul_ps(a.v, b.v), c.v);
-#endif
   }
 
   // conditional: select x where mask is true, y where false.
@@ -700,4 +701,4 @@ DISPENSO_INLINE SseUint32 bool_as_mask<SseUint32, SseInt32>(SseInt32 b) {
 } // namespace fast_math
 } // namespace dispenso
 
-#endif // defined(__SSE4_1__)
+#endif // DISPENSO_FAST_MATH_HAS_SSE4_1

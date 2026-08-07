@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 
 namespace dfm = dispenso::fast_math;
 using AvxFloat = dfm::AvxFloat;
@@ -454,11 +454,11 @@ TEST(AvxFloat, AnyTrueFromComparison) {
   EXPECT_TRUE(dfm::any_true(c < d));
 }
 
-#else // !defined(__AVX2__)
+#else // !DISPENSO_FAST_MATH_HAS_AVX2
 
 // Dummy test so the binary has at least one test on non-AVX2 platforms.
 TEST(AvxFloat, NotAvailable) {
   GTEST_SKIP() << "AVX2 not available";
 }
 
-#endif // defined(__AVX2__)
+#endif // DISPENSO_FAST_MATH_HAS_AVX2

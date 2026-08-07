@@ -122,22 +122,22 @@ void checkFrexpSimd() {
   }
 }
 
-#if defined(__SSE4_1__)
+#if DISPENSO_FAST_MATH_HAS_SSE4_1
 TEST(FrexpSse, SpecialVals) {
   checkFrexpSimd<__m128>();
 }
 #endif
-#if defined(__AVX2__)
+#if DISPENSO_FAST_MATH_HAS_AVX2
 TEST(FrexpAvx, SpecialVals) {
   checkFrexpSimd<__m256>();
 }
 #endif
-#if defined(__AVX512F__)
+#if DISPENSO_FAST_MATH_HAS_AVX512F
 TEST(FrexpAvx512, SpecialVals) {
   checkFrexpSimd<__m512>();
 }
 #endif
-#if defined(__aarch64__)
+#if DISPENSO_FAST_MATH_HAS_NEON
 TEST(FrexpNeon, SpecialVals) {
   checkFrexpSimd<float32x4_t>();
 }
