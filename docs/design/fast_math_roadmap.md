@@ -140,12 +140,68 @@ df64 pairs for actual doubles.
 | Refit asin polynomials via Sollya with explicit FMA | Medium | `asin_0_pt5` uses non-FMA polynomial (`a * b + c`), which the compiler may auto-contract differently on SIMD vs scalar, causing 1 ULP divergence. Refit coefficients via Sollya `fpminimax` targeting explicit FMA evaluation (like `sin_pi_4` was done). This will make scalar and SIMD paths produce identical results. |
 | Support targets without hardware FMA via double-precision reduction | Medium | Every SIMD backend currently requires hardware FMA (`DISPENSO_FAST_MATH_HAS_FMA`), because the Cody-Waite reductions assume single rounding. Without it the failure is catastrophic rather than gradual: measured on SSE4.1-without-FMA, `sin`/`cos` reach 3.9e6 / 5.6e6 ULP beyond +-pi, and `exp10` reached 71 ULP before its constant was truncated. More Cody-Waite terms do **not** fix this -- without fusion every term but the last must itself be truncated so `n*t` stays exact, giving only `24 - bits(n)` bits each, so `\|x\| <= 1Mpi` would need ~16 terms. The cheap fix is to carry the reduction in **double**: `n` (2^21) x `hi` (24 bits) = 45 bits fits exactly in double's 53, so no fusion and no truncation are needed. Measured with the existing constants, double-based reduction gives max \|dr\| of 2.8e-8 at 128pi and 3.0e-8 at 1Mpi against a 4.7e-8 budget -- correct across the full tested range. `detail/double_promote.h` (`DoubleVec`) already provides the machinery. Payne-Hanek is **not** the right tool here; it only earns its cost beyond ~2^28 where a bit-expansion genuinely runs out. Doing this would let the FMA gate on the SSE and Highway backends be relaxed. The live exposure is Highway on WASM SIMD128, whose `relaxed_madd` is explicitly permitted not to fuse. |
 | Explicit FMA for deterministic out-of-range results | Medium | Under `DefaultAccuracyTraits` the result for non-finite input is unspecified by contract, but today it is also *irreproducible*: Cody-Waite reduction computes `x - n*ln2`, which is `inf - inf` for infinite input, so whether a function yields `inf` or `NaN` depends on how the compiler contracted the surrounding FMAs. The same source passed locally and failed in CI for `expm1`/`cos`. Writing the reductions with explicit `fma()` would fix the result per ISA path. Note this does **not** make the value correct — `inf - inf` is `NaN` either way — so it is about reproducibility, not accuracy; making these match std would mean guarding on the default path, which is exactly the overhead `kBoundsValues=false` exists to avoid. Same underlying issue as the asin refit above. |
+| Unify `convert_to_int`'s non-finite result on `INT_MIN` | Medium | The value is currently unspecified and target-dependent: the five SIMD backends and CUDA mask non-finite lanes to `0`, while the scalar paths yield `INT_MIN`. `0` is the worst available choice — it is what any x in (-0.5, 0.5) legitimately converts to, and every caller consumes a range-reduced exponent where `0` is dead centre. That is exactly how `expm1`'s `n == 0` shortcut came to answer from the polynomial for `inf`; it is now ordered so the bounds checks take precedence, but the hazard remains for the next caller. `INT_MIN` aliases only `x == -2^31`, outside every caller's reduced range, and is **free on x86**: `_mm_cvtps_epi32` and `_mm_cvtss_si32` already return it for inf/NaN/out-of-range, so the backends spend three ops (`bit_cast`, compare, AND) converting it into the more dangerous value — deleting that mask is a hot-path win. NEON needs normalisation either way (`FCVTNS` saturates, NaN maps to 0), as do CUDA and the portable scalar path. Do this with benchmarks, then tighten the `util.h` contract from "unspecified" to `INT_MIN`. `INT_MAX` is the only genuinely unreachable value (float spacing near 2^31 is 128, so nothing rounds to 2147483647) but costs normalisation on x86, so it buys little over `INT_MIN`. |
 | Investigate Estrin polynomial evaluation | Medium | Current polynomials use Horner evaluation (sequential FMA chain). Estrin's scheme reduces critical-path depth from ~9 to ~4 FMAs, potentially improving SIMD throughput. However, coefficients were fitted for Horner evaluation order — switching to Estrin with existing coefficients regresses atan ULP from 3 to 4. Need to refit coefficients via Remez (requires modifying the boost-based Remez harness to use Estrin evaluation during fitting). Candidates: atan_poly, asin polynomials, and any other deep Horner chains. Also consider converting atan_poly to odd-only form (evaluate in x^2) to halve polynomial degree. |
 | CMake SIMD backend options | Medium | Add CMake options to enable specific SIMD backends (SSE4.1, AVX2, AVX-512, NEON, Highway) and set appropriate compiler flags (e.g. `-mavx2`, `-mavx512f`). Include option for `-march=native`. Also handle finding/fetching Highway when the Highway backend is enabled. |
 | Binary float constant representations | Medium | Replace decimal float literals with C99 hex float constants (e.g. `0x1.921fb6p+1f`) where appropriate. Hex floats are exact, avoid questions about truncation from excess decimal digits, and match the format used by Sollya/MPFR output. |
 | Doxygen documentation for public API | Medium | Add doxygen comments to all public functions documenting precision, domain, AccuracyTraits behavior, and SIMD compatibility. Note which functions ignore AccuracyTraits. |
 | `DefaultSimdFloat` usage examples | Medium | Show how to write portable SIMD code using the type alias. |
 | Power accounting hooks | Low | Original design goal — compile-time zero-overhead instrumentation for power profiling. Deferred. |
+
+---
+
+## Post-V1: Public API surface
+
+The set of names users may rely on is currently implicit -- whatever happens to
+be reachable from `fast_math.h` is public by accident. That needs to become a
+deliberate list, for one concrete reason: **explicit backend selection is a
+first-class use case, not a fallback.** AVX-512 downclocks on many Intel parts
+and is frequently the slower choice, so users will deliberately name `AvxFloat`
+on AVX-512 hardware rather than accept `DefaultSimdFloat`. All backends coexist
+(on an AVX-512 host built with AVX2, `SseFloat` / `AvxFloat` / `Avx512Float` are
+all available), so the named per-backend types *are* the interface and
+`DefaultSimdFloat` is a convenience on top.
+
+**Decision: user-facing types stay at top level in `dispenso::fast_math`.** An
+earlier sketch defined them in `detail/` and re-exported (`using
+detail::AvxFloat;`, the pattern `rw_lock.h` already uses). That was rejected
+because moving the types changes ADL: unqualified `sin(v)` on an `AvxFloat`
+would search `detail` and stop finding the public overloads -- a silent lookup
+change rather than a compile error. Keeping the types where they are avoids it
+entirely.
+
+### Work
+
+| Task | Priority | Notes |
+|------|----------|-------|
+| Named user-facing boolean types | Medium | Users can write `AvxInt32` but there is no `AvxBool`. Today `BoolType` is *the float type itself* on SSE/AVX/NEON/Highway (lane mask held in the vector), a distinct `Avx512Mask` (`__mmask16`) on AVX-512, and plain `bool` scalar (`kBoolIsMask = false`). Add named types so generic code has something to spell. |
+| Promote the `_t` aliases to user-facing spellings | Medium | `SimdType_t`, `IntType_t`, `UintType_t`, `BoolType_t` in `float_traits.h` read as metafunction machinery but are what generic user code actually needs. Give them names intended for users, where that is cheap. |
+| Enumerate and document the public list | Medium | Float types, the `*Int32` companions (definitely public), the boolean spelling, and a decision on `FloatTraits`. Then say so in the README rather than leaving it to inference. |
+
+### Open questions
+
+1. **Does `AvxBool` alias `AvxFloat`, or become a distinct wrapper?** Aliasing
+   matches the representation and costs nothing, but erases the type distinction
+   between a mask and a value, so `AvxFloat x = someComparison;` compiles.
+   A wrapper restores safety at the cost of conversions and churn. Note the
+   asymmetry: on AVX-512 the type is genuinely distinct already, so aliasing
+   makes four of five backends behave one way and one the other.
+2. **Rename `Avx512Mask` to `Avx512Bool`?** Consistency argues yes; it is the
+   only backend whose bool type is separately named today.
+3. **What is the scalar spelling?** For `float`, `BoolType` is plain `bool` and
+   `kBoolIsMask` is false. Generic code that switches on the mask
+   representation needs this to be uniform, or explicitly not.
+4. **Is `FloatTraits` public?** `SimdType_t` plausibly is -- generic user code
+   needs it. `FloatTraits` itself reads as internal, but the `_t` aliases are
+   defined in terms of it, so exposing them exposes it indirectly.
+5. **Do the backend headers stay non-self-contained?** `float_traits_avx512.h`
+   cannot compile alone: it includes `util.h`, which references `Avx512Float`
+   at the point it selects `DefaultSimdFloat`, before this header has defined
+   it. The cycle only works because `util.h` is always entered first. Since the
+   README already documents these as auto-included and never a user entry
+   point, this may simply want a comment saying so. Fixing it properly means
+   splitting `util.h` into a `util_core.h` (helpers, no backend dependency)
+   that the backends include -- worth doing if the headers move anyway.
 
 ---
 
