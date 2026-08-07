@@ -60,8 +60,26 @@ static const float kAtanSpecials[] = {
     -10.0f,
     100.0f,
     1e10f,
-    -1e10f,
+    -1e10f};
+FAST_MATH_SPECIAL_TESTS(AtanSpecial, ::atanf, dfm::atan, kAtanSpecials, kAtanMaxUlps)
+
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt atan_max(Flt x) {
+  return dfm::atan<Flt, dfm::MaxAccuracyTraits>(x);
+}
+FAST_MATH_SPECIAL_TESTS(AtanMaxAccSpecial, ::atanf, atan_max, kAtanSpecials, kAtanMaxUlps)
+
+// Non-finite input is only defined under MaxAccuracyTraits, which must match
+// std. Default traits makes no such promise, so asserting it there would test
+// whichever way the compiler happened to lower the reduction.
+static const float kAtanNonFiniteSpecials[] = {
     std::numeric_limits<float>::quiet_NaN(),
     std::numeric_limits<float>::infinity(),
     -std::numeric_limits<float>::infinity()};
-FAST_MATH_SPECIAL_TESTS(AtanSpecial, ::atanf, dfm::atan, kAtanSpecials, kAtanMaxUlps)
+FAST_MATH_SPECIAL_TESTS(
+    AtanMaxAccNonFinite,
+    ::atanf,
+    atan_max,
+    kAtanNonFiniteSpecials,
+    kAtanMaxUlps)

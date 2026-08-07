@@ -54,7 +54,13 @@ TEST(Expm1, RangeLarge) {
 constexpr uint32_t kExpm1MaxUlps = 2 + kMsvcUlpSlack;
 FAST_MATH_ACCURACY_TESTS(Expm1All, gt_expm1, dfm::expm1, -88.0f, 88.0f, kExpm1MaxUlps)
 
-// Special values tested across all SIMD backends.
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt expm1_max(Flt x) {
+  return dfm::expm1<Flt, dfm::MaxAccuracyTraits>(x);
+}
+
+// Finite, in-range special values. Required on both accuracy paths.
 static const float kExpm1Specials[] = {
     0.0f,
     -0.0f,
@@ -69,8 +75,23 @@ static const float kExpm1Specials[] = {
     1e-7f,
     -1e-7f,
     5.0f,
-    -5.0f,
+    -5.0f};
+FAST_MATH_SPECIAL_TESTS(Expm1Special, gt_expm1, dfm::expm1, kExpm1Specials, kExpm1MaxUlps)
+FAST_MATH_SPECIAL_TESTS(Expm1MaxAccSpecial, gt_expm1, expm1_max, kExpm1Specials, kExpm1MaxUlps)
+
+// Non-finite input is only defined under MaxAccuracyTraits, which must match
+// std: expm1(inf) == inf, expm1(-inf) == -1, expm1(NaN) == NaN. Default traits
+// makes no such promise -- Cody-Waite reduction computes x - n*ln2, which is
+// inf - inf = NaN for infinite input, so the result there depends on how the
+// compiler contracts the FMAs. Asserting it would test the codegen, not the
+// library.
+static const float kExpm1NonFiniteSpecials[] = {
     std::numeric_limits<float>::quiet_NaN(),
     std::numeric_limits<float>::infinity(),
     -std::numeric_limits<float>::infinity()};
-FAST_MATH_SPECIAL_TESTS(Expm1Special, gt_expm1, dfm::expm1, kExpm1Specials, kExpm1MaxUlps)
+FAST_MATH_SPECIAL_TESTS(
+    Expm1MaxAccNonFinite,
+    gt_expm1,
+    expm1_max,
+    kExpm1NonFiniteSpecials,
+    kExpm1MaxUlps)

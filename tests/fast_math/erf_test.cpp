@@ -60,28 +60,23 @@ TEST(Erf, NearZero) {
 FAST_MATH_ACCURACY_TESTS(Erf, gt_erf, dfm::erf, -4.0f, 4.0f, kErfMaxUlps)
 
 // Special values tested across all SIMD backends.
-static const float kErfSpecials[] = {
-    0.0f,
-    -0.0f,
-    0.5f,
-    -0.5f,
-    1.0f,
-    -1.0f,
-    2.0f,
-    -2.0f,
-    3.0f,
-    -3.0f,
-    4.0f,
-    -4.0f,
-    10.0f,
-    -10.0f,
-    100.0f,
-    -100.0f,
-    1e-7f,
-    -1e-7f,
-    0.01f,
-    -0.01f,
+static const float kErfSpecials[] = {0.0f,   -0.0f,   0.5f,  -0.5f,  1.0f,  -1.0f, 2.0f,
+                                     -2.0f,  3.0f,    -3.0f, 4.0f,   -4.0f, 10.0f, -10.0f,
+                                     100.0f, -100.0f, 1e-7f, -1e-7f, 0.01f, -0.01f};
+FAST_MATH_SPECIAL_TESTS(ErfSpecial, gt_erf, dfm::erf, kErfSpecials, kErfMaxUlps)
+
+// Wrapper for MaxAccuracyTraits — macro instantiates func<Flt>.
+template <typename Flt>
+Flt erf_max(Flt x) {
+  return dfm::erf<Flt, dfm::MaxAccuracyTraits>(x);
+}
+FAST_MATH_SPECIAL_TESTS(ErfMaxAccSpecial, gt_erf, erf_max, kErfSpecials, kErfMaxUlps)
+
+// Non-finite input is only defined under MaxAccuracyTraits, which must match
+// std: erf(inf) == 1, erf(-inf) == -1, erf(NaN) == NaN. Default traits makes no
+// such promise.
+static const float kErfNonFiniteSpecials[] = {
     std::numeric_limits<float>::quiet_NaN(),
     std::numeric_limits<float>::infinity(),
     -std::numeric_limits<float>::infinity()};
-FAST_MATH_SPECIAL_TESTS(ErfSpecial, gt_erf, dfm::erf, kErfSpecials, kErfMaxUlps)
+FAST_MATH_SPECIAL_TESTS(ErfMaxAccNonFinite, gt_erf, erf_max, kErfNonFiniteSpecials, kErfMaxUlps)

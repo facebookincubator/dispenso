@@ -125,9 +125,22 @@ static const float kSinSpecials[] = {
     -1000.0f,
     1e-6f,
     std::numeric_limits<float>::denorm_min(),
-    std::numeric_limits<float>::min(),
+    std::numeric_limits<float>::min()};
+FAST_MATH_SPECIAL_TESTS(SinMaxAccSpecial, gt_sin, sin_max, kSinSpecials, kSinAccurateUlpsVeryLarge)
+FAST_MATH_SPECIAL_TESTS(SinDefaultSpecial, gt_sin, dfm::sin, kSinSpecials, kSinUlpsLarge)
+
+// Non-finite input is only defined under MaxAccuracyTraits, which must match
+// std: sin(inf) and sin(NaN) are both NaN. Default traits makes no such
+// promise -- Cody-Waite reduction computes x - n*pi/2, which is inf - inf for
+// infinite input, so the result depends on how the compiler contracts the
+// FMAs. Asserting it would test the codegen, not the library.
+static const float kSinNonFiniteSpecials[] = {
     std::numeric_limits<float>::quiet_NaN(),
     std::numeric_limits<float>::infinity(),
     -std::numeric_limits<float>::infinity()};
-FAST_MATH_SPECIAL_TESTS(SinMaxAccSpecial, gt_sin, sin_max, kSinSpecials, kSinAccurateUlpsVeryLarge)
-FAST_MATH_SPECIAL_TESTS(SinDefaultSpecial, gt_sin, dfm::sin, kSinSpecials, kSinUlpsLarge)
+FAST_MATH_SPECIAL_TESTS(
+    SinMaxAccNonFinite,
+    gt_sin,
+    sin_max,
+    kSinNonFiniteSpecials,
+    kSinAccurateUlpsVeryLarge)

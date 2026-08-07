@@ -134,9 +134,22 @@ static const float kCosSpecials[] = {
     -1000.0f,
     1e-6f,
     std::numeric_limits<float>::denorm_min(),
-    std::numeric_limits<float>::min(),
+    std::numeric_limits<float>::min()};
+FAST_MATH_SPECIAL_TESTS(CosMaxAccSpecial, gt_cos, cos_max, kCosSpecials, kCosAccurateUlpsVeryLarge)
+FAST_MATH_SPECIAL_TESTS(CosDefaultSpecial, gt_cos, dfm::cos, kCosSpecials, kCosUlpsVeryLarge)
+
+// Non-finite input is only defined under MaxAccuracyTraits, which must match
+// std: cos(inf) and cos(NaN) are both NaN. Default traits makes no such
+// promise -- Cody-Waite reduction computes x - n*pi/2, which is inf - inf for
+// infinite input, so the result depends on how the compiler contracts the
+// FMAs. Asserting it would test the codegen, not the library.
+static const float kCosNonFiniteSpecials[] = {
     std::numeric_limits<float>::quiet_NaN(),
     std::numeric_limits<float>::infinity(),
     -std::numeric_limits<float>::infinity()};
-FAST_MATH_SPECIAL_TESTS(CosMaxAccSpecial, gt_cos, cos_max, kCosSpecials, kCosAccurateUlpsVeryLarge)
-FAST_MATH_SPECIAL_TESTS(CosDefaultSpecial, gt_cos, dfm::cos, kCosSpecials, kCosUlpsVeryLarge)
+FAST_MATH_SPECIAL_TESTS(
+    CosMaxAccNonFinite,
+    gt_cos,
+    cos_max,
+    kCosNonFiniteSpecials,
+    kCosAccurateUlpsVeryLarge)
