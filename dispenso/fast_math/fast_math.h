@@ -1285,8 +1285,15 @@ DISPENSO_INLINE Flt exp10(Flt x) {
     using IntT = IntType_t<Flt>;
     constexpr double kLog10of2d = 0.3010299956639812;
     constexpr float k1_log10of2 = static_cast<float>(1.0 / kLog10of2d);
-    constexpr float kLog10of2 = static_cast<float>(kLog10of2d);
-    constexpr float kLog10of2lo = static_cast<float>(kLog10of2d - kLog10of2);
+    // Cody-Waite high term, truncated to 11 significant bits. The reduction
+    // computes j*hi and relies on that product being exact; with |j| <= 128
+    // (8 bits) an 11-bit hi keeps it inside float's 24. A plain
+    // static_cast<float>(kLog10of2d) keeps all 24 bits, so j*hi rounds and the
+    // low term below is then correcting a value that no longer exists.
+    // FMA hid that by rounding only once -- without it the reduction is ~70 ULP
+    // rather than ~0.3. See the identical treatment of kLn2hi in exp/expm1.
+    constexpr float kLog10of2 = 0x1.344p-2f;
+    constexpr float kLog10of2lo = static_cast<float>(kLog10of2d - static_cast<double>(kLog10of2));
 
     Flt j;
     IntT xi;
@@ -1445,6 +1452,10 @@ DISPENSO_INLINE Flt log10(Flt x) {
                 0.434294462f) *
         m;
 
+    // Full precision, unlike exp10's identically-named constant: this is a
+    // single-rounding reconstruction (i is the binary exponent, with no low
+    // correction term), not a Cody-Waite reduction. Truncating here would only
+    // lose accuracy.
     constexpr float kLog10of2 = 0.30102999566398f;
     y = fma(i, kLog10of2, y);
 
