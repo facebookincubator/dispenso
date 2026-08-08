@@ -100,7 +100,6 @@ $(function(){initNavTree('classdispenso_1_1_thread_pool.html',''); initResizable
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="classdispenso_1_1_thread_pool-members.html">List of all members</a>  </div>
@@ -110,11 +109,6 @@ $(function(){initNavTree('classdispenso_1_1_thread_pool.html',''); initResizable
 
 <p><code>#include &lt;<a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>&gt;</code></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_thread_pool_1_1_awake_ref.html">AwakeRef</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aff84991b150f3e27711d277bcbc9f6f3" id="r_aff84991b150f3e27711d277bcbc9f6f3"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aff84991b150f3e27711d277bcbc9f6f3">ThreadPool</a> (size_t n, size_t poolLoadMultiplier=32)</td></tr>
@@ -137,8 +131,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:abd7b0434f1b824c1a0be19b91a8ab635"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a44c17acaa3e40881b0ab2260849a7f7f" id="r_a44c17acaa3e40881b0ab2260849a7f7f"><td class="memItemLeft" align="right" valign="top">DISPENSO_DLL_ACCESS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a44c17acaa3e40881b0ab2260849a7f7f">~ThreadPool</a> ()</td></tr>
 <tr class="separator:a44c17acaa3e40881b0ab2260849a7f7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae5c841581f91581665d3a31293da6d5d" id="r_ae5c841581f91581665d3a31293da6d5d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classdispenso_1_1_thread_pool_1_1_awake_ref.html">AwakeRef</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae5c841581f91581665d3a31293da6d5d">keepAwake</a> ()</td></tr>
-<tr class="separator:ae5c841581f91581665d3a31293da6d5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -200,34 +192,6 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="ae5c841581f91581665d3a31293da6d5d" name="ae5c841581f91581665d3a31293da6d5d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae5c841581f91581665d3a31293da6d5d">&#9670;&#160;</a></span>keepAwake()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classdispenso_1_1_thread_pool_1_1_awake_ref.html">AwakeRef</a> dispenso::ThreadPool::keepAwake </td>
-          <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Acquire an <a class="el" href="classdispenso_1_1_thread_pool_1_1_awake_ref.html">AwakeRef</a> that prevents worker threads from sleeping (skip the sleep transition at the end of their spin window) while the returned handle is alive. See <a class="el" href="classdispenso_1_1_thread_pool_1_1_awake_ref.html">AwakeRef</a> for details. </p>
-
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00270">270</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
-
-</div>
-</div>
 <a id="a790fecdf2ce448db2f02af9117c7f538" name="a790fecdf2ce448db2f02af9117c7f538"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a790fecdf2ce448db2f02af9117c7f538">&#9670;&#160;</a></span>numThreads()</h2>
 
@@ -323,7 +287,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00655">655</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00588">588</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -363,7 +327,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00665">665</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00598">598</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -397,7 +361,7 @@ template&lt;typename Generator &gt; </div>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Work is enqueued in chunks and interleaved with inline execution based on the pool's load factor, preventing both pool thread starvation and excessive queueing overhead. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l01128">1128</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l01061">1061</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -464,7 +428,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00605">605</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00538">538</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>
@@ -488,7 +452,7 @@ template&lt;class Rep , class Period &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00606">606</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="thread__pool_8h_source.html#l00539">539</a> of file <a class="el" href="thread__pool_8h_source.html">thread_pool.h</a>.</p>
 
 </div>
 </div>

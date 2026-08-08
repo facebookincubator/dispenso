@@ -23,11 +23,11 @@ var future_8h =
     [ "when_all", "future_8h.html#a288cfa6cecc896633af51a109c31c184", null ],
     [ "when_all", "future_8h.html#a35bb015d86adb74f6866838450d2d5b0", null ],
     [ "when_any", "future_8h.html#aad67543c7825ab6f9964e607078743f1", null ],
-    [ "when_any", "future_8h.html#abb93e53534d80268b038fdbea095f5ff", null ],
+    [ "when_any", "future_8h.html#a3e403b21c3656d9a9dab895b6dd0a4ef", null ],
     [ "when_any", "future_8h.html#aac45c1efcafd3c404841f20f2488e3a7", null ],
-    [ "when_any", "future_8h.html#a8ec7cdc0bb0d0d9da08c6e9dbd9ffe08", null ],
+    [ "when_any", "future_8h.html#a02290b8e80de65d09c2e4e306a43bfb9", null ],
     [ "when_any", "future_8h.html#acb706af0afa4de4e692cca3d3b2244fb", null ],
-    [ "when_any", "future_8h.html#a4c05414c577d22eb4e1874fe19126778", null ],
+    [ "when_any", "future_8h.html#aec70913f50cfbc8ede2ac9878b9c5d29", null ],
     [ "kNotAsync", "future_8h.html#a8421f24280762e7f0fc576158306ebac", null ],
     [ "kNotDeferred", "future_8h.html#a945a27b88a64b1cf58ee4f7ef62f5e31", null ]
 ];

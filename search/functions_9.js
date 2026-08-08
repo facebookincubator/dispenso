@@ -1,10 +1,7 @@
 var searchData=
 [
-  ['l2cachegroups_0',['l2CacheGroups',['../classdispenso_1_1_cpu_set.html#ade36eae189944c6217c41b86f8a2c269',1,'dispenso::CpuSet']]],
-  ['l3cachegroups_1',['l3CacheGroups',['../classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f',1,'dispenso::CpuSet']]],
-  ['latch_2',['Latch',['../classdispenso_1_1_latch.html#a5c14c0b15d56854d2a888cd93e2aca7c',1,'dispenso::Latch']]],
-  ['lock_3',['lock',['../classdispenso_1_1_distributed_r_w_lock.html#af754b2902ef36d6f7c067fdc1b3750dd',1,'dispenso::DistributedRWLock']]],
-  ['lock_5fshared_4',['lock_shared',['../classdispenso_1_1_distributed_r_w_lock.html#a48c8397d2a12c055fd70ac4447222660',1,'dispenso::DistributedRWLock']]],
-  ['log2_5',['log2',['../util_8h.html#af136448e8dfb75d4ffa0a89ef5ae686f',1,'dispenso']]],
-  ['log2const_6',['log2const',['../util_8h.html#af014fb9ca7d4021c6cca0e7fa545dafd',1,'dispenso']]]
+  ['make_5fready_5ffuture_0',['make_ready_future',['../future_8h.html#a76b9f7ac83b05ef4121ea164c3b8127c',1,'dispenso::make_ready_future(T &amp;&amp;t)'],['../future_8h.html#a092e7c85f707d0bd054b3dc4a92d2ff4',1,'dispenso::make_ready_future(std::reference_wrapper&lt; X &gt; x)'],['../future_8h.html#a22971609aae02fd9436ad8a8d0f0b36c',1,'dispenso::make_ready_future()']]],
+  ['makechunkedrange_1',['makeChunkedRange',['../parallel__for_8h.html#aa25d40224b10469dc019bc2523b0ae87',1,'dispenso::makeChunkedRange(IntegerA start, IntegerB end, ParForChunking chunking=ParForChunking::kStatic)'],['../parallel__for_8h.html#a006977b606e47964da4df6503cf7f2f8',1,'dispenso::makeChunkedRange(IntegerA start, IntegerB end, IntegerC chunkSize)']]],
+  ['max_5fsize_2',['max_size',['../classdispenso_1_1_concurrent_vector.html#a7058def69cec716e34f003e771d09fb6',1,'dispenso::ConcurrentVector']]],
+  ['mpmcringbuffer_3',['MpmcRingBuffer',['../classdispenso_1_1_mpmc_ring_buffer.html#a6999df30d881c934b46788bc6a13a479',1,'dispenso::MpmcRingBuffer::MpmcRingBuffer()'],['../classdispenso_1_1_mpmc_ring_buffer.html#a94e4d1efa50fe40391b4cd9f83434fe5',1,'dispenso::MpmcRingBuffer::MpmcRingBuffer(const MpmcRingBuffer &amp;)=delete'],['../classdispenso_1_1_mpmc_ring_buffer.html#af01fe04d8e4ebb01368a8c79fad58c38',1,'dispenso::MpmcRingBuffer::MpmcRingBuffer(MpmcRingBuffer &amp;&amp;)=delete']]]
 ];
