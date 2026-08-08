@@ -253,10 +253,6 @@ void ThreadPool::threadLoopImpl(PerThreadData& data, int32_t ringIndex) {
     detail::cpuRelax();
 
     if (failCount >= kDefaultSpinLimit) {
-      if (keepAwakeCount_.load(std::memory_order_relaxed) > 0) {
-        failCount = kDefaultSpinLimit;
-        continue;
-      }
       markIdle(isWorking);
       if (kUseWakeSleep) {
         ws->enterSleep(ringIndex);

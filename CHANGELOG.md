@@ -7,7 +7,6 @@
 * **`parallel_invoke`** — fork-join invocation of heterogeneous tasks. Schedules N-1 tasks to the pool and runs the last inline. Composes naturally with recursive divide-and-conquer.
 * **`kAdaptive` parallel_for** — new chunking strategy inspired by Callisto-RTS (Harris/Kaestle, USENIX ATC 2015). The iteration space is partitioned into P contiguous stripes (one per worker), each consumed front-to-back via per-stripe atomic cursors. When a worker's stripe is exhausted, it steals from peers, preferring same-L3 victims for cache locality. Bitmasks prevent probing exhausted stripes. Competitive with TBB on SpMM benchmarks (3–12% faster at 8–32 threads, within noise at 64–192 threads on 1M-row workloads).
 * **`when_any` combinator** — returns a future that completes when any input future is ready, with the index of the first completed future.
-* **`AwakeRef` / `keepAwake()`** — RAII handle to prevent worker threads from sleeping, avoiding futex wake latency between closely-spaced `parallel_for` calls.
 
 ### Thread pool rework
 * **Per-thread rings** — each worker thread gets a dedicated SPMC ring buffer (16 slots). `schedule()` distributes work round-robin across rings, eliminating central queue contention at high thread counts. Foundation for fork-join scheduling — threads check their own ring before the central queue.

@@ -212,65 +212,6 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
    **/
   DISPENSO_DLL_ACCESS ~ThreadPool();
 
-  /**
-   * RAII handle that asks the pool's worker threads to stay awake (skip the
-   * sleep transition at the end of their spin window) while at least one
-   * AwakeRef is alive on the pool.
-   *
-   * Use this around bursts of fine-grained scheduling (e.g. parallel_for)
-   * where workers may run out of immediate work mid-burst and would otherwise
-   * sleep — paying ~3-5us futex wake latency just to be re-woken on the next
-   * task. With AwakeRef held, workers keep spinning instead.
-   *
-   * Cost: one fetch_add at construction, one fetch_sub at destruction, one
-   * relaxed load in the worker's sleep-decision path. Move-only (non-copyable)
-   * to allow transferring ownership while keeping a unique-owner invariant.
-   */
-  class AwakeRef {
-   public:
-    AwakeRef() = default;
-    /** @brief Acquire a keep-awake reference on @p pool, incrementing its keep-awake count. */
-    explicit AwakeRef(ThreadPool* pool) : pool_(pool) {
-      if (pool_) {
-        pool_->keepAwakeCount_.fetch_add(1, std::memory_order_acq_rel);
-      }
-    }
-    AwakeRef(const AwakeRef&) = delete;
-    AwakeRef& operator=(const AwakeRef&) = delete;
-    /** @brief Move-construct, transferring the keep-awake reference from @p other. */
-    AwakeRef(AwakeRef&& other) noexcept : pool_(other.pool_) {
-      other.pool_ = nullptr;
-    }
-    AwakeRef& operator=(AwakeRef&& other) noexcept {
-      reset();
-      pool_ = other.pool_;
-      other.pool_ = nullptr;
-      return *this;
-    }
-    ~AwakeRef() {
-      reset();
-    }
-    /** @brief Release the held keep-awake reference, if any. */
-    void reset() {
-      if (pool_) {
-        pool_->keepAwakeCount_.fetch_sub(1, std::memory_order_release);
-        pool_ = nullptr;
-      }
-    }
-
-   private:
-    ThreadPool* pool_ = nullptr;
-  };
-
-  /**
-   * Acquire an AwakeRef that prevents worker threads from sleeping (skip the
-   * sleep transition at the end of their spin window) while the returned
-   * handle is alive. See AwakeRef for details.
-   */
-  AwakeRef keepAwake() {
-    return AwakeRef(this);
-  }
-
  private:
   class PerThreadData {
    public:
@@ -525,14 +466,6 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Brief false-negatives (flag cleared while an enqueue is in flight) are
   // bounded to one spin iteration and self-correcting.
   alignas(kCacheLineSize) std::atomic<bool> centralQueueNonEmpty_{false};
-
-  // Refcount of outstanding AwakeRef handles. When > 0, worker threads skip
-  // the sleep transition at the end of their spin window and continue
-  // spinning. Bumped by AwakeRef ctor, decremented by dtor. Workers read with
-  // relaxed ordering — a brief stale-true read just costs one extra spin
-  // iteration; a brief stale-false read is bounded by the spin window and
-  // self-corrects on the next iteration.
-  alignas(kCacheLineSize) std::atomic<int32_t> keepAwakeCount_{0};
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
 
