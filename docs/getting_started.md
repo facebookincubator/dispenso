@@ -97,13 +97,26 @@ for (double partial : partialSums) {
 }
 ```
 
+**Adaptive chunking for uneven work:**
+
+The default chunking (`kStatic`) splits the range into equal chunks — ideal
+when every iteration costs about the same. When some iterations are far more
+expensive than others, pass `kAdaptive` so idle workers can steal the remaining
+work instead of waiting on a slow chunk:
+
+```cpp
+dispenso::ParForOptions options;
+options.defaultChunking = dispenso::ParForChunking::kAdaptive;
+dispenso::parallel_for(0, kArraySize, [&](size_t i) { expensiveVariableWork(i); }, options);
+```
+
 See [full example](../examples/parallel_for_example.cpp).
 
 Key points:
 - Use the simple form for independent per-element work
 - Use chunked ranges when you want to control work distribution
 - Per-thread state enables efficient reductions
-- Options let you control parallelism and chunking strategy
+- Options let you control parallelism and chunking strategy (`kStatic` vs `kAdaptive`)
 
 ---
 
@@ -240,12 +253,23 @@ auto tuple = allFutures.get();
 int sum = std::get<0>(tuple).get() + std::get<1>(tuple).get() + std::get<2>(tuple).get();
 ```
 
+**when_any for the first ready future:**
+
+```cpp
+dispenso::Future<int> f1 = dispenso::async([]() { return 10; });
+dispenso::Future<int> f2 = dispenso::async([]() { return 20; });
+
+// Result holds the argument index (0-based) of the first future to become ready.
+dispenso::Future<size_t> which = dispenso::when_any(std::move(f1), std::move(f2));
+size_t firstReady = which.get();
+```
+
 See [full example](../examples/future_example.cpp).
 
 Key points:
 - `async()` launches work and returns a `Future`
 - `then()` chains dependent computations
-- `when_all()` waits for multiple futures
+- `when_all()` waits for multiple futures; `when_any()` returns the index of the first ready
 - `make_ready_future()` creates an already-completed future
 
 ---
@@ -514,6 +538,72 @@ Key points:
 - `steal()` is lock-free for thieves
 - Dynamically resizable — grows as needed
 - Classic data structure for work-stealing schedulers
+
+### MpmcRingBuffer
+
+A bounded, lock-free multi-producer multi-consumer ring buffer. `try_push` and
+`try_pop` are fail-fast — they return `false` rather than block when the buffer
+is full or empty:
+
+<!-- @example mpmc_ring_buffer_example.cpp -->
+
+```cpp
+#include <dispenso/mpmc_ring_buffer.h>
+
+dispenso::MpmcRingBuffer<int, 1024> ring;
+
+// Any thread may push...
+if (!ring.try_push(42)) {
+  // buffer full — apply backpressure or retry later
+}
+
+// ...and any thread may pop
+int value = 0;
+if (ring.try_pop(value)) {
+  // consumed `value`
+}
+
+// Batch push reserves N slots with a single reservation
+std::vector<int> items = {1, 2, 3};
+size_t pushed = ring.try_push_batch(items.data(), items.size());
+```
+
+See [full example](../examples/mpmc_ring_buffer_example.cpp).
+
+Key points:
+- Capacity is fixed at compile time (rounded up to a power of two by default)
+- Fail-fast: no blocking and no retry loops inside the buffer
+- `try_push_batch` enqueues K items with a single reservation
+
+### SPSCRingBuffer
+
+When there is exactly one producer thread and one consumer thread, prefer
+`SPSCRingBuffer` — it avoids the CAS overhead of the MPMC variant:
+
+<!-- @example spsc_ring_buffer_example.cpp -->
+
+```cpp
+#include <dispenso/spsc_ring_buffer.h>
+
+dispenso::SPSCRingBuffer<int, 1024> ring;
+
+// Producer thread
+while (!ring.try_push(item)) {
+  // full — wait for the consumer to drain a slot
+}
+
+// Consumer thread
+int value = 0;
+if (ring.try_pop(value)) {
+  // consumed `value`
+}
+```
+
+See [full example](../examples/spsc_ring_buffer_example.cpp).
+
+Key points:
+- Designed for exactly one producer and one consumer thread
+- Lower overhead than `MpmcRingBuffer` (no CAS on the hot path)
 
 ---
 

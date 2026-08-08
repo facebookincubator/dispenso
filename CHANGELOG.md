@@ -52,9 +52,8 @@
 * Replaced the matplotlib chart pipeline (`generate_charts.py`, `update_benchmarks.py`) with an interactive Plotly dashboard (`scripts/generate_plotly_benchmarks.py`, output at `docs/benchmarks/index.html`).
 
 ### Documentation
-* Added examples for `CpuSet`, `ChaseLevDeque`, `parallel_invoke`, and `SmallVector`.
-* Updated Getting Started guide with sections for all new public APIs.
-* Updated README feature list with new containers and algorithms.
+* Added examples for `CpuSet`, `ChaseLevDeque`, `parallel_invoke`, `SmallVector`, `MpmcRingBuffer`, `SPSCRingBuffer`, `when_any`, and `kAdaptive` chunking.
+* Documented the new public APIs in the Getting Started guide (containers, `when_any`, and adaptive chunking) and the README feature list.
 * Added all missing public headers to `dispenso.h` umbrella include.
 * Added C++20 concept constraints for `parallel_for` and graph SFINAE.
 

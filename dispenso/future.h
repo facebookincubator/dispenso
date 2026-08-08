@@ -27,7 +27,7 @@ namespace dispenso {
 
 // See https://en.cppreference.com/w/cpp/experimental/future for details on the API.
 
-// TODO(bbudge): Implement when_any(), ?unwrapping constructor? functionality.
+// TODO(bbudge): Implement ?unwrapping constructor? functionality.
 
 /**
  *  A <code>std::launch</code> policy specifying we won't force asynchronicity.  Opposite of

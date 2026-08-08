@@ -56,10 +56,10 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 * **[`TaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_task_set.html) / [`ConcurrentTaskSet`](https://facebookincubator.github.io/dispenso/classdispenso_1_1_concurrent_task_set.html)** — task grouping with wait, cancellation, and recursive scheduling
 
 **Parallel algorithms:**
-* **[`parallel_for`](docs/getting_started.md#your-first-parallel-loop)** — parallel loops over indices, blocking or non-blocking (cascaded); cascading `parallel_for` enables overlapping independent loops without oversubscription
+* **[`parallel_for`](docs/getting_started.md#your-first-parallel-loop)** — parallel loops over indices, blocking or non-blocking (cascaded), with static or adaptive (work-stealing) chunking; cascading `parallel_for` enables overlapping independent loops without oversubscription
 * **[`parallel_invoke`](docs/getting_started.md#parallel-invoke)** — fork-join invocation of heterogeneous tasks; composes naturally with recursive divide-and-conquer
 * **[`for_each`](docs/getting_started.md#parallel-iteration-with-for_each)** — parallel `std::for_each` / `std::for_each_n`
-* **[`Future`](docs/getting_started.md#futures-for-async-results)** — high-performance thread-safe shared futures with `then()`, `when_all()`, and an API matching `std::experimental::shared_future`
+* **[`Future`](docs/getting_started.md#futures-for-async-results)** — high-performance thread-safe shared futures with `then()`, `when_all()`, `when_any()`, and an API matching `std::experimental::shared_future`
 * **[`Graph`](docs/getting_started.md#task-graphs)** — task graph execution with subgraph support and incremental re-evaluation
 * **[`pipeline`](docs/getting_started.md#pipelines)** — parallel pipelining of streaming workloads
 
