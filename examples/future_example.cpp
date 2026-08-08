@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <thread>
 
@@ -98,6 +99,17 @@ int main() {
     int sum = std::get<0>(tuple).get() + std::get<1>(tuple).get() + std::get<2>(tuple).get();
 
     std::cout << "  Sum of all futures: " << sum << " (expected: 60)\n";
+  }
+
+  // Example 5b: when_any to react to the first future that completes
+  std::cout << "\nExample 5b: when_any for the first ready future\n";
+  {
+    dispenso::Future<int> f1 = dispenso::async([]() { return 1; });
+    dispenso::Future<int> f2 = dispenso::async([]() { return 2; });
+
+    // Result holds the argument index (0-based) of the first future to be ready.
+    dispenso::Future<size_t> which = dispenso::when_any(std::move(f1), std::move(f2));
+    std::cout << "  Index of first ready future: " << which.get() << "\n";
   }
 
   // Example 6: Using Future with a custom thread pool

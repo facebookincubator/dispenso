@@ -13,6 +13,7 @@
 #include <dispenso/parallel_for.h>
 
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <vector>
 
@@ -81,6 +82,31 @@ int main() {
       },
       options);
   std::cout << "  Completed with maxThreads = 2\n";
+
+  // Example 5: kAdaptive chunking for uneven per-iteration work.
+  // The default (kStatic) splits the range into equal chunks, which is ideal
+  // when every iteration costs about the same. When some iterations are much
+  // more expensive than others, kAdaptive lets idle workers steal remaining
+  // work so no thread is left waiting on a slow chunk.
+  std::cout << "\nExample 5: kAdaptive chunking for uneven work\n";
+  {
+    std::vector<uint64_t> work(1000);
+    dispenso::ParForOptions adaptiveOptions;
+    adaptiveOptions.defaultChunking = dispenso::ParForChunking::kAdaptive;
+    dispenso::parallel_for(
+        0,
+        work.size(),
+        [&work](size_t i) {
+          // Later iterations cost more, so equal static chunks would imbalance.
+          uint64_t acc = 0;
+          for (size_t k = 0; k <= i; ++k) {
+            acc += k;
+          }
+          work[i] = acc;
+        },
+        adaptiveOptions);
+    std::cout << "  Completed adaptive loop; work[999] = " << work[999] << "\n";
+  }
 
   std::cout << "\nAll parallel_for examples completed successfully!\n";
   return 0;
