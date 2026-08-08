@@ -706,7 +706,13 @@ auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
  * the caller may use TaskSet::cancel() to ask cooperatively-cancellable tasks to exit early.
  *
  **/
-template <class InputIt>
+// The trailing `iterator_traits<InputIt>::value_type` default constrains this
+// overload to real iterators. Without it, a two-future call such as
+// when_any(f1, f2) would prefer this (InputIt, InputIt) overload over the
+// variadic one below and fail; with it, non-iterator arguments drop the
+// overload from resolution so the variadic form is selected -- matching
+// std::experimental::when_any. (when_all achieves the same via its return type.)
+template <class InputIt, class = typename std::iterator_traits<InputIt>::value_type>
 Future<size_t> when_any(InputIt first, InputIt last);
 
 /**
@@ -724,10 +730,10 @@ auto when_any(Futures&&... futures) -> Future<size_t>;
 /** Variant that registers with a TaskSet so that taskSet.wait() implies the result is
  * ready.
  * @overload */
-template <class InputIt>
+template <class InputIt, class = typename std::iterator_traits<InputIt>::value_type>
 Future<size_t> when_any(TaskSet& taskSet, InputIt first, InputIt last);
 /** @overload */
-template <class InputIt>
+template <class InputIt, class = typename std::iterator_traits<InputIt>::value_type>
 Future<size_t> when_any(ConcurrentTaskSet& taskSet, InputIt first, InputIt last);
 /** @overload */
 template <class... Futures>

@@ -396,19 +396,19 @@ auto when_all(ConcurrentTaskSet& taskSet, Futures&&... futures)
   return whenAllTuple(interceptor, std::forward<Futures>(futures)...);
 }
 
-template <typename InputIt>
+template <typename InputIt, typename>
 Future<size_t> when_any(InputIt first, InputIt last) {
   detail::InterceptionInvoker interceptor;
   return detail::whenAnyIterators(interceptor, first, last);
 }
 
-template <typename InputIt>
+template <typename InputIt, typename>
 Future<size_t> when_any(TaskSet& taskSet, InputIt first, InputIt last) {
   detail::TaskSetInterceptionInvoker<TaskSet> interceptor(taskSet);
   return detail::whenAnyIterators(interceptor, first, last);
 }
 
-template <typename InputIt>
+template <typename InputIt, typename>
 Future<size_t> when_any(ConcurrentTaskSet& taskSet, InputIt first, InputIt last) {
   detail::TaskSetInterceptionInvoker<ConcurrentTaskSet> interceptor(taskSet);
   return detail::whenAnyIterators(interceptor, first, last);

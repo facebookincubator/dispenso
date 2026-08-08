@@ -978,6 +978,66 @@ TEST(Future, WhenAnyTupleReturnsValidIndex) {
     EXPECT_TRUE(voidF.is_ready());
 }
 
+// With exactly two same-typed futures, when_any/when_all must select the
+// variadic overload, not the (first, last) iterator overload.
+TEST(Future, WhenAnyTwoFuturesResolvesToVariadic) {
+  dispenso::Future<int> a([]() { return 1; }, dispenso::globalThreadPool());
+  dispenso::Future<int> b([]() { return 2; }, dispenso::globalThreadPool());
+
+  auto winner = dispenso::when_any(a, b);
+  const size_t idx = winner.get();
+  ASSERT_LT(idx, 2u);
+  EXPECT_TRUE(idx == 0 ? a.is_ready() : b.is_ready());
+}
+
+TEST(Future, WhenAnyTwoFuturesTaskSetResolvesToVariadic) {
+  dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::Future<int> a([]() { return 1; }, taskSet);
+  dispenso::Future<int> b([]() { return 2; }, taskSet);
+
+  auto winner = dispenso::when_any(taskSet, a, b);
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  const size_t idx = winner.get();
+  ASSERT_LT(idx, 2u);
+  EXPECT_TRUE(idx == 0 ? a.is_ready() : b.is_ready());
+}
+
+TEST(Future, WhenAnyTwoFuturesConcurrentTaskSetResolvesToVariadic) {
+  dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+  dispenso::Future<int> a([]() { return 1; }, taskSet);
+  dispenso::Future<int> b([]() { return 2; }, taskSet);
+
+  auto winner = dispenso::when_any(taskSet, a, b);
+  taskSet.wait();
+  EXPECT_TRUE(winner.is_ready());
+  const size_t idx = winner.get();
+  ASSERT_LT(idx, 2u);
+  EXPECT_TRUE(idx == 0 ? a.is_ready() : b.is_ready());
+}
+
+TEST(Future, WhenAllTwoFuturesResolvesToVariadic) {
+  dispenso::Future<int> a([]() { return 1; }, dispenso::globalThreadPool());
+  dispenso::Future<int> b([]() { return 2; }, dispenso::globalThreadPool());
+
+  auto both = dispenso::when_all(a, b).get();
+  EXPECT_EQ(std::get<0>(both).get(), 1);
+  EXPECT_EQ(std::get<1>(both).get(), 2);
+}
+
+// The iterator (first, last) overloads are selected for real iterators,
+// including the exactly-two-element case.
+TEST(Future, WhenAnyTwoElementIteratorRangeUsesIteratorOverload) {
+  std::vector<dispenso::Future<int>> futures;
+  futures.emplace_back([]() { return 1; }, dispenso::globalThreadPool());
+  futures.emplace_back([]() { return 2; }, dispenso::globalThreadPool());
+
+  auto winner = dispenso::when_any(futures.begin(), futures.end());
+  const size_t idx = winner.get();
+  ASSERT_LT(idx, futures.size());
+  EXPECT_TRUE(futures[idx].is_ready());
+}
+
 TEST(Future, WhenAllTreeBuildIters) {
   std::atomic<uint32_t> val(0);
   auto result = makeTreeIters(6, val);
