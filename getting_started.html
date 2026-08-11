@@ -408,7 +408,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a> pinSet;</div>
 <div class="line">pinSet.<a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">add</a>(0);</div>
 <div class="line">pinSet.<a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">bindCurrentThread</a>();</div>
-<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="cpu__set_8h_source.html#l00139">cpu_set.h:139</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="cpu__set_8h_source.html#l00163">cpu_set.h:163</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a2c9a3b23cd6b0dcbb4d18cdf0e21d19f"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">dispenso::CpuSet::l3CacheGroups</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS const std::vector&lt; CacheGroup &gt; &amp; l3CacheGroups()</div><div class="ttdoc">Returns the L3 cache sharing groups.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a319a6492af2bf8c553749301b7dc4021"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">dispenso::CpuSet::add</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void add(int32_t hardwareThread)</div><div class="ttdoc">Adds a single CPU to the set.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a67bc7ccfb41f52b96d827c2011b875f3"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">dispenso::CpuSet::availableCount</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS int32_t availableCount()</div><div class="ttdoc">Returns the number of hardware threads available to this process.</div></div>
@@ -416,7 +416,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="acpu__set_8h_html"><div class="ttname"><a href="cpu__set_8h.html">cpu_set.h</a></div></div>
 </div><!-- fragment --><p>See <a href="../examples/cpu_set_example.cpp">full example</a>.</p>
 <p>Key points:</p><ul>
-<li>Works on Linux (full support), Windows (full support), macOS (topology only)</li>
+<li>Works on Linux (full support), Windows (full support), FreeBSD (full support), macOS (topology only)</li>
 <li><code>CpuSet::l2CacheGroups()</code> / <code>l3CacheGroups()</code> return CPU groups that share cache levels</li>
 <li>Use for NUMA-aware thread placement and cache-friendly scheduling</li>
 </ul>

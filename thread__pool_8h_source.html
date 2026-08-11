@@ -158,7 +158,7 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>} <span class="comment">// namespace detail</span></div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="preprocessor">#if !defined(DISPENSO_WAKEUP_ENABLE)</span></div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="preprocessor">#if defined(_WIN32) || defined(__linux__) || defined(__MACH__)</span></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="preprocessor">#if defined(_WIN32) || defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__)</span></div>
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="preprocessor">#define DISPENSO_WAKEUP_ENABLE 1</span></div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span><span class="preprocessor">#define DISPENSO_WAKEUP_ENABLE 0</span></div>
@@ -487,616 +487,619 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00463" name="l00463"></a><span class="lineno">  463</span>  <span class="comment">// replaces the expensive try_dequeue CAS when the queue is known empty,</span></div>
 <div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span>  <span class="comment">// eliminating CAS contention from idle spinning threads. No atomic RMW —</span></div>
 <div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span>  <span class="comment">// only plain stores and loads — so no contention on the flag itself.</span></div>
-<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span>  <span class="comment">// Brief false-negatives (flag cleared while an enqueue is in flight) are</span></div>
-<div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span>  <span class="comment">// bounded to one spin iteration and self-correcting.</span></div>
-<div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;bool&gt; centralQueueNonEmpty_{<span class="keyword">false</span>};</div>
-<div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span> </div>
-<div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;ssize_t&gt; workRemaining_{0};</div>
-<div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span> </div>
-<div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;bool&gt; enableEpochWaiter_{kDefaultWakeupEnable};</div>
-<div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span>  std::atomic&lt;uint32_t&gt; sleepLengthUs_{kDefaultSleepLenUs};</div>
-<div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span> </div>
-<div class="line"><a id="l00475" name="l00475"></a><span class="lineno">  475</span>  <span class="comment">// Per-thread wake infrastructure: EpochWaiters, sleep masks, budget cascade.</span></div>
-<div class="line"><a id="l00476" name="l00476"></a><span class="lineno">  476</span>  <span class="comment">// Atomic pointer — schedule paths load with relaxed ordering.</span></div>
-<div class="line"><a id="l00477" name="l00477"></a><span class="lineno">  477</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00478" name="l00478"></a><span class="lineno">  478</span>  <span class="comment">// Retired PoolWakeState objects are kept alive for the lifetime of the pool</span></div>
-<div class="line"><a id="l00479" name="l00479"></a><span class="lineno">  479</span>  <span class="comment">// (grow-only graveyard); they are intentionally NOT freed at resize. schedule()</span></div>
-<div class="line"><a id="l00480" name="l00480"></a><span class="lineno">  480</span>  <span class="comment">// reads wakeState_ lock-free (no threadsMutex_) and dereferences it (e.g.</span></div>
-<div class="line"><a id="l00481" name="l00481"></a><span class="lineno">  481</span>  <span class="comment">// ws-&gt;totalSleeping()), so freeing a retired generation while a concurrent</span></div>
-<div class="line"><a id="l00482" name="l00482"></a><span class="lineno">  482</span>  <span class="comment">// schedule() may still hold that pointer is a use-after-free. resize() joins all</span></div>
-<div class="line"><a id="l00483" name="l00483"></a><span class="lineno">  483</span>  <span class="comment">// *pool* threads before swapping wakeState_, but external (non-pool) schedule()</span></div>
-<div class="line"><a id="l00484" name="l00484"></a><span class="lineno">  484</span>  <span class="comment">// callers race the swap, so a retired object must outlive any such in-flight</span></div>
-<div class="line"><a id="l00485" name="l00485"></a><span class="lineno">  485</span>  <span class="comment">// reader. Without a safe-reclamation protocol, never freeing during operation is</span></div>
-<div class="line"><a id="l00486" name="l00486"></a><span class="lineno">  486</span>  <span class="comment">// the only correct option (an earlier bounded variant that freed old</span></div>
-<div class="line"><a id="l00487" name="l00487"></a><span class="lineno">  487</span>  <span class="comment">// generations was reverted after TSAN caught exactly this free-vs-read race).</span></div>
-<div class="line"><a id="l00488" name="l00488"></a><span class="lineno">  488</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00489" name="l00489"></a><span class="lineno">  489</span>  <span class="comment">// Cost: one PoolWakeState (~O(numThreads)) is retained per resize() until the</span></div>
-<div class="line"><a id="l00490" name="l00490"></a><span class="lineno">  490</span>  <span class="comment">// pool is destroyed. resize() is expected to be rare, so this is bounded in</span></div>
-<div class="line"><a id="l00491" name="l00491"></a><span class="lineno">  491</span>  <span class="comment">// practice; only a process performing hundreds of thousands of resizes would</span></div>
-<div class="line"><a id="l00492" name="l00492"></a><span class="lineno">  492</span>  <span class="comment">// accumulate meaningful memory. See docs/design/roadmap.md (&quot;Bounded</span></div>
-<div class="line"><a id="l00493" name="l00493"></a><span class="lineno">  493</span>  <span class="comment">// PoolWakeState reclamation&quot;) for the planned asymmetric-fence / hazard-pointer</span></div>
-<div class="line"><a id="l00494" name="l00494"></a><span class="lineno">  494</span>  <span class="comment">// scheme to bound this without taxing the schedule() hot path.</span></div>
-<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>  std::atomic&lt;detail::PoolWakeState*&gt; wakeState_{<span class="keyword">nullptr</span>};</div>
-<div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>  std::vector&lt;decltype(detail::makeAligned&lt;detail::PoolWakeState&gt;(0))&gt; wakeStateGraveyard_;</div>
-<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span> </div>
-<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>  <span class="comment">// Per-thread rings for fork-join scheduling. ConcurrentObjectArena provides</span></div>
-<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span>  <span class="comment">// stable pointers (grow-only, never freed), eliminating the need for a resize</span></div>
-<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>  <span class="comment">// lock on the schedule path. Threads check own ring first in the steal order.</span></div>
-<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>  ConcurrentObjectArena&lt;Ring&gt; rings_;</div>
-<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>  std::atomic&lt;size_t&gt; numRings_{0};</div>
-<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span> </div>
-<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>  <span class="comment">// Steal rings for non-locality work distribution.</span></div>
-<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span>  <span class="comment">// Populated by schedule() (both proactive wake and no-sleeper paths).</span></div>
-<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>  <span class="comment">// Consumed in tryFindAndExecuteWork (third tier) and outer thread loop.</span></div>
-<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>  <span class="comment">// stealRingSharing_: threads per steal ring (default kStealRingSharing).</span></div>
-<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>  <span class="comment">//   Ring capacity = kStealSlotsPerThread * kStealRingSharing.</span></div>
-<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>  ConcurrentObjectArena&lt;StealRing&gt; stealRings_;</div>
-<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>  std::atomic&lt;size_t&gt; numStealRings_{0};</div>
-<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span>  <span class="keywordtype">size_t</span> stealRingSharing_{kStealRingSharing};</div>
-<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span> </div>
-<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>  <span class="comment">// Sparse hint for which steal rings have work. Bit i set means</span></div>
-<div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>  <span class="comment">// stealRings_[i] may have work. Set on push (idempotent fetch_or); lazily</span></div>
-<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>  <span class="comment">// cleared by consumers that find a ring empty after popping or that</span></div>
-<div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span>  <span class="comment">// observe an empty ring at scan time. False positives are benign (just a</span></div>
-<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>  <span class="comment">// wasted try_pop); false negatives are not possible because every</span></div>
-<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  <span class="comment">// successful push sets the bit before the work is observable.</span></div>
-<div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  <span class="comment">// Pools with &gt;64 steal rings (512+ threads at kStealRingSharing=8) degrade</span></div>
-<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>  <span class="comment">// gracefully: rings beyond index 63 still receive work via try_push, but</span></div>
-<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>  <span class="comment">// aren&#39;t tracked in this bitmask, so cross-ring stealing falls back to</span></div>
-<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>  <span class="comment">// local-ring-only polling for those rings.</span></div>
-<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMaxStealRings = 64;</div>
-<div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;uint64_t&gt; stealRingsWithWork_{0};</div>
-<div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span> </div>
-<div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span>  <span class="comment">// Threads not currently in their inner work loop (spinning or sleeping).</span></div>
-<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span>  <span class="comment">// Incremented when a thread exhausts work (exits inner loop with nothing found).</span></div>
-<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  <span class="comment">// Decremented when a thread finds work (enters inner loop) or at thread exit.</span></div>
-<div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span>  <span class="comment">// Updated at burst boundaries (not per-task), so contention is low.</span></div>
-<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span>  <span class="comment">// Used by schedule paths to skip wake calls when spinners exist.</span></div>
-<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; numNotWorking_{0};</div>
-<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span> </div>
-<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span><span class="preprocessor">#if defined DISPENSO_DEBUG</span></div>
-<div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;ssize_t&gt; outstandingTaskSets_{0};</div>
-<div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span><span class="preprocessor">#endif </span><span class="comment">// DISPENSO_DEBUG</span></div>
+<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span>  <span class="comment">// A clear can race an enqueue and drop it: the clearing worker decides the</span></div>
+<div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span>  <span class="comment">// queue is empty, a producer enqueues and sets the flag, and the clear then</span></div>
+<div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span>  <span class="comment">// overwrites that store. The task stays queued with the flag reading empty,</span></div>
+<div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span>  <span class="comment">// and no spinning worker will look at the queue again. Recovery is the</span></div>
+<div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span>  <span class="comment">// timeout-wake probe in threadLoopImpl, which bounds the delay to one sleep</span></div>
+<div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span>  <span class="comment">// period; do not treat a false negative as self-correcting on its own.</span></div>
+<div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;bool&gt; centralQueueNonEmpty_{<span class="keyword">false</span>};</div>
+<div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span> </div>
+<div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;ssize_t&gt; workRemaining_{0};</div>
+<div class="line"><a id="l00475" name="l00475"></a><span class="lineno">  475</span> </div>
+<div class="line"><a id="l00476" name="l00476"></a><span class="lineno">  476</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;bool&gt; enableEpochWaiter_{kDefaultWakeupEnable};</div>
+<div class="line"><a id="l00477" name="l00477"></a><span class="lineno">  477</span>  std::atomic&lt;uint32_t&gt; sleepLengthUs_{kDefaultSleepLenUs};</div>
+<div class="line"><a id="l00478" name="l00478"></a><span class="lineno">  478</span> </div>
+<div class="line"><a id="l00479" name="l00479"></a><span class="lineno">  479</span>  <span class="comment">// Per-thread wake infrastructure: EpochWaiters, sleep masks, budget cascade.</span></div>
+<div class="line"><a id="l00480" name="l00480"></a><span class="lineno">  480</span>  <span class="comment">// Atomic pointer — schedule paths load with relaxed ordering.</span></div>
+<div class="line"><a id="l00481" name="l00481"></a><span class="lineno">  481</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00482" name="l00482"></a><span class="lineno">  482</span>  <span class="comment">// Retired PoolWakeState objects are kept alive for the lifetime of the pool</span></div>
+<div class="line"><a id="l00483" name="l00483"></a><span class="lineno">  483</span>  <span class="comment">// (grow-only graveyard); they are intentionally NOT freed at resize. schedule()</span></div>
+<div class="line"><a id="l00484" name="l00484"></a><span class="lineno">  484</span>  <span class="comment">// reads wakeState_ lock-free (no threadsMutex_) and dereferences it (e.g.</span></div>
+<div class="line"><a id="l00485" name="l00485"></a><span class="lineno">  485</span>  <span class="comment">// ws-&gt;totalSleeping()), so freeing a retired generation while a concurrent</span></div>
+<div class="line"><a id="l00486" name="l00486"></a><span class="lineno">  486</span>  <span class="comment">// schedule() may still hold that pointer is a use-after-free. resize() joins all</span></div>
+<div class="line"><a id="l00487" name="l00487"></a><span class="lineno">  487</span>  <span class="comment">// *pool* threads before swapping wakeState_, but external (non-pool) schedule()</span></div>
+<div class="line"><a id="l00488" name="l00488"></a><span class="lineno">  488</span>  <span class="comment">// callers race the swap, so a retired object must outlive any such in-flight</span></div>
+<div class="line"><a id="l00489" name="l00489"></a><span class="lineno">  489</span>  <span class="comment">// reader. Without a safe-reclamation protocol, never freeing during operation is</span></div>
+<div class="line"><a id="l00490" name="l00490"></a><span class="lineno">  490</span>  <span class="comment">// the only correct option (an earlier bounded variant that freed old</span></div>
+<div class="line"><a id="l00491" name="l00491"></a><span class="lineno">  491</span>  <span class="comment">// generations was reverted after TSAN caught exactly this free-vs-read race).</span></div>
+<div class="line"><a id="l00492" name="l00492"></a><span class="lineno">  492</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00493" name="l00493"></a><span class="lineno">  493</span>  <span class="comment">// Cost: one PoolWakeState (~O(numThreads)) is retained per resize() until the</span></div>
+<div class="line"><a id="l00494" name="l00494"></a><span class="lineno">  494</span>  <span class="comment">// pool is destroyed. resize() is expected to be rare, so this is bounded in</span></div>
+<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>  <span class="comment">// practice; only a process performing hundreds of thousands of resizes would</span></div>
+<div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>  <span class="comment">// accumulate meaningful memory. See docs/design/roadmap.md (&quot;Bounded</span></div>
+<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span>  <span class="comment">// PoolWakeState reclamation&quot;) for the planned asymmetric-fence / hazard-pointer</span></div>
+<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>  <span class="comment">// scheme to bound this without taxing the schedule() hot path.</span></div>
+<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span>  std::atomic&lt;detail::PoolWakeState*&gt; wakeState_{<span class="keyword">nullptr</span>};</div>
+<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>  std::vector&lt;decltype(detail::makeAligned&lt;detail::PoolWakeState&gt;(0))&gt; wakeStateGraveyard_;</div>
+<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span> </div>
+<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>  <span class="comment">// Per-thread rings for fork-join scheduling. ConcurrentObjectArena provides</span></div>
+<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span>  <span class="comment">// stable pointers (grow-only, never freed), eliminating the need for a resize</span></div>
+<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>  <span class="comment">// lock on the schedule path. Threads check own ring first in the steal order.</span></div>
+<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span>  ConcurrentObjectArena&lt;Ring&gt; rings_;</div>
+<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>  std::atomic&lt;size_t&gt; numRings_{0};</div>
+<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span> </div>
+<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>  <span class="comment">// Steal rings for non-locality work distribution.</span></div>
+<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>  <span class="comment">// Populated by schedule() (both proactive wake and no-sleeper paths).</span></div>
+<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>  <span class="comment">// Consumed in tryFindAndExecuteWork (third tier) and outer thread loop.</span></div>
+<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span>  <span class="comment">// stealRingSharing_: threads per steal ring (default kStealRingSharing).</span></div>
+<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span>  <span class="comment">//   Ring capacity = kStealSlotsPerThread * kStealRingSharing.</span></div>
+<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>  ConcurrentObjectArena&lt;StealRing&gt; stealRings_;</div>
+<div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>  std::atomic&lt;size_t&gt; numStealRings_{0};</div>
+<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>  <span class="keywordtype">size_t</span> stealRingSharing_{kStealRingSharing};</div>
+<div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span> </div>
+<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>  <span class="comment">// Sparse hint for which steal rings have work. Bit i set means</span></div>
+<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  <span class="comment">// stealRings_[i] may have work. Set on push (idempotent fetch_or); lazily</span></div>
+<div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  <span class="comment">// cleared by consumers that find a ring empty after popping or that</span></div>
+<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>  <span class="comment">// observe an empty ring at scan time. False positives are benign (just a</span></div>
+<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>  <span class="comment">// wasted try_pop); false negatives are not possible because every</span></div>
+<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>  <span class="comment">// successful push sets the bit before the work is observable.</span></div>
+<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  <span class="comment">// Pools with &gt;64 steal rings (512+ threads at kStealRingSharing=8) degrade</span></div>
+<div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>  <span class="comment">// gracefully: rings beyond index 63 still receive work via try_push, but</span></div>
+<div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>  <span class="comment">// aren&#39;t tracked in this bitmask, so cross-ring stealing falls back to</span></div>
+<div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span>  <span class="comment">// local-ring-only polling for those rings.</span></div>
+<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMaxStealRings = 64;</div>
+<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;uint64_t&gt; stealRingsWithWork_{0};</div>
+<div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span> </div>
+<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span>  <span class="comment">// Threads not currently in their inner work loop (spinning or sleeping).</span></div>
+<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span>  <span class="comment">// Incremented when a thread exhausts work (exits inner loop with nothing found).</span></div>
+<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span>  <span class="comment">// Decremented when a thread finds work (enters inner loop) or at thread exit.</span></div>
+<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span>  <span class="comment">// Updated at burst boundaries (not per-task), so contention is low.</span></div>
+<div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span>  <span class="comment">// Used by schedule paths to skip wake calls when spinners exist.</span></div>
+<div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;int32_t&gt; numNotWorking_{0};</div>
 <div class="line"><a id="l00537" name="l00537"></a><span class="lineno">  537</span> </div>
-<div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span>  <span class="keyword">friend</span> <span class="keyword">class </span>ConcurrentTaskSet;</div>
-<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keyword">friend</span> <span class="keyword">class </span>TaskSet;</div>
-<div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span>  <span class="keyword">friend</span> <span class="keyword">class </span>TaskSetBase;</div>
+<div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span><span class="preprocessor">#if defined DISPENSO_DEBUG</span></div>
+<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;ssize_t&gt; outstandingTaskSets_{0};</div>
+<div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span><span class="preprocessor">#endif </span><span class="comment">// DISPENSO_DEBUG</span></div>
 <div class="line"><a id="l00541" name="l00541"></a><span class="lineno">  541</span> </div>
-<div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
-<div class="line"><a id="l00543" name="l00543"></a><span class="lineno">  543</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureBase;</div>
-<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
-<div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureImplBase;</div>
-<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span>};</div>
+<div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span>  <span class="keyword">friend</span> <span class="keyword">class </span>ConcurrentTaskSet;</div>
+<div class="line"><a id="l00543" name="l00543"></a><span class="lineno">  543</span>  <span class="keyword">friend</span> <span class="keyword">class </span>TaskSet;</div>
+<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>  <span class="keyword">friend</span> <span class="keyword">class </span>TaskSetBase;</div>
+<div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span> </div>
+<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
+<div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureBase;</div>
+<div class="line"><a id="l00548" name="l00548"></a><span class="lineno">  548</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Result&gt;</div>
+<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>  <span class="keyword">friend</span> <span class="keyword">class </span>detail::FutureImplBase;</div>
+<div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span>};</div>
 </div>
-<div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span> </div>
-<div class="line"><a id="l00553" name="l00553"></a><span class="lineno"><a class="line" href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">  553</a></span>DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>&amp; <a class="code hl_function" href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">globalThreadPool</a>();</div>
-<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span> </div>
-<div class="line"><a id="l00560" name="l00560"></a><span class="lineno"><a class="line" href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">  560</a></span>DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">resizeGlobalThreadPool</a>(<span class="keywordtype">size_t</span> numThreads);</div>
-<div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span> </div>
-<div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span><span class="comment">// ----------------------------- Implementation details -------------------------------------</span></div>
-<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span> </div>
-<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span>DISPENSO_INLINE <span class="keywordtype">bool</span> ThreadPool::shouldRunInline() {</div>
-<div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span>  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>  quickLoadFactor += quickLoadFactor / 2;</div>
-<div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>  <span class="keywordflow">return</span> (detail::PerPoolPerThreadInfo::isPoolRecursive(<span class="keyword">this</span>) &amp;&amp; curWork &gt; quickLoadFactor) ||</div>
-<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>      (curWork &gt; poolLoadFactor_.load(std::memory_order_relaxed));</div>
-<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>}</div>
-<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span> </div>
-<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span><span class="keyword">template</span> &lt;<span class="keywordtype">bool</span> kPlaced, <span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::forceEnqueue(F&amp;&amp; f, moodycamel::ProducerToken* token) {</div>
-<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>  <span class="keywordflow">if</span> (!numThreads_.load(std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>    f();</div>
-<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span>  }</div>
-<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
-<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>  <span class="keywordflow">if</span> (kPlaced) {</div>
-<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>    scheduleImplPlaced({std::forward&lt;F&gt;(f)}, token);</div>
-<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>    scheduleImpl({std::forward&lt;F&gt;(f)}, token);</div>
-<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>  }</div>
-<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>}</div>
-<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span> </div>
-<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00588" data-start="{" data-end="}">
-<div class="line"><a id="l00588" name="l00588"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">  588</a></span>inline <span class="keywordtype">void</span> <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>::schedule(F&amp;&amp; f) {</div>
-<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
-<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>    f();</div>
-<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>    schedule(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>  }</div>
-<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>}</div>
+<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span> </div>
+<div class="line"><a id="l00557" name="l00557"></a><span class="lineno"><a class="line" href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">  557</a></span>DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>&amp; <a class="code hl_function" href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">globalThreadPool</a>();</div>
+<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span> </div>
+<div class="line"><a id="l00564" name="l00564"></a><span class="lineno"><a class="line" href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">  564</a></span>DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">resizeGlobalThreadPool</a>(<span class="keywordtype">size_t</span> numThreads);</div>
+<div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span> </div>
+<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span><span class="comment">// ----------------------------- Implementation details -------------------------------------</span></div>
+<div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span> </div>
+<div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>DISPENSO_INLINE <span class="keywordtype">bool</span> ThreadPool::shouldRunInline() {</div>
+<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>  ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>  ssize_t quickLoadFactor = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>  quickLoadFactor += quickLoadFactor / 2;</div>
+<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>  <span class="keywordflow">return</span> (detail::PerPoolPerThreadInfo::isPoolRecursive(<span class="keyword">this</span>) &amp;&amp; curWork &gt; quickLoadFactor) ||</div>
+<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>      (curWork &gt; poolLoadFactor_.load(std::memory_order_relaxed));</div>
+<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>}</div>
+<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span> </div>
+<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span><span class="keyword">template</span> &lt;<span class="keywordtype">bool</span> kPlaced, <span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::forceEnqueue(F&amp;&amp; f, moodycamel::ProducerToken* token) {</div>
+<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span>  <span class="keywordflow">if</span> (!numThreads_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>    f();</div>
+<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>  }</div>
+<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>  workRemaining_.fetch_add(1, std::memory_order_release);</div>
+<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>  <span class="keywordflow">if</span> (kPlaced) {</div>
+<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>    scheduleImplPlaced({std::forward&lt;F&gt;(f)}, token);</div>
+<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span>    scheduleImpl({std::forward&lt;F&gt;(f)}, token);</div>
+<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>  }</div>
+<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>}</div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span> </div>
+<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00592" data-start="{" data-end="}">
+<div class="line"><a id="l00592" name="l00592"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">  592</a></span>inline <span class="keywordtype">void</span> <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>::schedule(F&amp;&amp; f) {</div>
+<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
+<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>    f();</div>
+<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>    schedule(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>  }</div>
+<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>}</div>
 </div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span> </div>
-<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00598" data-start="{" data-end="}">
-<div class="line"><a id="l00598" name="l00598"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9">  598</a></span>inline <span class="keywordtype">void</span> <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>::schedule(F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>  <span class="keyword">auto</span>* token =</div>
-<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>      <span class="keyword">static_cast&lt;</span>moodycamel::ProducerToken*<span class="keyword">&gt;</span>(detail::PerPoolPerThreadInfo::producer(<span class="keyword">this</span>));</div>
-<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>  forceEnqueue&lt;false&gt;(std::forward&lt;F&gt;(f), token);</div>
-<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>}</div>
+<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span> </div>
+<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00602" data-start="{" data-end="}">
+<div class="line"><a id="l00602" name="l00602"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#a56a9388c1cfc7903b612b57c7c4f40c9">  602</a></span>inline <span class="keywordtype">void</span> <a class="code hl_class" href="classdispenso_1_1_thread_pool.html">ThreadPool</a>::schedule(F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>  <span class="keyword">auto</span>* token =</div>
+<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>      <span class="keyword">static_cast&lt;</span>moodycamel::ProducerToken*<span class="keyword">&gt;</span>(detail::PerPoolPerThreadInfo::producer(<span class="keyword">this</span>));</div>
+<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>  forceEnqueue&lt;false&gt;(std::forward&lt;F&gt;(f), token);</div>
+<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>}</div>
 </div>
-<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span> </div>
-<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
-<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
-<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>    f();</div>
-<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>    <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">schedule</a>(token, std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span>  }</div>
-<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>}</div>
-<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span> </div>
-<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>  forceEnqueue&lt;false&gt;(std::forward&lt;F&gt;(f), &amp;token);</div>
-<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>}</div>
-<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span> </div>
-<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(F&amp;&amp; f) {</div>
-<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
-<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span>    f();</div>
-<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span>    schedulePlaced(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>  }</div>
-<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>}</div>
-<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span> </div>
-<div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span>  <span class="keyword">auto</span>* token =</div>
-<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span>      <span class="keyword">static_cast&lt;</span>moodycamel::ProducerToken*<span class="keyword">&gt;</span>(detail::PerPoolPerThreadInfo::producer(<span class="keyword">this</span>));</div>
-<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>  forceEnqueue&lt;true&gt;(std::forward&lt;F&gt;(f), token);</div>
-<div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span>}</div>
-<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span> </div>
-<div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
-<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
-<div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span>    f();</div>
-<div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span>    schedulePlaced(token, std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00642" name="l00642"></a><span class="lineno">  642</span>  }</div>
-<div class="line"><a id="l00643" name="l00643"></a><span class="lineno">  643</span>}</div>
-<div class="line"><a id="l00644" name="l00644"></a><span class="lineno">  644</span> </div>
-<div class="line"><a id="l00645" name="l00645"></a><span class="lineno">  645</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00646" name="l00646"></a><span class="lineno">  646</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
-<div class="line"><a id="l00647" name="l00647"></a><span class="lineno">  647</span>  forceEnqueue&lt;true&gt;(std::forward&lt;F&gt;(f), &amp;token);</div>
-<div class="line"><a id="l00648" name="l00648"></a><span class="lineno">  648</span>}</div>
-<div class="line"><a id="l00649" name="l00649"></a><span class="lineno">  649</span> </div>
-<div class="line"><a id="l00650" name="l00650"></a><span class="lineno">  650</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token) {</div>
-<div class="line"><a id="l00651" name="l00651"></a><span class="lineno">  651</span>  enqueueToCentralQueue(std::move(task), token);</div>
-<div class="line"><a id="l00652" name="l00652"></a><span class="lineno">  652</span> </div>
-<div class="line"><a id="l00653" name="l00653"></a><span class="lineno">  653</span>  <span class="comment">// Wake when pending work exceeds awake threads. Each schedule()</span></div>
-<div class="line"><a id="l00654" name="l00654"></a><span class="lineno">  654</span>  <span class="comment">// call wakes at most one sleeper — matching baseline&#39;s wake-per-task</span></div>
-<div class="line"><a id="l00655" name="l00655"></a><span class="lineno">  655</span>  <span class="comment">// cadence but using per-thread futexes. The one-at-a-time approach</span></div>
-<div class="line"><a id="l00656" name="l00656"></a><span class="lineno">  656</span>  <span class="comment">// avoids thundering herd on the central queue while still waking</span></div>
-<div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>  <span class="comment">// threads proportionally to submitted work over a burst.</span></div>
-<div class="line"><a id="l00658" name="l00658"></a><span class="lineno">  658</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00659" name="l00659"></a><span class="lineno">  659</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
-<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
-<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
-<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>      ssize_t pending = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>      ssize_t numT = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>      ssize_t awake = numT - <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(sleeping);</div>
-<div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span>      <span class="keywordflow">if</span> (pending &gt; awake) {</div>
-<div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span>        ws-&gt;claimAndWakeOne();</div>
-<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span>      }</div>
-<div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span>    }</div>
-<div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span>  }</div>
-<div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span>}</div>
-<div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span> </div>
-<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleImplPlaced(</div>
-<div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span>    OnceFunction task,</div>
-<div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>    moodycamel::ProducerToken* token) {</div>
-<div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span>  <span class="comment">// Proactive wake: claim a sleeping thread and push to its steal ring.</span></div>
-<div class="line"><a id="l00676" name="l00676"></a><span class="lineno">  676</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00677" name="l00677"></a><span class="lineno">  677</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
-<div class="line"><a id="l00678" name="l00678"></a><span class="lineno">  678</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
-<div class="line"><a id="l00679" name="l00679"></a><span class="lineno">  679</span>    <span class="keywordflow">if</span> (sleeping &gt; 0 &amp;&amp;</div>
-<div class="line"><a id="l00680" name="l00680"></a><span class="lineno">  680</span>        numNotWorking_.load(std::memory_order_relaxed) - sleeping &lt; kSpinnerWakeThreshold) {</div>
-<div class="line"><a id="l00681" name="l00681"></a><span class="lineno">  681</span>      int32_t wokeThread = ws-&gt;claimAndWakeOne();</div>
-<div class="line"><a id="l00682" name="l00682"></a><span class="lineno">  682</span>      <span class="keywordflow">if</span> (wokeThread &gt;= 0) {</div>
-<div class="line"><a id="l00683" name="l00683"></a><span class="lineno">  683</span>        <span class="keywordtype">size_t</span> stealIdx = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(wokeThread) / stealRingSharing_;</div>
-<div class="line"><a id="l00684" name="l00684"></a><span class="lineno">  684</span>        <span class="keywordflow">if</span> (stealIdx &lt; numStealRings_.load(std::memory_order_relaxed) &amp;&amp;</div>
-<div class="line"><a id="l00685" name="l00685"></a><span class="lineno">  685</span>            stealRings_[stealIdx].try_push(std::move(task))) {</div>
-<div class="line"><a id="l00686" name="l00686"></a><span class="lineno">  686</span>          <span class="keywordflow">if</span> (stealIdx &lt; kMaxStealRings) {</div>
-<div class="line"><a id="l00687" name="l00687"></a><span class="lineno">  687</span>            stealRingsWithWork_.fetch_or(uint64_t{1} &lt;&lt; stealIdx, std::memory_order_release);</div>
-<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span>          }</div>
-<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span>          <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span>        }</div>
-<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span>      }</div>
-<div class="line"><a id="l00692" name="l00692"></a><span class="lineno">  692</span>    }</div>
-<div class="line"><a id="l00693" name="l00693"></a><span class="lineno">  693</span>  }</div>
-<div class="line"><a id="l00694" name="l00694"></a><span class="lineno">  694</span> </div>
-<div class="line"><a id="l00695" name="l00695"></a><span class="lineno">  695</span>  <span class="comment">// Central queue fallback.</span></div>
-<div class="line"><a id="l00696" name="l00696"></a><span class="lineno">  696</span>  enqueueToCentralQueue(std::move(task), token);</div>
-<div class="line"><a id="l00697" name="l00697"></a><span class="lineno">  697</span> </div>
-<div class="line"><a id="l00698" name="l00698"></a><span class="lineno">  698</span>  conditionallyWake();</div>
-<div class="line"><a id="l00699" name="l00699"></a><span class="lineno">  699</span>}</div>
-<div class="line"><a id="l00700" name="l00700"></a><span class="lineno">  700</span> </div>
-<div class="line"><a id="l00701" name="l00701"></a><span class="lineno">  701</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNext() {</div>
-<div class="line"><a id="l00702" name="l00702"></a><span class="lineno">  702</span>  OnceFunction next;</div>
-<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00704" name="l00704"></a><span class="lineno">  704</span>  <span class="keywordtype">bool</span> dequeued = work_.try_dequeue(next);</div>
-<div class="line"><a id="l00705" name="l00705"></a><span class="lineno">  705</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00706" name="l00706"></a><span class="lineno">  706</span>  <span class="keywordflow">if</span> (dequeued) {</div>
-<div class="line"><a id="l00707" name="l00707"></a><span class="lineno">  707</span>    executeNext(std::move(next));</div>
-<div class="line"><a id="l00708" name="l00708"></a><span class="lineno">  708</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00709" name="l00709"></a><span class="lineno">  709</span>  }</div>
-<div class="line"><a id="l00710" name="l00710"></a><span class="lineno">  710</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span>}</div>
-<div class="line"><a id="l00712" name="l00712"></a><span class="lineno">  712</span> </div>
-<div class="line"><a id="l00713" name="l00713"></a><span class="lineno">  713</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken&amp; token) {</div>
-<div class="line"><a id="l00714" name="l00714"></a><span class="lineno">  714</span>  OnceFunction next;</div>
-<div class="line"><a id="l00715" name="l00715"></a><span class="lineno">  715</span>  <span class="keywordflow">if</span> (work_.try_dequeue_from_producer(token, next)) {</div>
-<div class="line"><a id="l00716" name="l00716"></a><span class="lineno">  716</span>    executeNext(std::move(next));</div>
-<div class="line"><a id="l00717" name="l00717"></a><span class="lineno">  717</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00718" name="l00718"></a><span class="lineno">  718</span>  }</div>
-<div class="line"><a id="l00719" name="l00719"></a><span class="lineno">  719</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00720" name="l00720"></a><span class="lineno">  720</span>}</div>
-<div class="line"><a id="l00721" name="l00721"></a><span class="lineno">  721</span> </div>
-<div class="line"><a id="l00722" name="l00722"></a><span class="lineno">  722</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromRings(<span class="keywordtype">size_t</span>&amp; startRing) {</div>
-<div class="line"><a id="l00723" name="l00723"></a><span class="lineno">  723</span>  OnceFunction task;</div>
-<div class="line"><a id="l00724" name="l00724"></a><span class="lineno">  724</span>  <span class="comment">// Acquire pairs with resizeLocked&#39;s numRings_.store(release), which is published</span></div>
-<div class="line"><a id="l00725" name="l00725"></a><span class="lineno">  725</span>  <span class="comment">// only after the new rings are fully constructed in the arena. A relaxed load</span></div>
-<div class="line"><a id="l00726" name="l00726"></a><span class="lineno">  726</span>  <span class="comment">// could observe the grown count without the rings&#39; construction being visible,</span></div>
-<div class="line"><a id="l00727" name="l00727"></a><span class="lineno">  727</span>  <span class="comment">// letting us index a not-yet-constructed ring (UB; SIGILL on weak-memory targets</span></div>
-<div class="line"><a id="l00728" name="l00728"></a><span class="lineno">  728</span>  <span class="comment">// like arm64).</span></div>
-<div class="line"><a id="l00729" name="l00729"></a><span class="lineno">  729</span>  <span class="keywordtype">size_t</span> n = numRings_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00730" name="l00730"></a><span class="lineno">  730</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; n; ++i) {</div>
-<div class="line"><a id="l00731" name="l00731"></a><span class="lineno">  731</span>    <span class="keywordtype">size_t</span> idx = (startRing + i) % n;</div>
-<div class="line"><a id="l00732" name="l00732"></a><span class="lineno">  732</span>    <span class="keywordflow">if</span> (rings_[idx].try_pop(task)) {</div>
-<div class="line"><a id="l00733" name="l00733"></a><span class="lineno">  733</span>      startRing = idx;</div>
-<div class="line"><a id="l00734" name="l00734"></a><span class="lineno">  734</span>      executeNext(std::move(task));</div>
-<div class="line"><a id="l00735" name="l00735"></a><span class="lineno">  735</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00736" name="l00736"></a><span class="lineno">  736</span>    }</div>
-<div class="line"><a id="l00737" name="l00737"></a><span class="lineno">  737</span>  }</div>
-<div class="line"><a id="l00738" name="l00738"></a><span class="lineno">  738</span>  startRing = 0;</div>
-<div class="line"><a id="l00739" name="l00739"></a><span class="lineno">  739</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00740" name="l00740"></a><span class="lineno">  740</span>}</div>
-<div class="line"><a id="l00741" name="l00741"></a><span class="lineno">  741</span> </div>
-<div class="line"><a id="l00742" name="l00742"></a><span class="lineno">  742</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::executeNext(OnceFunction next) {</div>
-<div class="line"><a id="l00743" name="l00743"></a><span class="lineno">  743</span>  next();</div>
-<div class="line"><a id="l00744" name="l00744"></a><span class="lineno">  744</span>  workRemaining_.fetch_add(-1, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00745" name="l00745"></a><span class="lineno">  745</span>}</div>
-<div class="line"><a id="l00746" name="l00746"></a><span class="lineno">  746</span> </div>
-<div class="line"><a id="l00747" name="l00747"></a><span class="lineno">  747</span>DISPENSO_INLINE <span class="keywordtype">bool</span> ThreadPool::tryFindAndExecuteWork(</div>
-<div class="line"><a id="l00748" name="l00748"></a><span class="lineno">  748</span>    Ring&amp; myRing,</div>
-<div class="line"><a id="l00749" name="l00749"></a><span class="lineno">  749</span>    StealRing&amp; myStealRing,</div>
-<div class="line"><a id="l00750" name="l00750"></a><span class="lineno">  750</span>    <span class="keywordtype">size_t</span> myStealIdx,</div>
-<div class="line"><a id="l00751" name="l00751"></a><span class="lineno">  751</span>    moodycamel::ConsumerToken&amp; ctoken,</div>
-<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span>    <span class="keywordtype">bool</span>&amp; preferRing,</div>
-<div class="line"><a id="l00753" name="l00753"></a><span class="lineno">  753</span>    <span class="keywordtype">int</span> failCount,</div>
-<div class="line"><a id="l00754" name="l00754"></a><span class="lineno">  754</span>    <span class="keywordtype">bool</span> checkQueue) {</div>
-<div class="line"><a id="l00755" name="l00755"></a><span class="lineno">  755</span>  OnceFunction task;</div>
-<div class="line"><a id="l00756" name="l00756"></a><span class="lineno">  756</span> </div>
-<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span>  <span class="keywordflow">if</span> (preferRing) {</div>
-<div class="line"><a id="l00758" name="l00758"></a><span class="lineno">  758</span>    <span class="keywordtype">bool</span> fromRing = myRing.try_pop(task);</div>
-<div class="line"><a id="l00759" name="l00759"></a><span class="lineno">  759</span>    <span class="keywordflow">if</span> (fromRing) {</div>
-<div class="line"><a id="l00760" name="l00760"></a><span class="lineno">  760</span>      task();</div>
-<div class="line"><a id="l00761" name="l00761"></a><span class="lineno">  761</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00762" name="l00762"></a><span class="lineno">  762</span>    }</div>
-<div class="line"><a id="l00763" name="l00763"></a><span class="lineno">  763</span>    <span class="keywordflow">if</span> (checkQueue &amp;&amp; centralQueueNonEmpty_.load(std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00764" name="l00764"></a><span class="lineno">  764</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00765" name="l00765"></a><span class="lineno">  765</span>      <span class="keywordtype">bool</span> got = work_.try_dequeue(ctoken, task);</div>
-<div class="line"><a id="l00766" name="l00766"></a><span class="lineno">  766</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00767" name="l00767"></a><span class="lineno">  767</span>      <span class="keywordflow">if</span> (got) {</div>
-<div class="line"><a id="l00768" name="l00768"></a><span class="lineno">  768</span>        preferRing = <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00769" name="l00769"></a><span class="lineno">  769</span>        task();</div>
-<div class="line"><a id="l00770" name="l00770"></a><span class="lineno">  770</span>        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00771" name="l00771"></a><span class="lineno">  771</span>      }</div>
-<div class="line"><a id="l00772" name="l00772"></a><span class="lineno">  772</span>      <span class="comment">// Empty on observation; clear flag (relaxed, plain store).</span></div>
-<div class="line"><a id="l00773" name="l00773"></a><span class="lineno">  773</span>      centralQueueNonEmpty_.store(<span class="keyword">false</span>, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00774" name="l00774"></a><span class="lineno">  774</span>    }</div>
-<div class="line"><a id="l00775" name="l00775"></a><span class="lineno">  775</span>    <span class="keywordflow">if</span> (!myStealRing.empty() &amp;&amp; myStealRing.try_pop(task)) {</div>
-<div class="line"><a id="l00776" name="l00776"></a><span class="lineno">  776</span>      task();</div>
-<div class="line"><a id="l00777" name="l00777"></a><span class="lineno">  777</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00778" name="l00778"></a><span class="lineno">  778</span>    }</div>
-<div class="line"><a id="l00779" name="l00779"></a><span class="lineno">  779</span>    <span class="keywordflow">if</span> (failCount &gt;= kCrossRingFailThreshold) {</div>
-<div class="line"><a id="l00780" name="l00780"></a><span class="lineno">  780</span>      uint64_t mask = stealRingsWithWork_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00781" name="l00781"></a><span class="lineno">  781</span>      <span class="keywordflow">if</span> (mask != 0) {</div>
-<div class="line"><a id="l00782" name="l00782"></a><span class="lineno">  782</span>        <span class="keywordflow">if</span> (myStealIdx &lt; kMaxStealRings) {</div>
-<div class="line"><a id="l00783" name="l00783"></a><span class="lineno">  783</span>          mask &amp;= ~(uint64_t{1} &lt;&lt; myStealIdx);</div>
-<div class="line"><a id="l00784" name="l00784"></a><span class="lineno">  784</span>        }</div>
-<div class="line"><a id="l00785" name="l00785"></a><span class="lineno">  785</span>        <span class="keywordflow">if</span> (mask != 0) {</div>
-<div class="line"><a id="l00786" name="l00786"></a><span class="lineno">  786</span>          <span class="keywordtype">int</span> target = detail::countTrailingZeros(mask);</div>
-<div class="line"><a id="l00787" name="l00787"></a><span class="lineno">  787</span>          <span class="keywordflow">if</span> (stealRings_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(target)].try_pop(task)) {</div>
-<div class="line"><a id="l00788" name="l00788"></a><span class="lineno">  788</span>            task();</div>
-<div class="line"><a id="l00789" name="l00789"></a><span class="lineno">  789</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00790" name="l00790"></a><span class="lineno">  790</span>          }</div>
-<div class="line"><a id="l00791" name="l00791"></a><span class="lineno">  791</span>          stealRingsWithWork_.fetch_and(~(uint64_t{1} &lt;&lt; target), std::memory_order_relaxed);</div>
-<div class="line"><a id="l00792" name="l00792"></a><span class="lineno">  792</span>        }</div>
-<div class="line"><a id="l00793" name="l00793"></a><span class="lineno">  793</span>      }</div>
-<div class="line"><a id="l00794" name="l00794"></a><span class="lineno">  794</span>    }</div>
-<div class="line"><a id="l00795" name="l00795"></a><span class="lineno">  795</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00796" name="l00796"></a><span class="lineno">  796</span>    <span class="keywordflow">if</span> (checkQueue &amp;&amp; centralQueueNonEmpty_.load(std::memory_order_relaxed)) {</div>
-<div class="line"><a id="l00797" name="l00797"></a><span class="lineno">  797</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00798" name="l00798"></a><span class="lineno">  798</span>      <span class="keywordtype">bool</span> got = work_.try_dequeue(ctoken, task);</div>
-<div class="line"><a id="l00799" name="l00799"></a><span class="lineno">  799</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00800" name="l00800"></a><span class="lineno">  800</span>      <span class="keywordflow">if</span> (got) {</div>
-<div class="line"><a id="l00801" name="l00801"></a><span class="lineno">  801</span>        task();</div>
-<div class="line"><a id="l00802" name="l00802"></a><span class="lineno">  802</span>        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00803" name="l00803"></a><span class="lineno">  803</span>      }</div>
-<div class="line"><a id="l00804" name="l00804"></a><span class="lineno">  804</span>      centralQueueNonEmpty_.store(<span class="keyword">false</span>, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00805" name="l00805"></a><span class="lineno">  805</span>    }</div>
-<div class="line"><a id="l00806" name="l00806"></a><span class="lineno">  806</span>    <span class="keywordtype">bool</span> fromRing = myRing.try_pop(task);</div>
-<div class="line"><a id="l00807" name="l00807"></a><span class="lineno">  807</span>    <span class="keywordflow">if</span> (fromRing) {</div>
-<div class="line"><a id="l00808" name="l00808"></a><span class="lineno">  808</span>      preferRing = <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00809" name="l00809"></a><span class="lineno">  809</span>      task();</div>
-<div class="line"><a id="l00810" name="l00810"></a><span class="lineno">  810</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
-<div class="line"><a id="l00811" name="l00811"></a><span class="lineno">  811</span>    }</div>
-<div class="line"><a id="l00812" name="l00812"></a><span class="lineno">  812</span>  }</div>
-<div class="line"><a id="l00813" name="l00813"></a><span class="lineno">  813</span> </div>
-<div class="line"><a id="l00814" name="l00814"></a><span class="lineno">  814</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
-<div class="line"><a id="l00815" name="l00815"></a><span class="lineno">  815</span>}</div>
+<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span> </div>
+<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
+<div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
+<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>    f();</div>
+<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>    <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">schedule</a>(token, std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>  }</div>
+<div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>}</div>
+<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span> </div>
+<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span><span class="keyword">inline</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">ThreadPool::schedule</a>(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>  forceEnqueue&lt;false&gt;(std::forward&lt;F&gt;(f), &amp;token);</div>
+<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>}</div>
+<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span> </div>
+<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(F&amp;&amp; f) {</div>
+<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
+<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>    f();</div>
+<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span>    schedulePlaced(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span>  }</div>
+<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span>}</div>
+<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span> </div>
+<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>  <span class="keyword">auto</span>* token =</div>
+<div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span>      <span class="keyword">static_cast&lt;</span>moodycamel::ProducerToken*<span class="keyword">&gt;</span>(detail::PerPoolPerThreadInfo::producer(<span class="keyword">this</span>));</div>
+<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>  forceEnqueue&lt;true&gt;(std::forward&lt;F&gt;(f), token);</div>
+<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>}</div>
+<div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span> </div>
+<div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(moodycamel::ProducerToken&amp; token, F&amp;&amp; f) {</div>
+<div class="line"><a id="l00642" name="l00642"></a><span class="lineno">  642</span>  <span class="keywordflow">if</span> (shouldRunInline()) {</div>
+<div class="line"><a id="l00643" name="l00643"></a><span class="lineno">  643</span>    f();</div>
+<div class="line"><a id="l00644" name="l00644"></a><span class="lineno">  644</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00645" name="l00645"></a><span class="lineno">  645</span>    schedulePlaced(token, std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00646" name="l00646"></a><span class="lineno">  646</span>  }</div>
+<div class="line"><a id="l00647" name="l00647"></a><span class="lineno">  647</span>}</div>
+<div class="line"><a id="l00648" name="l00648"></a><span class="lineno">  648</span> </div>
+<div class="line"><a id="l00649" name="l00649"></a><span class="lineno">  649</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00650" name="l00650"></a><span class="lineno">  650</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::schedulePlaced(moodycamel::ProducerToken&amp; token, F&amp;&amp; f, ForceQueuingTag) {</div>
+<div class="line"><a id="l00651" name="l00651"></a><span class="lineno">  651</span>  forceEnqueue&lt;true&gt;(std::forward&lt;F&gt;(f), &amp;token);</div>
+<div class="line"><a id="l00652" name="l00652"></a><span class="lineno">  652</span>}</div>
+<div class="line"><a id="l00653" name="l00653"></a><span class="lineno">  653</span> </div>
+<div class="line"><a id="l00654" name="l00654"></a><span class="lineno">  654</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleImpl(OnceFunction task, moodycamel::ProducerToken* token) {</div>
+<div class="line"><a id="l00655" name="l00655"></a><span class="lineno">  655</span>  enqueueToCentralQueue(std::move(task), token);</div>
+<div class="line"><a id="l00656" name="l00656"></a><span class="lineno">  656</span> </div>
+<div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>  <span class="comment">// Wake when pending work exceeds awake threads. Each schedule()</span></div>
+<div class="line"><a id="l00658" name="l00658"></a><span class="lineno">  658</span>  <span class="comment">// call wakes at most one sleeper — matching baseline&#39;s wake-per-task</span></div>
+<div class="line"><a id="l00659" name="l00659"></a><span class="lineno">  659</span>  <span class="comment">// cadence but using per-thread futexes. The one-at-a-time approach</span></div>
+<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span>  <span class="comment">// avoids thundering herd on the central queue while still waking</span></div>
+<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span>  <span class="comment">// threads proportionally to submitted work over a burst.</span></div>
+<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
+<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
+<div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
+<div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span>      ssize_t pending = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span>      ssize_t numT = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span>      ssize_t awake = numT - <span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(sleeping);</div>
+<div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span>      <span class="keywordflow">if</span> (pending &gt; awake) {</div>
+<div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span>        ws-&gt;claimAndWakeOne();</div>
+<div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>      }</div>
+<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span>    }</div>
+<div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span>  }</div>
+<div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>}</div>
+<div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span> </div>
+<div class="line"><a id="l00676" name="l00676"></a><span class="lineno">  676</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleImplPlaced(</div>
+<div class="line"><a id="l00677" name="l00677"></a><span class="lineno">  677</span>    OnceFunction task,</div>
+<div class="line"><a id="l00678" name="l00678"></a><span class="lineno">  678</span>    moodycamel::ProducerToken* token) {</div>
+<div class="line"><a id="l00679" name="l00679"></a><span class="lineno">  679</span>  <span class="comment">// Proactive wake: claim a sleeping thread and push to its steal ring.</span></div>
+<div class="line"><a id="l00680" name="l00680"></a><span class="lineno">  680</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00681" name="l00681"></a><span class="lineno">  681</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
+<div class="line"><a id="l00682" name="l00682"></a><span class="lineno">  682</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
+<div class="line"><a id="l00683" name="l00683"></a><span class="lineno">  683</span>    <span class="keywordflow">if</span> (sleeping &gt; 0 &amp;&amp;</div>
+<div class="line"><a id="l00684" name="l00684"></a><span class="lineno">  684</span>        numNotWorking_.load(std::memory_order_relaxed) - sleeping &lt; kSpinnerWakeThreshold) {</div>
+<div class="line"><a id="l00685" name="l00685"></a><span class="lineno">  685</span>      int32_t wokeThread = ws-&gt;claimAndWakeOne();</div>
+<div class="line"><a id="l00686" name="l00686"></a><span class="lineno">  686</span>      <span class="keywordflow">if</span> (wokeThread &gt;= 0) {</div>
+<div class="line"><a id="l00687" name="l00687"></a><span class="lineno">  687</span>        <span class="keywordtype">size_t</span> stealIdx = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(wokeThread) / stealRingSharing_;</div>
+<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span>        <span class="keywordflow">if</span> (stealIdx &lt; numStealRings_.load(std::memory_order_relaxed) &amp;&amp;</div>
+<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span>            stealRings_[stealIdx].try_push(std::move(task))) {</div>
+<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span>          <span class="keywordflow">if</span> (stealIdx &lt; kMaxStealRings) {</div>
+<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span>            stealRingsWithWork_.fetch_or(uint64_t{1} &lt;&lt; stealIdx, std::memory_order_release);</div>
+<div class="line"><a id="l00692" name="l00692"></a><span class="lineno">  692</span>          }</div>
+<div class="line"><a id="l00693" name="l00693"></a><span class="lineno">  693</span>          <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00694" name="l00694"></a><span class="lineno">  694</span>        }</div>
+<div class="line"><a id="l00695" name="l00695"></a><span class="lineno">  695</span>      }</div>
+<div class="line"><a id="l00696" name="l00696"></a><span class="lineno">  696</span>    }</div>
+<div class="line"><a id="l00697" name="l00697"></a><span class="lineno">  697</span>  }</div>
+<div class="line"><a id="l00698" name="l00698"></a><span class="lineno">  698</span> </div>
+<div class="line"><a id="l00699" name="l00699"></a><span class="lineno">  699</span>  <span class="comment">// Central queue fallback.</span></div>
+<div class="line"><a id="l00700" name="l00700"></a><span class="lineno">  700</span>  enqueueToCentralQueue(std::move(task), token);</div>
+<div class="line"><a id="l00701" name="l00701"></a><span class="lineno">  701</span> </div>
+<div class="line"><a id="l00702" name="l00702"></a><span class="lineno">  702</span>  conditionallyWake();</div>
+<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>}</div>
+<div class="line"><a id="l00704" name="l00704"></a><span class="lineno">  704</span> </div>
+<div class="line"><a id="l00705" name="l00705"></a><span class="lineno">  705</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNext() {</div>
+<div class="line"><a id="l00706" name="l00706"></a><span class="lineno">  706</span>  OnceFunction next;</div>
+<div class="line"><a id="l00707" name="l00707"></a><span class="lineno">  707</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00708" name="l00708"></a><span class="lineno">  708</span>  <span class="keywordtype">bool</span> dequeued = work_.try_dequeue(next);</div>
+<div class="line"><a id="l00709" name="l00709"></a><span class="lineno">  709</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00710" name="l00710"></a><span class="lineno">  710</span>  <span class="keywordflow">if</span> (dequeued) {</div>
+<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span>    executeNext(std::move(next));</div>
+<div class="line"><a id="l00712" name="l00712"></a><span class="lineno">  712</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00713" name="l00713"></a><span class="lineno">  713</span>  }</div>
+<div class="line"><a id="l00714" name="l00714"></a><span class="lineno">  714</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00715" name="l00715"></a><span class="lineno">  715</span>}</div>
+<div class="line"><a id="l00716" name="l00716"></a><span class="lineno">  716</span> </div>
+<div class="line"><a id="l00717" name="l00717"></a><span class="lineno">  717</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromProducerToken(moodycamel::ProducerToken&amp; token) {</div>
+<div class="line"><a id="l00718" name="l00718"></a><span class="lineno">  718</span>  OnceFunction next;</div>
+<div class="line"><a id="l00719" name="l00719"></a><span class="lineno">  719</span>  <span class="keywordflow">if</span> (work_.try_dequeue_from_producer(token, next)) {</div>
+<div class="line"><a id="l00720" name="l00720"></a><span class="lineno">  720</span>    executeNext(std::move(next));</div>
+<div class="line"><a id="l00721" name="l00721"></a><span class="lineno">  721</span>    <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00722" name="l00722"></a><span class="lineno">  722</span>  }</div>
+<div class="line"><a id="l00723" name="l00723"></a><span class="lineno">  723</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00724" name="l00724"></a><span class="lineno">  724</span>}</div>
+<div class="line"><a id="l00725" name="l00725"></a><span class="lineno">  725</span> </div>
+<div class="line"><a id="l00726" name="l00726"></a><span class="lineno">  726</span><span class="keyword">inline</span> <span class="keywordtype">bool</span> ThreadPool::tryExecuteNextFromRings(<span class="keywordtype">size_t</span>&amp; startRing) {</div>
+<div class="line"><a id="l00727" name="l00727"></a><span class="lineno">  727</span>  OnceFunction task;</div>
+<div class="line"><a id="l00728" name="l00728"></a><span class="lineno">  728</span>  <span class="comment">// Acquire pairs with resizeLocked&#39;s numRings_.store(release), which is published</span></div>
+<div class="line"><a id="l00729" name="l00729"></a><span class="lineno">  729</span>  <span class="comment">// only after the new rings are fully constructed in the arena. A relaxed load</span></div>
+<div class="line"><a id="l00730" name="l00730"></a><span class="lineno">  730</span>  <span class="comment">// could observe the grown count without the rings&#39; construction being visible,</span></div>
+<div class="line"><a id="l00731" name="l00731"></a><span class="lineno">  731</span>  <span class="comment">// letting us index a not-yet-constructed ring (UB; SIGILL on weak-memory targets</span></div>
+<div class="line"><a id="l00732" name="l00732"></a><span class="lineno">  732</span>  <span class="comment">// like arm64).</span></div>
+<div class="line"><a id="l00733" name="l00733"></a><span class="lineno">  733</span>  <span class="keywordtype">size_t</span> n = numRings_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00734" name="l00734"></a><span class="lineno">  734</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; n; ++i) {</div>
+<div class="line"><a id="l00735" name="l00735"></a><span class="lineno">  735</span>    <span class="keywordtype">size_t</span> idx = (startRing + i) % n;</div>
+<div class="line"><a id="l00736" name="l00736"></a><span class="lineno">  736</span>    <span class="keywordflow">if</span> (rings_[idx].try_pop(task)) {</div>
+<div class="line"><a id="l00737" name="l00737"></a><span class="lineno">  737</span>      startRing = idx;</div>
+<div class="line"><a id="l00738" name="l00738"></a><span class="lineno">  738</span>      executeNext(std::move(task));</div>
+<div class="line"><a id="l00739" name="l00739"></a><span class="lineno">  739</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00740" name="l00740"></a><span class="lineno">  740</span>    }</div>
+<div class="line"><a id="l00741" name="l00741"></a><span class="lineno">  741</span>  }</div>
+<div class="line"><a id="l00742" name="l00742"></a><span class="lineno">  742</span>  startRing = 0;</div>
+<div class="line"><a id="l00743" name="l00743"></a><span class="lineno">  743</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00744" name="l00744"></a><span class="lineno">  744</span>}</div>
+<div class="line"><a id="l00745" name="l00745"></a><span class="lineno">  745</span> </div>
+<div class="line"><a id="l00746" name="l00746"></a><span class="lineno">  746</span><span class="keyword">inline</span> <span class="keywordtype">void</span> ThreadPool::executeNext(OnceFunction next) {</div>
+<div class="line"><a id="l00747" name="l00747"></a><span class="lineno">  747</span>  next();</div>
+<div class="line"><a id="l00748" name="l00748"></a><span class="lineno">  748</span>  workRemaining_.fetch_add(-1, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00749" name="l00749"></a><span class="lineno">  749</span>}</div>
+<div class="line"><a id="l00750" name="l00750"></a><span class="lineno">  750</span> </div>
+<div class="line"><a id="l00751" name="l00751"></a><span class="lineno">  751</span>DISPENSO_INLINE <span class="keywordtype">bool</span> ThreadPool::tryFindAndExecuteWork(</div>
+<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span>    Ring&amp; myRing,</div>
+<div class="line"><a id="l00753" name="l00753"></a><span class="lineno">  753</span>    StealRing&amp; myStealRing,</div>
+<div class="line"><a id="l00754" name="l00754"></a><span class="lineno">  754</span>    <span class="keywordtype">size_t</span> myStealIdx,</div>
+<div class="line"><a id="l00755" name="l00755"></a><span class="lineno">  755</span>    moodycamel::ConsumerToken&amp; ctoken,</div>
+<div class="line"><a id="l00756" name="l00756"></a><span class="lineno">  756</span>    <span class="keywordtype">bool</span>&amp; preferRing,</div>
+<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span>    <span class="keywordtype">int</span> failCount,</div>
+<div class="line"><a id="l00758" name="l00758"></a><span class="lineno">  758</span>    <span class="keywordtype">bool</span> checkQueue) {</div>
+<div class="line"><a id="l00759" name="l00759"></a><span class="lineno">  759</span>  OnceFunction task;</div>
+<div class="line"><a id="l00760" name="l00760"></a><span class="lineno">  760</span>  <span class="keywordflow">if</span> (preferRing) {</div>
+<div class="line"><a id="l00761" name="l00761"></a><span class="lineno">  761</span>    <span class="keywordtype">bool</span> fromRing = myRing.try_pop(task);</div>
+<div class="line"><a id="l00762" name="l00762"></a><span class="lineno">  762</span>    <span class="keywordflow">if</span> (fromRing) {</div>
+<div class="line"><a id="l00763" name="l00763"></a><span class="lineno">  763</span>      task();</div>
+<div class="line"><a id="l00764" name="l00764"></a><span class="lineno">  764</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00765" name="l00765"></a><span class="lineno">  765</span>    }</div>
+<div class="line"><a id="l00766" name="l00766"></a><span class="lineno">  766</span>    <span class="keywordflow">if</span> (checkQueue &amp;&amp; centralQueueNonEmpty_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00767" name="l00767"></a><span class="lineno">  767</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00768" name="l00768"></a><span class="lineno">  768</span>      <span class="keywordtype">bool</span> got = work_.try_dequeue(ctoken, task);</div>
+<div class="line"><a id="l00769" name="l00769"></a><span class="lineno">  769</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00770" name="l00770"></a><span class="lineno">  770</span>      <span class="keywordflow">if</span> (got) {</div>
+<div class="line"><a id="l00771" name="l00771"></a><span class="lineno">  771</span>        preferRing = <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00772" name="l00772"></a><span class="lineno">  772</span>        task();</div>
+<div class="line"><a id="l00773" name="l00773"></a><span class="lineno">  773</span>        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00774" name="l00774"></a><span class="lineno">  774</span>      }</div>
+<div class="line"><a id="l00775" name="l00775"></a><span class="lineno">  775</span>      <span class="comment">// Empty on observation; clear flag (relaxed, plain store).</span></div>
+<div class="line"><a id="l00776" name="l00776"></a><span class="lineno">  776</span>      centralQueueNonEmpty_.store(<span class="keyword">false</span>, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00777" name="l00777"></a><span class="lineno">  777</span>    }</div>
+<div class="line"><a id="l00778" name="l00778"></a><span class="lineno">  778</span>    <span class="keywordflow">if</span> (!myStealRing.empty() &amp;&amp; myStealRing.try_pop(task)) {</div>
+<div class="line"><a id="l00779" name="l00779"></a><span class="lineno">  779</span>      task();</div>
+<div class="line"><a id="l00780" name="l00780"></a><span class="lineno">  780</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00781" name="l00781"></a><span class="lineno">  781</span>    }</div>
+<div class="line"><a id="l00782" name="l00782"></a><span class="lineno">  782</span>    <span class="keywordflow">if</span> (failCount &gt;= kCrossRingFailThreshold) {</div>
+<div class="line"><a id="l00783" name="l00783"></a><span class="lineno">  783</span>      uint64_t mask = stealRingsWithWork_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00784" name="l00784"></a><span class="lineno">  784</span>      <span class="keywordflow">if</span> (mask != 0) {</div>
+<div class="line"><a id="l00785" name="l00785"></a><span class="lineno">  785</span>        <span class="keywordflow">if</span> (myStealIdx &lt; kMaxStealRings) {</div>
+<div class="line"><a id="l00786" name="l00786"></a><span class="lineno">  786</span>          mask &amp;= ~(uint64_t{1} &lt;&lt; myStealIdx);</div>
+<div class="line"><a id="l00787" name="l00787"></a><span class="lineno">  787</span>        }</div>
+<div class="line"><a id="l00788" name="l00788"></a><span class="lineno">  788</span>        <span class="keywordflow">if</span> (mask != 0) {</div>
+<div class="line"><a id="l00789" name="l00789"></a><span class="lineno">  789</span>          <span class="keywordtype">int</span> target = detail::countTrailingZeros(mask);</div>
+<div class="line"><a id="l00790" name="l00790"></a><span class="lineno">  790</span>          <span class="keywordflow">if</span> (stealRings_[<span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(target)].try_pop(task)) {</div>
+<div class="line"><a id="l00791" name="l00791"></a><span class="lineno">  791</span>            task();</div>
+<div class="line"><a id="l00792" name="l00792"></a><span class="lineno">  792</span>            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00793" name="l00793"></a><span class="lineno">  793</span>          }</div>
+<div class="line"><a id="l00794" name="l00794"></a><span class="lineno">  794</span>          stealRingsWithWork_.fetch_and(~(uint64_t{1} &lt;&lt; target), std::memory_order_relaxed);</div>
+<div class="line"><a id="l00795" name="l00795"></a><span class="lineno">  795</span>        }</div>
+<div class="line"><a id="l00796" name="l00796"></a><span class="lineno">  796</span>      }</div>
+<div class="line"><a id="l00797" name="l00797"></a><span class="lineno">  797</span>    }</div>
+<div class="line"><a id="l00798" name="l00798"></a><span class="lineno">  798</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00799" name="l00799"></a><span class="lineno">  799</span>    <span class="keywordflow">if</span> (checkQueue &amp;&amp; centralQueueNonEmpty_.load(std::memory_order_relaxed)) {</div>
+<div class="line"><a id="l00800" name="l00800"></a><span class="lineno">  800</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00801" name="l00801"></a><span class="lineno">  801</span>      <span class="keywordtype">bool</span> got = work_.try_dequeue(ctoken, task);</div>
+<div class="line"><a id="l00802" name="l00802"></a><span class="lineno">  802</span>      DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00803" name="l00803"></a><span class="lineno">  803</span>      <span class="keywordflow">if</span> (got) {</div>
+<div class="line"><a id="l00804" name="l00804"></a><span class="lineno">  804</span>        task();</div>
+<div class="line"><a id="l00805" name="l00805"></a><span class="lineno">  805</span>        <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00806" name="l00806"></a><span class="lineno">  806</span>      }</div>
+<div class="line"><a id="l00807" name="l00807"></a><span class="lineno">  807</span>      centralQueueNonEmpty_.store(<span class="keyword">false</span>, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00808" name="l00808"></a><span class="lineno">  808</span>    }</div>
+<div class="line"><a id="l00809" name="l00809"></a><span class="lineno">  809</span>    <span class="keywordtype">bool</span> fromRing = myRing.try_pop(task);</div>
+<div class="line"><a id="l00810" name="l00810"></a><span class="lineno">  810</span>    <span class="keywordflow">if</span> (fromRing) {</div>
+<div class="line"><a id="l00811" name="l00811"></a><span class="lineno">  811</span>      preferRing = <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00812" name="l00812"></a><span class="lineno">  812</span>      task();</div>
+<div class="line"><a id="l00813" name="l00813"></a><span class="lineno">  813</span>      <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
+<div class="line"><a id="l00814" name="l00814"></a><span class="lineno">  814</span>    }</div>
+<div class="line"><a id="l00815" name="l00815"></a><span class="lineno">  815</span>  }</div>
 <div class="line"><a id="l00816" name="l00816"></a><span class="lineno">  816</span> </div>
-<div class="line"><a id="l00817" name="l00817"></a><span class="lineno">  817</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00818" name="l00818"></a><span class="lineno">  818</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleBulkToRingsFastPath(</div>
-<div class="line"><a id="l00819" name="l00819"></a><span class="lineno">  819</span>    <span class="keywordtype">size_t</span> count,</div>
-<div class="line"><a id="l00820" name="l00820"></a><span class="lineno">  820</span>    <span class="keywordtype">size_t</span> ringCount,</div>
-<div class="line"><a id="l00821" name="l00821"></a><span class="lineno">  821</span>    Generator&amp;&amp; gen,</div>
-<div class="line"><a id="l00822" name="l00822"></a><span class="lineno">  822</span>    moodycamel::ProducerToken* fallbackToken) {</div>
-<div class="line"><a id="l00823" name="l00823"></a><span class="lineno">  823</span><span class="preprocessor">#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)</span></div>
-<div class="line"><a id="l00824" name="l00824"></a><span class="lineno">  824</span>  <span class="comment">// Pattern C cascade: wrap each cascade-host thread&#39;s task in a lambda</span></div>
-<div class="line"><a id="l00825" name="l00825"></a><span class="lineno">  825</span>  <span class="comment">// that wakes its target group BEFORE running user work. Producer issues</span></div>
-<div class="line"><a id="l00826" name="l00826"></a><span class="lineno">  826</span>  <span class="comment">// one wake-all on the seed group; the woken threads cascade in parallel</span></div>
-<div class="line"><a id="l00827" name="l00827"></a><span class="lineno">  827</span>  <span class="comment">// to all other groups, then run their own user work.</span></div>
-<div class="line"><a id="l00828" name="l00828"></a><span class="lineno">  828</span>  <span class="keyword">auto</span>* wsCascade = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00829" name="l00829"></a><span class="lineno">  829</span>  <span class="keywordtype">bool</span> useCascade = enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; wsCascade &amp;&amp;</div>
-<div class="line"><a id="l00830" name="l00830"></a><span class="lineno">  830</span>      wsCascade-&gt;totalSleeping() &gt; 0;</div>
-<div class="line"><a id="l00831" name="l00831"></a><span class="lineno">  831</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; count &amp;&amp; ring &lt; ringCount; ++ring) {</div>
-<div class="line"><a id="l00832" name="l00832"></a><span class="lineno">  832</span>    OnceFunction task = gen(ring);</div>
-<div class="line"><a id="l00833" name="l00833"></a><span class="lineno">  833</span>    int32_t target = useCascade</div>
-<div class="line"><a id="l00834" name="l00834"></a><span class="lineno">  834</span>        ? wsCascade-&gt;cascadeTargetFor(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(ring), <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count))</div>
-<div class="line"><a id="l00835" name="l00835"></a><span class="lineno">  835</span>        : -1;</div>
-<div class="line"><a id="l00836" name="l00836"></a><span class="lineno">  836</span>    <span class="keywordflow">if</span> (target &gt;= 0) {</div>
-<div class="line"><a id="l00837" name="l00837"></a><span class="lineno">  837</span>      OnceFunction wrapped = [wsCascade, target, inner = std::move(task)]() <span class="keyword">mutable</span> {</div>
-<div class="line"><a id="l00838" name="l00838"></a><span class="lineno">  838</span>        wsCascade-&gt;cascadeWake(target);</div>
-<div class="line"><a id="l00839" name="l00839"></a><span class="lineno">  839</span>        inner();</div>
-<div class="line"><a id="l00840" name="l00840"></a><span class="lineno">  840</span>      };</div>
-<div class="line"><a id="l00841" name="l00841"></a><span class="lineno">  841</span>      <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(wrapped))) {</div>
-<div class="line"><a id="l00842" name="l00842"></a><span class="lineno">  842</span>        enqueueToCentralQueue(std::move(wrapped), fallbackToken);</div>
-<div class="line"><a id="l00843" name="l00843"></a><span class="lineno">  843</span>      }</div>
-<div class="line"><a id="l00844" name="l00844"></a><span class="lineno">  844</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00845" name="l00845"></a><span class="lineno">  845</span>      <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(task))) {</div>
-<div class="line"><a id="l00846" name="l00846"></a><span class="lineno">  846</span>        enqueueToCentralQueue(std::move(task), fallbackToken);</div>
-<div class="line"><a id="l00847" name="l00847"></a><span class="lineno">  847</span>      }</div>
-<div class="line"><a id="l00848" name="l00848"></a><span class="lineno">  848</span>    }</div>
-<div class="line"><a id="l00849" name="l00849"></a><span class="lineno">  849</span>  }</div>
-<div class="line"><a id="l00850" name="l00850"></a><span class="lineno">  850</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00851" name="l00851"></a><span class="lineno">  851</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; count &amp;&amp; ring &lt; ringCount; ++ring) {</div>
-<div class="line"><a id="l00852" name="l00852"></a><span class="lineno">  852</span>    OnceFunction task = gen(ring);</div>
-<div class="line"><a id="l00853" name="l00853"></a><span class="lineno">  853</span>    <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(task))) {</div>
-<div class="line"><a id="l00854" name="l00854"></a><span class="lineno">  854</span>      enqueueToCentralQueue(std::move(task), fallbackToken);</div>
-<div class="line"><a id="l00855" name="l00855"></a><span class="lineno">  855</span>    }</div>
-<div class="line"><a id="l00856" name="l00856"></a><span class="lineno">  856</span>  }</div>
-<div class="line"><a id="l00857" name="l00857"></a><span class="lineno">  857</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00858" name="l00858"></a><span class="lineno">  858</span>}</div>
-<div class="line"><a id="l00859" name="l00859"></a><span class="lineno">  859</span> </div>
-<div class="line"><a id="l00860" name="l00860"></a><span class="lineno">  860</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00861" name="l00861"></a><span class="lineno">  861</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleBulkToRingsBatched(</div>
-<div class="line"><a id="l00862" name="l00862"></a><span class="lineno">  862</span>    <span class="keywordtype">size_t</span> count,</div>
-<div class="line"><a id="l00863" name="l00863"></a><span class="lineno">  863</span>    <span class="keywordtype">size_t</span> ringCount,</div>
-<div class="line"><a id="l00864" name="l00864"></a><span class="lineno">  864</span>    <span class="keywordtype">size_t</span> tasksPerRing,</div>
-<div class="line"><a id="l00865" name="l00865"></a><span class="lineno">  865</span>    Generator&amp;&amp; gen,</div>
-<div class="line"><a id="l00866" name="l00866"></a><span class="lineno">  866</span>    moodycamel::ProducerToken* fallbackToken) {</div>
-<div class="line"><a id="l00867" name="l00867"></a><span class="lineno">  867</span>  <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMaxStage = <a class="code hl_function" href="classdispenso_1_1_mpmc_ring_buffer.html#aec66d6a89d370599d61880a36c415874">Ring::capacity</a>();</div>
-<div class="line"><a id="l00868" name="l00868"></a><span class="lineno">  868</span>  <span class="keywordtype">size_t</span> taskIdx = 0;</div>
-<div class="line"><a id="l00869" name="l00869"></a><span class="lineno">  869</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; ringCount &amp;&amp; taskIdx &lt; count; ++ring) {</div>
-<div class="line"><a id="l00870" name="l00870"></a><span class="lineno">  870</span>    <span class="keywordtype">size_t</span> blockEnd = std::min(taskIdx + tasksPerRing, count);</div>
-<div class="line"><a id="l00871" name="l00871"></a><span class="lineno">  871</span>    <span class="keywordtype">size_t</span> blockSize = blockEnd - taskIdx;</div>
-<div class="line"><a id="l00872" name="l00872"></a><span class="lineno">  872</span> </div>
-<div class="line"><a id="l00873" name="l00873"></a><span class="lineno">  873</span>    <span class="keywordtype">size_t</span> toStage = std::min(blockSize, kMaxStage);</div>
-<div class="line"><a id="l00874" name="l00874"></a><span class="lineno">  874</span>    OnceFunction staged[kMaxStage];</div>
-<div class="line"><a id="l00875" name="l00875"></a><span class="lineno">  875</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toStage; ++j) {</div>
-<div class="line"><a id="l00876" name="l00876"></a><span class="lineno">  876</span>      staged[j] = gen(taskIdx + j);</div>
-<div class="line"><a id="l00877" name="l00877"></a><span class="lineno">  877</span>    }</div>
-<div class="line"><a id="l00878" name="l00878"></a><span class="lineno">  878</span> </div>
-<div class="line"><a id="l00879" name="l00879"></a><span class="lineno">  879</span>    <span class="keywordtype">size_t</span> pushed = rings_[ring].try_push_batch(staged, toStage);</div>
-<div class="line"><a id="l00880" name="l00880"></a><span class="lineno">  880</span> </div>
-<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = pushed; j &lt; toStage; ++j) {</div>
-<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span>      enqueueToCentralQueue(std::move(staged[j]), fallbackToken);</div>
-<div class="line"><a id="l00883" name="l00883"></a><span class="lineno">  883</span>    }</div>
-<div class="line"><a id="l00884" name="l00884"></a><span class="lineno">  884</span> </div>
-<div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = taskIdx + toStage; j &lt; blockEnd; ++j) {</div>
-<div class="line"><a id="l00886" name="l00886"></a><span class="lineno">  886</span>      enqueueToCentralQueue(gen(j), fallbackToken);</div>
-<div class="line"><a id="l00887" name="l00887"></a><span class="lineno">  887</span>    }</div>
-<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>    taskIdx += blockSize;</div>
-<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>  }</div>
-<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span>}</div>
-<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span> </div>
-<div class="line"><a id="l00892" name="l00892"></a><span class="lineno">  892</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkToRings(</div>
-<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span>    <span class="keywordtype">size_t</span> count,</div>
-<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span>    Generator&amp;&amp; gen,</div>
-<div class="line"><a id="l00896" name="l00896"></a><span class="lineno">  896</span>    moodycamel::ProducerToken* fallbackToken) {</div>
-<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span>  <span class="keywordflow">if</span> (count == 0) {</div>
-<div class="line"><a id="l00898" name="l00898"></a><span class="lineno">  898</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>  }</div>
-<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>  assert(count &lt;= numRings_.load(std::memory_order_relaxed));</div>
-<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span> </div>
-<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>  workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_release);</div>
-<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span> </div>
-<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span>  <span class="comment">// Acquire: see tryExecuteNextFromRings. Pairs with the release store in</span></div>
-<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span>  <span class="comment">// resizeLocked so we observe the freshly-constructed rings, not merely the</span></div>
-<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span>  <span class="comment">// updated count.</span></div>
-<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>  <span class="keywordtype">size_t</span> ringCount = numRings_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span>  <span class="keywordtype">size_t</span> tasksPerRing = (count + ringCount - 1) / ringCount;</div>
-<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span> </div>
-<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>  <span class="keywordflow">if</span> (tasksPerRing &lt;= 1) {</div>
-<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span>    scheduleBulkToRingsFastPath(count, ringCount, std::forward&lt;Generator&gt;(gen), fallbackToken);</div>
-<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>    scheduleBulkToRingsBatched(</div>
-<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span>        count, ringCount, tasksPerRing, std::forward&lt;Generator&gt;(gen), fallbackToken);</div>
-<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span>  }</div>
-<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span> </div>
-<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
-<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span><span class="preprocessor">#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)</span></div>
-<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>    ws-&gt;cascadeWakeSeed(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count));</div>
-<div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span>    ws-&gt;wakeRange(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count));</div>
-<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span>  }</div>
-<div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>}</div>
-<div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span> </div>
-<div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span><span class="keyword">namespace </span>detail {</div>
-<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span><span class="comment">// Generating iterator for scheduleBulkEnqueue. Produces OnceFunction objects</span></div>
-<div class="line"><a id="l00929" name="l00929"></a><span class="lineno">  929</span><span class="comment">// on-the-fly during enqueue_bulk, avoiding the need for a staging buffer.</span></div>
-<div class="line"><a id="l00930" name="l00930"></a><span class="lineno">  930</span><span class="comment">// moodycamel&#39;s enqueue_bulk uses single-pass input iterator semantics.</span></div>
-<div class="line"><a id="l00931" name="l00931"></a><span class="lineno">  931</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00932" name="l00932"></a><span class="lineno">  932</span><span class="keyword">struct </span>BulkGenIter {</div>
-<div class="line"><a id="l00933" name="l00933"></a><span class="lineno">  933</span>  <span class="keyword">using </span>difference_type = std::ptrdiff_t;</div>
-<div class="line"><a id="l00934" name="l00934"></a><span class="lineno">  934</span>  <span class="keyword">using </span>value_type = OnceFunction;</div>
-<div class="line"><a id="l00935" name="l00935"></a><span class="lineno">  935</span>  <span class="keyword">using </span>pointer = OnceFunction*;</div>
-<div class="line"><a id="l00936" name="l00936"></a><span class="lineno">  936</span>  <span class="keyword">using </span>reference = OnceFunction&amp;;</div>
-<div class="line"><a id="l00937" name="l00937"></a><span class="lineno">  937</span>  <span class="keyword">using </span>iterator_category = std::input_iterator_tag;</div>
-<div class="line"><a id="l00938" name="l00938"></a><span class="lineno">  938</span> </div>
-<div class="line"><a id="l00939" name="l00939"></a><span class="lineno">  939</span>  Generator* gen;</div>
-<div class="line"><a id="l00940" name="l00940"></a><span class="lineno">  940</span>  <span class="keywordtype">size_t</span> index;</div>
-<div class="line"><a id="l00941" name="l00941"></a><span class="lineno">  941</span>  OnceFunction operator*() {</div>
-<div class="line"><a id="l00942" name="l00942"></a><span class="lineno">  942</span>    <span class="keywordflow">return</span> (*gen)(index);</div>
-<div class="line"><a id="l00943" name="l00943"></a><span class="lineno">  943</span>  }</div>
-<div class="line"><a id="l00944" name="l00944"></a><span class="lineno">  944</span>  BulkGenIter&amp; operator++() {</div>
-<div class="line"><a id="l00945" name="l00945"></a><span class="lineno">  945</span>    ++index;</div>
-<div class="line"><a id="l00946" name="l00946"></a><span class="lineno">  946</span>    <span class="keywordflow">return</span> *<span class="keyword">this</span>;</div>
-<div class="line"><a id="l00947" name="l00947"></a><span class="lineno">  947</span>  }</div>
-<div class="line"><a id="l00948" name="l00948"></a><span class="lineno">  948</span>  BulkGenIter operator++(<span class="keywordtype">int</span>) {</div>
-<div class="line"><a id="l00949" name="l00949"></a><span class="lineno">  949</span>    BulkGenIter tmp = *<span class="keyword">this</span>;</div>
-<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>    ++index;</div>
-<div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span>    <span class="keywordflow">return</span> tmp;</div>
-<div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span>  }</div>
-<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>};</div>
-<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>} <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span> </div>
-<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkEnqueue(</div>
-<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span>    <span class="keywordtype">size_t</span> count,</div>
-<div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span>    Generator&amp;&amp; gen,</div>
-<div class="line"><a id="l00960" name="l00960"></a><span class="lineno">  960</span>    moodycamel::ProducerToken* token) {</div>
-<div class="line"><a id="l00961" name="l00961"></a><span class="lineno">  961</span>  detail::BulkGenIter&lt;typename std::remove_reference&lt;Generator&gt;::type&gt; it{&amp;gen, 0};</div>
-<div class="line"><a id="l00962" name="l00962"></a><span class="lineno">  962</span> </div>
-<div class="line"><a id="l00963" name="l00963"></a><span class="lineno">  963</span>  <span class="comment">// Single atomic update + bulk enqueue</span></div>
-<div class="line"><a id="l00964" name="l00964"></a><span class="lineno">  964</span>  workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_release);</div>
+<div class="line"><a id="l00817" name="l00817"></a><span class="lineno">  817</span>  <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
+<div class="line"><a id="l00818" name="l00818"></a><span class="lineno">  818</span>}</div>
+<div class="line"><a id="l00819" name="l00819"></a><span class="lineno">  819</span> </div>
+<div class="line"><a id="l00820" name="l00820"></a><span class="lineno">  820</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00821" name="l00821"></a><span class="lineno">  821</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleBulkToRingsFastPath(</div>
+<div class="line"><a id="l00822" name="l00822"></a><span class="lineno">  822</span>    <span class="keywordtype">size_t</span> count,</div>
+<div class="line"><a id="l00823" name="l00823"></a><span class="lineno">  823</span>    <span class="keywordtype">size_t</span> ringCount,</div>
+<div class="line"><a id="l00824" name="l00824"></a><span class="lineno">  824</span>    Generator&amp;&amp; gen,</div>
+<div class="line"><a id="l00825" name="l00825"></a><span class="lineno">  825</span>    moodycamel::ProducerToken* fallbackToken) {</div>
+<div class="line"><a id="l00826" name="l00826"></a><span class="lineno">  826</span><span class="preprocessor">#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)</span></div>
+<div class="line"><a id="l00827" name="l00827"></a><span class="lineno">  827</span>  <span class="comment">// Pattern C cascade: wrap each cascade-host thread&#39;s task in a lambda</span></div>
+<div class="line"><a id="l00828" name="l00828"></a><span class="lineno">  828</span>  <span class="comment">// that wakes its target group BEFORE running user work. Producer issues</span></div>
+<div class="line"><a id="l00829" name="l00829"></a><span class="lineno">  829</span>  <span class="comment">// one wake-all on the seed group; the woken threads cascade in parallel</span></div>
+<div class="line"><a id="l00830" name="l00830"></a><span class="lineno">  830</span>  <span class="comment">// to all other groups, then run their own user work.</span></div>
+<div class="line"><a id="l00831" name="l00831"></a><span class="lineno">  831</span>  <span class="keyword">auto</span>* wsCascade = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00832" name="l00832"></a><span class="lineno">  832</span>  <span class="keywordtype">bool</span> useCascade = enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; wsCascade &amp;&amp;</div>
+<div class="line"><a id="l00833" name="l00833"></a><span class="lineno">  833</span>      wsCascade-&gt;totalSleeping() &gt; 0;</div>
+<div class="line"><a id="l00834" name="l00834"></a><span class="lineno">  834</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; count &amp;&amp; ring &lt; ringCount; ++ring) {</div>
+<div class="line"><a id="l00835" name="l00835"></a><span class="lineno">  835</span>    OnceFunction task = gen(ring);</div>
+<div class="line"><a id="l00836" name="l00836"></a><span class="lineno">  836</span>    int32_t target = useCascade</div>
+<div class="line"><a id="l00837" name="l00837"></a><span class="lineno">  837</span>        ? wsCascade-&gt;cascadeTargetFor(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(ring), <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count))</div>
+<div class="line"><a id="l00838" name="l00838"></a><span class="lineno">  838</span>        : -1;</div>
+<div class="line"><a id="l00839" name="l00839"></a><span class="lineno">  839</span>    <span class="keywordflow">if</span> (target &gt;= 0) {</div>
+<div class="line"><a id="l00840" name="l00840"></a><span class="lineno">  840</span>      OnceFunction wrapped = [wsCascade, target, inner = std::move(task)]() <span class="keyword">mutable</span> {</div>
+<div class="line"><a id="l00841" name="l00841"></a><span class="lineno">  841</span>        wsCascade-&gt;cascadeWake(target);</div>
+<div class="line"><a id="l00842" name="l00842"></a><span class="lineno">  842</span>        inner();</div>
+<div class="line"><a id="l00843" name="l00843"></a><span class="lineno">  843</span>      };</div>
+<div class="line"><a id="l00844" name="l00844"></a><span class="lineno">  844</span>      <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(wrapped))) {</div>
+<div class="line"><a id="l00845" name="l00845"></a><span class="lineno">  845</span>        enqueueToCentralQueue(std::move(wrapped), fallbackToken);</div>
+<div class="line"><a id="l00846" name="l00846"></a><span class="lineno">  846</span>      }</div>
+<div class="line"><a id="l00847" name="l00847"></a><span class="lineno">  847</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00848" name="l00848"></a><span class="lineno">  848</span>      <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(task))) {</div>
+<div class="line"><a id="l00849" name="l00849"></a><span class="lineno">  849</span>        enqueueToCentralQueue(std::move(task), fallbackToken);</div>
+<div class="line"><a id="l00850" name="l00850"></a><span class="lineno">  850</span>      }</div>
+<div class="line"><a id="l00851" name="l00851"></a><span class="lineno">  851</span>    }</div>
+<div class="line"><a id="l00852" name="l00852"></a><span class="lineno">  852</span>  }</div>
+<div class="line"><a id="l00853" name="l00853"></a><span class="lineno">  853</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00854" name="l00854"></a><span class="lineno">  854</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; count &amp;&amp; ring &lt; ringCount; ++ring) {</div>
+<div class="line"><a id="l00855" name="l00855"></a><span class="lineno">  855</span>    OnceFunction task = gen(ring);</div>
+<div class="line"><a id="l00856" name="l00856"></a><span class="lineno">  856</span>    <span class="keywordflow">if</span> (!rings_[ring].try_push(std::move(task))) {</div>
+<div class="line"><a id="l00857" name="l00857"></a><span class="lineno">  857</span>      enqueueToCentralQueue(std::move(task), fallbackToken);</div>
+<div class="line"><a id="l00858" name="l00858"></a><span class="lineno">  858</span>    }</div>
+<div class="line"><a id="l00859" name="l00859"></a><span class="lineno">  859</span>  }</div>
+<div class="line"><a id="l00860" name="l00860"></a><span class="lineno">  860</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00861" name="l00861"></a><span class="lineno">  861</span>}</div>
+<div class="line"><a id="l00862" name="l00862"></a><span class="lineno">  862</span> </div>
+<div class="line"><a id="l00863" name="l00863"></a><span class="lineno">  863</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00864" name="l00864"></a><span class="lineno">  864</span>DISPENSO_INLINE <span class="keywordtype">void</span> ThreadPool::scheduleBulkToRingsBatched(</div>
+<div class="line"><a id="l00865" name="l00865"></a><span class="lineno">  865</span>    <span class="keywordtype">size_t</span> count,</div>
+<div class="line"><a id="l00866" name="l00866"></a><span class="lineno">  866</span>    <span class="keywordtype">size_t</span> ringCount,</div>
+<div class="line"><a id="l00867" name="l00867"></a><span class="lineno">  867</span>    <span class="keywordtype">size_t</span> tasksPerRing,</div>
+<div class="line"><a id="l00868" name="l00868"></a><span class="lineno">  868</span>    Generator&amp;&amp; gen,</div>
+<div class="line"><a id="l00869" name="l00869"></a><span class="lineno">  869</span>    moodycamel::ProducerToken* fallbackToken) {</div>
+<div class="line"><a id="l00870" name="l00870"></a><span class="lineno">  870</span>  <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMaxStage = <a class="code hl_function" href="classdispenso_1_1_mpmc_ring_buffer.html#aec66d6a89d370599d61880a36c415874">Ring::capacity</a>();</div>
+<div class="line"><a id="l00871" name="l00871"></a><span class="lineno">  871</span>  <span class="keywordtype">size_t</span> taskIdx = 0;</div>
+<div class="line"><a id="l00872" name="l00872"></a><span class="lineno">  872</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> ring = 0; ring &lt; ringCount &amp;&amp; taskIdx &lt; count; ++ring) {</div>
+<div class="line"><a id="l00873" name="l00873"></a><span class="lineno">  873</span>    <span class="keywordtype">size_t</span> blockEnd = std::min(taskIdx + tasksPerRing, count);</div>
+<div class="line"><a id="l00874" name="l00874"></a><span class="lineno">  874</span>    <span class="keywordtype">size_t</span> blockSize = blockEnd - taskIdx;</div>
+<div class="line"><a id="l00875" name="l00875"></a><span class="lineno">  875</span> </div>
+<div class="line"><a id="l00876" name="l00876"></a><span class="lineno">  876</span>    <span class="keywordtype">size_t</span> toStage = std::min(blockSize, kMaxStage);</div>
+<div class="line"><a id="l00877" name="l00877"></a><span class="lineno">  877</span>    OnceFunction staged[kMaxStage];</div>
+<div class="line"><a id="l00878" name="l00878"></a><span class="lineno">  878</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toStage; ++j) {</div>
+<div class="line"><a id="l00879" name="l00879"></a><span class="lineno">  879</span>      staged[j] = gen(taskIdx + j);</div>
+<div class="line"><a id="l00880" name="l00880"></a><span class="lineno">  880</span>    }</div>
+<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span> </div>
+<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span>    <span class="keywordtype">size_t</span> pushed = rings_[ring].try_push_batch(staged, toStage);</div>
+<div class="line"><a id="l00883" name="l00883"></a><span class="lineno">  883</span> </div>
+<div class="line"><a id="l00884" name="l00884"></a><span class="lineno">  884</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = pushed; j &lt; toStage; ++j) {</div>
+<div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span>      enqueueToCentralQueue(std::move(staged[j]), fallbackToken);</div>
+<div class="line"><a id="l00886" name="l00886"></a><span class="lineno">  886</span>    }</div>
+<div class="line"><a id="l00887" name="l00887"></a><span class="lineno">  887</span> </div>
+<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = taskIdx + toStage; j &lt; blockEnd; ++j) {</div>
+<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>      enqueueToCentralQueue(gen(j), fallbackToken);</div>
+<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span>    }</div>
+<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span>    taskIdx += blockSize;</div>
+<div class="line"><a id="l00892" name="l00892"></a><span class="lineno">  892</span>  }</div>
+<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span>}</div>
+<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span> </div>
+<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00896" name="l00896"></a><span class="lineno">  896</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkToRings(</div>
+<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span>    <span class="keywordtype">size_t</span> count,</div>
+<div class="line"><a id="l00898" name="l00898"></a><span class="lineno">  898</span>    Generator&amp;&amp; gen,</div>
+<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>    moodycamel::ProducerToken* fallbackToken) {</div>
+<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>  <span class="keywordflow">if</span> (count == 0) {</div>
+<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>  }</div>
+<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span>  assert(count &lt;= numRings_.load(std::memory_order_relaxed));</div>
+<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span> </div>
+<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span>  workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_release);</div>
+<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span> </div>
+<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>  <span class="comment">// Acquire: see tryExecuteNextFromRings. Pairs with the release store in</span></div>
+<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span>  <span class="comment">// resizeLocked so we observe the freshly-constructed rings, not merely the</span></div>
+<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span>  <span class="comment">// updated count.</span></div>
+<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>  <span class="keywordtype">size_t</span> ringCount = numRings_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span>  <span class="keywordtype">size_t</span> tasksPerRing = (count + ringCount - 1) / ringCount;</div>
+<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span> </div>
+<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>  <span class="keywordflow">if</span> (tasksPerRing &lt;= 1) {</div>
+<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span>    scheduleBulkToRingsFastPath(count, ringCount, std::forward&lt;Generator&gt;(gen), fallbackToken);</div>
+<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span>    scheduleBulkToRingsBatched(</div>
+<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span>        count, ringCount, tasksPerRing, std::forward&lt;Generator&gt;(gen), fallbackToken);</div>
+<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span>  }</div>
+<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span> </div>
+<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
+<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span><span class="preprocessor">#if !defined(DISPENSO_DISABLE_CASCADE_WAKERANGE)</span></div>
+<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span>    ws-&gt;cascadeWakeSeed(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count));</div>
+<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>    ws-&gt;wakeRange(<span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count));</div>
+<div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span>  }</div>
+<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span>}</div>
+<div class="line"><a id="l00929" name="l00929"></a><span class="lineno">  929</span> </div>
+<div class="line"><a id="l00930" name="l00930"></a><span class="lineno">  930</span><span class="keyword">namespace </span>detail {</div>
+<div class="line"><a id="l00931" name="l00931"></a><span class="lineno">  931</span><span class="comment">// Generating iterator for scheduleBulkEnqueue. Produces OnceFunction objects</span></div>
+<div class="line"><a id="l00932" name="l00932"></a><span class="lineno">  932</span><span class="comment">// on-the-fly during enqueue_bulk, avoiding the need for a staging buffer.</span></div>
+<div class="line"><a id="l00933" name="l00933"></a><span class="lineno">  933</span><span class="comment">// moodycamel&#39;s enqueue_bulk uses single-pass input iterator semantics.</span></div>
+<div class="line"><a id="l00934" name="l00934"></a><span class="lineno">  934</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00935" name="l00935"></a><span class="lineno">  935</span><span class="keyword">struct </span>BulkGenIter {</div>
+<div class="line"><a id="l00936" name="l00936"></a><span class="lineno">  936</span>  <span class="keyword">using </span>difference_type = std::ptrdiff_t;</div>
+<div class="line"><a id="l00937" name="l00937"></a><span class="lineno">  937</span>  <span class="keyword">using </span>value_type = OnceFunction;</div>
+<div class="line"><a id="l00938" name="l00938"></a><span class="lineno">  938</span>  <span class="keyword">using </span>pointer = OnceFunction*;</div>
+<div class="line"><a id="l00939" name="l00939"></a><span class="lineno">  939</span>  <span class="keyword">using </span>reference = OnceFunction&amp;;</div>
+<div class="line"><a id="l00940" name="l00940"></a><span class="lineno">  940</span>  <span class="keyword">using </span>iterator_category = std::input_iterator_tag;</div>
+<div class="line"><a id="l00941" name="l00941"></a><span class="lineno">  941</span> </div>
+<div class="line"><a id="l00942" name="l00942"></a><span class="lineno">  942</span>  Generator* gen;</div>
+<div class="line"><a id="l00943" name="l00943"></a><span class="lineno">  943</span>  <span class="keywordtype">size_t</span> index;</div>
+<div class="line"><a id="l00944" name="l00944"></a><span class="lineno">  944</span>  OnceFunction operator*() {</div>
+<div class="line"><a id="l00945" name="l00945"></a><span class="lineno">  945</span>    <span class="keywordflow">return</span> (*gen)(index);</div>
+<div class="line"><a id="l00946" name="l00946"></a><span class="lineno">  946</span>  }</div>
+<div class="line"><a id="l00947" name="l00947"></a><span class="lineno">  947</span>  BulkGenIter&amp; operator++() {</div>
+<div class="line"><a id="l00948" name="l00948"></a><span class="lineno">  948</span>    ++index;</div>
+<div class="line"><a id="l00949" name="l00949"></a><span class="lineno">  949</span>    <span class="keywordflow">return</span> *<span class="keyword">this</span>;</div>
+<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>  }</div>
+<div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span>  BulkGenIter operator++(<span class="keywordtype">int</span>) {</div>
+<div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span>    BulkGenIter tmp = *<span class="keyword">this</span>;</div>
+<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>    ++index;</div>
+<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>    <span class="keywordflow">return</span> tmp;</div>
+<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span>  }</div>
+<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span>};</div>
+<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span> </div>
+<div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l00960" name="l00960"></a><span class="lineno">  960</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkEnqueue(</div>
+<div class="line"><a id="l00961" name="l00961"></a><span class="lineno">  961</span>    <span class="keywordtype">size_t</span> count,</div>
+<div class="line"><a id="l00962" name="l00962"></a><span class="lineno">  962</span>    Generator&amp;&amp; gen,</div>
+<div class="line"><a id="l00963" name="l00963"></a><span class="lineno">  963</span>    moodycamel::ProducerToken* token) {</div>
+<div class="line"><a id="l00964" name="l00964"></a><span class="lineno">  964</span>  detail::BulkGenIter&lt;typename std::remove_reference&lt;Generator&gt;::type&gt; it{&amp;gen, 0};</div>
 <div class="line"><a id="l00965" name="l00965"></a><span class="lineno">  965</span> </div>
-<div class="line"><a id="l00966" name="l00966"></a><span class="lineno">  966</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
-<div class="line"><a id="l00967" name="l00967"></a><span class="lineno">  967</span>  <span class="keywordtype">bool</span> enqueued;</div>
-<div class="line"><a id="l00968" name="l00968"></a><span class="lineno">  968</span>  <span class="keywordflow">if</span> (token) {</div>
-<div class="line"><a id="l00969" name="l00969"></a><span class="lineno">  969</span>    enqueued = work_.enqueue_bulk(*token, it, count);</div>
-<div class="line"><a id="l00970" name="l00970"></a><span class="lineno">  970</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00971" name="l00971"></a><span class="lineno">  971</span>    enqueued = work_.enqueue_bulk(it, count);</div>
-<div class="line"><a id="l00972" name="l00972"></a><span class="lineno">  972</span>  }</div>
-<div class="line"><a id="l00973" name="l00973"></a><span class="lineno">  973</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
-<div class="line"><a id="l00974" name="l00974"></a><span class="lineno">  974</span>  <span class="keywordflow">if</span> (DISPENSO_EXPECT(!enqueued, <span class="keyword">false</span>)) {</div>
-<div class="line"><a id="l00975" name="l00975"></a><span class="lineno">  975</span>    workRemaining_.fetch_sub(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_relaxed);</div>
-<div class="line"><a id="l00976" name="l00976"></a><span class="lineno">  976</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
-<div class="line"><a id="l00977" name="l00977"></a><span class="lineno">  977</span>    <span class="keywordflow">throw</span> std::bad_alloc();</div>
-<div class="line"><a id="l00978" name="l00978"></a><span class="lineno">  978</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00979" name="l00979"></a><span class="lineno">  979</span>    std::abort();</div>
-<div class="line"><a id="l00980" name="l00980"></a><span class="lineno">  980</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00981" name="l00981"></a><span class="lineno">  981</span>  }</div>
-<div class="line"><a id="l00982" name="l00982"></a><span class="lineno">  982</span>  <span class="comment">// Mark queue as possibly-non-empty so spinning workers will try_dequeue.</span></div>
-<div class="line"><a id="l00983" name="l00983"></a><span class="lineno">  983</span>  centralQueueNonEmpty_.store(<span class="keyword">true</span>, std::memory_order_relaxed);</div>
-<div class="line"><a id="l00984" name="l00984"></a><span class="lineno">  984</span> </div>
-<div class="line"><a id="l00985" name="l00985"></a><span class="lineno">  985</span>  <span class="comment">// Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.</span></div>
-<div class="line"><a id="l00986" name="l00986"></a><span class="lineno">  986</span>  <span class="comment">// Spinning threads (numNotWorking - totalSleeping) will find enqueued work</span></div>
-<div class="line"><a id="l00987" name="l00987"></a><span class="lineno">  987</span>  <span class="comment">// naturally, so only wake enough sleepers to cover the deficit beyond the</span></div>
-<div class="line"><a id="l00988" name="l00988"></a><span class="lineno">  988</span>  <span class="comment">// spinner threshold.</span></div>
-<div class="line"><a id="l00989" name="l00989"></a><span class="lineno">  989</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
-<div class="line"><a id="l00990" name="l00990"></a><span class="lineno">  990</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
-<div class="line"><a id="l00991" name="l00991"></a><span class="lineno">  991</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
-<div class="line"><a id="l00992" name="l00992"></a><span class="lineno">  992</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
-<div class="line"><a id="l00993" name="l00993"></a><span class="lineno">  993</span>      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00994" name="l00994"></a><span class="lineno">  994</span>      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);</div>
-<div class="line"><a id="l00995" name="l00995"></a><span class="lineno">  995</span>      <span class="comment">// Only count spinners beyond the threshold as &quot;covering&quot; tasks</span></div>
-<div class="line"><a id="l00996" name="l00996"></a><span class="lineno">  996</span>      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);</div>
-<div class="line"><a id="l00997" name="l00997"></a><span class="lineno">  997</span>      int32_t toWake = std::max(int32_t{0}, <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count) - effectiveSpinners);</div>
-<div class="line"><a id="l00998" name="l00998"></a><span class="lineno">  998</span>      toWake = std::min(toWake, sleeping);</div>
-<div class="line"><a id="l00999" name="l00999"></a><span class="lineno">  999</span>      <span class="keywordflow">if</span> (toWake &lt;= ws-&gt;branchFactor()) {</div>
-<div class="line"><a id="l01000" name="l01000"></a><span class="lineno"> 1000</span>        <span class="comment">// Small N: direct claim+wake, no cascade overhead.</span></div>
-<div class="line"><a id="l01001" name="l01001"></a><span class="lineno"> 1001</span>        <span class="keywordflow">for</span> (int32_t i = 0; i &lt; toWake; ++i) {</div>
-<div class="line"><a id="l01002" name="l01002"></a><span class="lineno"> 1002</span>          <span class="keywordflow">if</span> (ws-&gt;claimAndWakeOne() &lt; 0) {</div>
-<div class="line"><a id="l01003" name="l01003"></a><span class="lineno"> 1003</span>            <span class="keywordflow">break</span>;</div>
-<div class="line"><a id="l01004" name="l01004"></a><span class="lineno"> 1004</span>          }</div>
-<div class="line"><a id="l01005" name="l01005"></a><span class="lineno"> 1005</span>        }</div>
-<div class="line"><a id="l01006" name="l01006"></a><span class="lineno"> 1006</span>      } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l01007" name="l01007"></a><span class="lineno"> 1007</span>        <span class="comment">// Large N: Pattern C cascade. Producer wakes seed g0; cascade-host</span></div>
-<div class="line"><a id="l01008" name="l01008"></a><span class="lineno"> 1008</span>        <span class="comment">// threads wake their target groups in parallel as they spin up.</span></div>
-<div class="line"><a id="l01009" name="l01009"></a><span class="lineno"> 1009</span>        <span class="comment">// Central-queue work is found by the standard tryFindAndExecuteWork</span></div>
-<div class="line"><a id="l01010" name="l01010"></a><span class="lineno"> 1010</span>        <span class="comment">// loop on each woken thread — no per-thread ring pre-staging needed.</span></div>
-<div class="line"><a id="l01011" name="l01011"></a><span class="lineno"> 1011</span>        ws-&gt;cascadeWakeSeed(toWake);</div>
-<div class="line"><a id="l01012" name="l01012"></a><span class="lineno"> 1012</span>      }</div>
-<div class="line"><a id="l01013" name="l01013"></a><span class="lineno"> 1013</span>    }</div>
-<div class="line"><a id="l01014" name="l01014"></a><span class="lineno"> 1014</span>  }</div>
-<div class="line"><a id="l01015" name="l01015"></a><span class="lineno"> 1015</span>}</div>
-<div class="line"><a id="l01016" name="l01016"></a><span class="lineno"> 1016</span> </div>
-<div class="line"><a id="l01017" name="l01017"></a><span class="lineno"> 1017</span><span class="keyword">template</span> &lt;<span class="keywordtype">bool</span> kPlaced, <span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l01018" name="l01018"></a><span class="lineno"> 1018</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkImpl(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l01019" name="l01019"></a><span class="lineno"> 1019</span>  <span class="keywordflow">if</span> (count == 0) {</div>
-<div class="line"><a id="l01020" name="l01020"></a><span class="lineno"> 1020</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l01021" name="l01021"></a><span class="lineno"> 1021</span>  }</div>
-<div class="line"><a id="l01022" name="l01022"></a><span class="lineno"> 1022</span> </div>
-<div class="line"><a id="l01023" name="l01023"></a><span class="lineno"> 1023</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l01024" name="l01024"></a><span class="lineno"> 1024</span>  <span class="keywordflow">if</span> (!numPool) {</div>
-<div class="line"><a id="l01025" name="l01025"></a><span class="lineno"> 1025</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
-<div class="line"><a id="l01026" name="l01026"></a><span class="lineno"> 1026</span>      gen(i)();</div>
-<div class="line"><a id="l01027" name="l01027"></a><span class="lineno"> 1027</span>    }</div>
-<div class="line"><a id="l01028" name="l01028"></a><span class="lineno"> 1028</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l01029" name="l01029"></a><span class="lineno"> 1029</span>  }</div>
-<div class="line"><a id="l01030" name="l01030"></a><span class="lineno"> 1030</span> </div>
-<div class="line"><a id="l01031" name="l01031"></a><span class="lineno"> 1031</span>  <span class="comment">// Process in chunks, interleaving enqueue and inline execution based on load.</span></div>
-<div class="line"><a id="l01032" name="l01032"></a><span class="lineno"> 1032</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
-<div class="line"><a id="l01033" name="l01033"></a><span class="lineno"> 1033</span>  <span class="keywordtype">size_t</span> i = 0;</div>
-<div class="line"><a id="l01034" name="l01034"></a><span class="lineno"> 1034</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
-<div class="line"><a id="l01035" name="l01035"></a><span class="lineno"> 1035</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l01036" name="l01036"></a><span class="lineno"> 1036</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l01037" name="l01037"></a><span class="lineno"> 1037</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
-<div class="line"><a id="l01038" name="l01038"></a><span class="lineno"> 1038</span>      gen(i)();</div>
-<div class="line"><a id="l01039" name="l01039"></a><span class="lineno"> 1039</span>      ++i;</div>
-<div class="line"><a id="l01040" name="l01040"></a><span class="lineno"> 1040</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l01041" name="l01041"></a><span class="lineno"> 1041</span>      ssize_t room = loadFactor - curWork;</div>
-<div class="line"><a id="l01042" name="l01042"></a><span class="lineno"> 1042</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
-<div class="line"><a id="l01043" name="l01043"></a><span class="lineno"> 1043</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
-<div class="line"><a id="l01044" name="l01044"></a><span class="lineno"> 1044</span>        toEnqueue = 1;</div>
-<div class="line"><a id="l01045" name="l01045"></a><span class="lineno"> 1045</span>      }</div>
-<div class="line"><a id="l01046" name="l01046"></a><span class="lineno"> 1046</span>      <span class="keywordtype">size_t</span> base = i;</div>
-<div class="line"><a id="l01047" name="l01047"></a><span class="lineno"> 1047</span>      <span class="keywordflow">if</span> (kPlaced) {</div>
-<div class="line"><a id="l01048" name="l01048"></a><span class="lineno"> 1048</span>        workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(toEnqueue), std::memory_order_release);</div>
-<div class="line"><a id="l01049" name="l01049"></a><span class="lineno"> 1049</span>        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toEnqueue; ++j) {</div>
-<div class="line"><a id="l01050" name="l01050"></a><span class="lineno"> 1050</span>          scheduleImplPlaced({gen(base + j)}, <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l01051" name="l01051"></a><span class="lineno"> 1051</span>        }</div>
-<div class="line"><a id="l01052" name="l01052"></a><span class="lineno"> 1052</span>      } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l01053" name="l01053"></a><span class="lineno"> 1053</span>        scheduleBulkEnqueue(toEnqueue, [&amp;gen, base](<span class="keywordtype">size_t</span> j) { <span class="keywordflow">return</span> gen(base + j); });</div>
-<div class="line"><a id="l01054" name="l01054"></a><span class="lineno"> 1054</span>      }</div>
-<div class="line"><a id="l01055" name="l01055"></a><span class="lineno"> 1055</span>      i += toEnqueue;</div>
-<div class="line"><a id="l01056" name="l01056"></a><span class="lineno"> 1056</span>    }</div>
-<div class="line"><a id="l01057" name="l01057"></a><span class="lineno"> 1057</span>  }</div>
-<div class="line"><a id="l01058" name="l01058"></a><span class="lineno"> 1058</span>}</div>
-<div class="line"><a id="l01059" name="l01059"></a><span class="lineno"> 1059</span> </div>
-<div class="line"><a id="l01060" name="l01060"></a><span class="lineno"> 1060</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="foldopen" id="foldopen01061" data-start="{" data-end="}">
-<div class="line"><a id="l01061" name="l01061"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635"> 1061</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">ThreadPool::scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l01062" name="l01062"></a><span class="lineno"> 1062</span>  scheduleBulkImpl&lt;false&gt;(count, std::forward&lt;Generator&gt;(gen));</div>
-<div class="line"><a id="l01063" name="l01063"></a><span class="lineno"> 1063</span>}</div>
+<div class="line"><a id="l00966" name="l00966"></a><span class="lineno">  966</span>  <span class="comment">// Single atomic update + bulk enqueue</span></div>
+<div class="line"><a id="l00967" name="l00967"></a><span class="lineno">  967</span>  workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_release);</div>
+<div class="line"><a id="l00968" name="l00968"></a><span class="lineno">  968</span> </div>
+<div class="line"><a id="l00969" name="l00969"></a><span class="lineno">  969</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();</div>
+<div class="line"><a id="l00970" name="l00970"></a><span class="lineno">  970</span>  <span class="keywordtype">bool</span> enqueued;</div>
+<div class="line"><a id="l00971" name="l00971"></a><span class="lineno">  971</span>  <span class="keywordflow">if</span> (token) {</div>
+<div class="line"><a id="l00972" name="l00972"></a><span class="lineno">  972</span>    enqueued = work_.enqueue_bulk(*token, it, count);</div>
+<div class="line"><a id="l00973" name="l00973"></a><span class="lineno">  973</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00974" name="l00974"></a><span class="lineno">  974</span>    enqueued = work_.enqueue_bulk(it, count);</div>
+<div class="line"><a id="l00975" name="l00975"></a><span class="lineno">  975</span>  }</div>
+<div class="line"><a id="l00976" name="l00976"></a><span class="lineno">  976</span>  DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_END();</div>
+<div class="line"><a id="l00977" name="l00977"></a><span class="lineno">  977</span>  <span class="keywordflow">if</span> (DISPENSO_EXPECT(!enqueued, <span class="keyword">false</span>)) {</div>
+<div class="line"><a id="l00978" name="l00978"></a><span class="lineno">  978</span>    workRemaining_.fetch_sub(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(count), std::memory_order_relaxed);</div>
+<div class="line"><a id="l00979" name="l00979"></a><span class="lineno">  979</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00980" name="l00980"></a><span class="lineno">  980</span>    <span class="keywordflow">throw</span> std::bad_alloc();</div>
+<div class="line"><a id="l00981" name="l00981"></a><span class="lineno">  981</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00982" name="l00982"></a><span class="lineno">  982</span>    std::abort();</div>
+<div class="line"><a id="l00983" name="l00983"></a><span class="lineno">  983</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00984" name="l00984"></a><span class="lineno">  984</span>  }</div>
+<div class="line"><a id="l00985" name="l00985"></a><span class="lineno">  985</span>  <span class="comment">// Mark queue as possibly-non-empty so spinning workers will try_dequeue.</span></div>
+<div class="line"><a id="l00986" name="l00986"></a><span class="lineno">  986</span>  centralQueueNonEmpty_.store(<span class="keyword">true</span>, std::memory_order_relaxed);</div>
+<div class="line"><a id="l00987" name="l00987"></a><span class="lineno">  987</span> </div>
+<div class="line"><a id="l00988" name="l00988"></a><span class="lineno">  988</span>  <span class="comment">// Wake appropriate threads. Cap by actual sleeping count to avoid over-waking.</span></div>
+<div class="line"><a id="l00989" name="l00989"></a><span class="lineno">  989</span>  <span class="comment">// Spinning threads (numNotWorking - totalSleeping) will find enqueued work</span></div>
+<div class="line"><a id="l00990" name="l00990"></a><span class="lineno">  990</span>  <span class="comment">// naturally, so only wake enough sleepers to cover the deficit beyond the</span></div>
+<div class="line"><a id="l00991" name="l00991"></a><span class="lineno">  991</span>  <span class="comment">// spinner threshold.</span></div>
+<div class="line"><a id="l00992" name="l00992"></a><span class="lineno">  992</span>  <span class="keyword">auto</span>* ws = detail::consumeLoad(wakeState_);</div>
+<div class="line"><a id="l00993" name="l00993"></a><span class="lineno">  993</span>  <span class="keywordflow">if</span> (enableEpochWaiter_.load(std::memory_order_acquire) &amp;&amp; ws) {</div>
+<div class="line"><a id="l00994" name="l00994"></a><span class="lineno">  994</span>    int32_t sleeping = ws-&gt;totalSleeping();</div>
+<div class="line"><a id="l00995" name="l00995"></a><span class="lineno">  995</span>    <span class="keywordflow">if</span> (sleeping &gt; 0) {</div>
+<div class="line"><a id="l00996" name="l00996"></a><span class="lineno">  996</span>      int32_t notWorking = numNotWorking_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00997" name="l00997"></a><span class="lineno">  997</span>      int32_t spinning = std::max(int32_t{0}, notWorking - sleeping);</div>
+<div class="line"><a id="l00998" name="l00998"></a><span class="lineno">  998</span>      <span class="comment">// Only count spinners beyond the threshold as &quot;covering&quot; tasks</span></div>
+<div class="line"><a id="l00999" name="l00999"></a><span class="lineno">  999</span>      int32_t effectiveSpinners = std::max(int32_t{0}, spinning - kSpinnerWakeThreshold + 1);</div>
+<div class="line"><a id="l01000" name="l01000"></a><span class="lineno"> 1000</span>      int32_t toWake = std::max(int32_t{0}, <span class="keyword">static_cast&lt;</span>int32_t<span class="keyword">&gt;</span>(count) - effectiveSpinners);</div>
+<div class="line"><a id="l01001" name="l01001"></a><span class="lineno"> 1001</span>      toWake = std::min(toWake, sleeping);</div>
+<div class="line"><a id="l01002" name="l01002"></a><span class="lineno"> 1002</span>      <span class="keywordflow">if</span> (toWake &lt;= ws-&gt;branchFactor()) {</div>
+<div class="line"><a id="l01003" name="l01003"></a><span class="lineno"> 1003</span>        <span class="comment">// Small N: direct claim+wake, no cascade overhead.</span></div>
+<div class="line"><a id="l01004" name="l01004"></a><span class="lineno"> 1004</span>        <span class="keywordflow">for</span> (int32_t i = 0; i &lt; toWake; ++i) {</div>
+<div class="line"><a id="l01005" name="l01005"></a><span class="lineno"> 1005</span>          <span class="keywordflow">if</span> (ws-&gt;claimAndWakeOne() &lt; 0) {</div>
+<div class="line"><a id="l01006" name="l01006"></a><span class="lineno"> 1006</span>            <span class="keywordflow">break</span>;</div>
+<div class="line"><a id="l01007" name="l01007"></a><span class="lineno"> 1007</span>          }</div>
+<div class="line"><a id="l01008" name="l01008"></a><span class="lineno"> 1008</span>        }</div>
+<div class="line"><a id="l01009" name="l01009"></a><span class="lineno"> 1009</span>      } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l01010" name="l01010"></a><span class="lineno"> 1010</span>        <span class="comment">// Large N: Pattern C cascade. Producer wakes seed g0; cascade-host</span></div>
+<div class="line"><a id="l01011" name="l01011"></a><span class="lineno"> 1011</span>        <span class="comment">// threads wake their target groups in parallel as they spin up.</span></div>
+<div class="line"><a id="l01012" name="l01012"></a><span class="lineno"> 1012</span>        <span class="comment">// Central-queue work is found by the standard tryFindAndExecuteWork</span></div>
+<div class="line"><a id="l01013" name="l01013"></a><span class="lineno"> 1013</span>        <span class="comment">// loop on each woken thread — no per-thread ring pre-staging needed.</span></div>
+<div class="line"><a id="l01014" name="l01014"></a><span class="lineno"> 1014</span>        ws-&gt;cascadeWakeSeed(toWake);</div>
+<div class="line"><a id="l01015" name="l01015"></a><span class="lineno"> 1015</span>      }</div>
+<div class="line"><a id="l01016" name="l01016"></a><span class="lineno"> 1016</span>    }</div>
+<div class="line"><a id="l01017" name="l01017"></a><span class="lineno"> 1017</span>  }</div>
+<div class="line"><a id="l01018" name="l01018"></a><span class="lineno"> 1018</span>}</div>
+<div class="line"><a id="l01019" name="l01019"></a><span class="lineno"> 1019</span> </div>
+<div class="line"><a id="l01020" name="l01020"></a><span class="lineno"> 1020</span><span class="keyword">template</span> &lt;<span class="keywordtype">bool</span> kPlaced, <span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l01021" name="l01021"></a><span class="lineno"> 1021</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkImpl(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l01022" name="l01022"></a><span class="lineno"> 1022</span>  <span class="keywordflow">if</span> (count == 0) {</div>
+<div class="line"><a id="l01023" name="l01023"></a><span class="lineno"> 1023</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l01024" name="l01024"></a><span class="lineno"> 1024</span>  }</div>
+<div class="line"><a id="l01025" name="l01025"></a><span class="lineno"> 1025</span> </div>
+<div class="line"><a id="l01026" name="l01026"></a><span class="lineno"> 1026</span>  ssize_t numPool = numThreads_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l01027" name="l01027"></a><span class="lineno"> 1027</span>  <span class="keywordflow">if</span> (!numPool) {</div>
+<div class="line"><a id="l01028" name="l01028"></a><span class="lineno"> 1028</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i) {</div>
+<div class="line"><a id="l01029" name="l01029"></a><span class="lineno"> 1029</span>      gen(i)();</div>
+<div class="line"><a id="l01030" name="l01030"></a><span class="lineno"> 1030</span>    }</div>
+<div class="line"><a id="l01031" name="l01031"></a><span class="lineno"> 1031</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l01032" name="l01032"></a><span class="lineno"> 1032</span>  }</div>
+<div class="line"><a id="l01033" name="l01033"></a><span class="lineno"> 1033</span> </div>
+<div class="line"><a id="l01034" name="l01034"></a><span class="lineno"> 1034</span>  <span class="comment">// Process in chunks, interleaving enqueue and inline execution based on load.</span></div>
+<div class="line"><a id="l01035" name="l01035"></a><span class="lineno"> 1035</span>  <span class="keywordtype">size_t</span> chunkSize = <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) + <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(numPool) / 2;</div>
+<div class="line"><a id="l01036" name="l01036"></a><span class="lineno"> 1036</span>  <span class="keywordtype">size_t</span> i = 0;</div>
+<div class="line"><a id="l01037" name="l01037"></a><span class="lineno"> 1037</span>  <span class="keywordflow">while</span> (i &lt; count) {</div>
+<div class="line"><a id="l01038" name="l01038"></a><span class="lineno"> 1038</span>    ssize_t curWork = workRemaining_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l01039" name="l01039"></a><span class="lineno"> 1039</span>    ssize_t loadFactor = poolLoadFactor_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l01040" name="l01040"></a><span class="lineno"> 1040</span>    <span class="keywordflow">if</span> (curWork &gt; loadFactor) {</div>
+<div class="line"><a id="l01041" name="l01041"></a><span class="lineno"> 1041</span>      gen(i)();</div>
+<div class="line"><a id="l01042" name="l01042"></a><span class="lineno"> 1042</span>      ++i;</div>
+<div class="line"><a id="l01043" name="l01043"></a><span class="lineno"> 1043</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l01044" name="l01044"></a><span class="lineno"> 1044</span>      ssize_t room = loadFactor - curWork;</div>
+<div class="line"><a id="l01045" name="l01045"></a><span class="lineno"> 1045</span>      <span class="keywordtype">size_t</span> toEnqueue = std::min({count - i, chunkSize, <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(room)});</div>
+<div class="line"><a id="l01046" name="l01046"></a><span class="lineno"> 1046</span>      <span class="keywordflow">if</span> (toEnqueue == 0) {</div>
+<div class="line"><a id="l01047" name="l01047"></a><span class="lineno"> 1047</span>        toEnqueue = 1;</div>
+<div class="line"><a id="l01048" name="l01048"></a><span class="lineno"> 1048</span>      }</div>
+<div class="line"><a id="l01049" name="l01049"></a><span class="lineno"> 1049</span>      <span class="keywordtype">size_t</span> base = i;</div>
+<div class="line"><a id="l01050" name="l01050"></a><span class="lineno"> 1050</span>      <span class="keywordflow">if</span> (kPlaced) {</div>
+<div class="line"><a id="l01051" name="l01051"></a><span class="lineno"> 1051</span>        workRemaining_.fetch_add(<span class="keyword">static_cast&lt;</span>ssize_t<span class="keyword">&gt;</span>(toEnqueue), std::memory_order_release);</div>
+<div class="line"><a id="l01052" name="l01052"></a><span class="lineno"> 1052</span>        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> j = 0; j &lt; toEnqueue; ++j) {</div>
+<div class="line"><a id="l01053" name="l01053"></a><span class="lineno"> 1053</span>          scheduleImplPlaced({gen(base + j)}, <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l01054" name="l01054"></a><span class="lineno"> 1054</span>        }</div>
+<div class="line"><a id="l01055" name="l01055"></a><span class="lineno"> 1055</span>      } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l01056" name="l01056"></a><span class="lineno"> 1056</span>        scheduleBulkEnqueue(toEnqueue, [&amp;gen, base](<span class="keywordtype">size_t</span> j) { <span class="keywordflow">return</span> gen(base + j); });</div>
+<div class="line"><a id="l01057" name="l01057"></a><span class="lineno"> 1057</span>      }</div>
+<div class="line"><a id="l01058" name="l01058"></a><span class="lineno"> 1058</span>      i += toEnqueue;</div>
+<div class="line"><a id="l01059" name="l01059"></a><span class="lineno"> 1059</span>    }</div>
+<div class="line"><a id="l01060" name="l01060"></a><span class="lineno"> 1060</span>  }</div>
+<div class="line"><a id="l01061" name="l01061"></a><span class="lineno"> 1061</span>}</div>
+<div class="line"><a id="l01062" name="l01062"></a><span class="lineno"> 1062</span> </div>
+<div class="line"><a id="l01063" name="l01063"></a><span class="lineno"> 1063</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="foldopen" id="foldopen01064" data-start="{" data-end="}">
+<div class="line"><a id="l01064" name="l01064"></a><span class="lineno"><a class="line" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635"> 1064</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">ThreadPool::scheduleBulk</a>(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l01065" name="l01065"></a><span class="lineno"> 1065</span>  scheduleBulkImpl&lt;false&gt;(count, std::forward&lt;Generator&gt;(gen));</div>
+<div class="line"><a id="l01066" name="l01066"></a><span class="lineno"> 1066</span>}</div>
 </div>
-<div class="line"><a id="l01064" name="l01064"></a><span class="lineno"> 1064</span> </div>
-<div class="line"><a id="l01065" name="l01065"></a><span class="lineno"> 1065</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
-<div class="line"><a id="l01066" name="l01066"></a><span class="lineno"> 1066</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkPlaced(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
-<div class="line"><a id="l01067" name="l01067"></a><span class="lineno"> 1067</span>  scheduleBulkImpl&lt;true&gt;(count, std::forward&lt;Generator&gt;(gen));</div>
-<div class="line"><a id="l01068" name="l01068"></a><span class="lineno"> 1068</span>}</div>
-<div class="line"><a id="l01069" name="l01069"></a><span class="lineno"> 1069</span> </div>
-<div class="line"><a id="l01070" name="l01070"></a><span class="lineno"> 1070</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l01067" name="l01067"></a><span class="lineno"> 1067</span> </div>
+<div class="line"><a id="l01068" name="l01068"></a><span class="lineno"> 1068</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Generator&gt;</div>
+<div class="line"><a id="l01069" name="l01069"></a><span class="lineno"> 1069</span><span class="keywordtype">void</span> ThreadPool::scheduleBulkPlaced(<span class="keywordtype">size_t</span> count, Generator&amp;&amp; gen) {</div>
+<div class="line"><a id="l01070" name="l01070"></a><span class="lineno"> 1070</span>  scheduleBulkImpl&lt;true&gt;(count, std::forward&lt;Generator&gt;(gen));</div>
+<div class="line"><a id="l01071" name="l01071"></a><span class="lineno"> 1071</span>}</div>
+<div class="line"><a id="l01072" name="l01072"></a><span class="lineno"> 1072</span> </div>
+<div class="line"><a id="l01073" name="l01073"></a><span class="lineno"> 1073</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_mpmc_ring_buffer_html_aec66d6a89d370599d61880a36c415874"><div class="ttname"><a href="classdispenso_1_1_mpmc_ring_buffer.html#aec66d6a89d370599d61880a36c415874">dispenso::MpmcRingBuffer::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the buffer can hold.</div><div class="ttdef"><b>Definition</b> <a href="mpmc__ring__buffer_8h_source.html#l00584">mpmc_ring_buffer.h:584</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="#l00108">thread_pool.h:108</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a1496e66b4081c1f35ab2ff70536148ac"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a1496e66b4081c1f35ab2ff70536148ac">dispenso::ThreadPool::setSignalingWake</a></div><div class="ttdeci">void setSignalingWake(bool enable, const std::chrono::duration&lt; Rep, Period &gt; &amp;sleepDuration=std::chrono::microseconds(kDefaultSleepLenUs))</div><div class="ttdef"><b>Definition</b> <a href="#l00138">thread_pool.h:138</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a44c17acaa3e40881b0ab2260849a7f7f"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a44c17acaa3e40881b0ab2260849a7f7f">dispenso::ThreadPool::~ThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ~ThreadPool()</div></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a656639db1edaa1293a7dfec9629c0289"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">dispenso::ThreadPool::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="#l00588">thread_pool.h:588</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a656639db1edaa1293a7dfec9629c0289"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a656639db1edaa1293a7dfec9629c0289">dispenso::ThreadPool::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="#l00592">thread_pool.h:592</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a790fecdf2ce448db2f02af9117c7f538"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a790fecdf2ce448db2f02af9117c7f538">dispenso::ThreadPool::numThreads</a></div><div class="ttdeci">ssize_t numThreads() const</div><div class="ttdef"><b>Definition</b> <a href="#l00165">thread_pool.h:165</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_a80196d2cb48d6b612f78592dde3af8d1"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#a80196d2cb48d6b612f78592dde3af8d1">dispenso::ThreadPool::resize</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void resize(ssize_t n) DISPENSO_NO_THREAD_SAFETY_ANALYSIS</div><div class="ttdef"><b>Definition</b> <a href="#l00154">thread_pool.h:154</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_abd7b0434f1b824c1a0be19b91a8ab635"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">dispenso::ThreadPool::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l01061">thread_pool.h:1061</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html_abd7b0434f1b824c1a0be19b91a8ab635"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#abd7b0434f1b824c1a0be19b91a8ab635">dispenso::ThreadPool::scheduleBulk</a></div><div class="ttdeci">void scheduleBulk(size_t count, Generator &amp;&amp;gen)</div><div class="ttdef"><b>Definition</b> <a href="#l01064">thread_pool.h:1064</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_thread_pool_html_aff84991b150f3e27711d277bcbc9f6f3"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html#aff84991b150f3e27711d277bcbc9f6f3">dispenso::ThreadPool::ThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ThreadPool(size_t n, size_t poolLoadMultiplier=32)</div></div>
 <div class="ttc" id="aconcurrent__object__arena_8h_html"><div class="ttname"><a href="concurrent__object__arena_8h.html">concurrent_object_arena.h</a></div></div>
 <div class="ttc" id="acpu__set_8h_html"><div class="ttname"><a href="cpu__set_8h.html">cpu_set.h</a></div></div>

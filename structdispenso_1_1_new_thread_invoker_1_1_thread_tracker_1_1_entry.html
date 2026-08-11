@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.12.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>dispenso: /github/workspace/dispenso/cpu_set.h File Reference</title>
+<title>dispenso: dispenso::NewThreadInvoker::ThreadTracker::Entry Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -73,7 +73,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(function(){initNavTree('cpu__set_8h.html',''); initResizable(true); });
+$(function(){initNavTree('structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html',''); initResizable(true); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -100,48 +100,64 @@ $(function(){initNavTree('cpu__set_8h.html',''); initResizable(true); });
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a>  </div>
-  <div class="headertitle"><div class="title">cpu_set.h File Reference<div class="ingroups"><a class="el" href="group__group__util.html">Utilities</a></div></div></div>
+<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">dispenso::NewThreadInvoker::ThreadTracker::Entry Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;cstdint&gt;</code><br />
-<code>#include &lt;string&gt;</code><br />
-<code>#include &lt;thread&gt;</code><br />
-<code>#include &lt;vector&gt;</code><br />
-<code>#include &lt;<a class="el" href="platform_8h_source.html">dispenso/platform.h</a>&gt;</code><br />
-</div>
-<p><a href="cpu__set_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_cache_group.html">dispenso::CacheGroup</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Describes a group of CPUs that share a cache level.  <a href="structdispenso_1_1_cache_group.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A set of CPU IDs for affinity manipulation and topology queries.  <a href="classdispenso_1_1_cpu_set.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdispenso_1_1_thread_group.html">dispenso::ThreadGroup</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A scheduling group of CPUs for fork-join thread pool assignment.  <a href="structdispenso_1_1_thread_group.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a1257938cc3a175dfbd4a4528b2d5cae6" id="r_a1257938cc3a175dfbd4a4528b2d5cae6"><td class="memItemLeft" align="right" valign="top">std::thread&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1257938cc3a175dfbd4a4528b2d5cae6">thread</a></td></tr>
+<tr class="separator:a1257938cc3a175dfbd4a4528b2d5cae6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af1cfc0f2d44ed12ea29a598d2b532075" id="r_af1cfc0f2d44ed12ea29a598d2b532075"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; std::atomic&lt; bool &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af1cfc0f2d44ed12ea29a598d2b532075">done</a></td></tr>
+<tr class="separator:af1cfc0f2d44ed12ea29a598d2b532075"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>A portable CPU affinity and NUMA topology facility.</p>
-<p>Provides CPU set manipulation, thread-to-core binding, and NUMA/cache topology detection. The primary use case is cache-aware thread group assignment for fork-join scheduling.</p>
-<p>Platform support:</p><ul>
-<li><b>Linux</b>: Full support (binding via pthread_setaffinity_np, topology via sysfs)</li>
-<li><b>FreeBSD</b>: Full support (binding via pthread_setaffinity_np, topology via sysctl)</li>
-<li><b>macOS</b>: Topology query only (binding is not supported by the OS)</li>
-<li><b>Windows</b>: Full support (binding via SetThreadGroupAffinity, topology via GetLogicalProcessorInformationEx)</li>
-</ul>
-<dl class="section see"><dt>See also</dt><dd>docs/design/three_tier_scheduling.md for the design context. </dd></dl>
+<div class="textblock">
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00126">126</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+</div><h2 class="groupheader">Member Data Documentation</h2>
+<a id="af1cfc0f2d44ed12ea29a598d2b532075" name="af1cfc0f2d44ed12ea29a598d2b532075"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af1cfc0f2d44ed12ea29a598d2b532075">&#9670;&#160;</a></span>done</h2>
 
-<p class="definition">Definition in file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
-</div></div><!-- contents -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::shared_ptr&lt;std::atomic&lt;bool&gt; &gt; dispenso::NewThreadInvoker::ThreadTracker::Entry::done</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00130">130</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+
+</div>
+</div>
+<a id="a1257938cc3a175dfbd4a4528b2d5cae6" name="a1257938cc3a175dfbd4a4528b2d5cae6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1257938cc3a175dfbd4a4528b2d5cae6">&#9670;&#160;</a></span>thread</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::thread dispenso::NewThreadInvoker::ThreadTracker::Entry::thread</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="schedulable_8h_source.html#l00127">127</a> of file <a class="el" href="schedulable_8h_source.html">schedulable.h</a>.</p>
+
+</div>
+</div>
+<hr/>The documentation for this struct was generated from the following file:<ul>
+<li>/github/workspace/dispenso/<a class="el" href="schedulable_8h_source.html">schedulable.h</a></li>
+</ul>
+</div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="dir_ff109a5d4b8a833924ba8452f0ad7d5d.html">dispenso</a></li><li class="navelem"><a class="el" href="cpu__set_8h.html">cpu_set.h</a></li>
+    <li class="navelem"><b>dispenso</b></li><li class="navelem"><a class="el" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a></li><li class="navelem"><b>ThreadTracker</b></li><li class="navelem"><a class="el" href="structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html">Entry</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.12.0 </li>
   </ul>
 </div>

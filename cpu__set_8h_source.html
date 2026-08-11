@@ -112,130 +112,161 @@ $(function(){initNavTree('cpu__set_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
 <div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#include &lt;cstdint&gt;</span></div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &lt;thread&gt;</span></div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span> </div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#if defined(__linux__) || defined(__FreeBSD__)</span></div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#define DISPENSO_CPUSET_LINUXY</span></div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#endif </span><span class="comment">// linuxy</span></div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="preprocessor">#if defined(DISPENSO_CPUSET_LINUXY)</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &lt;pthread.h&gt;</span></div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#include &lt;sched.h&gt;</span></div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="preprocessor">#elif defined(_WIN32)</span></div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#define DISPENSO_CPUSET_WINDOWS</span></div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#endif </span><span class="comment">// supported os</span></div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="comment">// Note: Windows uses SetThreadGroupAffinity for binding and</span></div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="comment">// GetLogicalProcessorInformationEx for NUMA/cache topology, behind the same public API.</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="comment">//</span></div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="comment">// macOS does not support explicit CPU pinning. bindCurrentThread() is a no-op and</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="comment">// returns false. Topology queries return a single-node fallback.</span></div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="comment">//</span></div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="comment">// FreeBSD binding support is present (cpuset_setaffinity uses a similar interface to</span></div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="comment">// Linux), but topology detection requires test hardware and is deferred.</span></div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span> </div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="preprocessor">#ifndef DISPENSO_MAX_GROUP_SIZE</span></div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="preprocessor">#define DISPENSO_MAX_GROUP_SIZE 16</span></div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="keyword">namespace </span>dispenso {</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span> </div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span><span class="keyword">constexpr</span> int32_t kDefaultMaxGroupSize = DISPENSO_MAX_GROUP_SIZE;</div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
-<div class="foldopen" id="foldopen00084" data-start="{" data-end="};">
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html">   84</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_cache_group.html">CacheGroup</a> {</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">   85</a></span>  std::vector&lt;int32_t&gt; <a class="code hl_variable" href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">cpus</a>; </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">   86</a></span>  int32_t <a class="code hl_variable" href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">cacheId</a>; </div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>};</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &lt;string&gt;</span></div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;thread&gt;</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span> </div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="preprocessor">#include &lt;<a class="code" href="platform_8h.html">dispenso/platform.h</a>&gt;</span></div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span> </div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#if defined(__linux__) || defined(__FreeBSD__)</span></div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#define DISPENSO_CPUSET_LINUXY</span></div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#endif </span><span class="comment">// linuxy</span></div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span> </div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#if defined(DISPENSO_CPUSET_LINUXY)</span></div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#include &lt;pthread.h&gt;</span></div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="preprocessor">#include &lt;sched.h&gt;</span></div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#if defined(__FreeBSD__)</span></div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#include &lt;pthread_np.h&gt;</span></div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#include &lt;sys/cpuset.h&gt;</span></div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &lt;sys/param.h&gt;</span></div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#elif defined(_WIN32)</span></div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#define DISPENSO_CPUSET_WINDOWS</span></div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#endif </span><span class="comment">// supported os</span></div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="comment">// Note: Windows uses SetThreadGroupAffinity for binding and</span></div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="comment">// GetLogicalProcessorInformationEx for NUMA/cache topology, behind the same public API.</span></div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="comment">//</span></div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><span class="comment">// macOS does not support explicit CPU pinning. bindCurrentThread() is a no-op and</span></div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="comment">// returns false. Topology queries return a single-node fallback.</span></div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="comment">//</span></div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span><span class="comment">// FreeBSD binding uses pthread_setaffinity_np, as on Linux. NUMA and cache</span></div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span><span class="comment">// topology are read from sysctl (vm.ndomains, kern.sched.topology_spec); when</span></div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span><span class="comment">// the kernel reports no cache levels, cache group queries return empty and</span></div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="comment">// buildThreadGroups() falls back to contiguous chunking.</span></div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span> </div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span><span class="preprocessor">#ifndef DISPENSO_MAX_GROUP_SIZE</span></div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span><span class="preprocessor">#define DISPENSO_MAX_GROUP_SIZE 16</span></div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> </div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span><span class="keyword">namespace </span>dispenso {</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span> </div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span><span class="keyword">namespace </span>detail {</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span><span class="preprocessor">#if defined(DISPENSO_CPUSET_LINUXY)</span></div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span><span class="comment">// The native affinity-set type: cpu_set_t on Linux, cpuset_t on FreeBSD. Aliased</span></div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span><span class="comment">// in detail rather than as a global `typedef cpuset_t cpu_set_t` so that</span></div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="comment">// including this header does not inject a cpu_set_t name into every translation</span></div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span><span class="comment">// unit (which could clash with a consumer&#39;s own definition).</span></div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span><span class="preprocessor">#if defined(__FreeBSD__)</span></div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="keyword">using </span>CpuSetNative = ::cpuset_t;</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="keyword">using </span>CpuSetNative = ::cpu_set_t;</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="preprocessor">#endif </span><span class="comment">// DISPENSO_CPUSET_LINUXY</span></div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span> </div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="keyword">constexpr</span> int32_t kDefaultMaxGroupSize = DISPENSO_MAX_GROUP_SIZE;</div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span> </div>
+<div class="foldopen" id="foldopen00106" data-start="{" data-end="};">
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html">  106</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_cache_group.html">CacheGroup</a> {</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">  107</a></span>  std::vector&lt;int32_t&gt; <a class="code hl_variable" href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">cpus</a>; </div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno"><a class="line" href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">  108</a></span>  int32_t <a class="code hl_variable" href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">cacheId</a>; </div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>};</div>
 </div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span> </div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="comment">// Forward declaration; full definition follows CpuSet (ThreadGroup has a CpuSet member).</span></div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_thread_group.html">ThreadGroup</a>;</div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span> </div>
-<div class="foldopen" id="foldopen00139" data-start="{" data-end="};">
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html">  139</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> {</div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3">  144</a></span>  DISPENSO_DLL_ACCESS <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3">CpuSet</a>();</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span> </div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a8e0e636af9d77507746e9c828112b73a">  149</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a8e0e636af9d77507746e9c828112b73a">clear</a>();</div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span> </div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">  155</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">add</a>(int32_t hardwareThread);</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span> </div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a5e88b75b839ed56077e1543af74986d6">  162</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a5e88b75b839ed56077e1543af74986d6">addRange</a>(int32_t start, int32_t end);</div>
-<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span> </div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#af3c048c8ae95f51e2ff4d33cf5934085">  168</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#af3c048c8ae95f51e2ff4d33cf5934085">remove</a>(int32_t hardwareThread);</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="comment">// Forward declaration; full definition follows CpuSet (ThreadGroup has a CpuSet member).</span></div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_thread_group.html">ThreadGroup</a>;</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span> </div>
+<div class="foldopen" id="foldopen00163" data-start="{" data-end="};">
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html">  163</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> {</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3">  168</a></span>  DISPENSO_DLL_ACCESS <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ae527886d8ac25687410f4147217a3ed3">CpuSet</a>();</div>
 <div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span> </div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc">  175</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc">removeRange</a>(int32_t start, int32_t end);</div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span> </div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a44fc4462dc2224593bd3c1660ea2b637">  182</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a44fc4462dc2224593bd3c1660ea2b637">contains</a>(int32_t hardwareThread) <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span> </div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a4cd045e0712970648279ff2d7f434ed1">  187</a></span>  DISPENSO_DLL_ACCESS int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a4cd045e0712970648279ff2d7f434ed1">count</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span> </div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">  197</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">bindCurrentThread</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span> </div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#aa2f598c01a9e637ed014aea5a2ad6183">  205</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#aa2f598c01a9e637ed014aea5a2ad6183">totalNumaNodes</a>();</div>
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span> </div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">  217</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">currentHardwareThread</a>();</div>
-<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span> </div>
-<div class="foldopen" id="foldopen00234" data-start="{" data-end="}">
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">  234</a></span>  <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">currentHardwareThreadApprox</a>() {</div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>    <span class="keyword">static</span> <span class="keyword">constexpr</span> uint32_t kRefreshPeriod = 32;</div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keyword">static</span> DISPENSO_THREAD_LOCAL int32_t cachedCpu = -1;</div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    <span class="keyword">static</span> DISPENSO_THREAD_LOCAL uint32_t counter = 0;</div>
-<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    <span class="keywordflow">if</span> ((counter++ &amp; (kRefreshPeriod - 1)) == 0) {</div>
-<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>      cachedCpu = <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">currentHardwareThread</a>();</div>
-<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>    }</div>
-<div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span>    <span class="keywordflow">return</span> cachedCpu;</div>
-<div class="line"><a id="l00242" name="l00242"></a><span class="lineno">  242</span>  }</div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a8e0e636af9d77507746e9c828112b73a">  173</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a8e0e636af9d77507746e9c828112b73a">clear</a>();</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span> </div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">  179</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">add</a>(int32_t hardwareThread);</div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span> </div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a5e88b75b839ed56077e1543af74986d6">  186</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a5e88b75b839ed56077e1543af74986d6">addRange</a>(int32_t start, int32_t end);</div>
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span> </div>
+<div class="line"><a id="l00192" name="l00192"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#af3c048c8ae95f51e2ff4d33cf5934085">  192</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#af3c048c8ae95f51e2ff4d33cf5934085">remove</a>(int32_t hardwareThread);</div>
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span> </div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc">  199</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">void</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc">removeRange</a>(int32_t start, int32_t end);</div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span> </div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a44fc4462dc2224593bd3c1660ea2b637">  206</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a44fc4462dc2224593bd3c1660ea2b637">contains</a>(int32_t hardwareThread) <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span> </div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a4cd045e0712970648279ff2d7f434ed1">  211</a></span>  DISPENSO_DLL_ACCESS int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a4cd045e0712970648279ff2d7f434ed1">count</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span> </div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">  225</a></span>  DISPENSO_DLL_ACCESS <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">bindCurrentThread</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span> </div>
+<div class="line"><a id="l00233" name="l00233"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#aa2f598c01a9e637ed014aea5a2ad6183">  233</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#aa2f598c01a9e637ed014aea5a2ad6183">totalNumaNodes</a>();</div>
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span> </div>
+<div class="line"><a id="l00247" name="l00247"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">  247</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">currentHardwareThread</a>();</div>
+<div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span> </div>
+<div class="foldopen" id="foldopen00264" data-start="{" data-end="}">
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">  264</a></span>  <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">currentHardwareThreadApprox</a>() {</div>
+<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keyword">static</span> <span class="keyword">constexpr</span> uint32_t kRefreshPeriod = 32;</div>
+<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    <span class="keyword">static</span> DISPENSO_THREAD_LOCAL int32_t cachedCpu = -1;</div>
+<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    <span class="keyword">static</span> DISPENSO_THREAD_LOCAL uint32_t counter = 0;</div>
+<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    <span class="keywordflow">if</span> ((counter++ &amp; (kRefreshPeriod - 1)) == 0) {</div>
+<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>      cachedCpu = <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ad6a94600b8590b37ad14329cf5e58f5b">currentHardwareThread</a>();</div>
+<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>    }</div>
+<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>    <span class="keywordflow">return</span> cachedCpu;</div>
+<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>  }</div>
 </div>
-<div class="line"><a id="l00243" name="l00243"></a><span class="lineno">  243</span> </div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a343ea86ffd84c3a02e7a12463f8eccf9">  249</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a>&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a343ea86ffd84c3a02e7a12463f8eccf9">node</a>(int32_t numaNode);</div>
-<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span> </div>
-<div class="line"><a id="l00258" name="l00258"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ac6bcca91da0ff91378cc24fc5d8cdb3a">  258</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a>&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ac6bcca91da0ff91378cc24fc5d8cdb3a">all</a>();</div>
-<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span> </div>
-<div class="line"><a id="l00269" name="l00269"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">  269</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">availableCount</a>();</div>
-<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span> </div>
-<div class="line"><a id="l00283" name="l00283"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ade36eae189944c6217c41b86f8a2c269">  283</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ade36eae189944c6217c41b86f8a2c269">l2CacheGroups</a>();</div>
-<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span> </div>
-<div class="line"><a id="l00297" name="l00297"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">  297</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">l3CacheGroups</a>();</div>
-<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span> </div>
-<div class="line"><a id="l00327" name="l00327"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5">  327</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> std::vector&lt;ThreadGroup&gt; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5">buildThreadGroups</a>(</div>
-<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span>      int32_t maxGroupSize = kDefaultMaxGroupSize);</div>
-<div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span> </div>
-<div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span><span class="preprocessor">#if defined(DISPENSO_CPUSET_LINUXY)</span></div>
-<div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span>  cpu_set_t set_;</div>
-<div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>  <span class="comment">// Portable bitset supporting up to kMaxCpus logical processors.</span></div>
-<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span>  <span class="comment">// 1024 matches Linux cpu_set_t and covers all practical configurations.</span></div>
-<div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span>  <span class="comment">// Windows Server 2025 supports up to 12,288 (192 groups x 64) but</span></div>
-<div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span>  <span class="comment">// no known hardware approaches that limit. Can be increased later;</span></div>
-<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>  <span class="comment">// dispenso does not guarantee ABI stability.</span></div>
-<div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kMaxCpus = 1024;</div>
-<div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kBitsPerWord = 64;</div>
-<div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kNumWords = kMaxCpus / kBitsPerWord;</div>
-<div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span>  uint64_t words_[kNumWords];</div>
-<div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span>};</div>
+<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span> </div>
+<div class="line"><a id="l00279" name="l00279"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a343ea86ffd84c3a02e7a12463f8eccf9">  279</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a>&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a343ea86ffd84c3a02e7a12463f8eccf9">node</a>(int32_t numaNode);</div>
+<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span> </div>
+<div class="line"><a id="l00288" name="l00288"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ac6bcca91da0ff91378cc24fc5d8cdb3a">  288</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a>&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ac6bcca91da0ff91378cc24fc5d8cdb3a">all</a>();</div>
+<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span> </div>
+<div class="line"><a id="l00301" name="l00301"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">  301</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> int32_t <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">availableCount</a>();</div>
+<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span> </div>
+<div class="line"><a id="l00315" name="l00315"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#ade36eae189944c6217c41b86f8a2c269">  315</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#ade36eae189944c6217c41b86f8a2c269">l2CacheGroups</a>();</div>
+<div class="line"><a id="l00316" name="l00316"></a><span class="lineno">  316</span> </div>
+<div class="line"><a id="l00329" name="l00329"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">  329</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">l3CacheGroups</a>();</div>
+<div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span> </div>
+<div class="line"><a id="l00359" name="l00359"></a><span class="lineno"><a class="line" href="classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5">  359</a></span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> std::vector&lt;ThreadGroup&gt; <a class="code hl_function" href="classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5">buildThreadGroups</a>(</div>
+<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>      int32_t maxGroupSize = kDefaultMaxGroupSize);</div>
+<div class="line"><a id="l00361" name="l00361"></a><span class="lineno">  361</span> </div>
+<div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span><span class="preprocessor">#if defined(DISPENSO_CPUSET_LINUXY)</span></div>
+<div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>  detail::CpuSetNative set_;</div>
+<div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span>  <span class="comment">// Portable bitset supporting up to kMaxCpus logical processors.</span></div>
+<div class="line"><a id="l00367" name="l00367"></a><span class="lineno">  367</span>  <span class="comment">// 1024 matches Linux cpu_set_t and covers all practical configurations.</span></div>
+<div class="line"><a id="l00368" name="l00368"></a><span class="lineno">  368</span>  <span class="comment">// Windows Server 2025 supports up to 12,288 (192 groups x 64) but</span></div>
+<div class="line"><a id="l00369" name="l00369"></a><span class="lineno">  369</span>  <span class="comment">// no known hardware approaches that limit. Can be increased later;</span></div>
+<div class="line"><a id="l00370" name="l00370"></a><span class="lineno">  370</span>  <span class="comment">// dispenso does not guarantee ABI stability.</span></div>
+<div class="line"><a id="l00371" name="l00371"></a><span class="lineno">  371</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kMaxCpus = 1024;</div>
+<div class="line"><a id="l00372" name="l00372"></a><span class="lineno">  372</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kBitsPerWord = 64;</div>
+<div class="line"><a id="l00373" name="l00373"></a><span class="lineno">  373</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> int32_t kNumWords = kMaxCpus / kBitsPerWord;</div>
+<div class="line"><a id="l00374" name="l00374"></a><span class="lineno">  374</span>  uint64_t words_[kNumWords];</div>
+<div class="line"><a id="l00375" name="l00375"></a><span class="lineno">  375</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00376" name="l00376"></a><span class="lineno">  376</span>};</div>
 </div>
-<div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span> </div>
-<div class="foldopen" id="foldopen00361" data-start="{" data-end="};">
-<div class="line"><a id="l00361" name="l00361"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html">  361</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_thread_group.html">ThreadGroup</a> {</div>
-<div class="line"><a id="l00362" name="l00362"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">  362</a></span>  std::vector&lt;int32_t&gt; <a class="code hl_variable" href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">cpus</a>; </div>
-<div class="line"><a id="l00363" name="l00363"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">  363</a></span>  <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> <a class="code hl_variable" href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">affinityMask</a>; </div>
-<div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>};</div>
+<div class="line"><a id="l00377" name="l00377"></a><span class="lineno">  377</span> </div>
+<div class="foldopen" id="foldopen00393" data-start="{" data-end="};">
+<div class="line"><a id="l00393" name="l00393"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html">  393</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_thread_group.html">ThreadGroup</a> {</div>
+<div class="line"><a id="l00394" name="l00394"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">  394</a></span>  std::vector&lt;int32_t&gt; <a class="code hl_variable" href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">cpus</a>; </div>
+<div class="line"><a id="l00395" name="l00395"></a><span class="lineno"><a class="line" href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">  395</a></span>  <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> <a class="code hl_variable" href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">affinityMask</a>; </div>
+<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span>};</div>
 </div>
-<div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span> </div>
-<div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span><span class="keyword">namespace </span>detail {</div>
-<div class="line"><a id="l00372" name="l00372"></a><span class="lineno">  372</span>DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> parseLinuxCpuList(<span class="keyword">const</span> <span class="keywordtype">char</span>* input);</div>
-<div class="line"><a id="l00373" name="l00373"></a><span class="lineno">  373</span>} <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00374" name="l00374"></a><span class="lineno">  374</span> </div>
-<div class="line"><a id="l00375" name="l00375"></a><span class="lineno">  375</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="#l00139">cpu_set.h:139</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a244394310798d6a21c5fb92ec9f6d268"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">dispenso::CpuSet::currentHardwareThreadApprox</a></div><div class="ttdeci">static int32_t currentHardwareThreadApprox()</div><div class="ttdoc">Approximate CPU ID for the calling thread, refreshed periodically.</div><div class="ttdef"><b>Definition</b> <a href="#l00234">cpu_set.h:234</a></div></div>
+<div class="line"><a id="l00397" name="l00397"></a><span class="lineno">  397</span> </div>
+<div class="line"><a id="l00398" name="l00398"></a><span class="lineno">  398</span><span class="keyword">namespace </span>detail {</div>
+<div class="line"><a id="l00404" name="l00404"></a><span class="lineno">  404</span>DISPENSO_DLL_ACCESS <a class="code hl_class" href="classdispenso_1_1_cpu_set.html">CpuSet</a> parseLinuxCpuList(<span class="keyword">const</span> <span class="keywordtype">char</span>* input);</div>
+<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span> </div>
+<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span>DISPENSO_DLL_ACCESS std::vector&lt;CacheGroup&gt; parseCacheGroupsFromTopologySpec(</div>
+<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span>    <span class="keyword">const</span> std::string&amp; xml,</div>
+<div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span>    <span class="keywordtype">int</span> cacheIndex);</div>
+<div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span> </div>
+<div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span>DISPENSO_DLL_ACCESS std::vector&lt;ThreadGroup&gt; buildGroupsFromCacheTopology(</div>
+<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span>    <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; l2Groups,</div>
+<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span>    <span class="keyword">const</span> std::vector&lt;CacheGroup&gt;&amp; l3Groups,</div>
+<div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span>    int32_t maxGroupSize);</div>
+<div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span>} <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span> </div>
+<div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="#l00163">cpu_set.h:163</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a244394310798d6a21c5fb92ec9f6d268"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a244394310798d6a21c5fb92ec9f6d268">dispenso::CpuSet::currentHardwareThreadApprox</a></div><div class="ttdeci">static int32_t currentHardwareThreadApprox()</div><div class="ttdoc">Approximate CPU ID for the calling thread, refreshed periodically.</div><div class="ttdef"><b>Definition</b> <a href="#l00264">cpu_set.h:264</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a2c9a3b23cd6b0dcbb4d18cdf0e21d19f"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">dispenso::CpuSet::l3CacheGroups</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS const std::vector&lt; CacheGroup &gt; &amp; l3CacheGroups()</div><div class="ttdoc">Returns the L3 cache sharing groups.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a319a6492af2bf8c553749301b7dc4021"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a319a6492af2bf8c553749301b7dc4021">dispenso::CpuSet::add</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void add(int32_t hardwareThread)</div><div class="ttdoc">Adds a single CPU to the set.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a343ea86ffd84c3a02e7a12463f8eccf9"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a343ea86ffd84c3a02e7a12463f8eccf9">dispenso::CpuSet::node</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS const CpuSet &amp; node(int32_t numaNode)</div><div class="ttdoc">Returns the CPU set for a specific NUMA node.</div></div>
@@ -254,12 +285,12 @@ $(function(){initNavTree('cpu__set_8h_source.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_ae81185e391961c1f47af8dbcca84afbc"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#ae81185e391961c1f47af8dbcca84afbc">dispenso::CpuSet::removeRange</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void removeRange(int32_t start, int32_t end)</div><div class="ttdoc">Removes a range of CPUs from the set.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_af3c048c8ae95f51e2ff4d33cf5934085"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#af3c048c8ae95f51e2ff4d33cf5934085">dispenso::CpuSet::remove</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void remove(int32_t hardwareThread)</div><div class="ttdoc">Removes a single CPU from the set.</div></div>
 <div class="ttc" id="aplatform_8h_html"><div class="ttname"><a href="platform_8h.html">platform.h</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_cache_group_html"><div class="ttname"><a href="structdispenso_1_1_cache_group.html">dispenso::CacheGroup</a></div><div class="ttdoc">Describes a group of CPUs that share a cache level.</div><div class="ttdef"><b>Definition</b> <a href="#l00084">cpu_set.h:84</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_cache_group_html_aab7b39ae29307ef102632d719fecd301"><div class="ttname"><a href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">dispenso::CacheGroup::cpus</a></div><div class="ttdeci">std::vector&lt; int32_t &gt; cpus</div><div class="ttdoc">CPU IDs in this group.</div><div class="ttdef"><b>Definition</b> <a href="#l00085">cpu_set.h:85</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_cache_group_html_affa7039ac63c1ae8fe1fab2c1e512cae"><div class="ttname"><a href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">dispenso::CacheGroup::cacheId</a></div><div class="ttdeci">int32_t cacheId</div><div class="ttdoc">Unique cache instance ID from sysfs.</div><div class="ttdef"><b>Definition</b> <a href="#l00086">cpu_set.h:86</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_thread_group_html"><div class="ttname"><a href="structdispenso_1_1_thread_group.html">dispenso::ThreadGroup</a></div><div class="ttdoc">A scheduling group of CPUs for fork-join thread pool assignment.</div><div class="ttdef"><b>Definition</b> <a href="#l00361">cpu_set.h:361</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_thread_group_html_a9f127bd453b1f9ec60b60b7b15708271"><div class="ttname"><a href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">dispenso::ThreadGroup::cpus</a></div><div class="ttdeci">std::vector&lt; int32_t &gt; cpus</div><div class="ttdoc">CPU IDs in this group (sorted)</div><div class="ttdef"><b>Definition</b> <a href="#l00362">cpu_set.h:362</a></div></div>
-<div class="ttc" id="astructdispenso_1_1_thread_group_html_af286a00600704dbfc6f1935c95e879f1"><div class="ttname"><a href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">dispenso::ThreadGroup::affinityMask</a></div><div class="ttdeci">CpuSet affinityMask</div><div class="ttdoc">Pre-built CpuSet for binding threads in this group.</div><div class="ttdef"><b>Definition</b> <a href="#l00363">cpu_set.h:363</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_cache_group_html"><div class="ttname"><a href="structdispenso_1_1_cache_group.html">dispenso::CacheGroup</a></div><div class="ttdoc">Describes a group of CPUs that share a cache level.</div><div class="ttdef"><b>Definition</b> <a href="#l00106">cpu_set.h:106</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_cache_group_html_aab7b39ae29307ef102632d719fecd301"><div class="ttname"><a href="structdispenso_1_1_cache_group.html#aab7b39ae29307ef102632d719fecd301">dispenso::CacheGroup::cpus</a></div><div class="ttdeci">std::vector&lt; int32_t &gt; cpus</div><div class="ttdoc">CPU IDs in this group.</div><div class="ttdef"><b>Definition</b> <a href="#l00107">cpu_set.h:107</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_cache_group_html_affa7039ac63c1ae8fe1fab2c1e512cae"><div class="ttname"><a href="structdispenso_1_1_cache_group.html#affa7039ac63c1ae8fe1fab2c1e512cae">dispenso::CacheGroup::cacheId</a></div><div class="ttdeci">int32_t cacheId</div><div class="ttdef"><b>Definition</b> <a href="#l00108">cpu_set.h:108</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_thread_group_html"><div class="ttname"><a href="structdispenso_1_1_thread_group.html">dispenso::ThreadGroup</a></div><div class="ttdoc">A scheduling group of CPUs for fork-join thread pool assignment.</div><div class="ttdef"><b>Definition</b> <a href="#l00393">cpu_set.h:393</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_thread_group_html_a9f127bd453b1f9ec60b60b7b15708271"><div class="ttname"><a href="structdispenso_1_1_thread_group.html#a9f127bd453b1f9ec60b60b7b15708271">dispenso::ThreadGroup::cpus</a></div><div class="ttdeci">std::vector&lt; int32_t &gt; cpus</div><div class="ttdoc">CPU IDs in this group (sorted)</div><div class="ttdef"><b>Definition</b> <a href="#l00394">cpu_set.h:394</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_thread_group_html_af286a00600704dbfc6f1935c95e879f1"><div class="ttname"><a href="structdispenso_1_1_thread_group.html#af286a00600704dbfc6f1935c95e879f1">dispenso::ThreadGroup::affinityMask</a></div><div class="ttdeci">CpuSet affinityMask</div><div class="ttdoc">Pre-built CpuSet for binding threads in this group.</div><div class="ttdef"><b>Definition</b> <a href="#l00395">cpu_set.h:395</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

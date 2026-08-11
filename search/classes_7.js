@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['latch_0',['Latch',['../classdispenso_1_1_latch.html',1,'dispenso']]]
+  ['immediateinvoker_0',['ImmediateInvoker',['../classdispenso_1_1_immediate_invoker.html',1,'dispenso']]]
 ];

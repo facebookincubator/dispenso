@@ -202,14 +202,14 @@ Static Public Member Functions</h2></td></tr>
 <div class="line"><span class="comment">// Query L3 cache groups for thread group assignment</span></div>
 <div class="line"><span class="keyword">auto</span> l3Groups = <a class="code hl_function" href="#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">dispenso::CpuSet::l3CacheGroups</a>();</div>
 <div class="line"><span class="comment">// Each group contains CPUs sharing an L3 cache (CCD on AMD, tile on Intel)</span></div>
-<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="cpu__set_8h_source.html#l00139">cpu_set.h:139</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_cpu_set_html"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html">dispenso::CpuSet</a></div><div class="ttdoc">A set of CPU IDs for affinity manipulation and topology queries.</div><div class="ttdef"><b>Definition</b> <a href="cpu__set_8h_source.html#l00163">cpu_set.h:163</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a2c9a3b23cd6b0dcbb4d18cdf0e21d19f"><div class="ttname"><a href="#a2c9a3b23cd6b0dcbb4d18cdf0e21d19f">dispenso::CpuSet::l3CacheGroups</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS const std::vector&lt; CacheGroup &gt; &amp; l3CacheGroups()</div><div class="ttdoc">Returns the L3 cache sharing groups.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a343ea86ffd84c3a02e7a12463f8eccf9"><div class="ttname"><a href="#a343ea86ffd84c3a02e7a12463f8eccf9">dispenso::CpuSet::node</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS const CpuSet &amp; node(int32_t numaNode)</div><div class="ttdoc">Returns the CPU set for a specific NUMA node.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a5e88b75b839ed56077e1543af74986d6"><div class="ttname"><a href="#a5e88b75b839ed56077e1543af74986d6">dispenso::CpuSet::addRange</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void addRange(int32_t start, int32_t end)</div><div class="ttdoc">Adds a range of CPUs to the set.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a8e2ee94c76fe9d30dc399bcfe2e2680f"><div class="ttname"><a href="#a8e2ee94c76fe9d30dc399bcfe2e2680f">dispenso::CpuSet::bindCurrentThread</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool bindCurrentThread() const</div><div class="ttdoc">Binds the calling thread to the CPUs in this set.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_aa2f598c01a9e637ed014aea5a2ad6183"><div class="ttname"><a href="#aa2f598c01a9e637ed014aea5a2ad6183">dispenso::CpuSet::totalNumaNodes</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS int32_t totalNumaNodes()</div><div class="ttdoc">Returns the total number of NUMA nodes detected.</div></div>
 </div><!-- fragment --> 
-<p class="definition">Definition at line <a class="el" href="cpu__set_8h_source.html#l00139">139</a> of file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="cpu__set_8h_source.html#l00163">163</a> of file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a319a6492af2bf8c553749301b7dc4021" name="a319a6492af2bf8c553749301b7dc4021"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a319a6492af2bf8c553749301b7dc4021">&#9670;&#160;</a></span>add()</h2>
@@ -318,7 +318,7 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Returns the number of hardware threads available to this process. </p>
-<p>On Linux, queries the process CPU affinity mask (respects taskset/cgroup). On Windows single-group systems, queries the process affinity mask. On Windows multi-group systems, sums active processors per group (does not reflect process-level restrictions). On other platforms, falls back to std::thread::hardware_concurrency(). </p>
+<p>On Linux, queries the process CPU affinity mask (respects taskset/cgroup). On FreeBSD, queries the calling thread's cpuset affinity mask via cpuset_getaffinity (respects cpuset(1) restrictions). On Windows single-group systems, queries the process affinity mask. On Windows multi-group systems, sums active processors per group (does not reflect process-level restrictions). On other platforms, falls back to std::thread::hardware_concurrency(). </p>
 
 </div>
 </div>
@@ -339,6 +339,7 @@ Static Public Member Functions</h2></td></tr>
 
 <p>Binds the calling thread to the CPUs in this set. </p>
 <p>On Linux/FreeBSD, calls pthread_setaffinity_np. On unsupported platforms (macOS, Windows without GROUP_AFFINITY support), returns false.</p>
+<dl class="section note"><dt>Note</dt><dd>On FreeBSD, a mask containing nonexistent CPU ids fails with EINVAL, whereas Linux intersects the mask with the online CPUs. Include only real CPU ids for portable behavior.</dd></dl>
 <dl class="section return"><dt>Returns</dt><dd>true if binding succeeded, false on failure or unsupported platform. </dd></dl>
 
 </div>
@@ -443,7 +444,7 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Returns the CPU ID of the calling thread's current core. </p>
-<p>On Linux, uses the vDSO-accelerated getcpu(). On unsupported platforms, returns -1.</p>
+<p>On Linux, uses the vDSO-accelerated getcpu(); on FreeBSD 13.1+, uses sched_getcpu(); on Windows, GetCurrentProcessorNumberEx(); on macOS, the private _os_cpu_number(). On platforms without CPU-query support (including FreeBSD older than 13.1), returns -1.</p>
 <dl class="section note"><dt>Note</dt><dd>The result is instantaneous and may be stale by the time it is used (the OS may migrate the thread). Useful as a hint for scheduling decisions, not as a hard guarantee. </dd></dl>
 
 </div>
@@ -476,7 +477,7 @@ Static Public Member Functions</h2></td></tr>
 <p>Trade-off: between refreshes the returned CPU is stale if the OS has migrated the thread. With kRefreshPeriod=32 and a typical OS time-slice of 1-10ms, staleness is bounded to a small fraction of a slice.</p>
 <dl class="section return"><dt>Returns</dt><dd>A possibly-stale CPU ID, or -1 if the platform doesn't support CPU queries. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="cpu__set_8h_source.html#l00234">234</a> of file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="cpu__set_8h_source.html#l00264">264</a> of file <a class="el" href="cpu__set_8h_source.html">cpu_set.h</a>.</p>
 
 </div>
 </div>

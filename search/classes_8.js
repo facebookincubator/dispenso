@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['mpmcringbuffer_0',['MpmcRingBuffer',['../classdispenso_1_1_mpmc_ring_buffer.html',1,'dispenso']]]
+  ['latch_0',['Latch',['../classdispenso_1_1_latch.html',1,'dispenso']]]
 ];

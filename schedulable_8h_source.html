@@ -111,142 +111,143 @@ $(function(){initNavTree('schedulable_8h_source.html',''); initResizable(true); 
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span> </div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span> </div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="preprocessor">#include &lt;cassert&gt;</span></div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="preprocessor">#include &lt;chrono&gt;</span></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="preprocessor">#include &lt;condition_variable&gt;</span></div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="preprocessor">#include &lt;mutex&gt;</span></div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#include &lt;thread&gt;</span></div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &lt;dispenso/detail/completion_event_impl.h&gt;</span></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span> </div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="keyword">namespace </span>dispenso {</div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="preprocessor">#include &lt;atomic&gt;</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="preprocessor">#include &lt;cassert&gt;</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="preprocessor">#include &lt;chrono&gt;</span></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="preprocessor">#include &lt;memory&gt;</span></div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#include &lt;mutex&gt;</span></div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="preprocessor">#include &lt;thread&gt;</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span> </div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#include &lt;dispenso/detail/completion_event_impl.h&gt;</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="foldopen" id="foldopen00034" data-start="{" data-end="};">
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html">   34</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_immediate_invoker.html">ImmediateInvoker</a> {</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00045" data-start="{" data-end="}">
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">   45</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>    f();</div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>  }</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="keyword">namespace </span>dispenso {</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
+<div class="foldopen" id="foldopen00036" data-start="{" data-end="};">
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html">   36</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_immediate_invoker.html">ImmediateInvoker</a> {</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00047" data-start="{" data-end="}">
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">   47</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>    f();</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  }</div>
 </div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span> </div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00056" data-start="{" data-end="}">
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">   56</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>    f();</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>  }</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00058" data-start="{" data-end="}">
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno"><a class="line" href="classdispenso_1_1_immediate_invoker.html#a598694c79562918e3c67d2cd23a36529">   58</a></span>  void <a class="code hl_function" href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>    f();</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>  }</div>
 </div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>};</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>};</div>
 </div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span> </div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="keyword">constexpr</span> ImmediateInvoker kImmediateInvoker;</div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
-<div class="foldopen" id="foldopen00068" data-start="{" data-end="};">
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html">   68</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a> {</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00079" data-start="{" data-end="}">
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">   79</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>    <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>  }</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="keyword">constexpr</span> ImmediateInvoker kImmediateInvoker;</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span> </div>
+<div class="foldopen" id="foldopen00070" data-start="{" data-end="};">
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html">   70</a></span><span class="keyword">class </span><a class="code hl_class" href="classdispenso_1_1_new_thread_invoker.html">NewThreadInvoker</a> {</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00081" data-start="{" data-end="}">
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">   81</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(std::forward&lt;F&gt;(f), ForceQueuingTag());</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>  }</div>
 </div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
-<div class="foldopen" id="foldopen00091" data-start="{" data-end="}">
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">   91</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>    <span class="keyword">auto</span>* waiter = getWaiter();</div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    waiter-&gt;add();</div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    std::thread thread([f = std::move(f), waiter]() {</div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>      <span class="comment">// RAII so remove() runs even if f() throws. In practice an uncaught exception out of a</span></div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>      <span class="comment">// std::thread function calls std::terminate -&gt; abort, which kills the process before the</span></div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>      <span class="comment">// atexit waiter could block, but the guard documents the invariant and covers exotic</span></div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>      <span class="comment">// terminate-handler setups.</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>      RemoveGuard guard{waiter};</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> F&gt;</div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>  DISPENSO_REQUIRES(OnceCallableFunc&lt;F&gt;)</div>
+<div class="foldopen" id="foldopen00093" data-start="{" data-end="}">
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno"><a class="line" href="classdispenso_1_1_new_thread_invoker.html#a3f688605cef1aa19b219fd4e502f4231">   93</a></span>  void <a class="code hl_function" href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">schedule</a>(F&amp;&amp; f, ForceQueuingTag)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    <span class="comment">// The thread is retained (not detached) and joined at process exit; see</span></div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>    <span class="comment">// ThreadTracker for why detaching is unsafe on Windows. `done` is set by the</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>    <span class="comment">// thread as its very last act so schedule() can reap already-finished threads</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    <span class="comment">// and keep retention bounded across a long-running process.</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    <span class="keyword">auto</span> done = std::make_shared&lt;std::atomic&lt;bool&gt;&gt;(<span class="keyword">false</span>);</div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>    std::thread thread([f = std::move(f), done]() {</div>
 <div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>      f();</div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>    });</div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>    thread.detach();</div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>  }</div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>      done-&gt;store(<span class="keyword">true</span>, std::memory_order_release);</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>    });</div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>    getTracker()-&gt;add(std::move(thread), std::move(done));</div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>  }</div>
 </div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>  <span class="comment">// DO NOT REMOVE WITHOUT READING THE FOLLOWING:</span></div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>  <span class="comment">// schedule() above spawns a detached std::thread per call. On Windows shared-lib builds, if the</span></div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>  <span class="comment">// process exits while a detached thread is mid-execution inside dispenso&#39;s code, the OS unmaps</span></div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  <span class="comment">// dispenso.dll&#39;s pages during DLL_PROCESS_DETACH while the thread is still executing them →</span></div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  <span class="comment">// EXCEPTION_ACCESS_VIOLATION (0xC0000005). On any platform, the detached thread also has a</span></div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  <span class="comment">// non-trivial window between Future::status notify(kReady) and the final</span></div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>  <span class="comment">// decRefCountMaybeDestroy + thread-local-storage teardown, which extends past the user-visible</span></div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="comment">// future.get() return.</span></div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>  <span class="comment">// Two mitigations, both needed:</span></div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>  <span class="comment">//   1. pinModuleForNewThread() (schedulable.cpp, Windows-only) pins the module that contains</span></div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>  <span class="comment">//      dispenso&#39;s code so it is never unmapped while a detached thread is still executing in it.</span></div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  <span class="comment">//      This removes the access-violation regardless of how long the thread runs, and also covers</span></div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>  <span class="comment">//      a host FreeLibrary() at runtime, which the atexit path cannot. (Only Windows eagerly</span></div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>  <span class="comment">//      unmaps a module&#39;s code under a running thread; POSIX/other loaders don&#39;t, so no analog.)</span></div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>  <span class="comment">//   2. ThreadWaiter gives outstanding threads a BOUNDED grace period at exit to reach remove(),</span></div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>  <span class="comment">//      narrowing the post-future.get() teardown window. It is bounded (never blocks shutdown</span></div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>  <span class="comment">//      indefinitely) precisely because (1) makes a thread that runs past the deadline non-fatal.</span></div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>  <span class="comment">// The SmallBufferAllocator controlled-leak fix (small_buffer_allocator.cpp) addresses a separate</span></div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span>  <span class="comment">// hazard (returning small buffers to a destroyed central store) and is also needed.</span></div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>  <span class="comment">// The relevant tests are future_test_sans_exceptions and future_shared_test, the</span></div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>  <span class="comment">// Future.AsyncNotAsyncSpecifyNewThread / NewThreadInvoker / AsyncSpecifyNewThread cases.</span></div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>  <span class="comment">//</span></div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>  <span class="comment">// The ThreadWaiter object itself is intentionally leaked (controlled-leak singleton in</span></div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>  <span class="comment">// schedulable.cpp). Deleting it on shutdown would create a UAF window for any post-atexit</span></div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>  <span class="comment">// schedule() call (external thread, static destructor) that hits a freed waiter.</span></div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>  <span class="keyword">struct </span>ThreadWaiter {</div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>    <span class="keywordtype">int</span> count_ = 0;</div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span>    std::mutex mtx_;</div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>    std::condition_variable cond_;</div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span> </div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>    <span class="keywordtype">void</span> add() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {</div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>      std::lock_guard&lt;std::mutex&gt; lk(mtx_);</div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>      ++count_;</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    }</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span> </div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    <span class="keywordtype">void</span> remove() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>      std::lock_guard&lt;std::mutex&gt; lk(mtx_);</div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>      assert(count_ &gt; 0 &amp;&amp; <span class="stringliteral">&quot;remove() called without matching add()&quot;</span>);</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>      <span class="keywordflow">if</span> (--count_ == 0) {</div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>        cond_.notify_one();</div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>      }</div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>    }</div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span> </div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>    <span class="keywordtype">void</span> wait() {</div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>      std::unique_lock&lt;std::mutex&gt; lk(mtx_);</div>
-<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>      <span class="comment">// Bounded best-effort: pinModuleForNewThread() keeps our code mapped, so a thread still</span></div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>      <span class="comment">// running past this deadline cannot fault on unload — this only narrows the teardown window</span></div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>      <span class="comment">// and must never wedge shutdown, so it times out rather than blocking forever.</span></div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>      cond_.wait_for(lk, std::chrono::seconds(2), [<span class="keyword">this</span>]() { <span class="keywordflow">return</span> count_ == 0; });</div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    }</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  };</div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span> </div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  <span class="keyword">struct </span>RemoveGuard {</div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    ThreadWaiter* w;</div>
-<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    ~RemoveGuard() {</div>
-<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>      w-&gt;remove();</div>
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>    }</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>  };</div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span> </div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>  DISPENSO_DLL_ACCESS <span class="keyword">static</span> ThreadWaiter* getWaiter();</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>};</div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span> </div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  <span class="comment">// NewThreadInvoker spawns one std::thread per schedule(). On Windows shared-lib</span></div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>  <span class="comment">// builds a *detached* thread that is still executing during process exit faults</span></div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>  <span class="comment">// (EXCEPTION_ACCESS_VIOLATION): it runs a synchronization primitive</span></div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  <span class="comment">// (e.g. WakeByAddressAll, from CompletionEvent::notify) after ntdll has begun</span></div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  <span class="comment">// tearing down its wait machinery at shutdown. See T282829604.</span></div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>  <span class="comment">// The fix is to wait for each thread to FULLY terminate before shutdown proceeds</span></div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>  <span class="comment">// -- not merely for its functor to return. Only the OS thread handle signals true</span></div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>  <span class="comment">// termination (after the thread&#39;s last sync call and OS thread-exit), so we retain</span></div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>  <span class="comment">// the threads joinable and join them from an atexit handler, which runs before</span></div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>  <span class="comment">// module teardown. On Windows the wait is BOUNDED (see joinAll): a thread that</span></div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>  <span class="comment">// cannot terminate -- e.g. one parked on the loader lock during a static-CRT</span></div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  <span class="comment">// DLL_PROCESS_DETACH -- must not wedge shutdown, so it is detached and left for</span></div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>  <span class="comment">// process termination to reclaim (pinModuleForNewThread keeps our code mapped so</span></div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>  <span class="comment">// that stays benign).</span></div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>  <span class="comment">//</span></div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>  <span class="comment">// The tracker is a controlled-leak singleton (schedulable.cpp); it is never</span></div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>  <span class="comment">// destroyed, so a schedule() from a late static destructor still finds it valid.</span></div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>  <span class="keyword">struct </span>ThreadTracker {</div>
+<div class="foldopen" id="foldopen00126" data-start="{" data-end="};">
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html">  126</a></span>    <span class="keyword">struct </span><a class="code hl_struct" href="structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html">Entry</a> {</div>
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>      std::thread thread;</div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>      <span class="comment">// Set true by the thread as its last act. Lets add() reap finished threads</span></div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>      <span class="comment">// without blocking; shared so the store outlives an entries_ reallocation.</span></div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>      std::shared_ptr&lt;std::atomic&lt;bool&gt;&gt; done;</div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>    };</div>
 </div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span> </div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>    std::mutex mtx_;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>    std::vector&lt;Entry&gt; entries_;</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span> </div>
+<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span>    <span class="keywordtype">void</span> add(std::thread&amp;&amp; t, std::shared_ptr&lt;std::atomic&lt;bool&gt;&gt; done)</div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>        DISPENSO_NO_THREAD_SAFETY_ANALYSIS {</div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>      <span class="comment">// Opportunistically reap already-finished threads so entries_ does not grow</span></div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>      <span class="comment">// unbounded over the lifetime of a long-running process. The joins happen</span></div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>      <span class="comment">// after mtx_ is released: `done` only means the functor returned, and the</span></div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>      <span class="comment">// OS-level teardown that follows is precisely the window this class does not</span></div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>      <span class="comment">// trust, so it must not block every other schedule() behind the lock.</span></div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>      std::vector&lt;std::thread&gt; finished;</div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>      {</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>        std::lock_guard&lt;std::mutex&gt; lk(mtx_);</div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; entries_.size();) {</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>          <span class="keywordflow">if</span> (entries_[i].done-&gt;load(std::memory_order_acquire)) {</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>            finished.push_back(std::move(entries_[i].thread));</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>            entries_[i] = std::move(entries_.back());</div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>            entries_.pop_back();</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>          } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>            ++i;</div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>          }</div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>        }</div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>        entries_.push_back(Entry{std::move(t), std::move(done)});</div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>      }</div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>      <span class="keywordflow">for</span> (std::thread&amp; thread : finished) {</div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>        thread.join(); <span class="comment">// already finished -&gt; returns promptly</span></div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>      }</div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>    }</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span> </div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    <span class="comment">// Defined in schedulable.cpp; joins each thread, bounded on Windows.</span></div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    <span class="keywordtype">void</span> joinAll() DISPENSO_NO_THREAD_SAFETY_ANALYSIS;</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>  };</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span> </div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>  DISPENSO_DLL_ACCESS static ThreadTracker* getTracker();</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>};</div>
+</div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span> </div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>constexpr NewThreadInvoker kNewThreadInvoker;</div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span> </div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="keyword">constexpr</span> NewThreadInvoker kNewThreadInvoker;</div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span> </div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>} <span class="comment">// namespace dispenso</span></div>
-<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00034">schedulable.h:34</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00045">schedulable.h:45</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html">dispenso::NewThreadInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00068">schedulable.h:68</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html_a460beb76088b55f1f463f601e2f45e23"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">dispenso::NewThreadInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00079">schedulable.h:79</a></div></div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html">dispenso::ImmediateInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00036">schedulable.h:36</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_immediate_invoker_html_a5269a036cdc670fe5d69bada0f073798"><div class="ttname"><a href="classdispenso_1_1_immediate_invoker.html#a5269a036cdc670fe5d69bada0f073798">dispenso::ImmediateInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00047">schedulable.h:47</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html">dispenso::NewThreadInvoker</a></div><div class="ttdef"><b>Definition</b> <a href="#l00070">schedulable.h:70</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_new_thread_invoker_html_a460beb76088b55f1f463f601e2f45e23"><div class="ttname"><a href="classdispenso_1_1_new_thread_invoker.html#a460beb76088b55f1f463f601e2f45e23">dispenso::NewThreadInvoker::schedule</a></div><div class="ttdeci">void schedule(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> <a href="#l00081">schedulable.h:81</a></div></div>
+<div class="ttc" id="astructdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry_html"><div class="ttname"><a href="structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html">dispenso::NewThreadInvoker::ThreadTracker::Entry</a></div><div class="ttdef"><b>Definition</b> <a href="#l00126">schedulable.h:126</a></div></div>
 <div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
