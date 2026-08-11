@@ -261,9 +261,24 @@ void ThreadPool::threadLoopImpl(PerThreadData& data, int32_t ringIndex) {
           break;
         }
       }
+      const uint32_t preWaitEpoch = epoch;
       epoch = waitOnThread(ringIndex, epoch);
       if (kUseWakeSleep) {
         ws->exitSleep(ringIndex);
+      }
+      // centralQueueNonEmpty_ is a cheap hint and is allowed to be wrong: a
+      // worker clearing it after a failed dequeue can overwrite a concurrent
+      // producer's store, leaving a task queued while the hint reads empty.
+      // Nothing on the normal path looks at the queue once the hint is clear,
+      // so this probe is what bounds how long such a task can sit there.
+      //
+      // An unchanged epoch means no producer signalled us, which is exactly
+      // when the hint may be stale, so consult the queue directly and repair
+      // it. A signalled wake needs no probe -- the producer that signalled also
+      // set the hint -- and confining it to timeout wakes, storing only when
+      // the queue is genuinely non-empty, keeps it off the busy path.
+      if (epoch == preWaitEpoch && work_.size_approx() != 0) {
+        centralQueueNonEmpty_.store(true, std::memory_order_relaxed);
       }
       failCount = 0;
     }

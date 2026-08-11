@@ -8,7 +8,9 @@
 #include <dispenso/task_set.h>
 #include <dispenso/thread_pool.h>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -222,9 +224,15 @@ TEST(ThreadPool, SetSignalingWakeConcurrent) {
 }
 
 TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
-  constexpr int kWorkItems = 1000000;
-  std::vector<int64_t> outputs(kWorkItems, 0);
-  std::atomic<int> completed(0);
+  // Work is submitted in rounds rather than as one large batch: draining the
+  // queue to empty is what can expose a lost wakeup, so N rounds give N
+  // independent chances where a single batch gives one, at the same total
+  // task count.
+  constexpr int kRounds = 10;
+  constexpr int kItemsPerRound = 100000;
+  constexpr std::chrono::seconds kRoundTimeout(30);
+
+  std::vector<int64_t> outputs(kItemsPerRound, 0);
 
   std::mutex mtx;
   std::set<std::thread::id> tidSet;
@@ -233,18 +241,39 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 
   pool.resize(8);
 
-  int64_t i = 0;
-  for (int64_t& o : outputs) {
-    pool.schedule([i, &o, &completed, &mtx, &tidSet]() {
-      o = i * i;
-      completed.fetch_add(1, std::memory_order_release);
-      std::lock_guard<std::mutex> lk(mtx);
-      tidSet.insert(std::this_thread::get_id());
-    });
-    ++i;
-  }
+  for (int round = 0; round < kRounds; ++round) {
+    std::atomic<int> completed(0);
+    std::fill(outputs.begin(), outputs.end(), 0);
 
-  while (completed.load(std::memory_order_acquire) < kWorkItems) {
+    int64_t i = 0;
+    for (int64_t& o : outputs) {
+      pool.schedule([i, &o, &completed, &mtx, &tidSet]() {
+        o = i * i;
+        completed.fetch_add(1, std::memory_order_release);
+        std::lock_guard<std::mutex> lk(mtx);
+        tidSet.insert(std::this_thread::get_id());
+      });
+      ++i;
+    }
+
+    // Bounded wait. A pool that strands a task would otherwise spin here until
+    // the harness kills the process, which reports only "timeout" and says
+    // nothing about what went wrong. Fail with the shortfall instead.
+    const auto deadline = std::chrono::steady_clock::now() + kRoundTimeout;
+    int done;
+    while ((done = completed.load(std::memory_order_acquire)) < kItemsPerRound) {
+      if (std::chrono::steady_clock::now() >= deadline) {
+        FAIL() << "round " << round << ": pool stopped making progress with " << done << " of "
+               << kItemsPerRound << " tasks run; " << (kItemsPerRound - done) << " never ran";
+      }
+      std::this_thread::yield();
+    }
+
+    i = 0;
+    for (int64_t o : outputs) {
+      ASSERT_EQ(o, i * i) << " round = " << round << " i = " << i;
+      ++i;
+    }
   }
 
   // We choose > 2 because there is 1 original thread, and one schedule thread (main thread). In
@@ -256,12 +285,6 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 #endif //! DISPENSO_HAS_TSAN
 
   EXPECT_THAT(static_cast<int>(pool.numThreads()), AnyOf(Eq(4), Eq(8)));
-
-  i = 0;
-  for (int64_t o : outputs) {
-    EXPECT_EQ(o, i * i) << " i = " << i;
-    ++i;
-  }
 }
 
 TEST_P(ThreadPoolTest, CrossPoolTest) {

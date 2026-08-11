@@ -26,6 +26,7 @@
 ### Bug fixes
 * Fixed `try_pop_into` race in `MpmcRingBuffer`: read slot value before CAS in the last-element case to prevent use-after-overwrite.
 * Fixed `NewThreadInvoker` rare Windows hang on process exit: pinned the module and bounded the shutdown drain.
+* Fixed a lost wakeup that could strand a scheduled task indefinitely: `centralQueueNonEmpty_` is a cheap hint that lets spinning workers skip the central queue, but a worker clearing it after a failed dequeue could overwrite a concurrent producer's store, leaving that task queued while every worker believed the queue was empty. The sleep-timeout backstop could not recover it, because the wakeup path consults the same hint. A worker that wakes on the timeout rather than a signal now re-checks the queue and repairs the hint, bounding a strand to one sleep period.
 * Fixed `scheduleBulkImpl` inline boundary oscillation: prevented enqueue/inline mode switching on every iteration.
 * Fixed `DistributedRWLock` to use OS-level writer drain.
 * Fixed `-Wconversion` warning on narrow `parallel_for` index types.

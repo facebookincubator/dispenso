@@ -463,8 +463,12 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // replaces the expensive try_dequeue CAS when the queue is known empty,
   // eliminating CAS contention from idle spinning threads. No atomic RMW —
   // only plain stores and loads — so no contention on the flag itself.
-  // Brief false-negatives (flag cleared while an enqueue is in flight) are
-  // bounded to one spin iteration and self-correcting.
+  // A clear can race an enqueue and drop it: the clearing worker decides the
+  // queue is empty, a producer enqueues and sets the flag, and the clear then
+  // overwrites that store. The task stays queued with the flag reading empty,
+  // and no spinning worker will look at the queue again. Recovery is the
+  // timeout-wake probe in threadLoopImpl, which bounds the delay to one sleep
+  // period; do not treat a false negative as self-correcting on its own.
   alignas(kCacheLineSize) std::atomic<bool> centralQueueNonEmpty_{false};
 
   alignas(kCacheLineSize) std::atomic<ssize_t> workRemaining_{0};
@@ -753,7 +757,6 @@ DISPENSO_INLINE bool ThreadPool::tryFindAndExecuteWork(
     int failCount,
     bool checkQueue) {
   OnceFunction task;
-
   if (preferRing) {
     bool fromRing = myRing.try_pop(task);
     if (fromRing) {
