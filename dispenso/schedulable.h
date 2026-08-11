@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <chrono>
-#include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include <dispenso/detail/completion_event_impl.h>
 #include <dispenso/task_set.h>
@@ -89,83 +91,79 @@ class NewThreadInvoker {
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
   void schedule(F&& f, ForceQueuingTag) const {
-    auto* waiter = getWaiter();
-    waiter->add();
-    std::thread thread([f = std::move(f), waiter]() {
-      // RAII so remove() runs even if f() throws. In practice an uncaught exception out of a
-      // std::thread function calls std::terminate -> abort, which kills the process before the
-      // atexit waiter could block, but the guard documents the invariant and covers exotic
-      // terminate-handler setups.
-      RemoveGuard guard{waiter};
+    // The thread is retained (not detached) and joined at process exit; see
+    // ThreadTracker for why detaching is unsafe on Windows. `done` is set by the
+    // thread as its very last act so schedule() can reap already-finished threads
+    // and keep retention bounded across a long-running process.
+    auto done = std::make_shared<std::atomic<bool>>(false);
+    std::thread thread([f = std::move(f), done]() {
       f();
+      done->store(true, std::memory_order_release);
     });
-    thread.detach();
+    getTracker()->add(std::move(thread), std::move(done));
   }
 
  private:
-  // DO NOT REMOVE WITHOUT READING THE FOLLOWING:
+  // NewThreadInvoker spawns one std::thread per schedule(). On Windows shared-lib
+  // builds a *detached* thread that is still executing during process exit faults
+  // (EXCEPTION_ACCESS_VIOLATION): it runs a synchronization primitive
+  // (e.g. WakeByAddressAll, from CompletionEvent::notify) after ntdll has begun
+  // tearing down its wait machinery at shutdown. See T282829604.
   //
-  // schedule() above spawns a detached std::thread per call. On Windows shared-lib builds, if the
-  // process exits while a detached thread is mid-execution inside dispenso's code, the OS unmaps
-  // dispenso.dll's pages during DLL_PROCESS_DETACH while the thread is still executing them →
-  // EXCEPTION_ACCESS_VIOLATION (0xC0000005). On any platform, the detached thread also has a
-  // non-trivial window between Future::status notify(kReady) and the final
-  // decRefCountMaybeDestroy + thread-local-storage teardown, which extends past the user-visible
-  // future.get() return.
+  // The fix is to wait for each thread to FULLY terminate before shutdown proceeds
+  // -- not merely for its functor to return. Only the OS thread handle signals true
+  // termination (after the thread's last sync call and OS thread-exit), so we retain
+  // the threads joinable and join them from an atexit handler, which runs before
+  // module teardown. On Windows the wait is BOUNDED (see joinAll): a thread that
+  // cannot terminate -- e.g. one parked on the loader lock during a static-CRT
+  // DLL_PROCESS_DETACH -- must not wedge shutdown, so it is detached and left for
+  // process termination to reclaim (pinModuleForNewThread keeps our code mapped so
+  // that stays benign).
   //
-  // Two mitigations, both needed:
-  //   1. pinModuleForNewThread() (schedulable.cpp, Windows-only) pins the module that contains
-  //      dispenso's code so it is never unmapped while a detached thread is still executing in it.
-  //      This removes the access-violation regardless of how long the thread runs, and also covers
-  //      a host FreeLibrary() at runtime, which the atexit path cannot. (Only Windows eagerly
-  //      unmaps a module's code under a running thread; POSIX/other loaders don't, so no analog.)
-  //   2. ThreadWaiter gives outstanding threads a BOUNDED grace period at exit to reach remove(),
-  //      narrowing the post-future.get() teardown window. It is bounded (never blocks shutdown
-  //      indefinitely) precisely because (1) makes a thread that runs past the deadline non-fatal.
-  // The SmallBufferAllocator controlled-leak fix (small_buffer_allocator.cpp) addresses a separate
-  // hazard (returning small buffers to a destroyed central store) and is also needed.
-  //
-  // The relevant tests are future_test_sans_exceptions and future_shared_test, the
-  // Future.AsyncNotAsyncSpecifyNewThread / NewThreadInvoker / AsyncSpecifyNewThread cases.
-  //
-  // The ThreadWaiter object itself is intentionally leaked (controlled-leak singleton in
-  // schedulable.cpp). Deleting it on shutdown would create a UAF window for any post-atexit
-  // schedule() call (external thread, static destructor) that hits a freed waiter.
-  struct ThreadWaiter {
-    int count_ = 0;
+  // The tracker is a controlled-leak singleton (schedulable.cpp); it is never
+  // destroyed, so a schedule() from a late static destructor still finds it valid.
+  struct ThreadTracker {
+    struct Entry {
+      std::thread thread;
+      // Set true by the thread as its last act. Lets add() reap finished threads
+      // without blocking; shared so the store outlives an entries_ reallocation.
+      std::shared_ptr<std::atomic<bool>> done;
+    };
+
     std::mutex mtx_;
-    std::condition_variable cond_;
+    std::vector<Entry> entries_;
 
-    void add() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
-      std::lock_guard<std::mutex> lk(mtx_);
-      ++count_;
-    }
-
-    void remove() DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
-      std::lock_guard<std::mutex> lk(mtx_);
-      assert(count_ > 0 && "remove() called without matching add()");
-      if (--count_ == 0) {
-        cond_.notify_one();
+    void add(std::thread&& t, std::shared_ptr<std::atomic<bool>> done)
+        DISPENSO_NO_THREAD_SAFETY_ANALYSIS {
+      // Opportunistically reap already-finished threads so entries_ does not grow
+      // unbounded over the lifetime of a long-running process. The joins happen
+      // after mtx_ is released: `done` only means the functor returned, and the
+      // OS-level teardown that follows is precisely the window this class does not
+      // trust, so it must not block every other schedule() behind the lock.
+      std::vector<std::thread> finished;
+      {
+        std::lock_guard<std::mutex> lk(mtx_);
+        for (size_t i = 0; i < entries_.size();) {
+          if (entries_[i].done->load(std::memory_order_acquire)) {
+            finished.push_back(std::move(entries_[i].thread));
+            entries_[i] = std::move(entries_.back());
+            entries_.pop_back();
+          } else {
+            ++i;
+          }
+        }
+        entries_.push_back(Entry{std::move(t), std::move(done)});
+      }
+      for (std::thread& thread : finished) {
+        thread.join(); // already finished -> returns promptly
       }
     }
 
-    void wait() {
-      std::unique_lock<std::mutex> lk(mtx_);
-      // Bounded best-effort: pinModuleForNewThread() keeps our code mapped, so a thread still
-      // running past this deadline cannot fault on unload — this only narrows the teardown window
-      // and must never wedge shutdown, so it times out rather than blocking forever.
-      cond_.wait_for(lk, std::chrono::seconds(2), [this]() { return count_ == 0; });
-    }
+    // Defined in schedulable.cpp; joins each thread, bounded on Windows.
+    void joinAll() DISPENSO_NO_THREAD_SAFETY_ANALYSIS;
   };
 
-  struct RemoveGuard {
-    ThreadWaiter* w;
-    ~RemoveGuard() {
-      w->remove();
-    }
-  };
-
-  DISPENSO_DLL_ACCESS static ThreadWaiter* getWaiter();
+  DISPENSO_DLL_ACCESS static ThreadTracker* getTracker();
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;

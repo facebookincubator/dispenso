@@ -7,6 +7,10 @@
 
 #include <dispenso/future.h>
 
+#include <chrono>
+#include <thread>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 TEST(Future, Invalid) {
@@ -375,6 +379,48 @@ TEST(Future, AsyncNotAsyncSpecifyNewThread) {
   auto refFuture = dispenso::async(
       dispenso::kNewThreadInvoker, dispenso::kNotAsync, [&value]() -> int& { return value; });
   EXPECT_EQ(&value, &refFuture.get());
+}
+
+// Regression test for T282829604. NewThreadInvoker threads still running at
+// process exit used to fault in ntdll's wait machinery on Windows shared-lib
+// builds (EXCEPTION_ACCESS_VIOLATION 0xC0000005) -- after the test itself had
+// already passed, so the symptom is a non-zero process exit, not a failed
+// assertion. This exercises ThreadTracker's at-exit drain.
+//
+// Deliberately does NOT wait on the futures: process exit must race the threads'
+// teardown for this to cover the bug. Do not "tidy" this by adding get()/wait()
+// -- that removes the race and silently guts the test.
+//
+// 64 was picked by measuring the fault rate against the pre-fix code on
+// @arvr/mode/win/clang/release (--stress-runs, isolated): 512 threads -> 84%,
+// 128 -> 44%, 64 -> 52%, 32 -> 14%. 64 keeps ~50% detection per run at a
+// fraction of the cost; going lower falls off a cliff.
+TEST(Future, NewThreadInvokerOutstandingAtExit) {
+  constexpr int kNumThreads = 64;
+  std::vector<dispenso::Future<int>> futures;
+  futures.reserve(kNumThreads);
+  for (int i = 0; i < kNumThreads; ++i) {
+    futures.push_back(dispenso::async(dispenso::kNewThreadInvoker, []() {
+      // Keep the burst alive together so threads are still outstanding at exit.
+      std::this_thread::sleep_for(std::chrono::milliseconds(25));
+      return 0;
+    }));
+  }
+}
+
+TEST(Future, NewThreadInvokerManyConcurrent) {
+  // Exercise NewThreadInvoker across several concurrent threads (not just a single
+  // invocation), covering the multi-thread schedule() + at-exit join/reap path.
+  // Deterministic: every future is waited on and its result checked.
+  constexpr int kNum = 16;
+  std::vector<dispenso::Future<int>> futures;
+  futures.reserve(kNum);
+  for (int i = 0; i < kNum; ++i) {
+    futures.push_back(dispenso::async(dispenso::kNewThreadInvoker, [i]() { return i * i; }));
+  }
+  for (int i = 0; i < kNum; ++i) {
+    EXPECT_EQ(i * i, futures[i].get());
+  }
 }
 
 TEST(Future, AsyncSpecifyTaskSet) {
