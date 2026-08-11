@@ -270,6 +270,83 @@ TEST(CpuSet, TopologySpecPaddedCacheLevel) {
 }
 
 // =============================================================================
+// buildGroupsFromCacheTopology (cache-aware thread grouping)
+//
+// Driven directly with synthetic L2/L3 cache groups so the grouping algorithm
+// is exercised on every platform, including CI sandboxes without real topology
+// or affinity permissions. The live-topology test below runs the same algorithm
+// on real hardware when it is available.
+// =============================================================================
+
+using dispenso::CacheGroup;
+using dispenso::ThreadGroup;
+using dispenso::detail::buildGroupsFromCacheTopology;
+
+// Two L3 caches, each holding two L2 atoms. With room for a full L3 worth of
+// CPUs, each thread group should gather one L3's atoms and stop at the boundary.
+TEST(CpuSet, BuildGroupsFromTopologyRespectsL3Boundaries) {
+  const std::vector<CacheGroup> l2{{{0, 1}, 0}, {{2, 3}, 1}, {{4, 5}, 2}, {{6, 7}, 3}};
+  const std::vector<CacheGroup> l3{{{0, 1, 2, 3}, 0}, {{4, 5, 6, 7}, 1}};
+
+  const auto groups = buildGroupsFromCacheTopology(l2, l3, /*maxGroupSize=*/4);
+
+  ASSERT_EQ(groups.size(), 2u);
+  EXPECT_EQ(groups[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+  EXPECT_EQ(groups[1].cpus, (std::vector<int32_t>{4, 5, 6, 7}));
+}
+
+// maxGroupSize caps how many L2 atoms merge: with room for only one atom, each
+// L2 becomes its own thread group.
+TEST(CpuSet, BuildGroupsFromTopologyRespectsMaxGroupSize) {
+  const std::vector<CacheGroup> l2{{{0, 1}, 0}, {{2, 3}, 1}, {{4, 5}, 2}, {{6, 7}, 3}};
+  const std::vector<CacheGroup> l3{{{0, 1, 2, 3}, 0}, {{4, 5, 6, 7}, 1}};
+
+  const auto groups = buildGroupsFromCacheTopology(l2, l3, /*maxGroupSize=*/2);
+
+  ASSERT_EQ(groups.size(), 4u);
+  EXPECT_EQ(groups[0].cpus, (std::vector<int32_t>{0, 1}));
+  EXPECT_EQ(groups[1].cpus, (std::vector<int32_t>{2, 3}));
+  EXPECT_EQ(groups[2].cpus, (std::vector<int32_t>{4, 5}));
+  EXPECT_EQ(groups[3].cpus, (std::vector<int32_t>{6, 7}));
+}
+
+// maxGroupSize is clamped up to the largest L2 atom, so cores sharing an L2 are
+// never split even when the caller asks for a smaller group.
+TEST(CpuSet, BuildGroupsFromTopologyNeverSplitsAnL2Atom) {
+  const std::vector<CacheGroup> l2{{{0, 1, 2, 3}, 0}};
+  const std::vector<CacheGroup> l3{{{0, 1, 2, 3}, 0}};
+
+  const auto groups = buildGroupsFromCacheTopology(l2, l3, /*maxGroupSize=*/2);
+
+  ASSERT_EQ(groups.size(), 1u);
+  EXPECT_EQ(groups[0].cpus, (std::vector<int32_t>{0, 1, 2, 3}));
+}
+
+// When real cache topology is available, run the same algorithm on it and check
+// the core invariant: no thread group spans more than one L3 cache. Skips on
+// hosts (e.g. CI sandboxes) that expose no topology.
+TEST(CpuSet, BuildGroupsFromRealTopologyStaysWithinL3) {
+  const auto& l2 = CpuSet::l2CacheGroups();
+  const auto& l3 = CpuSet::l3CacheGroups();
+  if (l2.empty() || l3.empty()) {
+    GTEST_SKIP() << "No L2/L3 cache topology on this host";
+  }
+
+  const auto groups = buildGroupsFromCacheTopology(l2, l3, /*maxGroupSize=*/1 << 20);
+
+  for (const auto& tg : groups) {
+    ASSERT_FALSE(tg.cpus.empty());
+    const bool withinOneL3 = std::any_of(l3.begin(), l3.end(), [&](const CacheGroup& c) {
+      const std::set<int32_t> l3cpus(c.cpus.begin(), c.cpus.end());
+      return std::all_of(
+          tg.cpus.begin(), tg.cpus.end(), [&](int32_t cpu) { return l3cpus.count(cpu) > 0; });
+    });
+    EXPECT_TRUE(withinOneL3) << "thread group starting at CPU " << tg.cpus[0]
+                             << " spans multiple L3 caches";
+  }
+}
+
+// =============================================================================
 // CpuSet Manipulation Tests
 // =============================================================================
 
@@ -641,37 +718,48 @@ class CpuSetBindTest : public ::testing::Test {
   }
 };
 
+// Best-effort probe for whether this environment can actually pin the current
+// thread. There is no pure permission query for CPU affinity on Linux/FreeBSD --
+// the only way to know is to attempt a bind and observe the result -- so this
+// binds to the full (non-restrictive) set and reports success. Returns false on
+// platforms without pinning (macOS) or when a sandbox denies the syscall (EPERM).
+// CpuSetBindTest::TearDown restores full affinity regardless.
+namespace {
+bool bindingPermitted() {
+  if (CpuSet::currentHardwareThread() < 0) {
+    return false;
+  }
+  return CpuSet::all().bindCurrentThread();
+}
+} // namespace
+
 TEST_F(CpuSetBindTest, BindCurrentThread) {
-  // Bind to current CPU and verify we're still on it
-  int32_t currentCpu = CpuSet::currentHardwareThread();
-  if (currentCpu < 0) {
-    GTEST_SKIP() << "Platform does not support CPU query";
+  const int32_t currentCpu = CpuSet::currentHardwareThread();
+
+  if (!bindingPermitted()) {
+    // Unsupported platform or sandboxed environment: exercise the graceful
+    // degradation path (a clean false, no crash) instead of skipping, so CI
+    // still runs the test.
+    CpuSet set;
+    set.add(currentCpu >= 0 ? currentCpu : 0);
+    EXPECT_FALSE(set.bindCurrentThread())
+        << "bindCurrentThread() should fail cleanly when binding is not permitted";
+    return;
   }
 
+  // Permitted: binding to the current CPU must keep us on it.
   CpuSet set;
   set.add(currentCpu);
-  if (!set.bindCurrentThread()) {
-    GTEST_SKIP() << "Binding restricted in this environment";
-  }
-
-  // After binding, we should still be on the same CPU
-  int32_t afterBind = CpuSet::currentHardwareThread();
-  EXPECT_EQ(afterBind, currentCpu);
+  ASSERT_TRUE(set.bindCurrentThread());
+  EXPECT_EQ(CpuSet::currentHardwareThread(), currentCpu);
 }
 
 TEST_F(CpuSetBindTest, BindToRange) {
-  if (CpuSet::currentHardwareThread() < 0) {
-    GTEST_SKIP() << "Platform does not support CPU query";
-  }
-
   const auto& allSet = CpuSet::all();
-  if (allSet.count() < 2) {
-    GTEST_SKIP() << "Need at least 2 CPUs";
-  }
 
-  // Find first 2 CPUs
+  // Find the first two online CPUs.
   int32_t cpu0 = -1, cpu1 = -1;
-  int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
+  const int32_t maxCpu = static_cast<int32_t>(std::thread::hardware_concurrency());
   for (int32_t i = 0; i < maxCpu && cpu1 < 0; ++i) {
     if (allSet.contains(i)) {
       if (cpu0 < 0) {
@@ -682,15 +770,29 @@ TEST_F(CpuSetBindTest, BindToRange) {
     }
   }
 
+  if (!bindingPermitted()) {
+    // Unsupported platform or sandboxed environment: verify graceful failure
+    // instead of skipping.
+    CpuSet set;
+    set.add(cpu0 >= 0 ? cpu0 : 0);
+    if (cpu1 >= 0) {
+      set.add(cpu1);
+    }
+    EXPECT_FALSE(set.bindCurrentThread())
+        << "bindCurrentThread() should fail cleanly when binding is not permitted";
+    return;
+  }
+  if (cpu1 < 0) {
+    GTEST_SKIP() << "Need at least 2 online CPUs to test range binding";
+  }
+
   CpuSet set;
   set.add(cpu0);
   set.add(cpu1);
-  if (!set.bindCurrentThread()) {
-    GTEST_SKIP() << "Binding not supported on this platform";
-  }
+  ASSERT_TRUE(set.bindCurrentThread());
 
-  // After binding, we should be on one of the two CPUs
-  int32_t current = CpuSet::currentHardwareThread();
+  // After binding, we should be on one of the two CPUs.
+  const int32_t current = CpuSet::currentHardwareThread();
   EXPECT_TRUE(current == cpu0 || current == cpu1)
       << "After binding to {" << cpu0 << ", " << cpu1 << "}, running on CPU " << current;
 }

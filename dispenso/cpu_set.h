@@ -412,6 +412,18 @@ DISPENSO_DLL_ACCESS CpuSet parseLinuxCpuList(const char* input);
 DISPENSO_DLL_ACCESS std::vector<CacheGroup> parseCacheGroupsFromTopologySpec(
     const std::string& xml,
     int cacheIndex);
+
+/**
+ * @brief Packs L2 cache atoms into thread groups that never cross an L3 boundary
+ * or exceed maxGroupSize, using the supplied L2/L3 cache groups. Pure algorithm
+ * with no platform APIs; exposed for testing so the grouping logic can be
+ * exercised on synthetic topologies where real hardware topology is unavailable
+ * (e.g. CI sandboxes).
+ */
+DISPENSO_DLL_ACCESS std::vector<ThreadGroup> buildGroupsFromCacheTopology(
+    const std::vector<CacheGroup>& l2Groups,
+    const std::vector<CacheGroup>& l3Groups,
+    int32_t maxGroupSize);
 } // namespace detail
 
 } // namespace dispenso

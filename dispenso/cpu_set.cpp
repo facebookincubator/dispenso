@@ -1124,9 +1124,14 @@ int32_t l3IndexForCpu(const std::vector<int32_t>& cpuToL3, int32_t cpu) {
   return -1;
 }
 
+} // namespace
+
+namespace detail {
+
 // Pack L2 atoms into contiguous groups, flushing whenever the next atom would
 // cross an L3 boundary or exceed maxGroupSize. L2 groups are already sorted by
 // first CPU ID, so iterating in order yields contiguous, cache-coherent groups.
+// Pure algorithm over the given cache groups; exposed for testing.
 std::vector<ThreadGroup> buildGroupsFromCacheTopology(
     const std::vector<CacheGroup>& l2Groups,
     const std::vector<CacheGroup>& l3Groups,
@@ -1159,6 +1164,10 @@ std::vector<ThreadGroup> buildGroupsFromCacheTopology(
   return result;
 }
 
+} // namespace detail
+
+namespace {
+
 // Fallback when no cache topology is available: chunk all online CPUs into
 // contiguous groups of up to maxGroupSize.
 std::vector<ThreadGroup> buildGroupsContiguous(int32_t maxGroupSize) {
@@ -1190,7 +1199,7 @@ std::vector<ThreadGroup> CpuSet::buildThreadGroups(int32_t maxGroupSize) {
   // boundaries; otherwise fall back to contiguous chunking of all online CPUs.
   std::vector<ThreadGroup> groups;
   if (!l2Groups.empty()) {
-    groups = buildGroupsFromCacheTopology(l2Groups, l3Groups, maxGroupSize);
+    groups = detail::buildGroupsFromCacheTopology(l2Groups, l3Groups, maxGroupSize);
   } else {
     groups = buildGroupsContiguous(maxGroupSize);
   }
