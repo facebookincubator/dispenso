@@ -200,6 +200,13 @@ cmake PATH_TO_DISPENSO_ROOT
 make -j
 ```
 
+**FreeBSD:**
+```bash
+mkdir build && cd build
+cmake PATH_TO_DISPENSO_ROOT
+cmake --build . --parallel $(sysctl -n hw.ncpu)
+```
+
 **Windows** (from Developer Command Prompt):
 ```bash
 mkdir build && cd build

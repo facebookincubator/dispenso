@@ -3,7 +3,7 @@
 ### New features
 * **`ChaseLevDeque`** — lock-free single-producer multi-consumer work-stealing deque with dynamic resizing. Classic data structure for work-stealing schedulers.
 * **`MpmcRingBuffer`** — bounded multi-producer multi-consumer ring buffer with power-of-two capacity and CAS-based push/pop.
-* **`CpuSet`** — portable CPU affinity and NUMA topology facility. Supports thread-to-core binding, L2/L3 cache group detection, and cache-aware thread group building. Full support on Linux and Windows; topology-only on macOS.
+* **`CpuSet`** — portable CPU affinity and NUMA topology facility. Supports thread-to-core binding, L2/L3 cache group detection, and cache-aware thread group building. Full support on Linux, Windows, and FreeBSD; topology-only on macOS.
 * **`parallel_invoke`** — fork-join invocation of heterogeneous tasks. Schedules N-1 tasks to the pool and runs the last inline. Composes naturally with recursive divide-and-conquer.
 * **`kAdaptive` parallel_for** — new chunking strategy inspired by Callisto-RTS (Harris/Kaestle, USENIX ATC 2015). The iteration space is partitioned into P contiguous stripes (one per worker), each consumed front-to-back via per-stripe atomic cursors. When a worker's stripe is exhausted, it steals from peers, preferring same-L3 victims for cache locality. Bitmasks prevent probing exhausted stripes. Competitive with TBB on SpMM benchmarks (3–12% faster at 8–32 threads, within noise at 64–192 threads on 1M-row workloads).
 * **`when_any` combinator** — returns a future that completes when any input future is ready, with the index of the first completed future.

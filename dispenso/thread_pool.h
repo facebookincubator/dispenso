@@ -61,7 +61,7 @@ class FutureImplBase;
 } // namespace detail
 
 #if !defined(DISPENSO_WAKEUP_ENABLE)
-#if defined(_WIN32) || defined(__linux__) || defined(__MACH__)
+#if defined(_WIN32) || defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__)
 #define DISPENSO_WAKEUP_ENABLE 1
 #else
 #define DISPENSO_WAKEUP_ENABLE 0

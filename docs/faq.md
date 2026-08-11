@@ -64,7 +64,7 @@ for detailed cross-platform comparisons, or the
 | Linux x86_64/ARM64 | Full | Full | Full (sysfs) | futex |
 | macOS ARM64/x86_64 | Full | No (OS limitation) | Full | os_sync_wait / ulock |
 | Windows x86_64/ARM64 | Full | Full | Full | WaitOnAddress |
-| FreeBSD | Full | Full (cpuset) | Planned | Planned |
+| FreeBSD | Full | Full (cpuset) | Full (sysctl) | _umtx_op |
 | Android ARM64 | Full | Partial | Partial | futex |
 
 ## What C++ standard does dispenso require?
