@@ -23,6 +23,28 @@ brew install cmake
 #### Windows
 Install CMake from <https://cmake.org/download/>
 
+### C++ Standard
+
+Dispenso is fully supported at its C++14 baseline: every API works and the
+build defaults to `-DCMAKE_CXX_STANDARD=14`. Building at C++17 or newer is
+nonetheless recommended where your project allows it, because dispenso drops
+its compatibility shims in favour of the standard facilities:
+
+| Standard | What dispenso does differently |
+| --- | --- |
+| C++17 | Uses `std::optional` in place of the bundled `detail::OpResult` (`AsyncRequest`, pipelines), `std::invoke_result_t` in place of deprecated `std::result_of`, and the language's over-aligned `new`/`delete` in place of dispenso's own aligned allocation operators. `[[deprecated]]` also becomes valid on enumerators, so deprecated values such as `ParForChunking::kAuto` start producing warnings. |
+| C++20 | Enables `DISPENSO_HAS_CONCEPTS`, which turns the `DISPENSO_REQUIRES` constraints into real `requires` clauses. Misused callables then fail at the call site with a named unsatisfied constraint instead of an error inside a template instantiation. |
+
+Newer standards also tend to produce marginally faster code from the same
+compiler, independent of the above. Dispenso's published benchmark results are
+built at C++20; the compiler and standard used for each platform are recorded
+in `machine_info.compiler` in the result JSON and shown on the benchmark
+dashboard.
+
+```bash
+cmake PATH_TO_DISPENSO_ROOT -DCMAKE_CXX_STANDARD=20
+```
+
 ## Building the Library
 
 ### Linux and macOS

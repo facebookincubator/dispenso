@@ -17,7 +17,7 @@ Dispenso is a modern **C++ parallel computing library** that provides work-steal
 - **No thread explosion** with nested parallel loops - dispenso's work-stealing prevents deadlocks and oversubscription
 - **Clean with ASAN/TSAN** - fully sanitizer-compatible, unlike many TBB versions
 - **Thread-safe shared futures** - `std::experimental::shared_future`-like API that TBB lacks, safe for multiple concurrent waiters, with much better performance than `std::future`
-- **Portable** - C++14 compatible with no compiler-specific pragmas or extensions; C++20 builds gain concept constraints for clearer error messages
+- **Portable** - C++14 compatible with no compiler-specific pragmas or extensions; C++17 swaps the compatibility shims for standard facilities and C++20 adds concept constraints for clearer error messages (see [Building](docs/building.md#c-standard))
 
 ## Table of Contents
 
