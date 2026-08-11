@@ -25,6 +25,7 @@ Requirements:
 
 import argparse
 import json
+import math
 import os
 import platform
 import re
@@ -138,48 +139,44 @@ def get_machine_info() -> Dict[str, Any]:
     return info
 
 
+# Marketing noise that appears in CPU model strings but carries no information
+# about which part it is.
+_CPU_MODEL_NOISE = re.compile(
+    r"\((?:r|tm)\)|\b(?:cpu|processor|core\(s\)|genuine|authentic|"
+    r"technologies|technology|inc|corp|corporation|ltd|amd|intel|apple)\b",
+    re.IGNORECASE,
+)
+
+
+def slugify_cpu_model(cpu_model: str) -> str:
+    """Reduce a CPU model string to the part that identifies the silicon.
+
+    Keeps the SKU when the vendor reports one and the generation when that is
+    all there is, which is the useful distinction for reproducing a benchmark:
+
+        "Intel(R) Xeon(R) Gold 6450C"    -> xeon-gold-6450c
+        "AMD EPYC-Genoa Processor"       -> epyc-genoa
+        "Apple M4 Pro"                   -> m4-pro
+        "AMD Ryzen 9 7950X 16-Core..."   -> ryzen-9-7950x
+    """
+    # Clock speed and core-count suffixes are recorded separately.
+    text = re.split(r"\s+@|\s+\d+-core", cpu_model, maxsplit=1, flags=re.IGNORECASE)[0]
+    text = _CPU_MODEL_NOISE.sub(" ", text)
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug or "unknown"
+
+
 def generate_platform_id(machine_info: Dict[str, Any]) -> str:
     """Generate a human-readable platform identifier from machine info.
 
-    Examples: linux-threadripper-96c, macos-m4-12c, windows-zen4-24c
+    Examples: linux-epyc-genoa-166c, macos-m4-pro-12c, windows-xeon-gold-6450c-60c
     """
     system = machine_info.get("platform", "unknown").lower()
     if system == "darwin":
         system = "macos"
 
-    cpu_model = machine_info.get("cpu_model", "")
-    cores = machine_info.get("cpu_cores", os.cpu_count() or 0)
-    model_lower = cpu_model.lower()
-
-    # Extract CPU family identifier
-    cpu_id = "unknown"
-    if system == "macos":
-        # Apple Silicon: "Apple M4", "Apple M2 Pro", etc.
-        match = re.search(r"apple\s+(m\d+(?:\s+\w+)?)", model_lower)
-        if match:
-            cpu_id = match.group(1).replace(" ", "-")
-    elif "threadripper" in model_lower:
-        cpu_id = "threadripper"
-    elif "epyc" in model_lower:
-        cpu_id = "epyc"
-    elif "ryzen" in model_lower:
-        match = re.search(r"ryzen\s+(\d+)\s+(\d{4})", model_lower)
-        if match:
-            cpu_id = f"ryzen{match.group(1)}-{match.group(2)}"
-        else:
-            cpu_id = "ryzen"
-    elif "xeon" in model_lower:
-        cpu_id = "xeon"
-    elif re.search(r"core.*i\d", model_lower):
-        match = re.search(r"i(\d+)-(\d+)", model_lower)
-        if match:
-            cpu_id = f"i{match.group(1)}-{match.group(2)}"
-        else:
-            cpu_id = "core"
-    elif "zen" in model_lower:
-        match = re.search(r"zen\s*(\d+)", model_lower)
-        if match:
-            cpu_id = f"zen{match.group(1)}"
+    cores = machine_info.get("cpu_cores") or machine_info.get("cpu_count") or 0
+    cpu_id = slugify_cpu_model(machine_info.get("cpu_model", ""))
 
     return f"{system}-{cpu_id}-{cores}c"
 
@@ -290,6 +287,49 @@ def get_compiler_info(build_dir: Path) -> Dict[str, str]:
         info["compiler_summary"] = summary
 
     return info
+
+
+def parse_dep_version_overrides(entries: Optional[List[str]]) -> Dict[str, str]:
+    """Parse repeated `--dep-version NAME=VERSION` arguments."""
+    overrides: Dict[str, str] = {}
+    for entry in entries or []:
+        name, sep, version = entry.partition("=")
+        if not sep or not name.strip() or not version.strip():
+            sys.exit(f"--dep-version expects NAME=VERSION, got {entry!r}")
+        overrides[name.strip()] = version.strip()
+    return overrides
+
+
+def get_dependency_versions(
+    build_dir: Path, overrides: Optional[List[str]] = None
+) -> Dict[str, str]:
+    """Versions of the comparison libraries the benchmarks were built against.
+
+    Read from the JSON the benchmarks CMakeLists writes at configure time, since
+    that is the only place that knows what `find_package` actually resolved.
+    Entries CMake could not determine are written as empty strings and dropped
+    here, so absence means "unknown", not "not linked".
+
+    Explicit overrides win: folly in particular exposes neither a CMake version
+    variable nor a version macro, so recording it at all requires being told.
+    """
+    versions: Dict[str, str] = {}
+    versions_file = build_dir / "dispenso_dep_versions.json"
+    try:
+        with open(versions_file) as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        raw = {}
+    for name, version in raw.items():
+        if isinstance(version, str) and version.strip():
+            versions[name] = version.strip()
+    versions.update(parse_dep_version_overrides(overrides))
+    return versions
+
+
+def format_dependency_versions(versions: Dict[str, str]) -> str:
+    """One-line rendering for console output."""
+    return ", ".join(f"{n} {v}" for n, v in sorted(versions.items()))
 
 
 def _discover_benchmark_targets(build_dir: Path, pattern: str) -> List[str]:
@@ -492,7 +532,6 @@ def run_benchmark(
     extra_args: Optional[List[str]] = None,
     filter_pattern: Optional[str] = None,
     env_override: Optional[Dict[str, str]] = None,
-    name_suffix: str = "",
     timeout_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run a single benchmark and return results."""
@@ -511,8 +550,6 @@ def run_benchmark(
         # Exclude async benchmarks (extremely slow, not competitive)
         # Only include serial, omp, tbb, and dispenso tests
         args.append("--benchmark_filter=BM_(serial|omp|tbb|dispenso)")
-
-    result_name = benchmark_path.name + name_suffix
 
     # Set up environment
     env = None
@@ -629,6 +666,23 @@ def _build_windows_env_override(
     }
 
 
+def json_safe(obj: Any) -> Any:
+    """Replace non-finite floats with null so the output is valid JSON.
+
+    google-benchmark writes a bare `NaN` token for the coefficient of variation
+    of a statistic whose mean is zero -- `cpu_time` on a `UseRealTime()`
+    benchmark, for instance. Python's json module both accepts and re-emits that
+    token, but it is not valid JSON, and strict consumers reject the whole file.
+    """
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [json_safe(v) for v in obj]
+    return obj
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run dispenso benchmarks and output results as JSON"
@@ -730,6 +784,15 @@ def main():
         help="Platform identifier (e.g., 'linux-threadripper-96c'). "
         "Auto-detected from machine info if not specified.",
     )
+    parser.add_argument(
+        "--dep-version",
+        action="append",
+        metavar="NAME=VERSION",
+        default=None,
+        help="Record a comparison-library version the build could not report, "
+        "e.g. --dep-version folly=2023.04.24.00. Repeatable; overrides any "
+        "auto-detected value for the same name.",
+    )
 
     args = parser.parse_args()
 
@@ -764,6 +827,11 @@ def main():
         machine_info["compiler"] = compiler_info
         summary = compiler_info.get("compiler_summary", "unknown")
         print(f"  Compiler: {summary}")
+
+    deps = get_dependency_versions(args.build_dir, args.dep_version)
+    if deps:
+        machine_info["dependencies"] = deps
+        print(f"  Deps: {format_dependency_versions(deps)}")
     print()
 
     # Find benchmarks
@@ -808,7 +876,7 @@ def main():
     }
 
     with open(args.output, "w") as f:
-        json.dump(output_data, f, indent=2, default=str)
+        json.dump(json_safe(output_data), f, indent=2, default=str)
     print(f"\nSaved results to: {args.output}")
 
     # Print summary

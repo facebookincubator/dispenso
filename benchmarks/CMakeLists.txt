@@ -114,6 +114,47 @@ else (FOLLY_LIBRARIES AND NOT ${BENCHMARK_WITHOUT_FOLLY})
   add_compile_definitions(BENCHMARK_WITHOUT_FOLLY)
 endif (FOLLY_LIBRARIES AND NOT ${BENCHMARK_WITHOUT_FOLLY})
 
+# Record the comparison libraries that were actually found, so published
+# benchmark results say what they were measured against. `run_benchmarks.py`
+# reads this file and merges it into the results JSON.
+#
+# Taskflow states its version only as a header macro, and the header may come
+# from a package, a local tree, or FetchContent, so resolve it from whichever
+# applies. TF_VERSION packs the parts as MAJOR*100000 + MINOR*100 + PATCH.
+set(_dispenso_taskflow_version "${Taskflow_VERSION}")
+if(NOT _dispenso_taskflow_version)
+  set(_dispenso_taskflow_hpp "")
+  if(_taskflow_local_dir)
+    set(_dispenso_taskflow_hpp "${_taskflow_local_dir}/taskflow/taskflow.hpp")
+  elseif(DEFINED taskflow_SOURCE_DIR)
+    set(_dispenso_taskflow_hpp "${taskflow_SOURCE_DIR}/taskflow/taskflow.hpp")
+  endif()
+  if(EXISTS "${_dispenso_taskflow_hpp}")
+    file(STRINGS "${_dispenso_taskflow_hpp}" _tf_ver_line
+         REGEX "^#define TF_VERSION [0-9]+")
+    if(_tf_ver_line)
+      string(REGEX MATCH "[0-9]+" _tf_ver "${_tf_ver_line}")
+      math(EXPR _tf_major "${_tf_ver} / 100000")
+      math(EXPR _tf_minor "${_tf_ver} / 100 % 1000")
+      math(EXPR _tf_patch "${_tf_ver} % 100")
+      set(_dispenso_taskflow_version "${_tf_major}.${_tf_minor}.${_tf_patch}")
+    endif()
+  endif()
+endif()
+
+# folly deliberately has no entry: it ships neither a CMake version variable
+# nor a version macro, so there is nothing to read. Pass it to the runner with
+# `--dep-version folly=<version>` when it matters for reproducibility.
+set(_dispenso_dep_versions "${CMAKE_BINARY_DIR}/dispenso_dep_versions.json")
+file(WRITE  "${_dispenso_dep_versions}" "{\n")
+file(APPEND "${_dispenso_dep_versions}" "  \"tbb\": \"${TBB_VERSION}\",\n")
+file(APPEND "${_dispenso_dep_versions}" "  \"google_benchmark\": \"${benchmark_VERSION}\",\n")
+file(APPEND "${_dispenso_dep_versions}" "  \"taskflow\": \"${_dispenso_taskflow_version}\",\n")
+file(APPEND "${_dispenso_dep_versions}" "  \"openmp\": \"${OpenMP_CXX_VERSION}\",\n")
+file(APPEND "${_dispenso_dep_versions}" "  \"openmp_spec_date\": \"${OpenMP_CXX_SPEC_DATE}\"\n")
+file(APPEND "${_dispenso_dep_versions}" "}\n")
+message(STATUS "Wrote dependency versions to ${_dispenso_dep_versions}")
+
 file(GLOB BENCHMARK_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/*.cpp)
 
 foreach(BENCHMARK_FILE ${BENCHMARK_FILES})

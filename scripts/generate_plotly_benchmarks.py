@@ -171,6 +171,51 @@ def _lib_sort_key(lib):
 # Each returns a list of chart config dicts consumable by the JS renderer.
 
 
+def select_representative_rows(benchmarks):
+    """Collapse a suite's rows to one representative value per benchmark case.
+
+    google-benchmark emits raw per-repetition rows, aggregate rows, or both,
+    depending on `--benchmark_report_aggregates_only`. The chart builders each
+    want exactly one number per case, so normalise here instead of in twelve
+    places, and tag the result as an iteration row so they need no changes.
+
+    Two things this fixes. Runs recorded with aggregates only -- which is what
+    the Buck runner produces -- previously yielded no charts at all for the
+    thread-scaling suites, because every builder filtered for iteration rows.
+    And where repetitions *were* present, the builders indexed rows by case
+    into a dict, so the chart silently showed whichever repetition happened to
+    be last rather than a central value.
+    """
+    by_case = {}
+    for bm in benchmarks:
+        case = bm.get("run_name") or bm.get("name")
+        if case is not None:
+            by_case.setdefault(case, []).append(bm)
+
+    rows = []
+    for case, entries in by_case.items():
+        aggregates = {
+            e.get("aggregate_name"): e
+            for e in entries
+            if e.get("run_type") == "aggregate"
+        }
+        chosen = aggregates.get("median") or aggregates.get("mean")
+        if chosen is None:
+            iterations = [e for e in entries if e.get("run_type") == "iteration"]
+            if not iterations:
+                continue
+            iterations.sort(key=lambda e: e.get("real_time", 0))
+            chosen = iterations[len(iterations) // 2]
+        row = dict(chosen)
+        # Aggregate rows suffix `name` with e.g. "_median"; builders parse that
+        # field, so restore the plain case name.
+        row["name"] = case
+        row["run_type"] = "iteration"
+        row.pop("aggregate_name", None)
+        rows.append(row)
+    return rows
+
+
 def _parse_line_benchmarks(benchmarks):
     """Parse benchmarks into grouped thread-scaling data and serial baselines."""
     size_map = {
@@ -1298,6 +1343,13 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans',
 .info-card .label {{ font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:4px; }}
 .info-card .value {{ font-size:16px; font-weight:600; }}
 .info-card .detail {{ font-size:12px; color:var(--text-secondary); margin-top:2px; }}
+.info-card.deps {{ grid-column:span 2; }}
+@media (max-width:900px) {{ .info-card.deps {{ grid-column:span 1; }} }}
+.dep-table {{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }}
+.dep-table td {{ padding:2px 0; vertical-align:top; }}
+.dep-table td.n {{ color:var(--text-secondary); padding-right:14px; white-space:nowrap; }}
+.dep-table td.v {{ font-weight:600; font-variant-numeric:tabular-nums; }}
+.dep-none {{ font-size:12px; color:var(--text-muted); margin-top:6px; font-style:italic; }}
 .stats-bar {{ display:flex; gap:20px; margin-bottom:24px; padding:12px 16px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; font-size:13px; }}
 .stat-item {{ display:flex; align-items:center; gap:6px; }}
 .stat-dot {{ width:7px; height:7px; border-radius:50%; }}
@@ -1628,6 +1680,32 @@ function renderChart(cfg) {{
 }}
 
 // ─── Platform switching ────────────────────────────────────────
+// Comparison-library versions. These vary by platform -- Buck-built columns
+// carry noticeably older TBB/Taskflow than the CMake ones -- so a reader
+// comparing dispenso against TBB across platforms needs to see them.
+const DEP_LABELS = {{
+  tbb: 'TBB', taskflow: 'Taskflow', folly: 'folly',
+  google_benchmark: 'google-benchmark', openmp: 'OpenMP', libomp: 'libomp',
+}};
+
+function buildDepsCard(deps) {{
+  const entries = Object.entries(deps || {{}})
+    // Spec date is shown inline with the OpenMP version rather than as its own row.
+    .filter(([k]) => k !== 'openmp_spec_date')
+    .sort((a, b) => (DEP_LABELS[a[0]] || a[0]).localeCompare(DEP_LABELS[b[0]] || b[0]));
+  if (!entries.length) {{
+    return '<div class="info-card deps"><div class="label">Comparison Libraries</div>' +
+           '<div class="dep-none">not recorded for this run</div></div>';
+  }}
+  const specDate = (deps || {{}})['openmp_spec_date'];
+  const rows = entries.map(([k, v]) => {{
+    const shown = (k === 'openmp' && specDate) ? `${{v}} (${{specDate}})` : v;
+    return `<tr><td class="n">${{DEP_LABELS[k] || k}}</td><td class="v">${{shown}}</td></tr>`;
+  }}).join('');
+  return '<div class="info-card deps"><div class="label">Comparison Libraries</div>' +
+         `<table class="dep-table">${{rows}}</table></div>`;
+}}
+
 function buildInfoCards(machine) {{
   const compiler = machine.compiler || {{}};
   document.getElementById('infoCards').innerHTML = `
@@ -1635,6 +1713,7 @@ function buildInfoCards(machine) {{
     <div class="info-card"><div class="label">Processor</div><div class="value">${{machine.cpu_model}}</div><div class="detail">${{machine.cpu_cores}} cores &middot; ${{Math.round(machine.memory_gb||0)}} GB RAM</div></div>
     <div class="info-card"><div class="label">Compiler</div><div class="value">${{compiler.compiler_summary||'Unknown'}}</div><div class="detail">C++${{compiler.cxx_standard||'??'}} &middot; ${{compiler.build_type||''}}</div></div>
     <div class="info-card"><div class="label">Run Date</div><div class="value">${{(machine.timestamp||'').slice(0,10)}}</div><div class="detail">${{(machine.timestamp||'').slice(11,19)}}</div></div>
+    ${{buildDepsCard(machine.dependencies)}}
   `;
 }}
 
@@ -1741,14 +1820,18 @@ def load_platform(json_path):
         machine["cpu_model"] = (
             f"{device} ({soc})" if device and soc else (device or soc or "Unknown")
         )
-    label = f"{machine['cpu_model']} ({machine.get('cpu_cores', '?')} cores)"
+    # The Buck runner reports cpu_count where the CMake runner reports
+    # cpu_cores; backfill so the label and the info card agree across platforms.
+    if not machine.get("cpu_cores"):
+        machine["cpu_cores"] = machine.get("cpu_count")
+    label = f"{machine['cpu_model']} ({machine.get('cpu_cores') or '?'} cores)"
 
     charts = []
     for result in data["results"]:
         if not result.get("success") or "data" not in result:
             continue
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
-        benchmarks = result["data"].get("benchmarks", [])
+        benchmarks = select_representative_rows(result["data"].get("benchmarks", []))
         charts.extend(build_charts_for_suite(benchmarks, suite))
 
     return {
