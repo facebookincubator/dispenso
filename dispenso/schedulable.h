@@ -104,6 +104,7 @@ class NewThreadInvoker {
   }
 
  private:
+  /// @cond INTERNAL
   // NewThreadInvoker spawns one std::thread per schedule(). On Windows shared-lib
   // builds a *detached* thread that is still executing during process exit faults
   // (EXCEPTION_ACCESS_VIOLATION): it runs a synchronization primitive
@@ -164,6 +165,7 @@ class NewThreadInvoker {
   };
 
   DISPENSO_DLL_ACCESS static ThreadTracker* getTracker();
+  /// @endcond
 };
 
 constexpr NewThreadInvoker kNewThreadInvoker;
