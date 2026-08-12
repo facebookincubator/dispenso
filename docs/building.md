@@ -136,3 +136,24 @@ bin/once_function_benchmark  # example benchmark
 
 ### Windows
 Not currently supported through CMake.
+
+## Building the Documentation
+
+The API documentation is generated with Doxygen (graphviz supplies the diagrams):
+
+```bash
+cd docs
+doxygen Doxyfile
+```
+
+Output lands in `docs/doxygen/html`, and warnings are written to
+`docs/doxygen_warnings.log`. CI fails the build whenever that log is non-empty, so
+treat any warning as an error.
+
+**Doxygen 1.11.0 or newer is required.** Releases 1.9.2 through 1.9.8 fail to resolve
+markdown links to a page that declares an explicit `{#label}` anchor, which the
+cross-page links in these documents depend on; against those versions the build reports
+unresolved-reference warnings that do not reflect a problem in the source. Distribution
+packages are frequently older than the minimum — check with `doxygen --version` and
+install an official release from
+[doxygen.nl](https://www.doxygen.nl/download.html) if yours falls short.
