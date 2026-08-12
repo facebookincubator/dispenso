@@ -1,4 +1,8 @@
 var searchData=
 [
-  ['entry_0',['Entry',['../structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html',1,'dispenso::NewThreadInvoker::ThreadTracker']]]
+  ['foreachoptions_0',['ForEachOptions',['../structdispenso_1_1_for_each_options.html',1,'dispenso']]],
+  ['forwardpropagator_1',['ForwardPropagator',['../classdispenso_1_1_forward_propagator.html',1,'dispenso']]],
+  ['future_2',['Future',['../classdispenso_1_1_future.html',1,'dispenso']]],
+  ['future_3c_20result_20_26_20_3e_3',['Future&lt; Result &amp; &gt;',['../classdispenso_1_1_future_3_01_result_01_6_01_4.html',1,'dispenso']]],
+  ['future_3c_20void_20_3e_4',['Future&lt; void &gt;',['../classdispenso_1_1_future_3_01void_01_4.html',1,'dispenso']]]
 ];

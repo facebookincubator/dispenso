@@ -12,7 +12,6 @@ var hierarchy =
     [ "dispenso::DefaultConcurrentVectorSizeTraits< T >", "structdispenso_1_1_default_concurrent_vector_size_traits.html", null ],
     [ "dispenso::DefaultConcurrentVectorTraits", "structdispenso_1_1_default_concurrent_vector_traits.html", null ],
     [ "dispenso::DistributedRWLock< N >", "classdispenso_1_1_distributed_r_w_lock.html", null ],
-    [ "dispenso::NewThreadInvoker::ThreadTracker::Entry", "structdispenso_1_1_new_thread_invoker_1_1_thread_tracker_1_1_entry.html", null ],
     [ "detail::ExecutorBase", null, [
       [ "dispenso::ConcurrentTaskSetExecutor", "classdispenso_1_1_concurrent_task_set_executor.html", null ],
       [ "dispenso::ForwardPropagator", "classdispenso_1_1_forward_propagator.html", null ],

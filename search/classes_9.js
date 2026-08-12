@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['mpmcringbuffer_0',['MpmcRingBuffer',['../classdispenso_1_1_mpmc_ring_buffer.html',1,'dispenso']]]
+  ['newthreadinvoker_0',['NewThreadInvoker',['../classdispenso_1_1_new_thread_invoker.html',1,'dispenso']]],
+  ['node_1',['Node',['../classdispenso_1_1_node.html',1,'dispenso']]]
 ];

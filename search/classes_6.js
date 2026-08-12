@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['grapht_0',['GraphT',['../classdispenso_1_1_graph_t.html',1,'dispenso']]]
+  ['immediateinvoker_0',['ImmediateInvoker',['../classdispenso_1_1_immediate_invoker.html',1,'dispenso']]]
 ];
