@@ -319,7 +319,7 @@ TEST(Util, OpResult) {
 #if defined(__clang__)
   DISPENSO_DISABLE_WARNING(-Wself-assign-overloaded)
   DISPENSO_DISABLE_WARNING(-Wself-move)
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && __GNUC__ >= 13 // GCC added -Wself-move in 13
   DISPENSO_DISABLE_WARNING(-Wself-move)
 #endif // disable warnings
   // clang-format on
