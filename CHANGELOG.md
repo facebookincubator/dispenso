@@ -1,4 +1,4 @@
-1.6.0 (June 2026)
+1.6.0 (August 13, 2026)
 
 ### New features
 * **`ChaseLevDeque`** — lock-free single-producer multi-consumer work-stealing deque with dynamic resizing. Classic data structure for work-stealing schedulers.
@@ -7,6 +7,9 @@
 * **`parallel_invoke`** — fork-join invocation of heterogeneous tasks. Schedules N-1 tasks to the pool and runs the last inline. Composes naturally with recursive divide-and-conquer.
 * **`kAdaptive` parallel_for** — new chunking strategy inspired by Callisto-RTS (Harris/Kaestle, USENIX ATC 2015). The iteration space is partitioned into P contiguous stripes (one per worker), each consumed front-to-back via per-stripe atomic cursors. When a worker's stripe is exhausted, it steals from peers, preferring same-L3 victims for cache locality. Bitmasks prevent probing exhausted stripes. Competitive with TBB on SpMM benchmarks (3–12% faster at 8–32 threads, within noise at 64–192 threads on 1M-row workloads).
 * **`when_any` combinator** — returns a future that completes when any input future is ready, with the index of the first completed future.
+* **`DistributedRWLock`** — sharded reader-writer lock that spreads reader traffic across per-shard state to avoid a single contended cache line, with an OS-level writer drain rather than a spin. Defaults to 16 shards.
+* **`granularity` option for `parallel_for`** — bounds the smallest unit of work a chunking strategy will hand to a worker, so loops with expensive per-iteration bodies can stop the scheduler from subdividing past the point where the split costs more than the work.
+* **FreeBSD support** — native thread-pool wait/wake via the `_umtx_op` syscall, plus `CpuSet` CPU-affinity, NUMA-domain, and L2/L3 cache-topology queries built on `cpuset_getaffinity` and the `kern.sched.topology_spec` sysctl. (thanks bimokh!)
 
 ### Thread pool rework
 * **Per-thread rings** — each worker thread gets a dedicated SPMC ring buffer (16 slots). `schedule()` distributes work round-robin across rings, eliminating central queue contention at high thread counts. Foundation for fork-join scheduling — threads check their own ring before the central queue.
@@ -28,40 +31,85 @@
 * Fixed `NewThreadInvoker` rare Windows hang on process exit: pinned the module and bounded the shutdown drain.
 * Fixed a lost wakeup that could strand a scheduled task indefinitely: `centralQueueNonEmpty_` is a cheap hint that lets spinning workers skip the central queue, but a worker clearing it after a failed dequeue could overwrite a concurrent producer's store, leaving that task queued while every worker believed the queue was empty. The sleep-timeout backstop could not recover it, because the wakeup path consults the same hint. A worker that wakes on the timeout rather than a signal now re-checks the queue and repairs the hint, bounding a strand to one sleep period.
 * Fixed `scheduleBulkImpl` inline boundary oscillation: prevented enqueue/inline mode switching on every iteration.
-* Fixed `DistributedRWLock` to use OS-level writer drain.
 * Fixed `-Wconversion` warning on narrow `parallel_for` index types.
-* Fixed Doxygen warnings in OSS CI.
-* Fixed `util_test` warning suppression for both Clang and GCC.
+* Fixed Doxygen warnings in OSS CI, and stopped extracting `NewThreadInvoker`'s private thread-tracking internals, which were reported as undocumented compounds.
+* Fixed `util_test` warning suppression for Clang and GCC. The GCC arm is now restricted to GCC 13 and newer, which is where `-Wself-move` was introduced; on GCC 11 and 12 the unknown option made `#pragma GCC diagnostic` itself a warning and `-Werror=pragmas` turned that into a build failure.
+* Fixed narrowing conversions in `EpochWaiter::waitFor`.
+* Fixed OSS cross-platform build breaks on 32-bit targets and MSVC x86/x64, and an MSVC C3493 capture error.
+* Fixed a `TaskSetTest` `TEST`/`TEST_P` suite-name collision.
 * Replaced `rdtscp` with `lfence; rdtsc` in timing code — some simulators don't support `rdtscp`.
 * Restored `ThreadWaiter` to make `NewThreadInvoker` safe at process exit.
 * Added `static_assert` for trivially-copyable types in `ConcurrentObjectArena` copy constructor.
 * Fixed `RWLock` livelock under oversubscription: pure spin loops in `lock_shared()`, `setWriteBit()`, and `lock_upgrade()` now yield after 256 iterations, preventing permanent writer starvation when thread count exceeds physical cores.
 
 ### fast_math (experimental)
+
+**Still experimental.** The API is unstable and will change in future releases; it
+remains gated behind the `DISPENSO_BUILD_FAST_MATH` CMake option. Do not depend on
+signatures, header layout, or accuracy traits staying put.
+
+* **SIMD backends now require FMA.** SIMD detection is centralized in one place, and a
+  backend is only selected when the target provides fused multiply-add. Targets without
+  FMA fall back to the scalar path rather than silently selecting a backend whose
+  polynomials were tuned assuming fused arithmetic. This can change which backend is
+  chosen for an existing build.
+* Added functions: `pow`, `hypot`, `expm1`, `log1p`, `tanh`, `erf`, `sincos`, `sinpi`,
+  `cospi`, `sincospi`.
 * Added `rsqrt_approx`, `rsqrt`, `rcp_approx`, `rcp` with configurable accuracy.
-* Added SIMD building blocks: `shuffle`, `maskBits`, `maskLoad`/`maskStore`, `extract`, `testBit`, `kLanes`, `load`/`store`, `any_true`.
-* Added CUDA compilation support and exhaustive GPU correctness tests.
+* Improved accuracy using Sollya-generated minimax polynomials for `exp`, `exp10`,
+  `asin`, `atan`, `acos`, `expm1`, `log1p`, and `tanh`. `cbrt` gained an FMA correction
+  step, denormal safety, and a native SIMD `int_div_by_3`.
+* Unified scalar and SIMD dispatch for `sin`/`cos`.
+* Added SIMD building blocks: `shuffle`, `maskBits`, `maskLoad`/`maskStore`, `extract`,
+  `testBit`, `kLanes`, `load`/`store`, `any_true`.
+* Added `polyEval`, `hornerEval`, and `estrinEval` polynomial-evaluation abstractions.
+* Added CUDA compilation support and exhaustive GPU correctness tests. **CUDA support is
+  correctness-tested only — it has had no performance testing whatsoever.** Treat the GPU
+  path as unmeasured for speed.
+* Added unified SIMD test infrastructure covering accuracy and special values for both
+  single- and two-argument functions, plus a bivariate ULP evaluation harness using
+  Halton sampling.
+* Fixed `log(-0.0f)` and `exp` overflow bounds handling.
+* Truncated `exp10`'s Cody-Waite constant so the low-order term carries meaning.
+* Ordered `expm1`'s bounds checks ahead of its `n == 0` shortcut, so out-of-range inputs
+  are clamped before the shortcut can return an unclamped result.
+* Documented that `convert_to_int`'s result for non-finite input is unspecified and must
+  not be branched on.
+* Relaxed test bounds where the hardware justifies it: one extra ULP for MSVC, and looser
+  `rcp_approx`/`rsqrt_approx` bounds on ARM64.
 
 ### Benchmarks
 * Added `mandelbrot_benchmark` — escape-time workload for testing dynamic load balancing with non-uniform per-pixel work.
 * Added `spmm_benchmark` — sparse matrix-dense matrix multiply with power-law row distribution, realistic density (<1%), and 64 RHS columns.
 * Added `mandelbrot_instrument` — standalone scheduler quality analysis tool (chunk distribution, affinity hit rate). Moved to `tools/`.
 * Added `wake_cost_bench` — platform syscall cost measurement for wake tuning. Moved to `tools/`.
-* Added benchmark runner infrastructure for Windows/Buck (`facebook/run_benchmarks_buck.py`).
+* Added benchmark runner infrastructure for Windows/Buck (`facebook/run_benchmarks_buck.py`), including resume support for interrupted runs.
+* Added an Android (adb) benchmark runner that cross-compiles, pushes to a device, and emits the same result schema as the other runners.
 * Added Windows tuning sweep results and data.
 * Replaced the matplotlib chart pipeline (`generate_charts.py`, `update_benchmarks.py`) with an interactive Plotly dashboard (`scripts/generate_plotly_benchmarks.py`, output at `docs/benchmarks/index.html`).
+* Results now record what produced them: compiler and C++ standard, CPU SKU or generation, and the versions of the comparison libraries (TBB, Taskflow, OpenMP, google-benchmark). The dashboard shows these per platform, so a number can be traced to the toolchain and libraries it was measured against.
+* Per-benchmark timeouts scale with core count instead of using a flat value, so thread-scaling suites are not truncated on many-core machines.
+* Trimmed the `mandelbrot` thread sweep and capped `rw_lock`'s write-heavy cases, cutting total runtime substantially without losing the shape of either curve.
+* Refreshed the published results for all four platforms: Linux x64 (166-core EPYC Genoa), Windows x64 (60-core Xeon Gold), macOS ARM64 (M4 Pro), and Android ARM64 (Pixel 9 Pro XL).
 
 ### Documentation
 * Added examples for `CpuSet`, `ChaseLevDeque`, `parallel_invoke`, `SmallVector`, `MpmcRingBuffer`, `SPSCRingBuffer`, `when_any`, and `kAdaptive` chunking.
 * Documented the new public APIs in the Getting Started guide (containers, `when_any`, and adaptive chunking) and the README feature list.
 * Added all missing public headers to `dispenso.h` umbrella include.
 * Added C++20 concept constraints for `parallel_for` and graph SFINAE.
+* Added a FAQ page and trimmed the README to improve the onboarding path.
+* Standardized `#pragma once` placement across all headers.
+* Documented the C++ standard choice in [docs/building.md](docs/building.md#c-standard): C++14 remains fully supported and is the CMake default, while C++17 replaces the bundled compatibility shims with standard facilities and C++20 turns the `DISPENSO_REQUIRES` constraints into real concepts.
 
 ### Build system and infrastructure
 * Added CMake build for `tools/` directory (development utilities).
 * Added three missing benchmark targets to Buck benchmark runner.
 * Bumped GitHub Actions checkout to v5 (Node 20 deprecation).
 * Removed dead `run_bench.bat` and duplicate `benchmarks/run_benchmarks.py`.
+* Publish the benchmark dashboard to GitHub Pages, with the workflow permissions the deploy requires.
+* Bumped CodeQL to v4.
+* Gated the `for_each` list/set benchmarks behind `DISPENSO_BENCH_ALL_CONTAINERS`.
+* The documentation build now requires Doxygen 1.11.0 or newer, verified in CI. Releases 1.9.2 through 1.9.8 fail to resolve markdown links to pages carrying an explicit `{#label}` anchor. The CI job installs a pinned Doxygen, checked against a pinned SHA-256, rather than whatever the runner image happens to ship.
 
 1.5.1 (March 28, 2026)
 
@@ -91,7 +139,7 @@
 * Added random-access iterator specialization for `for_each_n`, with iterator category dispatch for optimal chunk boundary computation
 * Added Mac futex-based wakeup using `os_sync_wait_on_address` (macOS 14.4+) with `__ulock_wait` fallback
 * Added C++20 concept constraints for better error messages when template requirements aren't met
-* Added experimental `fast_math` sublibrary with SIMD-accelerated math functions including `log2`, `exp2`, `exp`, `exp10`, `cbrt`, `sin`, `cos`, `sincos`, `asin`, and `atan2` with configurable accuracy/performance trade-offs and multiple SIMD backends (SSE4.1, AVX2, AVX512, NEON, Highway). **API unstable** — gated by `DISPENSO_BUILD_FAST_MATH` CMake option
+* Added experimental `fast_math` sublibrary with SIMD-accelerated math functions including `log2`, `exp2`, `exp`, `exp10`, `cbrt`, `sin`, `cos`, `asin`, and `atan2` with configurable accuracy/performance trade-offs and multiple SIMD backends (SSE4.1, AVX2, AVX512, NEON, Highway). **API unstable** — gated by `DISPENSO_BUILD_FAST_MATH` CMake option
 * Added benchmark runner and chart generation scripts with multi-platform support
 * Added interactive Plotly.js benchmark dashboard generator
 
