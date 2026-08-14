@@ -2,6 +2,74 @@
 
 Post-release tasks and reminders for package manager updates.
 
+## Package manager updates
+
+`scripts/update_package_managers.py` drives conan, vcpkg, homebrew and
+macports. It downloads the release tarball, computes sha256/sha512/rmd160 and
+size, then for each manager clones the repo if missing, rewrites the port,
+runs the ecosystem's own tooling and tests, pushes to your fork, and opens a
+PR.
+
+```bash
+python3 scripts/update_package_managers.py --version X.Y.Z --guided
+```
+
+`--guided` prompts before each manager and lets you skip or quit; local
+commits survive a quit. Useful variants: `--dry-run` to see the plan without
+touching anything, `--managers conan,vcpkg` to do a subset, and `--skip-push`
+to stop after committing and testing.
+
+### Before you start
+
+- Public network access. None of this runs from a devserver — the script
+  downloads the release tarball and clones upstream package repos.
+- macOS if you end up touching macports. On Linux the script degrades homebrew
+  and macports to checksum verification only; vcpkg and conan are unaffected,
+  so a Linux machine with public network access is enough for those.
+- `gh` installed and authenticated (`gh auth login`). The guided flow opens
+  PRs through it.
+- The script clones into `--repos-dir` (default `~/repos`) and pushes to the
+  fork named by `--github-user` (default `graphicsMan`). Override both if
+  either is wrong for the machine. conan-center-index and vcpkg are large
+  clones — budget disk and time.
+
+### Which ports actually need us
+
+Not all four are ours to push. Who bumped each one to 1.5.1 is the best guide
+we have:
+
+| Port | Who bumped it to 1.5.1 | Lag |
+|------|------------------------|-----|
+| Homebrew | `BrewTestBot`, automated | same day |
+| vcpkg | a community contributor (PR #50867) | 1 day |
+| MacPorts | us | 1 day |
+| Conan | us (PR #29887) | ~1 month |
+
+- **vcpkg — by hand, and early.** Someone else will usually bump the version
+  within a day or two, but they will not remove our workarounds: the 1.5.1
+  bump left `DISPENSO_SHARED_LIB` exactly where it was. Getting there first is
+  the only way a version bump and a cleanup land in the same PR.
+- **Conan — by hand.** Every bump since the recipe was contributed in 2024 has
+  been ours, and the one time we waited it took a month.
+- **Homebrew — nothing to do.** `BrewTestBot` handles it.
+- **MacPorts — wait, then decide.** The Portfile has read `nomaintainer` since
+  April 2026, and the community has updated it before (1.3.0, 1.4.1). Run the
+  script for it only if nobody has moved after a few days.
+
+Conda-forge and Fedora/RHEL appear in the README's install list but have never
+been ours; their own packagers track releases. Nothing to do, and nothing to
+chase.
+
+### Before trusting a green run
+
+- **Hashes are pinned against the tag's tarball.** This is why a published tag
+  must never be moved: all four ports record a hash of the archive GitHub
+  generates for it.
+- **The script only reasons about `.patch` files.** It detects a patch whose
+  fix has been upstreamed, but it has no notion of a workaround written
+  directly into a port's build script. Those have to be found and removed by
+  hand — see the vcpkg section for the standing example.
+
 ## Compiler Explorer (Godbolt)
 
 Compiler Explorer pins each library version to an explicit git ref; it does not
@@ -20,6 +88,11 @@ On each release (after the `vX.Y.Z` tag exists on GitHub):
 3. After the PRs merge, confirm the new version is selectable and that a minimal
    `parallel_for` example compiles and runs on godbolt.org.
 
+Note that dispenso has not been onboarded yet, so the first pass is that
+one-time setup rather than a version bump — and there is no "Try on Godbolt"
+link in `README.md` to update, because none exists. Adding it is part of the
+onboarding.
+
 ## vcpkg: Remove temporary patches
 
 The v1.5.0 vcpkg port (`microsoft/vcpkg` PR #49633) includes two workarounds
@@ -27,11 +100,34 @@ for upstream bugs. Remove them once the release includes the fixes:
 
 1. **`fix-arm64-platform-define.patch`** — `notifier_common.h` defined `_ARM_`
    instead of `_ARM64_` on ARM64 Windows, causing `winnt.h` compilation
-   failures. Fixed on `main`. Remove the patch file and the `PATCHES` block
-   from `portfile.cmake`.
+   failures.
+
+   **Half-removed upstream already; the script finishes it.** The `PATCHES`
+   block is gone from `portfile.cmake` as of the 1.5.1 bump, so the patch is
+   no longer applied — but the file itself was left behind in the port
+   directory. `detect_obsolete_patches` extracts the release tarball and runs
+   `git apply --check` on every `.patch` in the port; the orphan no longer
+   applies and is deleted. It will log "Removed entire PATCHES block from
+   `portfile.cmake`" while removing nothing, there being no block left to
+   remove — cosmetic, not a failure. Fixed in **1.5.1**:
+   `notifier_common.h` has defined `_ARM64_` for ARM64 and `_ARM_` only for
+   32-bit ARM since March 2026, which is exactly why the patch stopped
+   applying during the community's 1.5.1 bump.
 
 2. **`-DDISPENSO_SHARED_LIB=${DISPENSO_SHARED}`** — dispenso's
    `DISPENSO_SHARED_LIB` option ignored `BUILD_SHARED_LIBS`, producing DLLs in
-   static triplets. Fixed on `main` (defaults to `BUILD_SHARED_LIBS` when set).
-   Remove the `string(COMPARE EQUAL ...)` line and the `-DDISPENSO_SHARED_LIB`
-   option from `portfile.cmake`.
+   static triplets. Remove the `string(COMPARE EQUAL ...)` line and the
+   `-DDISPENSO_SHARED_LIB` option from `portfile.cmake`.
+
+   **This one is manual, and it is the one that slips.** It is not a `.patch`
+   file, so the obsolete-patch detection above never looks at it; nothing in
+   the script inspects `portfile.cmake` for workarounds that have outlived
+   their bug. The community's 1.5.1 bump carried it through untouched, which
+   is why "Which ports actually need us" says to reach vcpkg before anyone
+   else does. Fixed in **1.5.1** — `CMakeLists.txt` has defaulted
+   `DISPENSO_SHARED_LIB` to `${BUILD_SHARED_LIBS}` whenever vcpkg defines it
+   since March 2026, so this line has been dead weight for two releases.
+
+   Verify before removing rather than trusting this note: if the default were
+   still unconditional, dropping the workaround would quietly produce DLLs in
+   static triplets, which the port's own tests do not catch.
