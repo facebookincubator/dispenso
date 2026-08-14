@@ -58,10 +58,12 @@ if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
   find_package(concurrentqueue CONFIG REQUIRED)
   target_link_libraries(dispenso PUBLIC concurrentqueue::concurrentqueue)
 else()
+  # Only the build tree needs an extra include dir: the vendored headers are
+  # installed to <prefix>/include/moodycamel, which the existing
+  # $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}> above already covers.
   target_include_directories(dispenso
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dispenso/third-party>
   )
 endif()
 
@@ -135,9 +137,9 @@ set(_dispenso_install_excludes "")
 if(NOT DISPENSO_BUILD_FAST_MATH)
   list(APPEND _dispenso_install_excludes PATTERN "fast_math" EXCLUDE)
 endif()
-if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
-  list(APPEND _dispenso_install_excludes PATTERN "third-party" EXCLUDE)
-endif()
+# The vendored headers are never installed under include/dispenso/; see the
+# separate install below.
+list(APPEND _dispenso_install_excludes PATTERN "third-party" EXCLUDE)
 
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -145,6 +147,21 @@ install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     PATTERN *.h
     ${_dispenso_install_excludes}
 )
+
+if(NOT DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
+  # Install the bundled copy at <prefix>/include/moodycamel, the same place the
+  # standalone concurrentqueue package puts it. Public dispenso headers include
+  # <moodycamel/concurrentqueue.h>, so this is what lets a single
+  # -I<prefix>/include resolve them: an installed dispenso stays usable from
+  # build systems that do not consume the exported CMake target, and the
+  # bundled and system layouts become identical.
+  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/third-party/moodycamel
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+      PATTERN *.h
+      PATTERN LICENSE.md
+  )
+endif()
 
 ## Generate and install CMake target exports ##
 
