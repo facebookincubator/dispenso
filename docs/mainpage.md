@@ -33,4 +33,8 @@ step-by-step tutorials and working examples.
 
 ## Resources
 
+- @ref building "Building and Installing" - CMake options, platforms, testing
+- @ref faq "FAQ" - Common questions, chunking, platform support
+- [Migrating from TBB](migrating_from_tbb.md)
+- [Migrating from OpenMP](migrating_from_openmp.md)
 - [GitHub Repository](https://github.com/facebookincubator/dispenso)

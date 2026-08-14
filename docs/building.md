@@ -1,4 +1,4 @@
-# Building Dispenso
+# Building Dispenso {#building}
 
 Dispenso uses CMake as its build system for open-source builds. Internally at Meta, the Buck
 build system is used, but Buck build files are not shipped externally.

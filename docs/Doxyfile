@@ -791,7 +791,7 @@ WARN_LOGFILE           = doxygen_warnings.log
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../dispenso mainpage.md getting_started.md migrating_from_tbb.md migrating_from_openmp.md groups.dox
+INPUT                  = ../dispenso mainpage.md getting_started.md building.md faq.md migrating_from_tbb.md migrating_from_openmp.md groups.dox
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
