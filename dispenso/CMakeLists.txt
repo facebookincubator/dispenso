@@ -32,11 +32,15 @@ target_compile_options(dispenso PRIVATE
   # not propagate that over-alignment. Benign here (the alignment is a
   # false-sharing optimization, not a correctness requirement), so silence the
   # warning rather than under-align or drop the optimization.
-  $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX /wd4316>
+  $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4316>
   # GCC false positive: stringop-overflow through deeply inlined atomics.
   # Seen with GCC 13 on Linux and GCC 14 on macOS ARM64.
   $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow>
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+  # Fatal only when DISPENSO_WERROR is on; see the option in the top-level
+  # CMakeLists for why distributors need to be able to turn this off.
+  $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+  $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
 )
 
 if(WIN32)

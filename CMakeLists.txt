@@ -69,6 +69,13 @@ set(CMAKE_CXX_STANDARD 14 CACHE STRING "the C++ standard to use for this project
 set(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE OFF CACHE BOOL
     "Use system-installed moodycamel::concurrentqueue instead of bundled copy")
 
+# Warnings stay on regardless; this only controls whether they are fatal.
+# Distributors build against compilers we never see, where a new warning is not
+# a reason to fail the build. Note this cannot be worked around downstream:
+# the flags are set via target_compile_options, so they land after
+# CMAKE_CXX_FLAGS and -Wno-error passed there would be overridden.
+option(DISPENSO_WERROR "Treat compiler warnings as errors when building dispenso" ON)
+
 ###########################################################
 # Targets
 add_subdirectory(dispenso)
