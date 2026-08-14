@@ -95,8 +95,9 @@ onboarding.
 
 ## vcpkg: Remove temporary patches
 
-The v1.5.0 vcpkg port (`microsoft/vcpkg` PR #49633) includes two workarounds
-for upstream bugs. Remove them once the release includes the fixes:
+The v1.5.0 vcpkg port (`microsoft/vcpkg` PR #49633) carries two workarounds for
+bugs that both shipped fixed in **1.5.1**. Drop them when the port is next
+updated to 1.5.1 or later:
 
 1. **`fix-arm64-platform-define.patch`** — `notifier_common.h` defined `_ARM_`
    instead of `_ARM64_` on ARM64 Windows, causing `winnt.h` compilation
