@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['openmp_20to_20dispenso_0',['Migrating from OpenMP to Dispenso',['../md_migrating__from__openmp.html',1,'']]]
+  ['intel_20tbb_20to_20dispenso_0',['Migrating from Intel TBB to Dispenso',['../md_migrating__from__tbb.html',1,'']]]
 ];

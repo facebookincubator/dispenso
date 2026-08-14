@@ -7,5 +7,6 @@ var searchData=
   ['bipropgraph_4',['BiPropGraph',['../graph_8h.html#add0dab46e4795601857a3532db8cfddd',1,'dispenso']]],
   ['bipropnode_5',['BiPropNode',['../classdispenso_1_1_bi_prop_node.html',1,'dispenso::BiPropNode'],['../classdispenso_1_1_bi_prop_node.html#a055b4ba3ac4a6f989c7b1529009c1d9f',1,'dispenso::BiPropNode::BiPropNode()']]],
   ['bipropsubgraph_6',['BiPropSubgraph',['../graph_8h.html#aae2161a2ee651206fea38804c4f75aba',1,'dispenso']]],
-  ['buildthreadgroups_7',['buildThreadGroups',['../classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5',1,'dispenso::CpuSet']]]
+  ['building_20dispenso_7',['Building Dispenso',['../building.html',1,'']]],
+  ['buildthreadgroups_8',['buildThreadGroups',['../classdispenso_1_1_cpu_set.html#a910287555785d60395d463320f2d5cf5',1,'dispenso::CpuSet']]]
 ];

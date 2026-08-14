@@ -8,7 +8,7 @@ var searchData=
   ['defaultconcurrentvectortraits_5',['DefaultConcurrentVectorTraits',['../structdispenso_1_1_default_concurrent_vector_traits.html',1,'dispenso']]],
   ['dependson_6',['dependsOn',['../classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a',1,'dispenso::Node']]],
   ['detach_7',['detach',['../classdispenso_1_1_timed_task.html#a310952e54d6daf1add1cbbe4c690c8f9',1,'dispenso::TimedTask']]],
-  ['dispenso_8',['Dispenso',['../index.html',1,'Dispenso'],['../md_migrating__from__tbb.html',1,'Migrating from Intel TBB to Dispenso'],['../md_migrating__from__openmp.html',1,'Migrating from OpenMP to Dispenso']]],
+  ['dispenso_8',['Dispenso',['../building.html',1,'Building Dispenso'],['../index.html',1,'Dispenso'],['../md_migrating__from__tbb.html',1,'Migrating from Intel TBB to Dispenso'],['../md_migrating__from__openmp.html',1,'Migrating from OpenMP to Dispenso']]],
   ['dispenso_2eh_9',['dispenso.h',['../dispenso_8h.html',1,'']]],
   ['distributed_5frw_5flock_2eh_10',['distributed_rw_lock.h',['../distributed__rw__lock_8h.html',1,'']]],
   ['distributedrwlock_11',['DistributedRWLock',['../classdispenso_1_1_distributed_r_w_lock.html',1,'dispenso']]]

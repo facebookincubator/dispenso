@@ -26,6 +26,8 @@ var NAVTREE =
 [
   [ "dispenso", "index.html", [
     [ "Getting Started", "getting_started.html", null ],
+    [ "Building Dispenso", "building.html", null ],
+    [ "Frequently Asked Questions", "faq.html", null ],
     [ "Migrating from Intel TBB to Dispenso", "md_migrating__from__tbb.html", null ],
     [ "Migrating from OpenMP to Dispenso", "md_migrating__from__openmp.html", null ],
     [ "Topics", "topics.html", "topics" ],
@@ -49,7 +51,7 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"classdispenso_1_1_small_vector.html#a19b416b3436f833dfa8fa41e3931c0e9"
+"classdispenso_1_1_small_vector.html#a084feb6c20c51b90ca78a9db6fd183fa"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
