@@ -28,6 +28,10 @@ Repeated 3-point stencil, 10 passes, 32M doubles (~256MB per array):
 At 1 thread all four are equivalent, confirming the gap is purely dispatch
 overhead at scale.
 
+These numbers predate the bulk-enqueue path, the three-tier queue hierarchy,
+the wake cascade, and `OnceFunction` inline storage -- all of which target the
+same per-task costs this proposal attacks. Re-measure before acting on them.
+
 The effect is even more dramatic at smaller sizes where per-chunk work is
 tiny (100K elements, 128 threads: OMP 491us vs dispenso_static 466us vs
 dispenso_auto 1030us).
@@ -35,22 +39,28 @@ dispenso_auto 1030us).
 ## Current dispatch path
 
 ```
-parallel_for(kStatic) ->
-  for each chunk:
-    1. packageTask: wrap lambda in OnceFunction, atomic++ outstandingTaskCount_
-    2. enqueue: CAS into moodycamel::ConcurrentQueue
-    3. conditionallyWake: atomic read numSleeping_, epoch signal
-  worker thread:
-    4. try_dequeue: CAS from ConcurrentQueue
-    5. execute closure via virtual dispatch (OnceCallable::run)
-    6. atomic-- workRemaining_ (batched per 8)
+parallel_for(kStatic) -> taskSet.scheduleBulk(numToLaunch, gen)
+  scheduleBulkImpl, per chunk group:
+    if workRemaining_ > poolLoadFactor_: run gen(i)() inline on the caller
+    else scheduleBulkEnqueue(toEnqueue):
+      1. one workRemaining_.fetch_add(toEnqueue) for the whole group
+      2. one work_.enqueue_bulk(...) for the whole group
+      3. centralQueueNonEmpty_.store(true), then a wake capped by
+         PoolWakeState::totalSleeping()
+  worker thread (tryFindAndExecuteWork):
+    4. own locality ring -> central queue (gated by centralQueueNonEmpty_)
+       -> own steal ring -> cross-ring steal
+    5. execute closure through OnceFunction (inline storage for functors
+       up to 56 bytes)
+    6. workRemaining_.fetch_sub, batched per kWorkBatchSize (8)
   wait:
-    7. poll outstandingTaskCount_ + steal from queue
+    7. poll outstandingTaskCount_, stealing while waiting
 ```
 
-Each chunk goes through steps 1-7. With 128 chunks x 10 passes = 1280
-round-trips, each involving multiple cache-line-bouncing atomics across
-128 cores.
+Enqueue cost is amortized across a chunk group rather than paid per task, and
+the consumer walks the three-tier queue hierarchy (see
+[three_tier_scheduling.md](three_tier_scheduling.md)) rather than a single
+central queue.
 
 ## Proposed design: broadcast dispatch
 
