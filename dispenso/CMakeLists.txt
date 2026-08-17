@@ -55,7 +55,11 @@ PUBLIC
 )
 
 if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
-  find_package(concurrentqueue CONFIG REQUIRED)
+  # Version floor, not just a name: an unqualified find_package accepts
+  # whatever happens to be installed, and moodycamel::ConcurrentQueue is a
+  # by-value member of ThreadPool, so its layout is part of dispenso's ABI.
+  # Keep this in step with the bundled copy's version in third-party/moodycamel.
+  find_package(concurrentqueue 1.0.5 CONFIG REQUIRED)
   target_link_libraries(dispenso PUBLIC concurrentqueue::concurrentqueue)
 else()
   # Only the build tree needs an extra include dir: the vendored headers are
