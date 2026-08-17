@@ -193,6 +193,32 @@ def run(cmd, cwd=None, check=True, dry_run=False, capture=False, env=None):
     return subprocess.run(cmd, **kwargs)
 
 
+def resolve_vcpkg_bin(repo_dir):
+    """Return the vcpkg binary this repo pins, bootstrapping it if necessary.
+
+    scripts/vcpkg-tools.json is versioned alongside the ports, so a vcpkg
+    installed by a package manager drifts out of sync with a freshly pulled
+    checkout and eventually refuses to parse it. That failure surfaces deep
+    inside x-add-version rather than at startup, so prefer the repo's own
+    binary and fall back to PATH only if it cannot be produced.
+    """
+    exe = "vcpkg.exe" if os.name == "nt" else "vcpkg"
+    local = os.path.join(repo_dir, exe)
+    if os.path.isfile(local) and os.access(local, os.X_OK):
+        return local
+
+    bootstrap = "bootstrap-vcpkg.bat" if os.name == "nt" else "bootstrap-vcpkg.sh"
+    bootstrap_path = os.path.join(repo_dir, bootstrap)
+    if os.path.isfile(bootstrap_path):
+        print("  Bootstrapping the vcpkg tool pinned by this repo ...")
+        run([bootstrap_path, "-disableMetrics"], cwd=repo_dir, check=False)
+        if os.path.isfile(local) and os.access(local, os.X_OK):
+            return local
+
+    print("  WARNING: using vcpkg from PATH; it may not match this checkout")
+    return shutil.which("vcpkg")
+
+
 def ensure_repo(repos_dir, manager, github_user, dry_run):
     """Clone if missing, add fork remote, fetch upstream."""
     upstream = UPSTREAM_REPOS[manager]
@@ -440,7 +466,7 @@ def test_conan(repo_dir, version):
 
 def test_vcpkg(repo_dir, version):
     """Test vcpkg port with vcpkg install."""
-    vcpkg_bin = shutil.which("vcpkg")
+    vcpkg_bin = resolve_vcpkg_bin(repo_dir)
     if not vcpkg_bin:
         print("  WARNING: vcpkg not found, skipping test")
         return False
@@ -1150,12 +1176,11 @@ def _macports_cleanup_patches(repo_dir, tarball_path, dry_run):
 
 def _vcpkg_run_tooling(repo_dir, vcpkg_json_path, dry_run):
     """Run vcpkg format-manifest and x-add-version if vcpkg is available."""
-    vcpkg_bin = shutil.which("vcpkg")
+    vcpkg_bin = resolve_vcpkg_bin(repo_dir) if not dry_run else shutil.which("vcpkg")
     if not vcpkg_bin:
         print(
             "  WARNING: vcpkg not found. Run 'vcpkg format-manifest' and "
-            "'vcpkg x-add-version dispenso --overlay-ports=ports/dispenso' "
-            "manually before pushing."
+            "'vcpkg x-add-version dispenso' manually before pushing."
         )
         return
 
@@ -1178,18 +1203,21 @@ def _vcpkg_run_tooling(repo_dir, vcpkg_json_path, dry_run):
                 ["git", "commit", "-m", "temp: port changes for x-add-version"],
                 cwd=repo_dir,
             )
-    run(
-        [
-            vcpkg_bin,
-            "x-add-version",
-            "dispenso",
-            "--overwrite-version",
-            f"--overlay-ports={os.path.join(repo_dir, 'ports', 'dispenso')}",
-        ],
+    # No --overlay-ports: x-add-version has to resolve dispenso through the
+    # registry in ports/ for it to touch the versions database at all.
+    result = run(
+        [vcpkg_bin, "x-add-version", "dispenso", "--overwrite-version"],
         cwd=repo_dir,
         check=False,
         dry_run=dry_run,
     )
+    if result.returncode != 0:
+        # Swallowing this produces a branch that looks complete but is missing
+        # its versions/ entry, which vcpkg CI rejects immediately.
+        raise RuntimeError(
+            f"vcpkg x-add-version failed (exit {result.returncode}); "
+            "the version database was not updated"
+        )
     # Version database changes from x-add-version will be staged by
     # commit_and_push's git add -A.
 
@@ -1227,13 +1255,24 @@ def _vcpkg_verify_port_files(repo_dir, version, hashes):
                     f"portfile.cmake references {stripped} but file does not exist"
                 )
 
+    # The versions database is a separate file that nothing above touches, and
+    # a port update without its entry fails vcpkg CI on arrival.
+    versions_path = os.path.join(repo_dir, "versions", "d-", "dispenso.json")
+    if not os.path.exists(versions_path):
+        errors.append(f"{versions_path} does not exist")
+    elif f'"version": "{version}"' not in open(versions_path).read():
+        errors.append(
+            f"versions/d-/dispenso.json has no entry for {version} "
+            "(did x-add-version run?)"
+        )
+
     if errors:
         print("  ERROR: Port file verification failed:")
         for e in errors:
             print(f"    - {e}")
         raise RuntimeError("vcpkg port files are inconsistent; aborting")
     else:
-        print("  Verified: vcpkg.json and portfile.cmake are consistent")
+        print("  Verified: port files and versions database are consistent")
 
 
 def update_vcpkg(args, hashes, tarball_path):
