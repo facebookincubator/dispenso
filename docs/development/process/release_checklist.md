@@ -114,6 +114,16 @@ Conda-forge and Fedora/RHEL appear in the README's install list but have never
 been ours; their own packagers track releases. Nothing to do, and nothing to
 chase.
 
+**Do not start a release's port round until the previous one has merged
+upstream.** Branches are per-version, and `checkout_branch` creates each one
+fresh from the upstream default branch — so if the previous release's PR is
+still open, the new branch starts from a port that has none of its changes and
+silently reverts them. That is not hypothetical: the 1.6.0 vcpkg PR carried a
+devendoring, two workaround removals and a `usage`-file deletion, none of which
+existed upstream while the PR sat in review. Starting 1.6.1 against that would
+have undone all four and looked like a regression to the reviewer who had just
+asked for them.
+
 ### Before trusting a green run
 
 - **Hashes are pinned against the tag's tarball.** This is why a published tag

@@ -24,17 +24,32 @@ Per-release steps live in [process/release_checklist.md](../process/release_chec
 | vcpkg | In progress | PR to microsoft/vcpkg |
 | Conan | In progress | PR to conan-center-index |
 
-## Upstream contributions
+## Patches against vendored dependencies
 
-Local patches carried against vendored dependencies. Each one has to be
-re-applied by hand every time the dependency is updated, and nothing forces
-that to happen, so getting them upstream is how the cost actually goes away.
-The patches themselves are listed in the vendored directory's `README.txt`.
+**We carry none, and adding one should be a deliberate decision.** The bundled
+moodycamel is byte-identical to upstream, so updating it is a straight
+overwrite.
 
-| Patch | Upstream | Status | Notes |
-|-------|----------|--------|-------|
-| `override` on `~ExplicitProducer` / `~ImplicitProducer` | cameron314/concurrentqueue | Not submitted | Both override `virtual ~ProducerBase()`. Clang's `-Winconsistent-missing-destructor-override` makes this fatal under our `-Werror`. Two lines, no behaviour change, still absent in v1.0.5 — the cheapest one to eliminate. |
-| clang `-Wglobal-constructors` suppression | cameron314/concurrentqueue | Needs triage | Establish whether it is still needed before submitting anything. It is not enabled by `-Wall`/`-Wextra`, and our Buck build suppresses it separately, so the patch may be obsolete — in which case dropping it beats upstreaming it. |
+It was not always so. Three local edits accumulated in `concurrentqueue.h` —
+`override` on two producer destructors, and a clang `-Wglobal-constructors`
+suppression — every one of them there only to keep a warning quiet under
+`-Werror`. Nothing recorded that they existed, so they had to be rediscovered
+by diffing against the upstream ref, and the v1.0.5 update nearly dropped them
+silently.
+
+They are gone because the directory is now a SYSTEM include: the compiler does
+not diagnose code we do not maintain, so our warning flags cannot force a patch
+there. That covers any warning we enable in future, not just the three we
+happened to hit.
+
+The rule that falls out of it, for the next person tempted to patch a vendored
+header:
+
+- **A patch that only silences a diagnostic is not worth carrying.** It says
+  nothing about dispenso, and it has to be re-applied on every update forever.
+  Mark the include SYSTEM instead.
+- **A patch that changes behaviour belongs upstream**, and should be sent there
+  rather than vendored — otherwise we own a fork of someone else's library.
 
 ## Backlog
 

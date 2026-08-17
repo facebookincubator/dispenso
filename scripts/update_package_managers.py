@@ -361,6 +361,40 @@ def checkout_branch(repo_dir, branch, dry_run):
         run(["git", "stash", "pop"], cwd=repo_dir, check=False)
 
 
+def report_port_baseline(repo_dir, manager):
+    """Print what the port looks like before we edit it.
+
+    Branches are per-version and created fresh from the upstream default
+    branch, so a release started before the previous one's PR merged begins
+    from a port with none of that release's changes and silently reverts them.
+    Nothing in the repo can tell us whether that PR is still open, so print the
+    starting state instead: a run that began from an unexpectedly old port is
+    then visible in the log rather than discovered in review.
+    """
+    port_dirs = {
+        "vcpkg": os.path.join(repo_dir, "ports", "dispenso"),
+        "conan": os.path.join(repo_dir, "recipes", "dispenso"),
+        "macports": os.path.join(repo_dir, "devel", "dispenso"),
+    }
+    port_dir = port_dirs.get(manager)
+    if not port_dir or not os.path.isdir(port_dir):
+        return
+
+    print("  --- Port state before edits ---")
+    patches = sorted(f for f in os.listdir(port_dir) if f.endswith(".patch"))
+    print(f"  Patch files: {', '.join(patches) if patches else 'none'}")
+
+    portfile = os.path.join(port_dir, "portfile.cmake")
+    if os.path.exists(portfile):
+        content = open(portfile).read()
+        for marker in ("DISPENSO_USE_SYSTEM_CONCURRENTQUEUE", "DISPENSO_SHARED_LIB"):
+            print(f"  {marker}: {'present' if marker in content else 'absent'}")
+    print(
+        "  If that does not match the last release's port, the previous PR has "
+        "probably not merged upstream yet -- stop and check."
+    )
+
+
 def commit_and_push(repo_dir, branch, message, github_user, dry_run, skip_push):
     """Stage all changes, squash into a single commit, push to fork.
 
@@ -876,6 +910,8 @@ def update_conan(args, hashes, tarball_path):
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
+    if not args.dry_run:
+        report_port_baseline(repo_dir, manager)
 
     # --- Update conandata.yml ---
     conandata_path = os.path.join(
@@ -1284,6 +1320,8 @@ def update_vcpkg(args, hashes, tarball_path):
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
+    if not args.dry_run:
+        report_port_baseline(repo_dir, manager)
 
     vcpkg_json_path = _vcpkg_update_port_files(repo_dir, version, hashes, args.dry_run)
     _vcpkg_cleanup_patches(repo_dir, tarball_path, args.dry_run)
@@ -1343,6 +1381,8 @@ def update_homebrew(args, hashes, tarball_path):
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
+    if not args.dry_run:
+        report_port_baseline(repo_dir, manager)
 
     formula_path = os.path.join(repo_dir, "Formula", "d", "dispenso.rb")
     print(f"  Updating {formula_path} ...")
@@ -1440,6 +1480,8 @@ def update_macports(args, hashes, tarball_path):
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
+    if not args.dry_run:
+        report_port_baseline(repo_dir, manager)
 
     portfile_path = os.path.join(repo_dir, "devel", "dispenso", "Portfile")
     print(f"  Updating {portfile_path} ...")
