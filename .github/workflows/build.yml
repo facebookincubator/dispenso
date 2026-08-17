@@ -162,38 +162,11 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-latest
-    env:
-      # Doxygen 1.9.2 through 1.9.8 fail to resolve a markdown link to a page
-      # carrying an explicit {#label}, which every cross-page link here relies
-      # on. 1.11.0 is the oldest release verified free of that bug, so it is the
-      # supported floor. The runner's apt doxygen is older than this and floats
-      # with the image, so install an explicit build rather than trusting apt.
-      DOXYGEN_MIN_VERSION: "1.11.0"
-      DOXYGEN_VERSION: "1.11.0"
-      # SHA-256 of doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz. The archive is
-      # fetched over the network and installed onto PATH, so it is verified
-      # before it is unpacked. Re-pin whenever DOXYGEN_VERSION changes:
-      #   curl -fsSL <url below> | sha256sum
-      DOXYGEN_SHA256: "db68ca22b43c3d7efd15351329db5af9146ab1ac7eaccd61a894fe36612da8fb"
     steps:
       - uses: actions/checkout@v5
-      - name: Install Doxygen
-        run: |
-          sudo apt-get update && sudo apt-get install -y graphviz
-          curl -fsSL -o doxygen.tar.gz \
-            "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
-          echo "${DOXYGEN_SHA256}  doxygen.tar.gz" | sha256sum -c -
-          tar xzf doxygen.tar.gz
-          sudo install "doxygen-${DOXYGEN_VERSION}/bin/doxygen" /usr/local/bin/doxygen
-      - name: Enforce minimum Doxygen version
-        run: |
-          have=$(doxygen --version | cut -d' ' -f1)
-          oldest=$(printf '%s\n%s\n' "$DOXYGEN_MIN_VERSION" "$have" | sort -V | head -n1)
-          if [ "$oldest" != "$DOXYGEN_MIN_VERSION" ]; then
-            echo "doxygen $have is older than the required minimum $DOXYGEN_MIN_VERSION"
-            exit 1
-          fi
-          echo "doxygen $have satisfies minimum $DOXYGEN_MIN_VERSION"
+      # Shared with docs.yml so the validated version and the published one
+      # cannot drift apart; the pin lives in the action.
+      - uses: ./.github/actions/install-doxygen
       - name: Build documentation
         working-directory: ./docs
         run: doxygen Doxyfile

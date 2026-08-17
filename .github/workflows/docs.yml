@@ -18,17 +18,26 @@ jobs:
         VERSION=$(grep -m1 '^[0-9]' CHANGELOG.md | sed 's/ .*//')
         sed -i "s/^PROJECT_NUMBER.*/PROJECT_NUMBER         = $VERSION/" docs/Doxyfile
 
-    - name: Doxygen Action
-      uses: mattnotmitt/doxygen-action@v1
-      with:
-        working-directory: "docs/"
-        doxyfile-path: "./Doxyfile"
+    - uses: ./.github/actions/install-doxygen
 
+    - name: Build documentation
+      working-directory: ./docs
+      run: doxygen Doxyfile
 
-    - name: Fix Doxygen output permissions and copy benchmark dashboard
+    # The published site is the one place a broken cross-page link actually
+    # reaches readers, so it gets the same warning gate the validation job has.
+    - name: Check for warnings
+      working-directory: ./docs
       run: |
-        sudo chown -R $(id -u):$(id -g) docs/doxygen
-        cp -r docs/benchmarks docs/doxygen/html/benchmarks
+        if [ -s doxygen_warnings.log ]; then
+          echo "Doxygen warnings found:"
+          cat doxygen_warnings.log
+          exit 1
+        fi
+        echo "No Doxygen warnings."
+
+    - name: Copy benchmark dashboard
+      run: cp -r docs/benchmarks docs/doxygen/html/benchmarks
 
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v4
