@@ -1,55 +1,40 @@
 https://github.com/cameron314/concurrentqueue
 
-commit 65d6970912fc3f6bb62d80edf95ca30e0df85137 (HEAD -> master, origin/master, origin/HEAD)
-Merge: d49fa2b 08dcafc
-Author: Cameron <cameron@moodycamel.com>
-Date:   Sun Jul 24 10:02:12 2022 -0400
+Vendored at tag v1.0.5, commit 9afb99746f0f5fc94ac8aef737053ae0481ba8d1.
 
-    Merge pull request #308 from r8bhavneet/master
-    
-    Update README.md
+Files: concurrentqueue.h, blockingconcurrentqueue.h, lightweightsemaphore.h,
+LICENSE.md. They include each other with relative quotes, so only the entry
+points matter to callers.
 
-commit 08dcafcd131b46e1a63abdc9b5f73c852193edca
-Author: r8bhavneet <98200254+r8bhavneet@users.noreply.github.com>
-Date:   Sun Jul 24 02:35:57 2022 -0700
+------------------------------------------------------------------------------
+LOCAL MODIFICATIONS -- re-apply all of these when updating
+------------------------------------------------------------------------------
 
-    Update README.md
-    
-    Hey, I really liked the project and was reading through the Readme.md file when I came across some redundant words and phrases which you might have missed whil
-e editing the documentation. It would be really a great opportunity for me if I could contribute to this project. Thank you.
+All three are in concurrentqueue.h, all exist only to survive dispenso's
+-Werror, and none change behaviour. Upstream has taken none of them as of
+v1.0.5, so an update is "overwrite, then re-apply". Diff against the upstream
+ref above before assuming this list is complete.
 
-commit d49fa2b0bd1c6185d93509f48c8987f9759d7238
-Merge: 0a40449 9dc1b2c
-Author: Cameron <cameron@moodycamel.com>
-Date:   Mon May 9 07:43:29 2022 -0400
+1. `override` on ~ExplicitProducer(), and
+2. `override` on ~ImplicitProducer().
 
-    Merge pull request #296 from MathiasMagnus/fix-c4554
-    
-    Proper MSVC warning fix and note
+   Both derive from ProducerBase, which declares `virtual ~ProducerBase()`, so
+   both implicitly override a virtual destructor. Clang reports that via
+   -Winconsistent-missing-destructor-override, which -Werror makes fatal.
 
-commit 9dc1b2cfcad03b4ee22ea57ddb5c453c41c19ac9
-Author: Máté Ferenc Nagy-Egri <mate@streamhpc.com>
-Date:   Mon May 9 13:19:39 2022 +0200
+3. Inside the existing __GNUC__ diagnostic block, after the -Wconversion
+   pragma:
 
-    Proper MSVC warning fix and note
+       #if defined(__clang__)
+       #pragma GCC diagnostic ignored "-Wglobal-constructors"
+       #endif //__clang__
 
-commit 0a404492ac2c0bba0f62eb2b859ec152e494f8bf
-Author: Cameron <cameron@moodycamel.com>
-Date:   Sat May 7 12:04:00 2022 -0400
+   Status uncertain -- it may be obsolete. -Wglobal-constructors is not in
+   -Wall or -Wextra, so dispenso's own CMake flags never enable it, and the
+   Buck build suppresses it separately (-Wno-global-constructors,
+   -Wno-error=global-constructors). It may predate a change that removed the
+   construct it was guarding. See the "Upstream contributions" table in
+   docs/development/roadmap/packaging_and_outreach.md.
 
-    Attempt to resolve -Wsign-conversion warnings in concurrentqueue.h (see #294)
-
-commit 22c78daf65d2c8cce9399a29171676054aa98807
-Merge: c52e5ef 263c55d
-Author: Cameron <cameron@moodycamel.com>
-Date:   Sun Mar 20 15:16:30 2022 -0400
-
-    Merge pull request #290 from usurai/master
-    
-    Fix link in README
-
-commit 263c55d5c95545abee1ef25662c752c5296d7c34
-Author: usurai <crowdwei@gmail.com>
-Date:   Thu Mar 17 16:09:14 2022 +0800
-
-    Fix link in README
+Getting 1 and 2 accepted upstream would retire them permanently; both are
+two-line changes with no behavioural effect.
