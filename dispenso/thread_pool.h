@@ -493,8 +493,9 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Cost: one PoolWakeState (~O(numThreads)) is retained per resize() until the
   // pool is destroyed. resize() is expected to be rare, so this is bounded in
   // practice; only a process performing hundreds of thousands of resizes would
-  // accumulate meaningful memory. See docs/development/roadmap.md ("Bounded
-  // PoolWakeState reclamation") for the planned asymmetric-fence / hazard-pointer
+  // accumulate meaningful memory. See
+  // docs/development/roadmap/core_scheduling.md ("Bounded PoolWakeState
+  // reclamation") for the planned asymmetric-fence / hazard-pointer
   // scheme to bound this without taxing the schedule() hot path.
   std::atomic<detail::PoolWakeState*> wakeState_{nullptr};
   std::vector<decltype(detail::makeAligned<detail::PoolWakeState>(0))> wakeStateGraveyard_;
