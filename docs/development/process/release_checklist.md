@@ -62,6 +62,18 @@ to stop after committing and testing.
   fork named by `--github-user` (default `graphicsMan`). Override both if
   either is wrong for the machine. conan-center-index and vcpkg are large
   clones — budget disk and time.
+- **Refresh the clones before you start, and ideally between releases.** Run
+  `git -C ~/repos/vcpkg fetch origin` and the same for
+  `~/repos/conan-center-index`, well ahead of the release rather than during
+  it. Both are enormous, and after a few months untouched the catch-up fetch
+  is large enough that GitHub rate-limits it: doing both back to back during
+  the 1.6.0 update earned an HTTP 429 on the git endpoint that blocked all git
+  traffic for roughly half an hour. It is not an API-quota problem — `gh api
+  rate_limit` will look untouched, and the cheap `info/refs` endpoint keeps
+  returning 200 while the `git-upload-pack` RPC is refused, so the only honest
+  probe is retrying the real operation. There is nothing to do but wait it
+  out, and nothing partial is left behind: the fetch fails before any file is
+  touched, and the script is safe to re-run.
 
 ### Which ports actually need us
 
