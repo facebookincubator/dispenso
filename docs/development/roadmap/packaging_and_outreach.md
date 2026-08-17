@@ -24,6 +24,18 @@ Per-release steps live in [process/release_checklist.md](../process/release_chec
 | vcpkg | In progress | PR to microsoft/vcpkg |
 | Conan | In progress | PR to conan-center-index |
 
+## Upstream contributions
+
+Local patches carried against vendored dependencies. Each one has to be
+re-applied by hand every time the dependency is updated, and nothing forces
+that to happen, so getting them upstream is how the cost actually goes away.
+The patches themselves are listed in the vendored directory's `README.txt`.
+
+| Patch | Upstream | Status | Notes |
+|-------|----------|--------|-------|
+| `override` on `~ExplicitProducer` / `~ImplicitProducer` | cameron314/concurrentqueue | Not submitted | Both override `virtual ~ProducerBase()`. Clang's `-Winconsistent-missing-destructor-override` makes this fatal under our `-Werror`. Two lines, no behaviour change, still absent in v1.0.5 — the cheapest one to eliminate. |
+| clang `-Wglobal-constructors` suppression | cameron314/concurrentqueue | Needs triage | Establish whether it is still needed before submitting anything. It is not enabled by `-Wall`/`-Wextra`, and our Buck build suppresses it separately, so the patch may be obsolete — in which case dropping it beats upstreaming it. |
+
 ## Backlog
 
 - Integration examples (game engines, scientific computing)
