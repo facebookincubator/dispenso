@@ -62,10 +62,18 @@ if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
   find_package(concurrentqueue 1.0.5 CONFIG REQUIRED)
   target_link_libraries(dispenso PUBLIC concurrentqueue::concurrentqueue)
 else()
-  # Only the build tree needs an extra include dir: the vendored headers are
-  # installed to <prefix>/include/moodycamel, which the existing
+  # SYSTEM so the compiler does not diagnose third-party code we do not
+  # maintain. Without it, any warning dispenso enables is also applied to the
+  # bundled headers, and the only way to keep the build clean is to patch them
+  # -- which then has to be re-applied on every update, forever, for warnings
+  # that say nothing about dispenso.
+  #
+  # Only the build tree needs the extra directory: the bundled headers install
+  # to <prefix>/include/moodycamel, which the
   # $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}> above already covers.
-  target_include_directories(dispenso
+  # Consumers therefore see them as ordinary headers; if that ever matters,
+  # they can add -isystem themselves.
+  target_include_directories(dispenso SYSTEM
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
   )

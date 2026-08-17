@@ -7,34 +7,21 @@ LICENSE.md. They include each other with relative quotes, so only the entry
 points matter to callers.
 
 ------------------------------------------------------------------------------
-LOCAL MODIFICATIONS -- re-apply all of these when updating
+NO LOCAL MODIFICATIONS -- keep it that way
 ------------------------------------------------------------------------------
 
-All three are in concurrentqueue.h, all exist only to survive dispenso's
--Werror, and none change behaviour. Upstream has taken none of them as of
-v1.0.5, so an update is "overwrite, then re-apply". Diff against the upstream
-ref above before assuming this list is complete.
+These files are byte-identical to upstream. Updating is a straight overwrite:
+drop in the new release, update the ref above, rebuild.
 
-1. `override` on ~ExplicitProducer(), and
-2. `override` on ~ImplicitProducer().
+dispenso adds this directory to the build as a SYSTEM include (see the
+DISPENSO_USE_SYSTEM_CONCURRENTQUEUE branch in ../../CMakeLists.txt), so the
+compiler does not diagnose it and our warning flags cannot force a patch here.
 
-   Both derive from ProducerBase, which declares `virtual ~ProducerBase()`, so
-   both implicitly override a virtual destructor. Clang reports that via
-   -Winconsistent-missing-destructor-override, which -Werror makes fatal.
-
-3. Inside the existing __GNUC__ diagnostic block, after the -Wconversion
-   pragma:
-
-       #if defined(__clang__)
-       #pragma GCC diagnostic ignored "-Wglobal-constructors"
-       #endif //__clang__
-
-   Status uncertain -- it may be obsolete. -Wglobal-constructors is not in
-   -Wall or -Wextra, so dispenso's own CMake flags never enable it, and the
-   Buck build suppresses it separately (-Wno-global-constructors,
-   -Wno-error=global-constructors). It may predate a change that removed the
-   construct it was guarding. See the "Upstream contributions" table in
-   docs/development/roadmap/packaging_and_outreach.md.
-
-Getting 1 and 2 accepted upstream would retire them permanently; both are
-two-line changes with no behavioural effect.
+Earlier versions did carry three local edits -- `override` on two producer
+destructors, and a clang -Wglobal-constructors suppression -- purely to keep
+-Werror quiet. They were removed once the SYSTEM include made them
+unnecessary, and nothing here should need patching again for a warning. If a
+future change genuinely requires modifying these files, send it upstream
+rather than carrying it: a patch that only silences a diagnostic is not worth
+re-applying on every update, and one that changes behaviour belongs upstream
+anyway.

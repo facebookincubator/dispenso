@@ -38,10 +38,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 
-#if defined(__clang__)
-#pragma GCC diagnostic ignored "-Wglobal-constructors"
-#endif //__clang__
-
 #ifdef MCDBGQ_USE_RELACY
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 #endif
@@ -1811,7 +1807,7 @@ private:
 			new_block_index(0);		// This creates an index with double the number of current entries, i.e. EXPLICIT_INITIAL_INDEX_SIZE
 		}
 		
-		~ExplicitProducer() override
+		~ExplicitProducer()
 		{
 			// Destruct any elements not yet dequeued.
 			// Since we're in the destructor, we can assume all elements
@@ -2454,7 +2450,7 @@ private:
 			new_block_index();
 		}
 		
-		~ImplicitProducer() override
+		~ImplicitProducer()
 		{
 			// Note that since we're in the destructor we can assume that all enqueue/dequeue operations
 			// completed already; this means that all undequeued elements are placed contiguously across
