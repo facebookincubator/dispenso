@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <mutex>
 #include <thread>
@@ -76,7 +77,7 @@ void reapThreadAtExit(std::thread& t, std::chrono::steady_clock::time_point dead
 }
 } // namespace
 
-void NewThreadInvoker::ThreadTracker::joinAll() {
+size_t NewThreadInvoker::ThreadTracker::joinAll() {
   // One deadline shared across all threads AND all drain passes below, so a burst
   // outstanding at exit is bounded overall rather than per-thread or per-pass.
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
@@ -86,6 +87,12 @@ void NewThreadInvoker::ThreadTracker::joinAll() {
   // thread lands in a fresh entries_ that a single swap would leave unjoined.
   // Past the deadline reapThreadAtExit detaches immediately, so late arrivals
   // cannot extend shutdown beyond the bound.
+  // Count only threads whose functor had not finished. A thread that has run to
+  // completion is still tracked until some later schedule() reaps it, so the
+  // most recently scheduled thread is almost always still here even when the
+  // caller waited on every result -- counting those would flag well-behaved
+  // code.
+  size_t stillRunning = 0;
   for (;;) {
     std::vector<Entry> local;
     {
@@ -95,11 +102,59 @@ void NewThreadInvoker::ThreadTracker::joinAll() {
       }
       local.swap(entries_);
     }
+    // Sample the whole batch before reaping any of it: joining the first
+    // entries takes long enough for later ones to finish, which would otherwise
+    // undercount how many were running when shutdown began.
+    for (const auto& e : local) {
+      if (!e.done->load(std::memory_order_acquire)) {
+        ++stillRunning;
+      }
+    }
     for (auto& e : local) {
       reapThreadAtExit(e.thread, deadline);
     }
   }
+  return stillRunning;
 }
+
+namespace detail {
+void drainNewThreadInvokerThreads() {
+  // joinAll() drains until it observes an empty tracker, so calling it from
+  // both the registrar and the atexit handler is harmless; whichever runs
+  // first does the work and the other finds nothing left.
+  const auto start = std::chrono::steady_clock::now();
+  const size_t outstanding = NewThreadInvoker::getTracker()->joinAll();
+  const long long blockedMs =
+      static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::steady_clock::now() - start)
+                                 .count());
+
+  // Requiring that the drain actually *blocked* is what keeps this quiet for
+  // correct code. Waiting on a Future returns from inside the functor, so the
+  // worker is legitimately still winding down when main reaches exit; counting
+  // those flags well-behaved callers a third of the time. Work that nothing
+  // waited on is what holds exit open measurably.
+  constexpr long long kReportThresholdMs = 5;
+  if (outstanding == 0 || blockedMs < kReportThresholdMs) {
+    return;
+  }
+  // Reaching here means these threads were still running with nothing waiting
+  // on them -- the process only survived because this drain caught them. Report
+  // it in every build: the message is rare by construction, and staying silent
+  // hides a pattern that is merely unlucky here and fatal in a process that
+  // uses dispenso solely from shared libraries, where no drain runs early
+  // enough to help.
+  std::fprintf(
+      stderr,
+      "dispenso: %zu NewThreadInvoker thread(s) were still running at process exit; "
+      "draining them held exit open for %lldms.\n"
+      "  Nothing had synchronized on their completion. Wait on the work before exiting;\n"
+      "  this rescue is unavailable when dispenso is used only from shared libraries.\n",
+      outstanding,
+      blockedMs);
+  std::fflush(stderr);
+}
+} // namespace detail
 
 NewThreadInvoker::ThreadTracker* NewThreadInvoker::getTracker() {
   // Controlled-leak Meyers singleton. The atexit handler joins every outstanding
@@ -111,7 +166,7 @@ NewThreadInvoker::ThreadTracker* NewThreadInvoker::getTracker() {
 #if defined(_WIN32)
     pinModuleForNewThread();
 #endif
-    std::atexit([]() { getTracker()->joinAll(); });
+    std::atexit([]() { detail::drainNewThreadInvokerThreads(); });
     return t;
   }();
   return tracker;

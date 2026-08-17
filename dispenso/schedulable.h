@@ -67,6 +67,34 @@ constexpr ImmediateInvoker kImmediateInvoker;
  * used in place of <code>ThreadPool</code> or <code>TaskSet</code> with <code>Future</code>s at
  * construction or through <code>then</code>.
  **/
+namespace detail {
+// Drains every outstanding NewThreadInvoker thread. Idempotent; defined in
+// schedulable.cpp.
+DISPENSO_DLL_ACCESS void drainNewThreadInvokerThreads();
+
+// Runs the drain from the destructor of a static living in *the caller's*
+// module, which is the whole point of it being in a header.
+//
+// dispenso also registers the drain with atexit(), but in a shared build that
+// registration belongs to the dispenso DLL and therefore runs at
+// DLL_PROCESS_DETACH. ExitProcess reaches DLL_PROCESS_DETACH only after it has
+// already terminated every other thread in the process, so a drain registered
+// there can never see the threads it is meant to join -- they have been killed
+// mid-execution, which is exactly the access violation this avoids. Static
+// destructors in the executable run earlier, during ordinary exit processing
+// and before ExitProcess, while the threads are still alive and joinable.
+struct NewThreadDrainRegistrar {
+  ~NewThreadDrainRegistrar() {
+    drainNewThreadInvokerThreads();
+  }
+};
+
+inline void ensureNewThreadDrainRegistered() {
+  static NewThreadDrainRegistrar registrar;
+  (void)registrar;
+}
+} // namespace detail
+
 class NewThreadInvoker {
  public:
   /**
@@ -75,6 +103,13 @@ class NewThreadInvoker {
    * @param f The functor to be executed.  <code>f</code>'s signature must match void().  Best
    * performance will come from passing lambdas, other concrete functors, or OnceFunction, but
    * std::function or similarly type-erased objects will also work.
+   *
+   * <code>schedule</code> hands back no handle, so threads still running when the process exits
+   * are joined automatically. Prefer synchronizing on completion yourself where you can: the
+   * automatic drain runs with the static destructors of whichever module called
+   * <code>schedule</code>, so it only runs early enough to help when that module is the
+   * executable. A process that reaches <code>NewThreadInvoker</code> solely from within shared
+   * libraries has no drain that beats process teardown.
    **/
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
@@ -95,6 +130,9 @@ class NewThreadInvoker {
     // ThreadTracker for why detaching is unsafe on Windows. `done` is set by the
     // thread as its very last act so schedule() can reap already-finished threads
     // and keep retention bounded across a long-running process.
+    // Must precede thread creation: the registrar's destructor is what drains
+    // this thread at exit in a shared build.
+    detail::ensureNewThreadDrainRegistered();
     auto done = std::make_shared<std::atomic<bool>>(false);
     std::thread thread([f = std::move(f), done]() {
       f();
@@ -161,10 +199,15 @@ class NewThreadInvoker {
     }
 
     // Defined in schedulable.cpp; joins each thread, bounded on Windows.
-    void joinAll() DISPENSO_NO_THREAD_SAFETY_ANALYSIS;
+    // Returns how many were still mid-functor, which is the count that says
+    // nothing had synchronized on them. Threads that had finished but were not
+    // yet reaped do not count.
+    size_t joinAll() DISPENSO_NO_THREAD_SAFETY_ANALYSIS;
   };
 
   DISPENSO_DLL_ACCESS static ThreadTracker* getTracker();
+
+  friend void detail::drainNewThreadInvokerThreads();
   /// @endcond
 };
 

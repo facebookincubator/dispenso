@@ -395,6 +395,25 @@ TEST(Future, AsyncNotAsyncSpecifyNewThread) {
 // @arvr/mode/win/clang/release (--stress-runs, isolated): 512 threads -> 84%,
 // 128 -> 44%, 64 -> 52%, 32 -> 14%. 64 keeps ~50% detection per run at a
 // fraction of the cost; going lower falls off a cliff.
+TEST(Future, NewThreadInvokerSynchronizedBeforeExit) {
+  // The well-behaved counterpart to NewThreadInvokerOutstandingAtExit below:
+  // every future is waited on, so nothing is outstanding when the process
+  // exits and the at-exit drain has nothing to do.
+  constexpr int kNumThreads = 64;
+  std::vector<dispenso::Future<int>> futures;
+  futures.reserve(kNumThreads);
+  for (int i = 0; i < kNumThreads; ++i) {
+    futures.push_back(dispenso::async(dispenso::kNewThreadInvoker, [i]() { return i; }));
+  }
+  for (int i = 0; i < kNumThreads; ++i) {
+    EXPECT_EQ(i, futures[i].get());
+  }
+}
+
+// Deliberately leaves threads running at process exit, with nothing
+// synchronizing on them, to cover the at-exit drain. Do not "fix" this by
+// waiting on the futures -- that is what the test above is for, and removing
+// the outstanding-at-exit case would delete the only coverage of the drain.
 TEST(Future, NewThreadInvokerOutstandingAtExit) {
   constexpr int kNumThreads = 64;
   std::vector<dispenso::Future<int>> futures;
