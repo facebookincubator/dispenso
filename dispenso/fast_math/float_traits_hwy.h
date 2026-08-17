@@ -419,7 +419,7 @@ struct FloatTraits<HwyFloat> {
     // FMA. Unfused, the Cody-Waite reductions degrade badly (>5e6 ULP for trig
     // beyond +-pi), so where HWY_NATIVE_FMA is 0, prefer Highway's own
     // transcendentals in hwy/contrib/math/math-inl.h. The double-precision
-    // reduction item in docs/design/fast_math_roadmap.md is what would let this
+    // reduction item in docs/development/roadmap/fast_math.md is what would let this
     // backend be gated the way SSE now is.
     return hn::MulAdd(a.v, b.v, c.v);
   }

@@ -20,7 +20,7 @@
  *
  * @note This implementation is thread-safe for multiple producers AND multiple consumers.
  *
- * @see docs/design/three_tier_scheduling.md for the design context.
+ * @see docs/development/architecture/three_tier_scheduling.md for the design context.
  * @see https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
  **/
 

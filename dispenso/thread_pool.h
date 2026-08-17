@@ -354,7 +354,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
 #if defined(DISPENSO_TUNE_STEAL_RING_SHARING)
   static constexpr size_t kStealRingSharing = DISPENSO_TUNE_STEAL_RING_SHARING;
 #else
-  // Matches the wake group-size default (8). See docs/design/wake_tuning.md.
+  // Matches the wake group-size default (8). See docs/development/architecture/wake_tuning.md.
   static constexpr size_t kStealRingSharing = 8;
 #endif
   static constexpr size_t kStealRingCapacity = kStealSlotsPerThread * kStealRingSharing;
@@ -493,7 +493,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // Cost: one PoolWakeState (~O(numThreads)) is retained per resize() until the
   // pool is destroyed. resize() is expected to be rare, so this is bounded in
   // practice; only a process performing hundreds of thousands of resizes would
-  // accumulate meaningful memory. See docs/design/roadmap.md ("Bounded
+  // accumulate meaningful memory. See docs/development/roadmap.md ("Bounded
   // PoolWakeState reclamation") for the planned asymmetric-fence / hazard-pointer
   // scheme to bound this without taxing the schedule() hot path.
   std::atomic<detail::PoolWakeState*> wakeState_{nullptr};

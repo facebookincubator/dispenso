@@ -16,9 +16,9 @@ This document tracks planned features and improvements for the dispenso library.
 
 | Feature | Description | Doc |
 |---------|-------------|-----|
-| Parallel sorting | `dispenso::sort` and MSD radix hybrid | [parallel_algorithms.md](parallel_algorithms.md) |
-| Parallel algorithms (Phase 1) | for_each, transform, fill, reduce | [parallel_algorithms.md](parallel_algorithms.md) |
-| C++20 concepts | Better error messages with concept constraints | [cpp20_concepts.md](cpp20_concepts.md) |
+| Parallel sorting | `dispenso::sort` and MSD radix hybrid | [parallel_algorithms.md](proposals/parallel_algorithms.md) |
+| Parallel algorithms (Phase 1) | for_each, transform, fill, reduce | [parallel_algorithms.md](proposals/parallel_algorithms.md) |
+| C++20 concepts | Better error messages with concept constraints | [cpp20_concepts.md](proposals/cpp20_concepts.md) |
 | Benchmark automation | Script to run benchmarks and generate charts | See benchmarks/ |
 | Compiler Explorer examples | Godbolt links in README for try-it-now experience | - |
 
@@ -27,7 +27,7 @@ This document tracks planned features and improvements for the dispenso library.
 | Feature | Description | Doc |
 |---------|-------------|-----|
 | Scalable allocator | Custom allocator for containers like ConcurrentVector. System allocators show opposing strengths: tcmalloc is best for ConcurrentVector's geometrically-growing variable-size buffers under contention, while jemalloc is best for fixed-size small allocations (SBA's pattern) but worst for ConcurrentVector. A purpose-built allocator can optimize for dispenso's specific patterns rather than relying on any single system allocator. | - |
-| Parallel algorithms (Phase 2-3) | Search, count, copy, replace | [parallel_algorithms.md](parallel_algorithms.md) |
+| Parallel algorithms (Phase 2-3) | Search, count, copy, replace | [parallel_algorithms.md](proposals/parallel_algorithms.md) |
 | Barrier/Semaphore | C++20-style synchronization for C++14/17 | - |
 | ConcurrentQueue | Public API for blocking MPMC queue | - |
 
@@ -35,8 +35,8 @@ This document tracks planned features and improvements for the dispenso library.
 
 | Feature | Description | Doc |
 |---------|-------------|-----|
-| Parallel algorithms (Phase 4-5) | Sorting, scan, unique | [parallel_algorithms.md](parallel_algorithms.md) |
-| Coroutine integration | Coroutine-based task scheduling | [coroutines.md](coroutines.md) |
+| Parallel algorithms (Phase 4-5) | Sorting, scan, unique | [parallel_algorithms.md](proposals/parallel_algorithms.md) |
+| Coroutine integration | Coroutine-based task scheduling | [coroutines.md](proposals/coroutines.md) |
 | Single-header amalgamation | Full library in one header | - |
 
 ## ConcurrentVector Optimization Notes
@@ -114,7 +114,7 @@ indexed access path on every element access.
 
 | Component | Doc |
 |-----------|-----|
-| dispenso::fast_math | [fast_math_roadmap.md](fast_math_roadmap.md) |
+| dispenso::fast_math | [fast_math_roadmap.md](roadmap/fast_math.md) |
 
 ## Investigation Items
 
@@ -190,7 +190,7 @@ or equivalent to prevent dead code elimination.
 
 ### Decouple sleep mask from group concept
 
-**Context.** The wake-cascade design (see [wake_cascade.md](wake_cascade.md))
+**Context.** The wake-cascade design (see [wake_cascade.md](architecture/wake_cascade.md))
 bundles three things into the "group" abstraction:
 1. **Steal-ring locality** — threads in a group share a steal ring
 2. **EpochWaiter / futex address** — one futex per group; `bumpAndWakeAll`
@@ -281,7 +281,7 @@ targeted part of this; a bounded keep-alive hint (below) would help here too.
 - Adaptive park delay / hysteresis: keep recently-active workers spinning longer
   before parking when the pool has seen recent bursty activity, trading a little
   idle CPU for burst latency. Composes with the adaptive spin backoff and
-  wake-cascade tuning (see [wake_cascade.md](wake_cascade.md)).
+  wake-cascade tuning (see [wake_cascade.md](architecture/wake_cascade.md)).
 - Locality-preserving burst placement: bias re-scheduling of a repeating burst
   back onto the cores that last ran it (warm cache), analogous to TBB's
   self-steal.
@@ -416,8 +416,8 @@ These are ideas that may be pursued based on community feedback:
 ### Fork-Join Scheduling & Thread Groups (post-1.5) --- COMPLETE
 
 Design documents:
-- [three_tier_scheduling.md](three_tier_scheduling.md) — three-tier queue architecture
-- [wake_cascade.md](wake_cascade.md) — leader-team parallel wake cascade
+- [three_tier_scheduling.md](architecture/three_tier_scheduling.md) — three-tier queue architecture
+- [wake_cascade.md](architecture/wake_cascade.md) — leader-team parallel wake cascade
 
 **Implemented.** Per-thread locality rings, per-group steal rings, leader-team
 parallel wake cascade, CpuSet topology detection, adaptive spin backoff,

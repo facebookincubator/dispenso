@@ -59,7 +59,7 @@ parallel_for(kStatic) -> taskSet.scheduleBulk(numToLaunch, gen)
 
 Enqueue cost is amortized across a chunk group rather than paid per task, and
 the consumer walks the three-tier queue hierarchy (see
-[three_tier_scheduling.md](three_tier_scheduling.md)) rather than a single
+[three_tier_scheduling.md](../architecture/three_tier_scheduling.md)) rather than a single
 central queue.
 
 ## Proposed design: broadcast dispatch

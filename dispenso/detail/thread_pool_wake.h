@@ -9,7 +9,7 @@
 //
 // Implements a budget-limited cascade wake strategy with per-thread
 // EpochWaiters and per-group atomic sleep masks. See
-// docs/design/wake_cascade.md for the design rationale.
+// docs/development/architecture/wake_cascade.md for the design rationale.
 
 #pragma once
 
@@ -95,7 +95,7 @@ class PoolWakeState {
       // (smaller groups reduce steal-ring + group-futex contention, with
       // promote-seed cascade absorbing the extra cascade hop). Expected to
       // be reasonable on macOS/Windows but not yet validated there — see
-      // docs/design/wake_tuning.md for the per-platform tuning process.
+      // docs/development/architecture/wake_tuning.md for the per-platform tuning process.
       int32_t groupSize = 8,
 #endif
       int32_t branchFactor = kDefaultWakeBranchFactor);
