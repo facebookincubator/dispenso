@@ -6,9 +6,10 @@ This document tracks planned features and improvements for the dispenso library.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| vcpkg package | In progress | External PR to microsoft/vcpkg |
-| Conan package | In progress | External PR to conan-center-index |
 | ConcurrentHashMap | In progress | High-value concurrent container |
+
+Packaging and listing work is tracked under
+[External Submissions](#external-submissions), not here.
 
 ## Planned
 
@@ -89,14 +90,16 @@ indexed access path on every element access.
 
 ## Completed
 
+[CHANGELOG.md](../../CHANGELOG.md) is the full record of shipped work. This
+table lists only items that were carried on this roadmap, so their entries do
+not dangle once done.
+
 | Feature | Version | Notes |
 |---------|---------|-------|
 | `dispenso.h` convenience header | 1.5.0 | Includes all public headers |
 | `util.h` public utilities | 1.5.0 | Exposes internal utilities |
 | OpenMP migration guide | 1.4.x | docs/migrating_from_openmp.md |
 | TBB migration guide | 1.4.x | docs/migrating_from_tbb.md |
-| awesome-cpp listing | - | Listed in fffaraz/awesome-cpp |
-| awesome-modern-cpp listing | - | Listed in rigtorp/awesome-modern-cpp |
 
 ## External Submissions
 
@@ -107,8 +110,8 @@ indexed access path on every element access.
 | awesome-high-performance-computing | Listed | Already present in dstansby/awesome-high-performance-computing |
 | awesome-scientific-computing | Not applicable | Focus is numerical methods, not parallelism libraries |
 | awesome-hpc | Not applicable | Focus is cluster infrastructure, not app-level parallelism |
-| vcpkg | In progress | - |
-| Conan | In progress | - |
+| vcpkg | In progress | PR to microsoft/vcpkg |
+| Conan | In progress | PR to conan-center-index |
 
 ## Subcomponent Roadmaps
 
