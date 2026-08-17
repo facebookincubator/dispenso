@@ -1,6 +1,36 @@
 # Release Checklist
 
-Post-release tasks and reminders for package manager updates.
+## Cutting the tag
+
+A published tag cannot be walked back. The package manager ports pin the SHA-256
+of the tarball GitHub generates for it, so moving a tag invalidates hashes that
+are already recorded downstream. If a tag turns out to be wrong, release a new
+patch version rather than repointing the old one.
+
+1. Confirm CI is green on the commit you intend to tag. Nothing runs on `main`
+   pushes for a specific past commit, and the export keeps moving `main`, so tag
+   the commit CI validated rather than whatever `main` currently points at.
+2. Create the tag:
+   ```bash
+   python3 scripts/release.py tag --version X.Y.Z --commit <sha>
+   ```
+   This verifies that all seven places the version appears agree with each other
+   — `CHANGELOG.md`, `dispenso/platform.h`, `CMakeLists.txt`, `METADATA.bzl`,
+   `docs/Doxyfile`, `docs/faq.md` and `README.md` — and refuses to tag if any
+   disagree. 1.5.0 shipped with the `platform.h` macros still reading 1.4.1;
+   this is the check that would have caught it. It also rejects a changelog date
+   that is not a specific day, because a placeholder month reads like a real
+   heading and survives review.
+
+   The tag is signed and annotated by default, and is *not* pushed. Review it
+   with `git show vX.Y.Z` first.
+3. `git push origin vX.Y.Z`. The `Release` workflow then re-runs the same checks
+   against the tagged tree, requires the tag to be annotated, extracts the
+   changelog section for that version, and publishes the GitHub release.
+
+## Post-release
+
+Package manager updates and reminders.
 
 ## Package manager updates
 

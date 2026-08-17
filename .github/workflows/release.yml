@@ -1,0 +1,71 @@
+name: Release
+
+# A published tag cannot be walked back: the package manager ports pin the
+# SHA-256 of the tarball GitHub generates for it, so moving a tag invalidates
+# hashes already recorded downstream. This job therefore validates the tagged
+# tree before it publishes anything, and every check below is a hard failure.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The tag object itself is needed to tell annotated from lightweight.
+          fetch-depth: 0
+
+      - name: Derive version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Tag $GITHUB_REF_NAME does not name an x.y.z version."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Require an annotated tag
+        run: |
+          # A lightweight tag is a bare ref: no tagger, no date, no message, and
+          # nothing to sign. Releases are cut from annotated tags only.
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "$GITHUB_REF_NAME is lightweight; use 'git tag -s' (or -a)."
+            exit 1
+          fi
+          if git verify-tag "$GITHUB_REF_NAME" 2>/dev/null; then
+            echo "Tag signature verified."
+          else
+            echo "::warning::$GITHUB_REF_NAME is unsigned, or its public key is not available to the runner."
+          fi
+
+      - name: Verify every version reference agrees with the tag
+        run: python3 scripts/release.py check --version "$VERSION"
+
+      - name: Extract the changelog section
+        run: |
+          awk -v v="$VERSION" '
+            BEGIN            { f = 0 }
+            !f && index($0, v " (") == 1 { f = 1; next }
+            f && /^[0-9]/    { exit }
+            f                { print }
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "CHANGELOG.md has no section for $VERSION."
+            exit 1
+          fi
+          echo "Release notes:"; cat release_notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "dispenso $VERSION" \
+            --notes-file release_notes.md \
+            --latest
