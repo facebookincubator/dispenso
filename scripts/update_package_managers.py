@@ -56,12 +56,6 @@ REPO_DIRS = {
     "macports": "macports-ports",
 }
 
-BRANCH_NAMES = {
-    "conan": "package/dispenso",
-    "vcpkg": "add-dispenso",
-    # homebrew and macports use version-specific branches, set dynamically
-}
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -852,7 +846,7 @@ def update_conan(args, hashes, tarball_path):
     print("=== Conan (conan-center-index) ===")
     version = args.version
     manager = "conan"
-    branch = BRANCH_NAMES.get(manager, "add-dispenso")
+    branch = f"dispenso-{version}"
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
@@ -1247,7 +1241,7 @@ def update_vcpkg(args, hashes, tarball_path):
     print("=== vcpkg ===")
     version = args.version
     manager = "vcpkg"
-    branch = BRANCH_NAMES.get(manager, "add-dispenso")
+    branch = f"dispenso-{version}"
 
     repo_dir = ensure_repo(args.repos_dir, manager, args.github_user, args.dry_run)
     checkout_branch(repo_dir, branch, args.dry_run)
