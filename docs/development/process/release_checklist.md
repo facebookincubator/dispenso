@@ -10,7 +10,19 @@ patch version rather than repointing the old one.
 1. Confirm CI is green on the commit you intend to tag. Nothing runs on `main`
    pushes for a specific past commit, and the export keeps moving `main`, so tag
    the commit CI validated rather than whatever `main` currently points at.
-2. Create the tag:
+2. Check the vendored dependency against upstream. `dispenso/third-party/moodycamel/`
+   is a copy of [cameron314/concurrentqueue](https://github.com/cameron314/concurrentqueue);
+   `README.txt` records the upstream ref it came from. Compare that against
+   upstream's latest release, and check it still matches the version the
+   conan-center recipe requires — the two can drift apart silently, because
+   conan builds with `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON` and never touches
+   the bundled copy, while vcpkg and source builds use nothing else. Nothing
+   forces this comparison, which is exactly how the bundled copy reached 1.6.0
+   four years behind upstream while conan users were on a different queue
+   entirely. Updating it is a scheduling-hot-path change: run the full suite
+   under ASAN and TSAN, and do it in its own release rather than alongside
+   other work.
+3. Create the tag:
    ```bash
    python3 scripts/release.py tag --version X.Y.Z --commit <sha>
    ```
@@ -24,7 +36,7 @@ patch version rather than repointing the old one.
 
    The tag is signed and annotated by default, and is *not* pushed. Review it
    with `git show vX.Y.Z` first.
-3. `git push origin vX.Y.Z`. The `Release` workflow then re-runs the same checks
+4. `git push origin vX.Y.Z`. The `Release` workflow then re-runs the same checks
    against the tagged tree, requires the tag to be annotated, extracts the
    changelog section for that version, and publishes the GitHub release.
 
