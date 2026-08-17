@@ -229,4 +229,19 @@ benchmarking, see [docs/building.md](docs/building.md).
 
 ## License
 
-The library is released under the MIT license, but also relies on the (excellent) moodycamel concurrentqueue library, which is released under the Simplified BSD and Zlib licenses.  See the top of the source at `dispenso/third-party/moodycamel/*.h` for details.
+Dispenso itself is released under the MIT license (see `LICENSE`).
+
+It also bundles the (excellent) moodycamel concurrentqueue library, under
+`dispenso/third-party/moodycamel/`, which carries its own terms:
+
+- `concurrentqueue.h` and `blockingconcurrentqueue.h` are dual-licensed under
+  the Simplified BSD license **or** the Boost Software License 1.0, at your
+  option.
+- `lightweightsemaphore.h` additionally embeds Jeff Preshing's semaphore
+  implementation, which is under the Zlib license.
+
+The full text is in `dispenso/third-party/moodycamel/LICENSE.md`, which is
+installed alongside the headers, so it travels with a packaged copy rather
+than only existing in the source tree. Building with
+`-DDISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON` uses an external concurrentqueue
+instead and installs none of it.
