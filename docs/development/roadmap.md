@@ -100,6 +100,7 @@ not dangle once done.
 | `util.h` public utilities | 1.5.0 | Exposes internal utilities |
 | OpenMP migration guide | 1.4.x | docs/migrating_from_openmp.md |
 | TBB migration guide | 1.4.x | docs/migrating_from_tbb.md |
+| Fork-join scheduling and thread groups | 1.6.0 | Locality rings, steal rings, wake cascade, CpuSet topology. See [three_tier_scheduling.md](architecture/three_tier_scheduling.md) and [wake_cascade.md](architecture/wake_cascade.md) |
 
 ## External Submissions
 
@@ -416,19 +417,7 @@ These are ideas that may be pursued based on community feedback:
   - **Goal.** Reclaim retired generations safely without taxing the `schedule()` hot path — no per-call reference count and no hardware fence on the reader side.
   - **Approach (asymmetric-fence / hazard-pointer reclamation).** Readers (`schedule()`) publish the `wakeState_` pointer they are about to use into a per-thread hazard slot via a *relaxed* store bracketed by compiler-only fences — nearly free, no atomic RMW, no contention (this is a published pointer, not a reference count). `resize()` (rare, may be slow) publishes the new generation, issues a process-wide "heavy" barrier, then scans all hazard slots and frees a retired generation only once no slot still references it. The heavy barrier supplies the ordering asymmetrically so readers pay nothing: `sys_membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED)` on Linux, `FlushProcessWriteBuffers()` on Windows, and an `mprotect`-toggle (forces a TLB-shootdown IPI → per-core barrier) fallback for macOS and other POSIX. After the barrier, a reader either had already published the old pointer (the scan sees it and waits) or runs its load after the barrier and therefore observes the new generation — so a retired object can never be freed while a reader still holds it. (folly packages this as `asymmetric_thread_fence_{light,heavy}`; dispenso would self-implement to avoid the folly dependency.)
 
-### Fork-Join Scheduling & Thread Groups (post-1.5) --- COMPLETE
-
-Design documents:
-- [three_tier_scheduling.md](architecture/three_tier_scheduling.md) — three-tier queue architecture
-- [wake_cascade.md](architecture/wake_cascade.md) — leader-team parallel wake cascade
-
-**Implemented.** Per-thread locality rings, per-group steal rings, leader-team
-parallel wake cascade, CpuSet topology detection, adaptive spin backoff,
-and tunable pool-recursive load factor. Locality-sensitive parallel_for
-improved 74-86%. Pipeline sub-6ms. Graph scene CTS improved 18%. Dispenso
-compositing benchmark 26-58x faster than Taskflow.
-
-### 2.0 (API-breaking changes)
+## 2.0 (API-breaking changes)
 
 The following changes require a major version bump due to API breakage:
 
