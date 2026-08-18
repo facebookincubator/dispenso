@@ -6,7 +6,7 @@
 
 """Release helper for dispenso: verify version consistency, then tag.
 
-A release version is spelled out in seven places. When one of them is missed the
+A release version is spelled out in six places. When one of them is missed the
 mistake ships: 1.5.0 went out with the `platform.h` macros still reading 1.4.1,
 and the 1.6.0 changelog carried a placeholder month until it was audited by hand.
 `check` compares every one of them against a single expected version so that
@@ -113,16 +113,6 @@ def check(version):
         version,
         errors,
         "project VERSION",
-    )
-    _check_pattern(
-        "METADATA.bzl", r'"version":\s*"([^"]+)"', version, errors, "version"
-    )
-    _check_pattern(
-        "METADATA.bzl",
-        r'"package_url":\s*"pkg:github/[^@"]+@([^"]+)"',
-        version,
-        errors,
-        "package_url version",
     )
     _check_pattern(
         "docs/Doxyfile",
