@@ -29,7 +29,7 @@ namespace dispenso {
 
 #define DISPENSO_MAJOR_VERSION 1
 #define DISPENSO_MINOR_VERSION 6
-#define DISPENSO_PATCH_VERSION 0
+#define DISPENSO_PATCH_VERSION 1
 
 // C++20 concepts support detection
 #if __cplusplus >= 202002L && defined(__cpp_concepts) && __cpp_concepts >= 201907L

@@ -1,3 +1,21 @@
+1.6.1 (August 18, 2026)
+
+### Bug fixes
+* Fixed an access violation at process exit in Windows shared-library builds. `NewThreadInvoker` registered its thread drain with `atexit()`, which in a shared build belongs to the dispenso DLL and therefore runs at `DLL_PROCESS_DETACH` -- after `ExitProcess` has already terminated every other thread, so the drain never saw the threads it exists to join. The drain is now registered from a static in the calling module, whose destructors run during ordinary exit processing while those threads are still alive and joinable.
+
+### Build system
+* Added `DISPENSO_WERROR` (default ON) to control whether warnings are fatal. Warnings themselves are unconditional; this only governs `-Werror`, so distributors building against compilers we never see can stop a new warning from failing their build. It could not be worked around before: the flags come from `target_compile_options` and land after `CMAKE_CXX_FLAGS`.
+* The bundled moodycamel headers now install to `<prefix>/include/moodycamel` rather than `<prefix>/include/dispenso/third-party/moodycamel`. `dispenso/thread_pool.h` and `dispenso/resource_pool.h` include `<moodycamel/concurrentqueue.h>`, which previously resolved only through a second include directory carried on the CMake target -- so an installed dispenso could not be consumed with a plain `-I<prefix>/include`. The bundled and system layouts are now identical.
+* The bundled moodycamel directory is added as a SYSTEM include, so our warning flags no longer diagnose third-party code.
+* `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON` now requires concurrentqueue 1.0.5 or newer instead of accepting any installed version. `moodycamel::ConcurrentQueue` is a by-value member of `ThreadPool`, so its layout is part of dispenso's ABI.
+
+### Dependencies
+* Updated the bundled moodycamel concurrentqueue to v1.0.5, from a 2022 snapshot. The copy is now byte-identical to upstream, with no local patches.
+
+### Documentation
+* The published documentation site is now built with the same pinned Doxygen version that CI validates, and fails on Doxygen warnings. Previously it was built by an action whose Doxygen version was independent of the pin, so a version in the broken 1.9.2-1.9.8 range could publish unresolved cross-page links silently.
+* Corrected the README's statement of the bundled moodycamel licenses, which omitted the Boost option and overstated the scope of the Zlib terms.
+
 1.6.0 (August 13, 2026)
 
 ### New features
