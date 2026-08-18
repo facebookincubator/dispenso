@@ -62,11 +62,6 @@ class ImmediateInvoker {
 
 constexpr ImmediateInvoker kImmediateInvoker;
 
-/**
- * A class fullfilling the Schedulable concept that always invokes on a new thread.  This can be
- * used in place of <code>ThreadPool</code> or <code>TaskSet</code> with <code>Future</code>s at
- * construction or through <code>then</code>.
- **/
 namespace detail {
 // Drains every outstanding NewThreadInvoker thread. Idempotent; defined in
 // schedulable.cpp.
@@ -95,6 +90,11 @@ inline void ensureNewThreadDrainRegistered() {
 }
 } // namespace detail
 
+/**
+ * A class fullfilling the Schedulable concept that always invokes on a new thread.  This can be
+ * used in place of <code>ThreadPool</code> or <code>TaskSet</code> with <code>Future</code>s at
+ * construction or through <code>then</code>.
+ **/
 class NewThreadInvoker {
  public:
   /**
