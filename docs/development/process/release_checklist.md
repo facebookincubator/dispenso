@@ -124,6 +124,30 @@ existed upstream while the PR sat in review. Starting 1.6.1 against that would
 have undone all four and looked like a regression to the reviewer who had just
 asked for them.
 
+**Do not put a version on `find_package(concurrentqueue ...)`.** It looks like
+the right way to keep the system copy in step with the bundled one, and it
+cannot work. 1.6.1 tried it and had to be superseded by 1.6.2 within a day.
+
+concurrentqueue's own `CMakeLists.txt` has said `project(concurrentqueue VERSION
+1.0.0)` at every release, v1.0.5 included, so the `concurrentqueueConfigVersion.cmake`
+it installs always reports `1.0.0` — a number matching no release; there has
+never been a `v1.0.0` tag. Any version argument is therefore compared against a
+constant that is wrong, and `find_package(concurrentqueue 1.0.5 CONFIG REQUIRED)`
+is rejected by a correctly installed 1.0.5. The header carries no version macro
+either, so there is nothing else to test against.
+
+The underlying concern is real: `moodycamel::ConcurrentQueue` is a by-value
+member of `ThreadPool`, so its layout is part of dispenso's ABI, and a system
+copy that disagrees with the bundled one is an ODR problem. It simply cannot be
+expressed through this package. If it ever has to be enforced, it needs a
+mechanism that does not rely on the dependency's own version metadata.
+
+Note this bites unevenly, which is what makes it easy to miss: conan is
+unaffected, because CMakeDeps generates the version file from the *conan
+package* version rather than the upstream project's, so it reports the real
+1.0.5. vcpkg, and anyone consuming upstream's own CMake install, gets 1.0.0.
+Testing only the conan round would have shown all green.
+
 ### Before trusting a green run
 
 - **Hashes are pinned against the tag's tarball.** This is why a published tag
@@ -156,43 +180,3 @@ Note that dispenso has not been onboarded yet, so the first pass is that
 one-time setup rather than a version bump — and there is no "Try on Godbolt"
 link in `README.md` to update, because none exists. Adding it is part of the
 onboarding.
-
-## vcpkg: Remove temporary patches
-
-The v1.5.0 vcpkg port (`microsoft/vcpkg` PR #49633) carries two workarounds for
-bugs that both shipped fixed in **1.5.1**. Drop them when the port is next
-updated to 1.5.1 or later:
-
-1. **`fix-arm64-platform-define.patch`** — `notifier_common.h` defined `_ARM_`
-   instead of `_ARM64_` on ARM64 Windows, causing `winnt.h` compilation
-   failures.
-
-   **Half-removed upstream already; the script finishes it.** The `PATCHES`
-   block is gone from `portfile.cmake` as of the 1.5.1 bump, so the patch is
-   no longer applied — but the file itself was left behind in the port
-   directory. `detect_obsolete_patches` extracts the release tarball and runs
-   `git apply --check` on every `.patch` in the port; the orphan no longer
-   applies and is deleted. It will log "Removed entire PATCHES block from
-   `portfile.cmake`" while removing nothing, there being no block left to
-   remove — cosmetic, not a failure. Fixed in **1.5.1**:
-   `notifier_common.h` has defined `_ARM64_` for ARM64 and `_ARM_` only for
-   32-bit ARM since March 2026, which is exactly why the patch stopped
-   applying during the community's 1.5.1 bump.
-
-2. **`-DDISPENSO_SHARED_LIB=${DISPENSO_SHARED}`** — dispenso's
-   `DISPENSO_SHARED_LIB` option ignored `BUILD_SHARED_LIBS`, producing DLLs in
-   static triplets. Remove the `string(COMPARE EQUAL ...)` line and the
-   `-DDISPENSO_SHARED_LIB` option from `portfile.cmake`.
-
-   **This one is manual, and it is the one that slips.** It is not a `.patch`
-   file, so the obsolete-patch detection above never looks at it; nothing in
-   the script inspects `portfile.cmake` for workarounds that have outlived
-   their bug. The community's 1.5.1 bump carried it through untouched, which
-   is why "Which ports actually need us" says to reach vcpkg before anyone
-   else does. Fixed in **1.5.1** — `CMakeLists.txt` has defaulted
-   `DISPENSO_SHARED_LIB` to `${BUILD_SHARED_LIBS}` whenever vcpkg defines it
-   since March 2026, so this line has been dead weight for two releases.
-
-   Verify before removing rather than trusting this note: if the default were
-   still unconditional, dropping the workaround would quietly produce DLLs in
-   static triplets, which the port's own tests do not catch.
