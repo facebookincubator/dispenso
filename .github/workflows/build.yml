@@ -124,6 +124,39 @@ jobs:
         run: ctest -LE flaky --build-config Release
 
   #############################################################################
+  # Packaging configurations - what the package managers actually ship
+  #############################################################################
+  build-system-concurrentqueue:
+    name: Linux system concurrentqueue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The vcpkg and conan ports both build with
+      # DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON, so this is the configuration
+      # their users get, and nothing else here exercises it. Without this job a
+      # break surfaces weeks later during a port round rather than on the pull
+      # request that caused it -- which is how 1.6.1 shipped a find_package
+      # version that no installed concurrentqueue can satisfy.
+      - name: Install concurrentqueue
+        run: |
+          git clone --depth 1 --branch v1.0.5 \
+            https://github.com/cameron314/concurrentqueue.git /tmp/concurrentqueue
+          cmake -S /tmp/concurrentqueue -B /tmp/concurrentqueue/build \
+            -DCMAKE_INSTALL_PREFIX=/usr/local
+          sudo cmake --install /tmp/concurrentqueue/build
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
+            -DDISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
+  #############################################################################
   # Sanitizer builds - critical for concurrency library
   #############################################################################
   sanitizers:

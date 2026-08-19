@@ -55,11 +55,16 @@ PUBLIC
 )
 
 if(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
-  # Version floor, not just a name: an unqualified find_package accepts
-  # whatever happens to be installed, and moodycamel::ConcurrentQueue is a
-  # by-value member of ThreadPool, so its layout is part of dispenso's ABI.
-  # Keep this in step with the bundled copy's version in third-party/moodycamel.
-  find_package(concurrentqueue 1.0.5 CONFIG REQUIRED)
+  # Deliberately unversioned. A floor belongs here in principle --
+  # moodycamel::ConcurrentQueue is a by-value member of ThreadPool, so its
+  # layout is part of dispenso's ABI, and a system copy that disagrees with
+  # third-party/moodycamel is an ODR problem. It cannot be expressed: upstream
+  # has said project(concurrentqueue VERSION 1.0.0) at every release including
+  # v1.0.5, so the config version file always reports 1.0.0 -- a number matching
+  # no tag -- and any version argument here rejects a correct installation. The
+  # header carries no version macro either. 1.6.1 shipped such a floor and could
+  # not configure against vcpkg's concurrentqueue at all.
+  find_package(concurrentqueue CONFIG REQUIRED)
   target_link_libraries(dispenso PUBLIC concurrentqueue::concurrentqueue)
 else()
   # SYSTEM so the compiler does not diagnose third-party code we do not
@@ -161,12 +166,15 @@ install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 )
 
 if(NOT DISPENSO_USE_SYSTEM_CONCURRENTQUEUE)
-  # Install the bundled copy at <prefix>/include/moodycamel, the same place the
-  # standalone concurrentqueue package puts it. Public dispenso headers include
-  # <moodycamel/concurrentqueue.h>, so this is what lets a single
-  # -I<prefix>/include resolve them: an installed dispenso stays usable from
-  # build systems that do not consume the exported CMake target, and the
-  # bundled and system layouts become identical.
+  # Install the bundled copy at <prefix>/include/moodycamel. Public dispenso
+  # headers include <moodycamel/concurrentqueue.h>, so this is what lets a
+  # single -I<prefix>/include resolve them: an installed dispenso stays usable
+  # from build systems that do not consume the exported CMake target.
+  #
+  # This is not the standalone package's layout -- vcpkg installs it under
+  # <prefix>/include/concurrentqueue/moodycamel, and consumers reach it through
+  # the include directory on concurrentqueue::concurrentqueue rather than the
+  # prefix root. Only the bundled path needs to work without a CMake target.
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/third-party/moodycamel
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING
