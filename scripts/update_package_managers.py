@@ -901,6 +901,91 @@ beyond pthreads."""
     return None
 
 
+def _yaml_replace_mapping(content, top_key, entry_lines):
+    """Replace the body of a top-level YAML mapping, returning the keys dropped.
+
+    conan-center-index carries exactly one version per recipe -- 1.5.1 was
+    pruned by a maintainer when 1.6.0 landed -- so a bump replaces the previous
+    entry rather than accumulating beside it.
+    """
+    lines = content.split("\n")
+    start = next(
+        (i for i, line in enumerate(lines) if line.rstrip() == f"{top_key}:"), None
+    )
+    if start is None:
+        raise RuntimeError(f"'{top_key}:' not found in the recipe file")
+
+    # The mapping body runs to the last indented, non-empty line, so a trailing
+    # blank line or a following top-level key is left untouched.
+    cursor, end = start + 1, start + 1
+    while cursor < len(lines):
+        line = lines[cursor]
+        if not line.strip():
+            cursor += 1
+            continue
+        if not line.startswith((" ", "\t")):
+            break
+        cursor += 1
+        end = cursor
+
+    # Only immediate children are version keys. A nested mapping -- conan
+    # recipes sometimes key sources by platform under the version -- would
+    # otherwise be reported as a superseded version.
+    body = lines[start + 1 : end]
+    child_indent = next(
+        (len(line) - len(line.lstrip()) for line in body if line.strip()), 0
+    )
+    dropped = [
+        line.strip().rstrip(":").strip('"')
+        for line in body
+        if line.strip().endswith(":") and len(line) - len(line.lstrip()) == child_indent
+    ]
+    lines[start + 1 : end] = entry_lines
+    return "\n".join(lines), dropped
+
+
+def _report_dropped_versions(version, dropped):
+    """Announce recipe versions replaced by this bump."""
+    print(f"  Set to version {version}")
+    for old_version in dropped:
+        if old_version != version:
+            print(f"  Dropped superseded version {old_version}")
+
+
+def _conan_update_recipe_files(repo_dir, version, hashes, dry_run):
+    """Point the conan recipe at this version, and only this version."""
+    recipe_dir = os.path.join(repo_dir, "recipes", "dispenso")
+    conandata_path = os.path.join(recipe_dir, "all", "conandata.yml")
+    config_path = os.path.join(recipe_dir, "config.yml")
+
+    if dry_run:
+        print(f"  [DRY RUN] Would set {conandata_path} to {version} only")
+        print(f"  [DRY RUN] Would set {config_path} to {version} only")
+        return
+
+    print(f"  Updating {conandata_path} ...")
+    content, dropped = _yaml_replace_mapping(
+        open(conandata_path).read(),
+        "sources",
+        [
+            f'  "{version}":',
+            f'    url: "{hashes["url"]}"',
+            f'    sha256: "{hashes["sha256"]}"',
+        ],
+    )
+    open(conandata_path, "w").write(content)
+    _report_dropped_versions(version, dropped)
+
+    print(f"  Updating {config_path} ...")
+    content, dropped = _yaml_replace_mapping(
+        open(config_path).read(),
+        "versions",
+        [f'  "{version}":', "    folder: all"],
+    )
+    open(config_path, "w").write(content)
+    _report_dropped_versions(version, dropped)
+
+
 def update_conan(args, hashes, tarball_path):
     """Update conan-center-index with new dispenso version."""
     print("=== Conan (conan-center-index) ===")
@@ -913,47 +998,7 @@ def update_conan(args, hashes, tarball_path):
     if not args.dry_run:
         report_port_baseline(repo_dir, manager)
 
-    # --- Update conandata.yml ---
-    conandata_path = os.path.join(
-        repo_dir, "recipes", "dispenso", "all", "conandata.yml"
-    )
-    print(f"  Updating {conandata_path} ...")
-
-    if not args.dry_run:
-        content = open(conandata_path).read()
-
-        # Check if version already present
-        if f'"{version}"' in content:
-            print(f"  Version {version} already present in conandata.yml")
-        else:
-            # Insert new version entry right after "sources:\n"
-            new_entry = (
-                f'  "{version}":\n'
-                f'    url: "{hashes["url"]}"\n'
-                f'    sha256: "{hashes["sha256"]}"\n'
-            )
-            content = content.replace("sources:\n", f"sources:\n{new_entry}", 1)
-            open(conandata_path, "w").write(content)
-            print(f"  Added version {version} to conandata.yml")
-    else:
-        print(f"  [DRY RUN] Would add {version} entry with sha256={hashes['sha256']}")
-
-    # --- Update config.yml ---
-    config_path = os.path.join(repo_dir, "recipes", "dispenso", "config.yml")
-    print(f"  Updating {config_path} ...")
-
-    if not args.dry_run:
-        content = open(config_path).read()
-
-        if f'"{version}"' in content:
-            print(f"  Version {version} already present in config.yml")
-        else:
-            new_entry = f'  "{version}":\n    folder: all\n'
-            content = content.replace("versions:\n", f"versions:\n{new_entry}", 1)
-            open(config_path, "w").write(content)
-            print(f"  Added version {version} to config.yml")
-    else:
-        print(f"  [DRY RUN] Would add {version} entry to config.yml")
+    _conan_update_recipe_files(repo_dir, version, hashes, args.dry_run)
 
     # --- Ensure GitHub issue exists ---
     print("  --- Conan issue ---")
@@ -1636,8 +1681,8 @@ Changes to recipe:  **dispenso/{version}**
 Update dispenso to version {version}.
 
 #### Details
-Added version {version} entry to `conandata.yml` and `config.yml`. \
-No changes to `conanfile.py` (version-agnostic).
+Set `conandata.yml` and `config.yml` to {version}, replacing the previous \
+entry. No changes to `conanfile.py` (version-agnostic).
 
 ---
 - [x] Read the [contributing guidelines](https://github.com/conan-io/conan-center-index/blob/master/CONTRIBUTING.md)
