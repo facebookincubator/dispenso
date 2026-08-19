@@ -51,3 +51,4 @@ standalone note; results here inform roadmap items rather than being them.
 | [Recursive fork-join vs TBB task_group (deep / heavy trees)](investigations/recursive_forkjoin_vs_tbb_task_group.md) |
 | [Topology-hierarchy-aware scheduling (beyond L3-as-NUMA-proxy)](investigations/topology_hierarchy_aware_scheduling.md) |
 | [Experiment: externalize per-group locality; simplify thread-pool tiers](investigations/externalize_per_group_locality.md) |
+| [Release candidate tags](investigations/release_candidate_tags.md) |
