@@ -26,13 +26,25 @@ patch version rather than repointing the old one.
    ```bash
    python3 scripts/release.py tag --version X.Y.Z --commit <sha>
    ```
-   This verifies that all seven places the version appears agree with each other
-   — `CHANGELOG.md`, `dispenso/platform.h`, `CMakeLists.txt`, `METADATA.bzl`,
-   `docs/Doxyfile`, `docs/faq.md` and `README.md` — and refuses to tag if any
-   disagree. 1.5.0 shipped with the `platform.h` macros still reading 1.4.1;
-   this is the check that would have caught it. It also rejects a changelog date
-   that is not a specific day, because a placeholder month reads like a real
-   heading and survives review.
+   This verifies that six places the version appears agree with each other —
+   `CHANGELOG.md`, `dispenso/platform.h`, `CMakeLists.txt`, `docs/Doxyfile`,
+   `docs/faq.md` and `README.md` — and refuses to tag if any disagree. 1.5.0
+   shipped with the `platform.h` macros still reading 1.4.1; this is the check
+   that would have caught it. It also rejects a changelog date that is not a
+   specific day, because a placeholder month reads like a real heading and
+   survives review.
+
+   **`METADATA.bzl` is the seventh place, and nothing checks it.** It is
+   fbsource-only, so the check was removed from the public script deliberately
+   — `release.py` runs from a clone of the exported repository, where the file
+   does not exist. Bump it by hand and confirm both strings, because the
+   `package_url` purl carries the version too and does not look like a version
+   field:
+   ```bash
+   grep -n 1\.6\. METADATA.bzl
+   ```
+   This is the one reference with no safety net, which makes it the one most
+   likely to repeat 1.5.0.
 
    The tag is signed and annotated by default, and is *not* pushed. Review it
    with `git show vX.Y.Z` first.
