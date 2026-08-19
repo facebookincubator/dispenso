@@ -18,8 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          # The tag object itself is needed to tell annotated from lightweight.
+          # The tag object itself is needed to tell annotated from lightweight,
+          # and fetch-depth alone does not bring it: checkout fetches with
+          # --no-tags, so the local ref it creates points straight at the commit
+          # and `git cat-file -t` reports "commit" even for an annotated tag.
+          # v1.6.1 was annotated and still failed the check below without this.
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Derive version from tag
         run: |
