@@ -179,7 +179,7 @@ with platform switching, dark/light theme, and detailed per-benchmark charts.
 Binary builds of Dispenso are available through several package managers:
 
 - **Conda**: `conda install -c conda-forge dispenso`
-- **Conan**: `conan install --requires=dispenso/1.6.1`
+- **Conan**: `conan install --requires=dispenso/1.6.2`
 - **vcpkg**: `vcpkg install dispenso`
 - **Homebrew**: `brew install dispenso`
 - **MacPorts**: `sudo port install dispenso`

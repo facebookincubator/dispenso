@@ -1,3 +1,11 @@
+1.6.2 (August 19, 2026)
+
+### Bug fixes
+* `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON` builds again. 1.6.1 required `find_package(concurrentqueue 1.0.5 CONFIG REQUIRED)`, which no installed concurrentqueue can satisfy: upstream's `CMakeLists.txt` reads `project(concurrentqueue VERSION 1.0.0)` at every release including v1.0.5, so the config version file it installs always reports `1.0.0` -- a value matching no released tag. A correct 1.0.5 installation was rejected, so the vcpkg port and any source build against the upstream CMake package failed to configure. The version argument has been removed; the ABI concern that motivated it is real but cannot be expressed through this package, and the code now says so.
+
+### Build system
+* Added a CI job covering `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON`. It is the configuration the vcpkg and conan ports ship and nothing exercised it, so a break reached a release before anyone noticed.
+
 1.6.1 (August 18, 2026)
 
 ### Bug fixes

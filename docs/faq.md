@@ -82,7 +82,7 @@ include(FetchContent)
 FetchContent_Declare(
   dispenso
   GIT_REPOSITORY https://github.com/facebookincubator/dispenso.git
-  GIT_TAG        v1.6.1  # or main for latest
+  GIT_TAG        v1.6.2  # or main for latest
 )
 FetchContent_MakeAvailable(dispenso)
 target_link_libraries(my_target dispenso)
