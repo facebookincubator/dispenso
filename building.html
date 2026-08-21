@@ -133,7 +133,15 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <p>All commands should be run from the Developer Command Prompt (install Build Tools for Visual Studio). </p><div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
 <div class="line">cmake PATH_TO_DISPENSO_ROOT</div>
 <div class="line">cmake --build . --config Release</div>
-</div><!-- fragment --><h1>Installing</h1>
+</div><!-- fragment --><h1>Build Options Affecting Linkage</h1>
+<p>Two options change what the built library is, and both matter to packagers:</p>
+<ul>
+<li><code>DISPENSO_SHARED_LIB</code> (default <b>ON</b>) selects a shared library. Set it to <code>OFF</code> for a static build. Note the default: a packager wanting a static library has to ask for one.</li>
+<li><code>DISPENSO_USE_SYSTEM_CONCURRENTQUEUE</code> (default OFF) builds against an installed <a href="https://github.com/cameron314/concurrentqueue">concurrentqueue</a> rather than the copy bundled in <code>dispenso/third-party/moodycamel</code>. The bundled copy tracks the same upstream version.</li>
+</ul>
+<p>If you build with <code>DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON</code>, do <b>not</b> add a version argument to its <code>find_package</code>. concurrentqueue's own <code>CMakeLists.txt</code> declares <code>project(concurrentqueue VERSION 1.0.0)</code> at every release, so the config file it installs always reports <code>1.0.0</code> &ndash; a value matching no released tag. Any version constraint therefore rejects a correct installation. dispenso 1.6.1 shipped such a constraint and had to be superseded by 1.6.2 within a day.</p>
+<p><code>moodycamel::ConcurrentQueue</code> is a by-value member of <code><a class="el" href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></code>, so whichever copy is used forms part of dispenso's ABI. Building dispenso against one version while a consumer compiles against another is an ODR violation that nothing in the build will diagnose.</p>
+<h1>Installing</h1>
 <p>Once built, install by building the "install" target:</p>
 <p><b>Linux and macOS:</b> </p><div class="fragment"><div class="line">make install</div>
 </div><!-- fragment --><p><b>Windows (also works on any platform):</b> </p><div class="fragment"><div class="line">cmake --build . --target install</div>
