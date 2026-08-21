@@ -87,6 +87,22 @@ so whichever copy is used forms part of dispenso's ABI. Building dispenso
 against one version while a consumer compiles against another is an ODR
 violation that nothing in the build will diagnose.
 
+### Include paths without CMake
+
+dispenso's public headers include `<moodycamel/concurrentqueue.h>`. Where that
+resolves from depends on which copy you built against, which matters if you are
+driving the compiler yourself rather than consuming the exported CMake target:
+
+| Build | Header location | Include flag needed |
+|---|---|---|
+| Bundled (default) | `<prefix>/include/moodycamel/` | `-I<prefix>/include` |
+| System concurrentqueue | `<cq-prefix>/include/concurrentqueue/moodycamel/` | also `-I<cq-prefix>/include/concurrentqueue` |
+
+The extra level in the second row is concurrentqueue's own install layout, not
+something dispenso or any packager adds. Its CMake target sets the matching
+include directory, so `find_package(Dispenso)` needs none of this; only
+hand-rolled builds do.
+
 ## Installing
 
 Once built, install by building the "install" target:
