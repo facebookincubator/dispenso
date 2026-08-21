@@ -1147,6 +1147,39 @@ def remove_obsolete_patches(port_dir, portfile_path, obsolete_patches):
     open(portfile_path, "w").write(content)
 
 
+def _ensure_vcpkg_werror_off(portfile_path, dry_run):
+    """Make sure the vcpkg port builds with -Werror disabled.
+
+    dispenso compiles itself with `-Wall -Wextra -pedantic -Wconversion -Werror`.
+    vcpkg builds every triplet with its own compiler, so one new warning from
+    any of them fails the port for a release that is otherwise fine.
+    `DISPENSO_WERROR` exists so a distributor can decline that risk without
+    patching dispenso's `CMakeLists.txt`; the conan recipe and the Compiler
+    Explorer recipe both set it. Added here rather than left to memory, because
+    the consequence of forgetting only shows up on somebody else's compiler.
+    """
+    content = open(portfile_path).read()
+    if "DISPENSO_WERROR" in content:
+        return
+
+    if dry_run:
+        print("  [DRY RUN] Would add -DDISPENSO_WERROR=OFF to portfile.cmake")
+        return
+
+    updated, count = re.subn(
+        r"(\n(\s*)OPTIONS\n)",
+        r"\g<1>\g<2>    -DDISPENSO_WERROR=OFF\n",
+        content,
+        count=1,
+    )
+    if not count:
+        print("  WARNING: no OPTIONS block found; add -DDISPENSO_WERROR=OFF by hand")
+        return
+
+    open(portfile_path, "w").write(updated)
+    print("  Added -DDISPENSO_WERROR=OFF to portfile.cmake")
+
+
 def _vcpkg_update_port_files(repo_dir, version, hashes, dry_run):
     """Update vcpkg.json version/port-version and portfile.cmake SHA512."""
     vcpkg_json_path = os.path.join(repo_dir, "ports", "dispenso", "vcpkg.json")
@@ -1180,6 +1213,8 @@ def _vcpkg_update_port_files(repo_dir, version, hashes, dry_run):
         print("  Updated SHA512")
     else:
         print(f"  [DRY RUN] Would update SHA512 to {hashes['sha512']}")
+
+    _ensure_vcpkg_werror_off(portfile_path, dry_run)
 
     return vcpkg_json_path
 

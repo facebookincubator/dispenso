@@ -160,6 +160,22 @@ package* version rather than the upstream project's, so it reports the real
 1.0.5. vcpkg, and anyone consuming upstream's own CMake install, gets 1.0.0.
 Testing only the conan round would have shown all green.
 
+**Every port should build with `-Werror` disabled.** dispenso compiles itself
+with `-Wall -Wextra -pedantic -Wconversion -Werror`. Package managers build
+across compilers we never see, so one new warning turns a perfectly good
+release into a failed package build for them. `DISPENSO_WERROR` exists as of
+1.6.1 so a distributor can decline that risk without patching
+`CMakeLists.txt`.
+
+- conan — `tc.cache_variables["DISPENSO_WERROR"] = False` in `conanfile.py`,
+  added upstream by a CCI maintainer during the 1.6.2 round.
+- vcpkg — `-DDISPENSO_WERROR=OFF` in `portfile.cmake`. `update_package_managers.py`
+  adds it if absent, so a round carries it without anyone remembering.
+- Compiler Explorer — already in the recipe's `extra_cmake_arg`.
+
+The script does not touch `conanfile.py` at all, and branches are cut fresh
+from upstream, so the conan setting is inherited rather than overwritten.
+
 ### Before trusting a green run
 
 - **Hashes are pinned against the tag's tarball.** This is why a published tag
