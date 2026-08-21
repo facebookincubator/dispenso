@@ -28,6 +28,7 @@ columns ask which mechanism would have caught it *before* the real tag existed.
 | 1.6.0 | bundled moodycamel four years behind upstream | no | no | no |
 | 1.6.1 | annotated tag rejected as lightweight by the release workflow | **yes** | no | no |
 | 1.6.1 | `find_package(concurrentqueue 1.0.5)` unsatisfiable, so `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON` could not configure | **yes** | no | **yes** |
+| 1.6.2 | release workflow rejected the annotated tag again, after the first fix | **yes** | no | no |
 
 Two entries need their own note.
 
@@ -44,18 +45,23 @@ unaffected; both build the bundled copy.
 
 ## What the record says
 
-**RC uniquely catches one row: the lightweight-tag rejection.** It is the only
-failure that lives in the publish path itself, where nothing short of a real tag
+**RC uniquely catches the lightweight-tag rejection.** It is the only failure
+that lives in the publish path itself, where nothing short of a real tag
 exercises the code. Everything else is caught earlier and more cheaply by
 something we already have or have since added.
 
-**And that row is now fixed permanently.** `actions/checkout` fetches with
-`--no-tags`, so `fetch-depth: 0` alone left the local ref pointing at the commit
-and `git cat-file -t` reported `commit` for an annotated tag. `fetch-tags: true`
-fixes it, and the failure cannot recur in that form.
+**That row now has two members, not one.** The first fix was wrong: it blamed
+`actions/checkout` fetching with `--no-tags` and added `fetch-tags: true`. The
+real cause is that the check reads a local `refs/tags/` entry which checkout
+builds pointing at the commit, so fetching tags changes nothing. 1.6.2 was
+rejected identically and published by hand, and the check now asks the API
+instead.
 
-So on the evidence to date, adopting RC now would buy protection against a class
-with exactly one historical member, already closed.
+This is the strongest argument for RC in the table, and it cuts against the
+recommendation below. The class RC uniquely covers is the one where a real tag
+is the only way to exercise the code -- and it is precisely the class where our
+reasoning failed twice, because we could not test the fix without publishing a
+tag. Every other row was diagnosed correctly the first time.
 
 ## What RC would cost
 
@@ -96,15 +102,18 @@ Together those move the concurrentqueue row from "caught after publishing" to
 ## When to revisit
 
 Reopen this if any of the following happens. Each is a signal that the cheap
-mechanisms have stopped covering the ground.
+mechanisms have stopped covering the ground. The conclusion above was reached
+when the publish-path class had one member; it now has two, so the case is
+closer than the recommendation implies.
 
-- A release fails in a way that is **only** discoverable from a real tag,
-  tarball, or publish -- a second member for the class RC uniquely covers.
-- Two consecutive releases need a patch follow-up.
+- A third failure that is **only** discoverable from a real tag, tarball, or
+  publish. The first two triggers below have already fired, so this one decides
+  it.
+- Two consecutive releases need a patch follow-up. **Fired:** 1.6.1 and 1.6.2.
 - The publish path changes materially: a `release.yml` rewrite, a different
-  release action, or a change to how the tarball is produced. The one RC-shaped
-  failure we have came from a behaviour of `actions/checkout` nobody had reason
-  to suspect.
+  release action, or a change to how the tarball is produced. Both RC-shaped
+  failures came from `actions/checkout` behaviour nobody had reason to suspect,
+  and the first attempt to fix it was itself wrong.
 - A port round starts failing on something preflight cannot model, such as
   vcpkg's own portfile logic or `conan create` against the recipe.
 
