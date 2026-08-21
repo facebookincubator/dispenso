@@ -18,11 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          # The tag object itself is needed to tell annotated from lightweight,
-          # and fetch-depth alone does not bring it: checkout fetches with
-          # --no-tags, so the local ref it creates points straight at the commit
-          # and `git cat-file -t` reports "commit" even for an annotated tag.
-          # v1.6.1 was annotated and still failed the check below without this.
           fetch-depth: 0
           fetch-tags: true
 
@@ -36,13 +31,30 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Require an annotated tag
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # A lightweight tag is a bare ref: no tagger, no date, no message, and
           # nothing to sign. Releases are cut from annotated tags only.
-          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+          #
+          # Ask the API rather than the local repository. Whatever `refs/tags/`
+          # entry the checkout leaves behind points at the commit, so
+          # `git cat-file -t` answers "commit" for an annotated tag and the
+          # check rejects a perfectly good release. v1.6.1 and v1.6.2 were both
+          # annotated and signed, and both were rejected that way; adding
+          # `fetch-tags` did not change it. The API reports the tag object
+          # itself and cannot be confused by local ref layout.
+          TYPE=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.type')
+          echo "$GITHUB_REF_NAME is a '$TYPE' object."
+          if [ "$TYPE" != "tag" ]; then
             echo "$GITHUB_REF_NAME is lightweight; use 'git tag -s' (or -a)."
             exit 1
           fi
+
+          # Signature verification needs the tag object locally, which the
+          # checkout may not have brought. Fetch it explicitly; a failure here
+          # is not fatal, since the gate above has already run.
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME" || true
           if git verify-tag "$GITHUB_REF_NAME" 2>/dev/null; then
             echo "Tag signature verified."
           else
