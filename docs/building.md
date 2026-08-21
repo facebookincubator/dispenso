@@ -63,6 +63,30 @@ cmake PATH_TO_DISPENSO_ROOT
 cmake --build . --config Release
 ```
 
+## Build Options Affecting Linkage
+
+Two options change what the built library is, and both matter to packagers:
+
+- `DISPENSO_SHARED_LIB` (default **ON**) selects a shared library. Set it to
+  `OFF` for a static build. Note the default: a packager wanting a static
+  library has to ask for one.
+- `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE` (default OFF) builds against an
+  installed [concurrentqueue](https://github.com/cameron314/concurrentqueue)
+  rather than the copy bundled in `dispenso/third-party/moodycamel`. The
+  bundled copy tracks the same upstream version.
+
+If you build with `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON`, do **not** add a
+version argument to its `find_package`. concurrentqueue's own `CMakeLists.txt`
+declares `project(concurrentqueue VERSION 1.0.0)` at every release, so the
+config file it installs always reports `1.0.0` -- a value matching no released
+tag. Any version constraint therefore rejects a correct installation. dispenso
+1.6.1 shipped such a constraint and had to be superseded by 1.6.2 within a day.
+
+`moodycamel::ConcurrentQueue` is a by-value member of `dispenso::ThreadPool`,
+so whichever copy is used forms part of dispenso's ABI. Building dispenso
+against one version while a consumer compiles against another is an ODR
+violation that nothing in the build will diagnose.
+
 ## Installing
 
 Once built, install by building the "install" target:
