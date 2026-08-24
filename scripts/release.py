@@ -28,8 +28,10 @@ push: review `git show v<version>` before making it permanent.
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -182,6 +184,229 @@ def tag(version, commit, sign):
     return 0
 
 
+# A consumer that reaches dispenso the way a packaged install does: one include
+# directory, one library, no CMake target. `thread_pool.h` is included
+# deliberately -- it is the header that pulls in moodycamel, so it is what
+# breaks when the bundled headers are installed somewhere unreachable.
+CONSUMER_SOURCE = """\
+#include <cstdio>
+#include <vector>
+
+#include <dispenso/parallel_for.h>
+#include <dispenso/thread_pool.h>
+
+int main() {
+  dispenso::ThreadPool pool(4);
+  std::vector<int> v(1000);
+  dispenso::parallel_for(
+      0, v.size(), [&](size_t i) { v[i] = static_cast<int>(i * i); });
+  std::printf("%d\\n", v[999]);
+  return v[999] == 998001 ? 0 : 1;
+}
+"""
+
+CONCURRENTQUEUE_PROBE = """\
+cmake_minimum_required(VERSION 3.12)
+project(cqprobe LANGUAGES CXX)
+find_package(concurrentqueue CONFIG REQUIRED)
+"""
+
+# Each entry is (label, extra cmake args). Both link shapes are built because
+# the ports disagree: vcpkg builds static, the source default is shared.
+PREFLIGHT_BUILDS = [
+    ("vendored shared", ["-DDISPENSO_SHARED_LIB=ON"]),
+    ("vendored static", ["-DDISPENSO_SHARED_LIB=OFF"]),
+]
+
+CONSUMER_STANDARDS = ["14", "20"]
+
+
+def _run(cmd, cwd=None, env=None):
+    """Run one command, returning (ok, a transcript of it)."""
+    result = subprocess.run(
+        cmd, cwd=cwd, env=env, text=True, capture_output=True, check=False
+    )
+    return result.returncode == 0, f"$ {' '.join(cmd)}\n{result.stdout}{result.stderr}"
+
+
+def _cmake_install(build_dir, prefix, cmake_args, jobs, log):
+    """Configure, build and install dispenso into prefix."""
+    steps = [
+        [
+            "cmake",
+            "-S",
+            REPO_ROOT,
+            "-B",
+            build_dir,
+            f"-DCMAKE_INSTALL_PREFIX={prefix}",
+            "-DDISPENSO_BUILD_TESTS=OFF",
+            "-DDISPENSO_BUILD_BENCHMARKS=OFF",
+            *cmake_args,
+        ],
+        ["cmake", "--build", build_dir, "--parallel", str(jobs)],
+        ["cmake", "--install", build_dir],
+    ]
+    for step in steps:
+        ok, out = _run(step)
+        log.append(out)
+        if not ok:
+            return False
+    return True
+
+
+def _consume(prefix, std, workdir, log):
+    """Compile and run the consumer against an installed prefix.
+
+    Only -I<prefix>/include and -L<prefix>/lib are passed: no CMake target, no
+    second include directory. An install that needs more than this is one the
+    package managers cannot ship.
+    """
+    source = os.path.join(workdir, f"consumer{std}.cpp")
+    with open(source, "w", encoding="utf-8") as f:
+        f.write(CONSUMER_SOURCE)
+    exe = os.path.join(workdir, f"consumer{std}")
+
+    ok, out = _run(
+        [
+            os.environ.get("CXX", "c++"),
+            f"-std=c++{std}",
+            source,
+            f"-I{os.path.join(prefix, 'include')}",
+            f"-L{os.path.join(prefix, 'lib')}",
+            "-ldispenso",
+            "-o",
+            exe,
+        ]
+    )
+    log.append(out)
+    if not ok:
+        return False
+
+    env = dict(os.environ)
+    libdir = os.path.join(prefix, "lib")
+    for var in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+        env[var] = os.pathsep.join([libdir, env.get(var, "")]).rstrip(os.pathsep)
+    ok, out = _run([exe], env=env)
+    log.append(out)
+    return ok
+
+
+def _have_concurrentqueue(workdir, prefix_path, log):
+    """Whether a system concurrentqueue CMake package is visible to find_package."""
+    probe = os.path.join(workdir, "cqprobe")
+    os.makedirs(probe, exist_ok=True)
+    with open(os.path.join(probe, "CMakeLists.txt"), "w", encoding="utf-8") as f:
+        f.write(CONCURRENTQUEUE_PROBE)
+    cmd = ["cmake", "-S", probe, "-B", os.path.join(probe, "build")]
+    if prefix_path:
+        cmd.append(f"-DCMAKE_PREFIX_PATH={prefix_path}")
+    ok, out = _run(cmd)
+    log.append(out)
+    return ok
+
+
+def _preflight_installed_builds(workdir, jobs, results, logs):
+    """Build, install and consume dispenso the way a packaged install is used."""
+    for label, cmake_args in PREFLIGHT_BUILDS:
+        log = []
+        slug = label.replace(" ", "-")
+        prefix = os.path.join(workdir, f"prefix-{slug}")
+        built = _cmake_install(
+            os.path.join(workdir, f"build-{slug}"), prefix, cmake_args, jobs, log
+        )
+        consumed = built and all(
+            _consume(prefix, std, workdir, log) for std in CONSUMER_STANDARDS
+        )
+        results.append((label, "PASS" if consumed else "FAIL"))
+        logs[label] = log
+
+
+def _preflight_system_concurrentqueue(workdir, jobs, prefix_path, results, logs):
+    """Build the configuration the vcpkg and conan ports ship.
+
+    Not being able to run this is a failure, not a pass with a footnote. It is
+    the only check that catches the 1.6.1 class of bug, and a preflight that
+    reports success without it is worse than no preflight: it launders an
+    unverified release as a verified one. Install concurrentqueue, or pass
+    --concurrentqueue-prefix.
+    """
+    label = "system concurrentqueue"
+    log = []
+    args = ["-DDISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON"]
+    if prefix_path:
+        args.append(f"-DCMAKE_PREFIX_PATH={prefix_path}")
+
+    if not _have_concurrentqueue(workdir, prefix_path, log):
+        results.append(
+            (
+                label,
+                "FAIL: no concurrentqueue CMake package is visible, so the "
+                "configuration the vcpkg and conan ports ship went untested. "
+                "Install it, or pass --concurrentqueue-prefix.",
+            )
+        )
+        logs[label] = log
+        return
+
+    ok = _cmake_install(
+        os.path.join(workdir, "build-syscq"),
+        os.path.join(workdir, "prefix-syscq"),
+        args,
+        jobs,
+        log,
+    )
+    results.append((label, "PASS" if ok else "FAIL"))
+    logs[label] = log
+
+
+def _report_preflight(results, logs):
+    """Print the summary, and the transcript of anything that failed."""
+    failed = [label for label, status in results if status.startswith("FAIL")]
+    for label, status in results:
+        head, _, detail = status.partition(": ")
+        print(f"  {head:5s}  {label}")
+        if detail:
+            print(f"         {detail}")
+    for label in failed:
+        print(f"\n--- {label} ---", file=sys.stderr)
+        print("\n".join(logs.get(label, [])), file=sys.stderr)
+    return failed
+
+
+def preflight(version, jobs, keep, concurrentqueue_prefix):
+    """Build what packagers build, before a tag makes the mistake permanent.
+
+    `check` compares version strings; this compares against reality. Every
+    release failure so far has been of a kind `check` cannot see: 1.6.1 passed
+    every version check, tagged cleanly, and could not configure against a
+    system concurrentqueue at all. That was found days later by a port round.
+    An unpublished failure costs nothing; a published one costs a release.
+    """
+    results = [("version consistency", "PASS" if check(version) == 0 else "FAIL")]
+    logs = {}
+
+    workdir = tempfile.mkdtemp(prefix="dispenso-preflight-")
+    print(f"\nBuilding in {workdir}\n")
+    try:
+        _preflight_installed_builds(workdir, jobs, results, logs)
+        _preflight_system_concurrentqueue(
+            workdir, jobs, concurrentqueue_prefix, results, logs
+        )
+    finally:
+        if keep:
+            print(f"\nKept {workdir}")
+        else:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    print(f"\nPreflight for {version}:")
+    failed = _report_preflight(results, logs)
+    if failed:
+        print(f"\nPreflight FAILED for {version}: {', '.join(failed)}", file=sys.stderr)
+        return 1
+    print(f"\nPreflight passed for {version}.")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -204,9 +429,29 @@ def main():
         help="create an unsigned annotated tag (signing is the default)",
     )
 
+    p_pre = sub.add_parser(
+        "preflight", help="build and consume dispenso the way packagers do"
+    )
+    p_pre.add_argument("--version", required=True, help="version to validate")
+    p_pre.add_argument(
+        "--jobs", type=int, default=os.cpu_count() or 4, help="parallel build jobs"
+    )
+    p_pre.add_argument(
+        "--keep", action="store_true", help="keep the build tree for inspection"
+    )
+    p_pre.add_argument(
+        "--concurrentqueue-prefix",
+        help="where a system concurrentqueue is installed, if find_package "
+        "cannot locate it unaided",
+    )
+
     args = parser.parse_args()
     if args.command == "check":
         return check(args.version)
+    if args.command == "preflight":
+        return preflight(
+            args.version, args.jobs, args.keep, args.concurrentqueue_prefix
+        )
     return tag(args.version, args.commit, not args.no_sign)
 
 
