@@ -12,9 +12,44 @@
 #include <thread>
 #include <vector>
 
+#if defined(__linux__)
+#include <dirent.h>
+
+#include <cstring>
+#endif // __linux__
+
 #include <gtest/gtest.h>
 
 using dispenso::CpuSet;
+
+#if defined(__linux__)
+namespace {
+// Whether the kernel reports any cache topology at all.
+//
+// /sys/devices/system/cpu/cpu0/cache is populated only when the kernel has
+// cache information to expose, and plenty of virtual machines have none --
+// GitHub's aarch64 runners among them. There, an empty group list is the
+// kernel's answer rather than a parsing failure. Probing for the directory
+// keeps the distinction: skipping merely because the list came back empty
+// would also swallow a real regression on hardware that does report topology,
+// which for a locality-aware scheduler is precisely the bug worth catching.
+bool sysfsHasCacheTopology() {
+  DIR* dir = ::opendir("/sys/devices/system/cpu/cpu0/cache");
+  if (dir == nullptr) {
+    return false;
+  }
+  bool found = false;
+  while (const dirent* entry = ::readdir(dir)) {
+    if (std::strncmp(entry->d_name, "index", 5) == 0) {
+      found = true;
+      break;
+    }
+  }
+  ::closedir(dir);
+  return found;
+}
+} // namespace
+#endif // __linux__
 
 // =============================================================================
 // CPU List Parsing Tests
@@ -565,6 +600,11 @@ TEST(CpuSet, CurrentHardwareThreadIsValid) {
 
 TEST(CpuSet, L2GroupsAreNonEmpty) {
   const auto& l2Groups = CpuSet::l2CacheGroups();
+#if defined(__linux__)
+  if (!sysfsHasCacheTopology()) {
+    GTEST_SKIP() << "Kernel exposes no cache topology under /sys/devices/system/cpu";
+  }
+#endif
 #if defined(__linux__) || defined(_WIN32)
   EXPECT_GT(l2Groups.size(), 0u) << "No L2 cache groups detected";
 
@@ -587,6 +627,11 @@ TEST(CpuSet, L2GroupsAreNonEmpty) {
 
 TEST(CpuSet, L3GroupsAreNonEmpty) {
   const auto& l3Groups = CpuSet::l3CacheGroups();
+#if defined(__linux__)
+  if (!sysfsHasCacheTopology()) {
+    GTEST_SKIP() << "Kernel exposes no cache topology under /sys/devices/system/cpu";
+  }
+#endif
 #if defined(__linux__) || defined(_WIN32)
   EXPECT_GT(l3Groups.size(), 0u) << "No L3 cache groups detected";
 
