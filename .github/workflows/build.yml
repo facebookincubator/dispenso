@@ -155,6 +155,84 @@ jobs:
         run: ctest -LE flaky --build-config Release
 
   #############################################################################
+  # Cross-compiled architectures, executed under QEMU
+  #############################################################################
+  build-cross:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 32-bit ARM is the interesting one: pointers are 32-bit but
+          # dispenso's atomics are not, so it is where a 64-bit atomic can turn
+          # into a libatomic call that x86 never needed.
+          - name: Linux armv7 (32-bit, QEMU)
+            packages: g++-arm-linux-gnueabihf
+            processor: arm
+            triple: arm-linux-gnueabihf
+            sysroot: /usr/arm-linux-gnueabihf
+            qemu: qemu-arm-static
+          # RISC-V has never been tested at all. Building and running is the
+          # bar here; performance is not measurable under emulation.
+          - name: Linux riscv64 (QEMU)
+            packages: g++-riscv64-linux-gnu
+            processor: riscv64
+            triple: riscv64-linux-gnu
+            sysroot: /usr/riscv64-linux-gnu
+            qemu: qemu-riscv64-static
+          # Ubuntu packages no rv32 Linux toolchain, so this one comes from
+          # Bootlin. The checksum is what pins it: the URL fixes only which
+          # path is fetched, so without verifying the bytes a re-rolled
+          # artifact would be unpacked and run here with no commit in this
+          # repo.
+          - name: Linux riscv32 (QEMU)
+            processor: riscv32
+            triple: riscv32-buildroot-linux-gnu
+            toolchain_url: https://toolchains.bootlin.com/downloads/releases/toolchains/riscv32-ilp32d/tarballs/riscv32-ilp32d--glibc--stable-2025.08-1.tar.xz
+            toolchain_sha256: d42680e926542595c4c87629d33f5f90aac1e9a964c8955089e0514caa01b78f
+            toolchain_dir: riscv32-ilp32d--glibc--stable-2025.08-1
+            sysroot: /opt/cross/riscv32-ilp32d--glibc--stable-2025.08-1/riscv32-buildroot-linux-gnu/sysroot
+            qemu: qemu-riscv32-static
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install cross toolchain and QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static ${{ matrix.packages }}
+          if [ -n "${{ matrix.toolchain_url }}" ]; then
+            curl -fsSL "${{ matrix.toolchain_url }}" -o /tmp/toolchain.tar.xz
+            echo "${{ matrix.toolchain_sha256 }}  /tmp/toolchain.tar.xz" \
+              | sha256sum -c -
+            sudo mkdir -p /opt/cross
+            sudo tar -xJf /tmp/toolchain.tar.xz -C /opt/cross
+            echo "/opt/cross/${{ matrix.toolchain_dir }}/bin" >> "$GITHUB_PATH"
+          fi
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.processor }} \
+            -DCMAKE_C_COMPILER=${{ matrix.triple }}-gcc \
+            -DCMAKE_CXX_COMPILER=${{ matrix.triple }}-g++ \
+            -DCMAKE_FIND_ROOT_PATH=${{ matrix.sysroot }} \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -DCMAKE_CROSSCOMPILING_EMULATOR=/usr/bin/${{ matrix.qemu }}
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      # CMAKE_CROSSCOMPILING_EMULATOR makes ctest launch each test under QEMU;
+      # QEMU_LD_PREFIX points its loader at the target sysroot.
+      - name: Test
+        working-directory: ./build
+        env:
+          QEMU_LD_PREFIX: ${{ matrix.sysroot }}
+        run: ctest -LE flaky
+
+  #############################################################################
   # Packaging configurations - what the package managers actually ship
   #############################################################################
   build-system-concurrentqueue:
