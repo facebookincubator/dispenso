@@ -107,16 +107,19 @@ class SmallVector {
   /** Move constructor. Moves elements and leaves @p other empty. **/
   SmallVector(SmallVector&& other) noexcept : size_(0) {
     if (other.isInline()) {
-      for (size_type i = 0; i < other.rawSize(); ++i) {
+      // Inline means the heap bit is clear, so size_ is already the count, and
+      // hoisting it keeps the stores below from forcing a reload each pass.
+      const size_type n = other.size_;
+      for (size_type i = 0; i < n; ++i) {
         new (inlineData() + i) T(std::move(other.inlineData()[i]));
         other.inlineData()[i].~T();
       }
     } else {
       storage_.heap_.ptr = other.storage_.heap_.ptr;
       storage_.heap_.capacity = other.storage_.heap_.capacity;
-      size_ |= kHeapBit;
     }
-    size_ = (size_ & kHeapBit) | other.rawSize();
+    // Count and heap bit both transfer verbatim.
+    size_ = other.size_;
     other.size_ = 0;
   }
 
@@ -141,19 +144,25 @@ class SmallVector {
   SmallVector& operator=(SmallVector&& other) noexcept {
     if (this != &other) {
       destroyAll();
-      size_ = 0;
 
       if (other.isInline()) {
-        for (size_type i = 0; i < other.rawSize(); ++i) {
+        // Inline means the heap bit is clear, so size_ is already the count,
+        // and hoisting it keeps the stores below from forcing a reload each
+        // pass.
+        const size_type n = other.size_;
+        for (size_type i = 0; i < n; ++i) {
           new (inlineData() + i) T(std::move(other.inlineData()[i]));
           other.inlineData()[i].~T();
         }
       } else {
         storage_.heap_.ptr = other.storage_.heap_.ptr;
         storage_.heap_.capacity = other.storage_.heap_.capacity;
-        size_ |= kHeapBit;
       }
-      size_ = (size_ & kHeapBit) | other.rawSize();
+      // Count and heap bit both transfer verbatim. Nothing between destroyAll()
+      // and here reads size_: the inline branch goes through inlineData()
+      // rather than data(), and the heap branch overwrites the freed pointer
+      // before anything can observe it.
+      size_ = other.size_;
       other.size_ = 0;
     }
     return *this;
