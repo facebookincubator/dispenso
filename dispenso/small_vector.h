@@ -27,6 +27,8 @@
 #include <new>
 #include <utility>
 
+#include <dispenso/platform.h>
+
 namespace dispenso {
 
 /**
@@ -425,7 +427,18 @@ class SmallVector {
       ptr[i].~T();
     }
     if (!isInline()) {
+      // GCC on 32-bit ARM reports this as freeing the inline buffer. It is a
+      // false positive: the heap bit lives inside size_ and the buffer is a
+      // union member aliasing heap_.ptr, and across the inlined move paths GCC
+      // stops being able to prove the guard above excludes inline storage. The
+      // same code is clean under GCC on x86_64, x86-32, aarch64, riscv32 and
+      // riscv64, which is not what a genuine logic error would look like.
+      // Simplifying the move paths to a single size_ assignment did not change
+      // its mind either.
+      DISPENSO_DISABLE_WARNING_PUSH
+      DISPENSO_DISABLE_WARNING_FREE_NONHEAP_OBJECT
       ::operator delete(storage_.heap_.ptr);
+      DISPENSO_DISABLE_WARNING_POP
     }
   }
 
