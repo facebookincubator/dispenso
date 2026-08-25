@@ -120,12 +120,59 @@ double ticksPerSecond() {
 }
 #endif
 
-double getTime() {
-  static double secondsPerTick = 1.0 / ticksPerSecond();
-  static double startTime = static_cast<double>(detail::timestamp()) * secondsPerTick;
+namespace {
 
-  double t = static_cast<double>(detail::timestamp()) * secondsPerTick;
-  return t - startTime;
+// A rate outside this range did not come from real hardware: the calibration
+// window was disturbed, or the counter is synthesized. Falling back to the
+// kernel's clock is far better than reporting confidently wrong durations.
+//
+// The lower bound is deliberately permissive. It is tempting to anchor it near
+// x86 TSC rates, which are GHz-scale, but the aarch64 counter is the ARM
+// generic timer, whose frequency is implementation-defined: this is 1 GHz on
+// the Apple silicon tested here and only tens of MHz on common mobile SoCs.
+// Too high a floor would reject those and silently downgrade them to the
+// chrono path. The job here is catching nonsense -- zero, NaN, a rate off by
+// orders of magnitude -- not validating the number closely.
+constexpr double kMinPlausibleTicksPerSecond = 1e6; // 1 MHz
+constexpr double kMaxPlausibleTicksPerSecond = 1e11; // 100 GHz
+
+struct TimestampClock {
+  bool usable = false;
+  double secondsPerTick = 0.0;
+  double startTime = 0.0;
+};
+
+TimestampClock calibrate() {
+  TimestampClock clock;
+  if (!detail::hasInvariantTimestamp()) {
+    return clock;
+  }
+  const double tps = ticksPerSecond();
+  // Written as a negated range check so that a NaN rate is also rejected.
+  if (!(tps >= kMinPlausibleTicksPerSecond && tps <= kMaxPlausibleTicksPerSecond)) {
+    return clock;
+  }
+  clock.usable = true;
+  clock.secondsPerTick = 1.0 / tps;
+  clock.startTime = static_cast<double>(detail::timestamp()) * clock.secondsPerTick;
+  return clock;
+}
+
+double chronoTime() {
+  static const auto startTime = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startTime)
+      .count();
+}
+
+} // namespace
+
+double getTime() {
+  static const TimestampClock clock = calibrate();
+  if (!clock.usable) {
+    return chronoTime();
+  }
+  const double t = static_cast<double>(detail::timestamp()) * clock.secondsPerTick;
+  return t - clock.startTime;
 }
 #else
 double getTime() {
