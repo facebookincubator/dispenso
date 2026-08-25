@@ -6,6 +6,7 @@
 [![Homebrew](https://img.shields.io/homebrew/v/dispenso)](https://formulae.brew.sh/formula/dispenso)
 [![MacPorts](https://img.shields.io/badge/macports-dispenso-blue)](https://ports.macports.org/port/dispenso/)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/dispenso/badges/version.svg)](https://anaconda.org/conda-forge/dispenso)
+[![Try on Compiler Explorer](https://img.shields.io/badge/Compiler%20Explorer-try%20it%20live-blue)](https://godbolt.org/z/W116zME61)
 
 # Dispenso
 
@@ -101,6 +102,11 @@ dispenso::parallel_for(0, N, [&](size_t i) {
     process(data[i]);
 });
 ```
+
+**Try it live** - no install, no build:
+[run dispenso on Compiler Explorer](https://godbolt.org/z/W116zME61). Compiler
+Explorer is a shared sandbox with very few cores, so treat the timings there as
+illustrative rather than measured.
 
 **Install via your favorite package manager:**
 
