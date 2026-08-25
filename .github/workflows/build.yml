@@ -96,6 +96,29 @@ jobs:
             cxx: clang++
     steps:
       - uses: actions/checkout@v5
+      # TEMPORARY DIAGNOSTIC - remove before landing.
+      # Shows exactly what the runner's kernel exposes, so the cache-topology
+      # parser can be checked against reality rather than against assumptions
+      # about sysfs layout.
+      - name: TEMP diagnostic - dump cache sysfs
+        run: |
+          echo "nproc: $(nproc)"
+          for c in /sys/devices/system/cpu/cpu[0-9]*; do
+            [ -d "$c" ] || continue
+            if [ ! -d "$c/cache" ]; then
+              echo "$(basename "$c"): NO cache directory"
+              continue
+            fi
+            echo "$(basename "$c"): $(ls "$c/cache" | tr '\n' ' ')"
+            for i in "$c"/cache/index*; do
+              [ -d "$i" ] || continue
+              echo "    $(basename "$i")" \
+                "level=$(cat "$i/level" 2>/dev/null || echo ABSENT)" \
+                "type=$(cat "$i/type" 2>/dev/null || echo ABSENT)" \
+                "id=$(cat "$i/id" 2>/dev/null || echo ABSENT)" \
+                "shared_cpu_list=$(cat "$i/shared_cpu_list" 2>/dev/null || echo ABSENT)"
+            done
+          done
       # macOS covers arm64, but only through Apple's toolchain and its libc.
       # The aarch64 timestamp path reads cntvct_el0 directly and CpuSet's
       # topology probing is Linux-specific, so neither is exercised until
