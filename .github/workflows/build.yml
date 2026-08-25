@@ -83,6 +83,37 @@ jobs:
         working-directory: ./build
         run: ctest -LE flaky
 
+  build-linux-aarch64:
+    name: Linux aarch64 ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: GCC
+          - compiler: Clang
+            cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v5
+      # macOS covers arm64, but only through Apple's toolchain and its libc.
+      # The aarch64 timestamp path reads cntvct_el0 directly and CpuSet's
+      # topology probing is Linux-specific, so neither is exercised until
+      # aarch64 is built against glibc.
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
   build-macos-gcc:
     name: macOS GCC C++14 (ARM64)
     runs-on: macos-latest
@@ -149,6 +180,49 @@ jobs:
           mkdir build && cd build
           cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
             -DDISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+
+  #############################################################################
+  # Bleeding-edge toolchains - advisory, never blocking
+  #############################################################################
+  build-clang-trunk:
+    name: Linux Clang trunk (advisory)
+    runs-on: ubuntu-latest
+    # Trunk breaks for reasons that are usually LLVM's rather than ours, so a
+    # failure here is a heads-up and must not gate a pull request. Read it
+    # before a new Clang release, not during review.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Clang trunk
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --dearmor -o /etc/apt/keyrings/llvm.gpg
+          CODENAME=$(lsb_release -cs)
+          # The unsuffixed llvm-toolchain-<codename> repo tracks the
+          # development branch; the suffixed ones pin to a release.
+          echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-trunk.list
+          sudo apt-get update
+          # Resolve the version rather than hardcoding it, so this keeps
+          # working as trunk's major version advances.
+          VER=$(apt-cache search --names-only '^clang-[0-9]+$' \
+            | grep -oE '[0-9]+' | sort -n | tail -1)
+          echo "Installing clang-$VER"
+          sudo apt-get install -y "clang-$VER"
+          echo "CC=clang-$VER" >> $GITHUB_ENV
+          echo "CXX=clang++-$VER" >> $GITHUB_ENV
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=20
       - name: Build
         working-directory: ./build
         run: cmake --build . --parallel 4
