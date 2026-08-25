@@ -447,10 +447,16 @@ int32_t parseCpuDirName(const char* name) {
   return cpu;
 }
 
-// Enumerate online CPU indices from /sys/devices/system/cpu, sorted ascending.
-// Iterating the directory rather than a range bounded on hardware_concurrency()
-// correctly handles sparse online CPU IDs (gaps or numbering beyond the count).
-std::vector<int32_t> enumerateOnlineCpus(DIR* cpuDir) {
+// Enumerate the cpuN directory indices under /sys/devices/system/cpu, sorted
+// ascending. Iterating the directory rather than a range bounded on
+// hardware_concurrency() correctly handles sparse CPU IDs (gaps, or numbering
+// beyond the count).
+//
+// These are not necessarily online: a cpuN directory persists while the CPU is
+// offline. Callers get that filtering for free, because the kernel removes
+// cpuN/cache when a CPU goes down, so an offline CPU contributes no cache
+// group.
+std::vector<int32_t> enumerateCpuDirs(DIR* cpuDir) {
   std::vector<int32_t> cpuIndices;
   struct dirent* entry;
   while ((entry = ::readdir(cpuDir)) != nullptr) {
@@ -464,15 +470,81 @@ std::vector<int32_t> enumerateOnlineCpus(DIR* cpuDir) {
   return cpuIndices;
 }
 
+// A directory entry name can be NAME_MAX bytes, and the compiler assumes
+// exactly that when proving a format cannot truncate, so these are sized for
+// the worst case rather than for the "indexN" that actually turns up:
+// "cpu<int>/cache/<name>/shared_cpu_list" plus a terminator.
+constexpr size_t kCacheIndexNameMax = 256;
+constexpr size_t kCachePathMax = 320;
+
 // Read the cache ID for a CPU at the given cache index, or -1 if unavailable.
+// Optional in sysfs: x86 firmware supplies it, ARM frequently does not.
 int32_t readCacheId(int cpuDirFd, int32_t cpu, const char* indexStr) {
-  char idPath[64];
+  char idPath[kCachePathMax];
   snprintf(idPath, sizeof(idPath), "cpu%d/cache/%s/id", cpu, indexStr);
   auto idBuf = readSmallFile(cpuDirFd, idPath);
   if (idBuf.empty()) {
     return -1;
   }
   return detail::parseIntClamped(idBuf.data());
+}
+
+// Whether cpu's `indexStr` cache entry is a unified or data cache at `level`.
+//
+// The directory number is not the cache level. index2 is L2 on a conventional
+// x86 layout only because the kernel happened to enumerate L1d, L1i, L2, L3 in
+// that order; nothing guarantees it, and it does not hold generally. The level
+// has to come from the `level` file.
+//
+// Instruction caches are rejected because only unified and data caches describe
+// the sharing that scheduling cares about.
+bool cacheIndexMatchesLevel(int cpuDirFd, int32_t cpu, const char* indexStr, int level) {
+  char path[kCachePathMax];
+  snprintf(path, sizeof(path), "cpu%d/cache/%s/level", cpu, indexStr);
+  auto levelBuf = readSmallFile(cpuDirFd, path);
+  if (levelBuf.empty() || detail::parseIntClamped(levelBuf.data()) != level) {
+    return false;
+  }
+  snprintf(path, sizeof(path), "cpu%d/cache/%s/type", cpu, indexStr);
+  auto typeBuf = readSmallFile(cpuDirFd, path);
+  // An absent `type` is treated as usable; only an explicit "Instruction" is
+  // rejected.
+  return typeBuf.empty() || typeBuf[0] != 'I';
+}
+
+// Find cpu's cache directory at `level`, writing its name into `outIndex`.
+bool findCacheIndexForLevel(
+    int cpuDirFd,
+    int32_t cpu,
+    int level,
+    char (&outIndex)[kCacheIndexNameMax]) {
+  char dirPath[64];
+  snprintf(dirPath, sizeof(dirPath), "/sys/devices/system/cpu/cpu%d/cache", cpu);
+  DIR* dir = ::opendir(dirPath);
+  if (!dir) {
+    return false;
+  }
+  bool found = false;
+  while (struct dirent* entry = ::readdir(dir)) {
+    if (strncmp(entry->d_name, "index", 5) != 0) {
+      continue;
+    }
+    // Copied with a checked length rather than snprintf: d_name's capacity is
+    // platform-dependent (1024 on some systems), so a formatted copy cannot be
+    // proven non-truncating without assuming a size. A name that does not fit
+    // is not one of the "indexN" entries being looked for anyway.
+    const size_t nameLen = strlen(entry->d_name);
+    if (nameLen >= sizeof(outIndex)) {
+      continue;
+    }
+    if (cacheIndexMatchesLevel(cpuDirFd, cpu, entry->d_name, level)) {
+      memcpy(outIndex, entry->d_name, nameLen + 1);
+      found = true;
+      break;
+    }
+  }
+  ::closedir(dir);
+  return found;
 }
 
 // Read the shared_cpu_list for a CPU/cache into `outCpus` (CPU IDs in [0, maxCpu]).
@@ -483,7 +555,7 @@ bool readCacheCpuList(
     const char* indexStr,
     int32_t maxCpu,
     std::vector<int32_t>& outCpus) {
-  char listPath[64];
+  char listPath[kCachePathMax];
   snprintf(listPath, sizeof(listPath), "cpu%d/cache/%s/shared_cpu_list", cpu, indexStr);
   auto listBuf = readSmallFile(cpuDirFd, listPath);
   if (listBuf.empty()) {
@@ -498,6 +570,26 @@ bool readCacheCpuList(
   return true;
 }
 
+// Describe the cache containing `cpu` at `level`, or return false if the kernel
+// reports none for it.
+bool buildCacheGroupForCpu(
+    int cpuDirFd,
+    int32_t cpu,
+    int level,
+    int32_t maxCpuSeen,
+    CacheGroup& out) {
+  char indexStr[kCacheIndexNameMax];
+  if (!findCacheIndexForLevel(cpuDirFd, cpu, level, indexStr)) {
+    return false;
+  }
+  if (!readCacheCpuList(cpuDirFd, cpu, indexStr, maxCpuSeen, out.cpus) || out.cpus.empty()) {
+    return false;
+  }
+  const int32_t cacheId = readCacheId(cpuDirFd, cpu, indexStr);
+  out.cacheId = (cacheId >= 0) ? cacheId : out.cpus.front();
+  return true;
+}
+
 #endif // __linux__
 
 // Parses L2 or L3 cache sharing groups (Linux sysfs, FreeBSD kern.sched.topology_spec).
@@ -505,36 +597,36 @@ bool readCacheCpuList(
 std::vector<CacheGroup> parseCacheGroups(int cacheIndex) {
   std::vector<CacheGroup> groups;
 #if defined(__linux__)
-  char indexStr[8];
-  snprintf(indexStr, sizeof(indexStr), "index%d", cacheIndex);
-
   DIR* cpuDir = ::opendir("/sys/devices/system/cpu");
   if (!cpuDir) {
     return groups;
   }
   int cpuDirFd = ::dirfd(cpuDir);
 
-  const std::vector<int32_t> cpuIndices = enumerateOnlineCpus(cpuDir);
+  const std::vector<int32_t> cpuIndices = enumerateCpuDirs(cpuDir);
   const int32_t maxCpuSeen = cpuIndices.empty() ? 0 : cpuIndices.back(); // sorted ascending
 
-  // Map from cache ID to CacheGroup, to deduplicate across CPUs sharing the same cache.
-  std::map<int32_t, CacheGroup> byId;
+  // Keyed by the lowest CPU sharing the cache rather than by the kernel's cache
+  // ID, because that ID is optional and is absent on much ARM hardware. Two
+  // distinct caches at one level cannot share a lowest CPU, so the key is
+  // unique, and every CPU in a group reads the same shared_cpu_list, so they
+  // all derive the same one.
+  std::map<int32_t, CacheGroup> byFirstCpu;
   for (int32_t cpu : cpuIndices) {
-    const int32_t cacheId = readCacheId(cpuDirFd, cpu, indexStr);
-    if (cacheId < 0 || byId.count(cacheId)) {
+    CacheGroup group;
+    if (!buildCacheGroupForCpu(cpuDirFd, cpu, cacheIndex, maxCpuSeen, group)) {
       continue;
     }
-    CacheGroup group;
-    group.cacheId = cacheId;
-    if (readCacheCpuList(cpuDirFd, cpu, indexStr, maxCpuSeen, group.cpus) && !group.cpus.empty()) {
-      byId.emplace(cacheId, std::move(group));
-    }
+    // emplace keeps the first CPU's view and ignores later members of the same
+    // group, which is the deduplication this needs.
+    const int32_t key = group.cpus.front();
+    byFirstCpu.emplace(key, std::move(group));
   }
   ::closedir(cpuDir);
 
   // Extract groups sorted by first CPU ID
-  groups.reserve(byId.size());
-  for (auto& kv : byId) {
+  groups.reserve(byFirstCpu.size());
+  for (auto& kv : byFirstCpu) {
     groups.push_back(std::move(kv.second));
   }
   std::sort(groups.begin(), groups.end(), [](const CacheGroup& a, const CacheGroup& b) {
