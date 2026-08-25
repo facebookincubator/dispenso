@@ -17,6 +17,20 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+// Architectures the kernel added after 5.1 are 64-bit-time_t only: they do not
+// define __NR_futex at all, just __NR_futex_time64. riscv32 is one. Where both
+// exist they are not interchangeable -- SYS_futex takes a 32-bit timespec on
+// those targets while SYS_futex_time64 takes a 64-bit one -- so prefer
+// SYS_futex and fall back only where it is absent, which is precisely where
+// timespec is already 64-bit and the layouts agree.
+#if defined(SYS_futex)
+#define DISPENSO_SYS_FUTEX SYS_futex
+#elif defined(SYS_futex_time64)
+#define DISPENSO_SYS_FUTEX SYS_futex_time64
+#else
+#error "Linux build with neither SYS_futex nor SYS_futex_time64"
+#endif
+
 namespace dispenso {
 namespace detail {
 static int futex(
@@ -26,7 +40,7 @@ static int futex(
     const struct timespec* timeout,
     int* /*uaddr2*/,
     int val3) {
-  return static_cast<int>(syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr, val3));
+  return static_cast<int>(syscall(DISPENSO_SYS_FUTEX, uaddr, futex_op, val, timeout, uaddr, val3));
 }
 } // namespace detail
 } // namespace dispenso
