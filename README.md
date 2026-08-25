@@ -187,7 +187,7 @@ Binary builds of Dispenso are available through several package managers:
 
 If your platform is not on the list, see [the next section](#building) for instructions to build from source.
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg)](https://repology.org/project/dispenso/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg?exclude_unsupported=1&columns=2)](https://repology.org/project/dispenso/versions)
 
 <div id='building'/>
 
