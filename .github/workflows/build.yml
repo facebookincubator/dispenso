@@ -308,6 +308,94 @@ jobs:
         working-directory: ./build
         run: ctest -LE flaky
 
+  # Neither runner image ships anything newer than GCC 13, so these two are the
+  # only coverage of current compilers -- and the only jobs that build the
+  # examples at all, which is what keeps examples/ from rotting unnoticed.
+  # Blocking rather than advisory for exactly that reason: an example that stops
+  # compiling should fail CI. Both versions are pinned, so neither can break
+  # spontaneously under us.
+  build-gcc-16:
+    name: Linux GCC 16 + libstdc++
+    runs-on: ubuntu-latest
+    # Docker official image, so this is the compiler a user gets rather than
+    # whatever the runner happens to ship.
+    container: gcc:16.2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install CMake
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends cmake
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DDISPENSO_BUILD_EXAMPLES=ON \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+      - name: Compile as an external consumer
+        run: |
+          cmake --install build --prefix /tmp/prefix
+          g++ -std=c++20 -O3 -pthread -Wall -Wextra \
+            -I/tmp/prefix/include \
+            examples/chunking_comparison_example.cpp \
+            -L/tmp/prefix/lib -ldispenso -o /tmp/consumer
+          LD_LIBRARY_PATH=/tmp/prefix/lib /tmp/consumer
+
+  build-clang-22-libcxx:
+    name: Linux Clang 22 + libc++
+    runs-on: ubuntu-latest
+    # libc++ rather than libstdc++ deliberately. Every other Linux job uses
+    # libstdc++, and clang-trunk already covers clang against it, so pairing the
+    # newest Clang with libc++ is the only configuration here that exercises a
+    # second standard library -- different atomics, different containers.
+    #
+    # CMAKE_DISABLE_FIND_PACKAGE_GTest forces the FetchContent path in
+    # tests/CMakeLists.txt. Its find_package(GTest) would otherwise pick up a
+    # system GTest built against libstdc++, and linking that into a libc++ build
+    # fails on ABI mismatch -- a failure about the runner, not about dispenso.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Clang 22 and libc++
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --dearmor -o /etc/apt/keyrings/llvm.gpg
+          CODENAME=$(lsb_release -cs)
+          echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME}-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-22.list
+          sudo apt-get update
+          sudo apt-get install -y clang-22 libc++-22-dev libc++abi-22-dev
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DDISPENSO_BUILD_EXAMPLES=ON \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_FLAGS="-stdlib=libc++" \
+            -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++" \
+            -DCMAKE_DISABLE_FIND_PACKAGE_GTest=ON
+        env:
+          CC: clang-22
+          CXX: clang++-22
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        working-directory: ./build
+        run: ctest -LE flaky
+      - name: Compile as an external consumer
+        run: |
+          cmake --install build --prefix /tmp/prefix
+          clang++-22 -stdlib=libc++ -std=c++20 -O3 -pthread -Wall -Wextra \
+            -I/tmp/prefix/include \
+            examples/chunking_comparison_example.cpp \
+            -L/tmp/prefix/lib -ldispenso -o /tmp/consumer
+          LD_LIBRARY_PATH=/tmp/prefix/lib /tmp/consumer
+
   #############################################################################
   # Sanitizer builds - critical for concurrency library
   #############################################################################
