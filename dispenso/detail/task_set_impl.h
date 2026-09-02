@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <exception>
+
 #include <dispenso/detail/per_thread_info.h>
 #include <dispenso/thread_pool.h>
 
@@ -130,7 +132,7 @@ class TaskSetBase {
         try {
           f();
         } catch (...) {
-          trySetCurrentException();
+          trySetCurrentException(std::current_exception());
         }
 #else
         f();
@@ -159,7 +161,7 @@ class TaskSetBase {
         try {
           f();
         } catch (...) {
-          trySetCurrentException();
+          trySetCurrentException(std::current_exception());
         }
 #else
         f();
@@ -181,7 +183,7 @@ class TaskSetBase {
     try {
       gen(i)();
     } catch (...) {
-      trySetCurrentException();
+      trySetCurrentException(std::current_exception());
     }
 #else
     gen(i)();
@@ -333,7 +335,13 @@ class TaskSetBase {
     }
   }
 
-  DISPENSO_DLL_ACCESS void trySetCurrentException();
+  // Takes the exception_ptr rather than calling std::current_exception()
+  // itself, because this function lives in the dispenso library while every
+  // caller's catch block is header code compiled into the *caller's* module.
+  // Under clang on Windows, std::current_exception() called across that
+  // boundary returns null for an exception thrown in the other module, which
+  // silently loses the exception. Capturing at the catch site keeps it.
+  DISPENSO_DLL_ACCESS void trySetCurrentException(std::exception_ptr e);
   bool testAndResetException();
 
   void registerChild(TaskSetBase* child) DISPENSO_NO_THREAD_SAFETY_ANALYSIS {

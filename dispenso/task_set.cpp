@@ -51,14 +51,26 @@ TaskSetBase* parentTaskSet() {
   return g_taskStackSize ? g_taskStack[g_taskStackSize - 1] : nullptr;
 }
 
-void TaskSetBase::trySetCurrentException() {
+void TaskSetBase::trySetCurrentException(std::exception_ptr e) {
 #if defined(__cpp_exceptions)
+  // `e` is captured by the caller, at its own catch site, rather than by
+  // calling std::current_exception() here. This function is compiled into the
+  // dispenso library; every caller's catch block is header code compiled into
+  // the caller's module. Under clang on Windows, std::current_exception()
+  // called from a DLL for an exception thrown in the executable returns null,
+  // so capturing here silently dropped the exception and left a null
+  // exception_ptr behind. Nothing reported it; the failure surfaced much later,
+  // as a std::bad_exception out of wait().
   auto status = kUnset;
   if (guardException_.compare_exchange_strong(status, kSetting, std::memory_order_acq_rel)) {
-    exception_ = std::current_exception();
+    exception_ = std::move(e);
     guardException_.store(kSet, std::memory_order_release);
     canceled_.store(true, std::memory_order_release);
   }
+#else
+  // Nothing can throw, so nothing is ever captured. The parameter stays in the
+  // signature so the header's call sites need no second spelling.
+  (void)e;
 #endif // __cpp_exceptions
 }
 
@@ -67,7 +79,14 @@ inline bool TaskSetBase::testAndResetException() {
   if (guardException_.load(std::memory_order_acquire) == kSet) {
     auto exception = std::move(exception_);
     guardException_.store(kUnset, std::memory_order_release);
-    std::rethrow_exception(exception);
+    // A null pointer here means a task threw but the exception could not be
+    // captured. Rethrowing null is undefined behaviour -- in practice the MSVC
+    // runtime turns it into a std::bad_exception, which is what an earlier
+    // version of this code produced and which tells the caller nothing. The
+    // set is still cancelled, so report that instead of inventing an exception.
+    if (exception) {
+      std::rethrow_exception(exception);
+    }
   }
 #endif // __cpp_exceptions
   return canceled_.load(std::memory_order_acquire);
