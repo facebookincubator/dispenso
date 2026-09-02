@@ -6,6 +6,7 @@
  */
 
 #include <dispenso/timing.h>
+#include <dispenso/tsan_annotations.h>
 
 #include <chrono>
 #include <cmath>
