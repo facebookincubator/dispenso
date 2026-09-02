@@ -11,6 +11,8 @@
 #include <optional>
 #endif // C++17
 
+#include <exception>
+
 #include <dispenso/detail/completion_event_impl.h>
 #include <dispenso/detail/op_result.h>
 #include <dispenso/detail/per_thread_info.h>
@@ -119,7 +121,7 @@ class LimitGatedScheduler {
           });
 #if defined(__cpp_exceptions)
         } catch (...) {
-          tasks_.trySetCurrentException();
+          tasks_.trySetCurrentException(std::current_exception());
         }
 #endif
       });
