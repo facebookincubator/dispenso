@@ -549,11 +549,21 @@ TEST(CpuSet, TotalNumaNodesIsPositive) {
 }
 
 TEST(CpuSet, NodeSetsAreNonEmpty) {
+  // A NUMA node with no CPUs is legal, so this deliberately does not assert
+  // per-node. Memory-only nodes (CXL, persistent memory) and nodes whose CPUs
+  // are all offline both report an empty cpulist; some of Meta's fbcode CI
+  // hosts have exactly that, and asserting per-node fails there with
+  // "NUMA node 1 has no CPUs" while the topology is being reported correctly.
+  //
+  // The invariant worth holding is that node enumeration finds CPUs somewhere.
+  // That every node's set is a subset of all(), and that the union covers it,
+  // is checked by AllSetCoversAllNodeSets.
   int32_t numNodes = CpuSet::totalNumaNodes();
+  size_t cpusAcrossNodes = 0;
   for (int32_t i = 0; i < numNodes; ++i) {
-    const auto& nodeSet = CpuSet::node(i);
-    EXPECT_GT(nodeSet.count(), 0) << "NUMA node " << i << " has no CPUs";
+    cpusAcrossNodes += CpuSet::node(i).count();
   }
+  EXPECT_GT(cpusAcrossNodes, 0u) << "no NUMA node reported any CPUs";
 }
 
 TEST(CpuSet, AllSetCoversAllNodeSets) {
