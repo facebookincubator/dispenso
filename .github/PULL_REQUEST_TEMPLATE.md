@@ -4,42 +4,54 @@
 
 ## Description
 
-<!--- Describe your changes in detail -->
-
-## Related Issue
-
-<!--- Please link to the issue here: -->
-
-## Motivation and Context
-
-<!--- Why is this change required? What problem does it solve? -->
+<!--- What does this change do, and why is it needed? What problem does it -->
+<!--- solve? Link any related issue here. -->
 
 ## Test Plan
 
-<!--- Please describe in detail how you tested your changes. -->
-<!--- Include details of your testing environment, and the tests you ran to -->
-<!--- see how your change affects other areas of the code, etc. -->
+<!--- How did you test this? Include your testing environment, and the tests -->
+<!--- you ran to see how the change affects other areas of the code. -->
 
 ## Types of changes
 
-<!--- What types of changes does your code introduce? Put an `x` in all the boxes that apply: -->
+<!--- Tick all that apply: -->
 
 - [ ] Docs change
 - [ ] Refactoring
 - [ ] Dependency upgrade
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
+- [ ] Bug fix
+- [ ] New feature
+
+## Stable surface
+
+<!--- The stable surface is public API and ABI, default behaviour, and -->
+<!--- documented concurrency guarantees; undocumented scheduling and internal -->
+<!--- threading are not. An addition that could reasonably break existing -->
+<!--- documented use counts as an alteration, not an addition. See -->
+<!--- GOVERNANCE.md for what each answer implies. If unsure, say so in the -->
+<!--- description — it is a question for review, not a trap. -->
+
+<!--- Tick all that apply: -->
+
+- [ ] Adds to the stable surface, without changing compatibility or behaviour for existing documented use
+- [ ] Alters or removes something present in the most recent tagged release
+- [ ] Alters or removes something added since that release, and not yet shipped
+
+<!--- If either alteration box applies, which part: -->
+
+- [ ] Public API or ABI
+- [ ] Default behaviour
+- [ ] A documented concurrency guarantee — ordering, forward progress, cancellation, lifetime or safety
 
 ## Checklist
 
-<!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
-<!--- If you're unsure about any of these, don't hesitate to ask. We're here to help! -->
+<!--- Tick all that apply. If you're unsure about any of these, don't -->
+<!--- hesitate to ask. We're here to help! -->
 
 - [ ] My code follows the code style of this project.
 - [ ] I have run clang-format.
-- [ ] My change requires a change to the documentation.
-- [ ] I have updated the documentation accordingly.
+- [ ] I have updated the documentation, if this change needed it.
 - [ ] I have read the **CONTRIBUTING** document.
 - [ ] I have added tests to cover my changes.
 - [ ] All new and existing tests passed, including in ASAN and TSAN modes (if available on your platform).
+- [ ] If this adds to or alters the stable surface, I have added a release-notes line.
