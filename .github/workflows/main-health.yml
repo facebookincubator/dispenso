@@ -1,0 +1,51 @@
+name: Main health
+
+# Opens (or updates) a "main-broken" issue when the build fails on main, and
+# closes it when main goes green again. Catches bypassed merges, semantic
+# conflicts between PRs, and infrastructure breakage alike.
+
+on:
+  workflow_run:
+    workflows: ["Build and test"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  issues: write
+
+jobs:
+  report:
+    # Only pushes to main; cancelled/skipped runs say nothing about main's health.
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      contains(fromJSON('["failure", "success"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, update or close the main-broken issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          ACTOR: ${{ github.event.workflow_run.actor.login }}
+          MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+        run: |
+          set -euo pipefail
+          subject=${MESSAGE%%$'\n'*}
+          issue=$(gh issue list --label main-broken --state open --json number -q '.[0].number // empty')
+
+          if [ "$CONCLUSION" = failure ]; then
+            body="Build and test failed on \`main\` at ${SHA:0:7} (${subject}), pushed by @${ACTOR}.
+
+          Run: ${RUN_URL}"
+            if [ -n "$issue" ]; then
+              gh issue comment "$issue" --body "$body"
+            else
+              gh label create main-broken --color B60205 \
+                --description "Build and test is failing on main" --force
+              gh issue create --title "main is broken" --label main-broken --body "$body"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Build and test is green again at ${SHA:0:7} (${subject}). Run: ${RUN_URL}"
+          fi
