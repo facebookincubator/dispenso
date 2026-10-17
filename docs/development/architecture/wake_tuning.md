@@ -35,38 +35,35 @@ All overridable at compile time via `-D` flags:
 
 ## Tuning process
 
-### Step 1 — measure platform wake costs
+### Step 1 — sweep the wake-all threshold (macOS only)
 
-Build and run `wake_cost_bench`:
+Only the macOS `EpochWaiter` reads the threshold: Linux and FreeBSD wake
+exactly K waiters in one syscall, and Windows uses `WakeByAddressAll`
+whenever more than one thread waits. On other platforms skip to step 2.
+
+On macOS, rebuild and benchmark at each candidate threshold:
 
 ```bash
-cmake -S . -B build -DDISPENSO_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target wake_cost_bench
-./build/bin/wake_cost_bench
+python3 scripts/run_tuning_experiment.py -c wake_all_threshold
 ```
 
-Output looks like:
+This builds dispenso once per `DISPENSO_TUNE_WAKE_ALL_THRESHOLD` value
+(2, 3, 4, 6, 8, 12, 16) plus a baseline at the current default, runs the
+representative cases in the script's `BENCHMARK_SUITE`, prints each
+configuration's change against the baseline, and writes
+`tuning_results_<os>.json`. Take the best value, then confirm it with the
+full sweep in step 4.
 
-```
-Spurious-wake round-trip: 11200 ns
+Measuring end to end matters here, not just timing the syscalls: a
+wake-all also wakes the group's other (G - K) parked threads, and their
+spurious wake-and-repark costs CPU that a syscall microbenchmark does
+not see.
 
-Producer-side wake costs (avg over 200 trials):
-    N |     wake-1 |   wake-all | K threshold (wake-all wins for K >=)
-------+------------+------------+------------------------------------
-    4 |     3300 ns |    10300 ns | 4
-    8 |     3700 ns |    20700 ns | 6
-   16 |     3300 ns |    38400 ns | 12
-   32 |     3400 ns |    75300 ns | 22
-   ...
-```
-
-Read off the K threshold for your intended group size. Set
-`DISPENSO_TUNE_WAKE_ALL_THRESHOLD` to that value.
-
-For a default group size of 16 on Linux, the threshold is irrelevant
-(Linux uses exact-K). On macOS the row N=16 might show K=4-6; on Windows
-the threshold tends to land at K=2-3 because each `WakeByAddressSingle`
-syscall is more expensive.
+Earlier tuning used a standalone syscall microbenchmark,
+`tools/wake_cost_bench.cpp` (removed after 2e41885). On Windows (Xeon
+Gold 6450C, August 2026) it measured `WakeByAddressSingle` and
+`WakeByAddressAll` within 5% of each other at every N, consistent with
+Windows using wake-all whenever more than one thread is waiting.
 
 ### Step 2 — choose group size
 
@@ -113,8 +110,7 @@ G=16, numGroups=6 ≤ G, so promote-seed never fires — keeping it on is
 free.
 
 For G=8 on the same pool, numGroups=12 > G, so promote-seed engages on
-every full-pool wake. Worth keeping on unless wake_cost_bench shows the
-extra in-thread syscall is unusually expensive on this platform.
+every full-pool wake.
 
 ### Step 4 — validate with a benchmark sweep
 
@@ -142,7 +138,7 @@ table as you tune.
 | platform | groupSize | sharing | wakeAllThreshold | promoteSeed | source |
 |---|---:|---:|---:|---:|---|
 | Linux x86_64 | 8 | 8 | INT_MAX (exact-K syscall) | 1 | group-size sweep, 166-thread machine: G=8 + promote-seed beat G=16 net |
-| macOS | 8 | 8 | INT_MAX | 1 | wake_cost_bench on M-series: K × wake-1 ≈ wake-all (Mach IPC wake-one is cheap), so wake-1 × K wins by avoiding spurious wakes. Group-size sweep showed no significant variation (low core count → cascade rarely engages). |
+| macOS | 8 | 8 | INT_MAX | 1 | syscall microbenchmark (since removed) on M-series: K × wake-1 ≈ wake-all (Mach IPC wake-one is cheap), so wake-1 × K wins by avoiding spurious wakes. Group-size sweep showed no significant variation (low core count → cascade rarely engages). |
 | Windows | 8 | 8 | 2 | 0 | per-bench sweep on 96-thread Xeon: G/sharing/wake_factor flat across the swept range; promote_seed=0 wins ~1.5% mean (clearest on `BM_dispenso_blocking/*`) because each WakeByAddressSingle is expensive enough that the extra in-thread bootstrap wake doesn't amortize. |
 
 ## Caveats
