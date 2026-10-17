@@ -11,9 +11,9 @@ self-contained HTML file with interactive charts, dark/light theme,
 sidebar navigation, platform switching, and suite-specific visualizations.
 
 Usage:
-    python generate_plotly_benchmarks.py results/macos.json
-    python generate_plotly_benchmarks.py results/macos.json results/linux.json
-    python generate_plotly_benchmarks.py results/*.json -o docs/benchmarks/index.html
+    python generate_plotly_benchmarks.py docs/benchmark_results/macos.json
+    python generate_plotly_benchmarks.py docs/benchmark_results/macos.json docs/benchmark_results/linux.json
+    python generate_plotly_benchmarks.py docs/benchmark_results/*.json -o docs/benchmarks/index.html
 """
 
 import argparse
