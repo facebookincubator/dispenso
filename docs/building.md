@@ -63,6 +63,27 @@ cmake PATH_TO_DISPENSO_ROOT
 cmake --build . --config Release
 ```
 
+### With CMake presets
+
+With CMake 3.21 or newer, the presets in `CMakePresets.json` replace the commands
+above. Each builds into `build/<preset>` under the source tree:
+
+```bash
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+```
+
+| Preset | Configuration |
+| --- | --- |
+| `default` | The library alone at C++17, using system-installed dependencies |
+| `vcpkg` | As `default`, with dependencies from vcpkg; `VCPKG_ROOT` must be set |
+| `dev` | Tests, benchmarks and examples at C++20, with dependencies from vcpkg |
+| `asan`, `tsan` | `dev` with Address or Thread Sanitizer; build with `cmake --build build/asan` (or `build/tsan`) |
+| `win-dev` | `dev` on Windows with Ninja, built under `%TEMP%`; run from a Developer Command Prompt |
+
+Personal presets belong in `CMakeUserPresets.json`, which git ignores.
+
 ## Build Options Affecting Linkage
 
 Two options change what the built library is, and both matter to packagers:
