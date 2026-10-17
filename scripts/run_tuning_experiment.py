@@ -208,7 +208,7 @@ def define_configurations():
     # K above which `bumpAndWakeN` switches from looping wake-one to a
     # single wake-all. Linux's exact-K syscall makes this irrelevant
     # there; on macOS/Windows the optimal K depends on the per-syscall
-    # cost ratio (see benchmarks/wake_cost_bench).
+    # cost ratio, which this sweep measures end to end.
     for k in [2, 3, 4, 6, 8, 12, 16]:
         configs.append(
             {
