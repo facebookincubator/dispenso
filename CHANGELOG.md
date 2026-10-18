@@ -10,6 +10,7 @@ Unreleased
 * `SmallVector::push_back()` and `emplace_back()` now work when the argument is an element of the same vector and the call has to grow it (for example `v.push_back(v[0])` on a full vector). Growth used to move and free the old elements before constructing the new one, so the appended value was read after being moved from or freed.
 * `SmallVector` now honours `alignof(T)` for elements stored on the heap. Once a vector outgrew its inline storage, over-aligned element types (for example `alignas(64)` cache-line-padded structs) were placed at only the default `operator new` alignment, which is undefined behaviour and crashes aligned SIMD access.
 * Copying a `ConcurrentObjectArena` (copy construction or copy assignment) no longer reads uninitialized buffer pointers. Unless the number of allocated buffers happened to be a power of two, the copy dereferenced unset pointer-table slots, typically crashing, and leaked a buffer per spare slot.
+* `ConcurrentObjectArena` now destroys its elements when it is destroyed or assigned over; previously it released their storage without running `~T()`, leaking anything a non-trivially-destructible element owned. If an element's default constructor throws, `grow_by()` destroys the elements it had built and rethrows instead of leaving them unreachable.
 
 1.6.2 (August 19, 2026)
 
