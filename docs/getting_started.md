@@ -702,7 +702,7 @@ Key points:
 
 ## Next Steps
 
-- Browse the [API Reference](modules.html) for complete documentation
+- Browse the [API Reference](https://facebookincubator.github.io/dispenso/topics.html) for complete documentation
 - Check out the [tests](https://github.com/facebookincubator/dispenso/tree/main/tests)
   for more usage examples
 - See the [benchmarks](https://github.com/facebookincubator/dispenso/tree/main/benchmarks)
