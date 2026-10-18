@@ -174,8 +174,11 @@ All commands should be run from the Developer Command Prompt.
 mkdir build && cd build
 cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON
 cmake --build . --config Release
-ctest
+ctest -C Release
 ```
+
+Visual Studio generators build several configurations into one build tree, so `ctest` needs
+`-C` to say which one to test; without it, no tests are found.
 
 ## Benchmarking
 
@@ -199,7 +202,17 @@ bin/once_function_benchmark  # example benchmark
 ```
 
 ### Windows
-Not currently supported through CMake.
+All commands should be run from the Developer Command Prompt.
+```bash
+mkdir build && cd build
+cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON
+cmake --build . --config Release
+bin\Release\once_function_benchmark.exe  # example benchmark
+```
+
+OpenMP comes with MSVC; TBB is easiest to get from vcpkg (see the `vcpkg` preset above).
+[`scripts/BENCHMARKING.md`](https://github.com/facebookincubator/dispenso/blob/main/scripts/BENCHMARKING.md)
+covers running the full suite and recording results on each platform, Windows included.
 
 ## Building the Documentation
 
