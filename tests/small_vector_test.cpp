@@ -775,3 +775,102 @@ TEST(SmallVector, PushBackGrowthThrowLeavesVectorUnchanged) {
   EXPECT_EQ(ThrowingCopy::live, 0);
 }
 #endif // __cpp_exceptions
+
+#if defined(__cpp_exceptions)
+namespace {
+// Default and copy construction throw once `constructionsBeforeThrow` reaches zero (negative:
+// never). Moves never throw, so growth itself cannot fail.
+struct ThrowingConstruct {
+  static int live;
+  static int constructionsBeforeThrow;
+  int value;
+  ThrowingConstruct() : value(0) {
+    countConstruction();
+  }
+  explicit ThrowingConstruct(int v) : value(v) {
+    ++live;
+  }
+  ThrowingConstruct(const ThrowingConstruct& o) : value(o.value) {
+    countConstruction();
+  }
+  ThrowingConstruct(ThrowingConstruct&& o) noexcept : value(o.value) {
+    ++live;
+  }
+  ~ThrowingConstruct() {
+    --live;
+  }
+  void countConstruction() {
+    if (constructionsBeforeThrow == 0) {
+      throw std::runtime_error("construct");
+    }
+    if (constructionsBeforeThrow > 0) {
+      --constructionsBeforeThrow;
+    }
+    ++live;
+  }
+};
+int ThrowingConstruct::live = 0;
+int ThrowingConstruct::constructionsBeforeThrow = -1;
+
+using TCVec = SmallVector<ThrowingConstruct, 4>;
+} // namespace
+
+// A constructor that throws partway must destroy the elements it built and free its heap storage
+// (LeakSanitizer catches the latter). Covers inline and heap storage.
+TEST(SmallVector, ConstructorThrowReleasesElements) {
+  ThrowingConstruct::live = 0;
+  const ThrowingConstruct proto(5);
+  for (size_t count : {3u, 10u}) {
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(TCVec v(count), std::runtime_error);
+    EXPECT_EQ(ThrowingConstruct::live, 1);
+
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(TCVec v(count, proto), std::runtime_error);
+    EXPECT_EQ(ThrowingConstruct::live, 1);
+  }
+
+  ThrowingConstruct::constructionsBeforeThrow = 3;
+  EXPECT_THROW((TCVec{proto, proto, proto, proto, proto, proto}), std::runtime_error);
+  ThrowingConstruct::constructionsBeforeThrow = -1;
+  EXPECT_EQ(ThrowingConstruct::live, 1);
+
+  {
+    TCVec small(3, proto);
+    TCVec big(9, proto);
+    EXPECT_EQ(ThrowingConstruct::live, 13);
+    ThrowingConstruct::constructionsBeforeThrow = 1;
+    EXPECT_THROW(TCVec copy(small), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = 5;
+    EXPECT_THROW(TCVec copy(big), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = -1;
+    EXPECT_EQ(ThrowingConstruct::live, 13);
+  }
+  EXPECT_EQ(ThrowingConstruct::live, 1);
+}
+
+// resize() that throws while constructing the new elements destroys the ones it built and keeps
+// the original elements and size.
+TEST(SmallVector, ResizeThrowKeepsSize) {
+  ThrowingConstruct::live = 0;
+  {
+    TCVec v;
+    for (int i = 0; i < 3; ++i) {
+      v.emplace_back(i);
+    }
+    ThrowingConstruct::constructionsBeforeThrow = 4;
+    EXPECT_THROW(v.resize(10), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(v.resize(10, ThrowingConstruct(7)), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = -1;
+    ASSERT_EQ(v.size(), 3u);
+    for (int i = 0; i < 3; ++i) {
+      EXPECT_EQ(v[static_cast<size_t>(i)].value, i);
+    }
+    EXPECT_EQ(ThrowingConstruct::live, 3);
+    v.resize(10);
+    EXPECT_EQ(ThrowingConstruct::live, 10);
+  }
+  EXPECT_EQ(ThrowingConstruct::live, 0);
+}
+#endif // __cpp_exceptions
