@@ -52,10 +52,17 @@ writes `tuning_results_<os>.json`. `--list` shows every configuration, and
 | `spin_strategy` | `FIXED_SPIN_ITERS` ∈ {0, 32, 64, 128, 200, 400, 800} |
 | `spin_interval` | `SPIN_CHECK_INTERVAL` ∈ {16, 32, 64, 128, 256} |
 
+Categories whose knob the host platform does not read are skipped with an
+explanation (today only `wake_all_threshold`, outside macOS). `--force` runs
+them anyway, for bringing up a platform whose implementation has not been
+characterized; on systems without a tailored `EpochWaiter` backend (e.g.
+NetBSD, OpenBSD, DragonFly BSD) the script notes that results describe the
+generic fallback.
+
 ### Step 1 — wake-all threshold (macOS only)
 
 Only macOS reads the threshold (see the knobs table); on other platforms
-skip to step 2. On macOS:
+the script skips this category, so go to step 2. On macOS:
 
 ```bash
 python3 scripts/run_tuning_experiment.py -c wake_all_threshold
