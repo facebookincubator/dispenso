@@ -85,8 +85,12 @@ FetchContent_Declare(
   GIT_TAG        v1.6.2  # or main for latest
 )
 FetchContent_MakeAvailable(dispenso)
-target_link_libraries(my_target dispenso)
+target_link_libraries(my_target Dispenso::dispenso)
 ```
+
+`Dispenso::dispenso` is the same target name an installed dispenso exports
+through `find_package(Dispenso)`, so the consuming CMake does not change if
+you later switch between a vendored and an installed copy.
 
 ## How do I migrate from OpenMP / TBB?
 
