@@ -91,7 +91,7 @@ parallel_for(kStatic) ->
   1. Write func, ctx, total, numParticipants to broadcast struct
   2. release fence
   3. epoch.fetch_add(1)             // single atomic -- signals all threads
-  4. wakeN(sleeping)                // reuse existing mechanism
+  4. cascadeWakeSeed(sleeping)      // reuse existing mechanism
   5. Execute own chunk (tid=0) inline
   6. Spin on completionCount == numParticipants  (+ steal from general queue)
   7. Reset completionCount, release claimed

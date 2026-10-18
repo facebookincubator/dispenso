@@ -5,15 +5,15 @@
 Thread pool, wake, locality, task graphs, and futures.
 
 Current architecture: [three_tier_scheduling](../architecture/three_tier_scheduling.md),
-[wake_cascade](../architecture/wake_cascade.md),
-[wake_tuning](../architecture/wake_tuning.md).
+[wake_tuning](../architecture/wake_tuning.md); the wake cascade itself is documented in
+`dispenso/detail/thread_pool_wake.h`.
 Proposal: [barrier_dispatch](../proposals/barrier_dispatch.md).
 
 ## Backlog
 
 - Steal-ring round-robin for non-sleeping placed scheduling: `scheduleImplPlaced` currently only pushes to steal rings when it can claim a sleeping thread. When no threads are sleeping, the task falls through to the central queue. A round-robin steal-ring path for pool-worker callers could improve locality by keeping work near the scheduling thread. Requires benchmarking to confirm benefit over the central queue path.
 - Windows thread pool wake strategy tuning:
-  - Current approach uses unconditional `WakeByAddressAll` in `wakeN()`. The primary benefit is **parallel wake-up**: all threads begin their OS-level wake simultaneously, rather than serially. Thread wake-up latency (scheduler, context switch, cache warm-up) dominates — the `WakeByAddress` syscall itself is fast (<1 us)
+  - Current approach uses `WakeByAddressAll` in the Windows `EpochWaiter::bumpAndWakeN` whenever more than one thread waits. The primary benefit is **parallel wake-up**: all threads begin their OS-level wake simultaneously, rather than serially. Thread wake-up latency (scheduler, context switch, cache warm-up) dominates — the `WakeByAddress` syscall itself is fast (<1 us)
   - Secondary benefit: the scheduling thread makes one syscall instead of N, freeing it to enqueue work or start its own computation sooner. This matters because the scheduling thread cannot worksteal until the queue is saturated, so every microsecond spent in wake syscalls is a microsecond of dead time where neither the caller nor the (still-sleeping) pool threads are making progress
   - The increased spin constants (kBackoffYield=100, kBackoffSleep=120 vs Linux's 50/55) are complementary: keeping threads in spin phase longer avoids the expensive wake-up latency entirely. Sub-microsecond spin cost vs 10s-of-microsecond wake-up cost
   - Benchmarks showed WakeAll outperforms the macOS-style heuristic (`n >= sleeping/2` → wakeAll, else wake individually), but thresholds N/2, N/3, N/4 were tested — not smaller fractions like N/16 that might limit thundering herd while still avoiding serial wake overhead

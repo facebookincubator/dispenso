@@ -100,26 +100,6 @@ def define_configurations():
             }
         )
 
-    # --- Max spin timeout ---
-    for us in [32, 64, 128, 256, 512]:
-        configs.append(
-            {
-                "name": f"spin_max_{us}us",
-                "category": "spin_timeout",
-                "defines": [f"-DDISPENSO_TUNE_MAX_SPIN_US={us}"],
-            }
-        )
-
-    # --- Min spin timeout ---
-    for us in [1, 2, 4, 8]:
-        configs.append(
-            {
-                "name": f"spin_min_{us}us",
-                "category": "spin_timeout",
-                "defines": [f"-DDISPENSO_TUNE_MIN_SPIN_US={us}"],
-            }
-        )
-
     # --- Spin check interval ---
     for interval in [16, 32, 64, 128, 256]:
         configs.append(
@@ -130,15 +110,14 @@ def define_configurations():
             }
         )
 
-    # --- Spin strategy: fixed-count vs adaptive ---
-    # fixed-spin (>0): thread spins for N iterations then futex-sleeps.
-    # adaptive (0): time-based spin with exponential backoff, never truly sleeps.
-    # Linux default is fixed-200; Windows default is adaptive (0).
+    # --- Spin limit ---
+    # Workers run the work-finding loop up to N times, then park on their
+    # group's futex; 0 parks immediately. Defaults: 400 on Linux/macOS, 200 on
+    # Windows (kDefaultSpinLimit in thread_pool.cpp).
     for limit in [0, 32, 64, 128, 200, 400, 800]:
-        label = "adaptive" if limit == 0 else f"fixed_{limit}"
         configs.append(
             {
-                "name": f"spin_{label}",
+                "name": f"spin_fixed_{limit}",
                 "category": "spin_strategy",
                 "defines": [f"-DDISPENSO_TUNE_FIXED_SPIN_ITERS={limit}"],
             }
@@ -154,22 +133,11 @@ def define_configurations():
             }
         )
 
-    # --- Waiter subgroup size (threads sharing one futex) ---
-    # Min 2: distributeBudget declares peerSlots[kWaiterSubgroupSize - 1].
-    for ss in [2, 4, 8]:
-        configs.append(
-            {
-                "name": f"waiter_sub_{ss}",
-                "category": "waiter_subgroup",
-                "defines": [f"-DDISPENSO_TUNE_WAITER_SUBGROUP_SIZE={ss}"],
-            }
-        )
-
     # --- Wake group + steal-ring sharing matched pairs ---
     # The most useful tuning sweep on a new platform: matches group size
     # to ring sharing (the configuration the production defaults use).
     # Mirrors the v1_g16/v2_g8s/v3_g8p/v4_g4p variants from the original
-    # Linux sweep. Run with and without promote-seed for each group size.
+    # Linux sweep.
     for g in [4, 8, 16, 32]:
         configs.append(
             {
@@ -178,29 +146,7 @@ def define_configurations():
                 "defines": [
                     f"-DDISPENSO_TUNE_WAKE_GROUP_SIZE={g}",
                     f"-DDISPENSO_TUNE_STEAL_RING_SHARING={g}",
-                    "-DDISPENSO_TUNE_PROMOTE_SEED=0",
                 ],
-            }
-        )
-        configs.append(
-            {
-                "name": f"wake_g{g}_sharing_promote",
-                "category": "wake_combo",
-                "defines": [
-                    f"-DDISPENSO_TUNE_WAKE_GROUP_SIZE={g}",
-                    f"-DDISPENSO_TUNE_STEAL_RING_SHARING={g}",
-                    "-DDISPENSO_TUNE_PROMOTE_SEED=1",
-                ],
-            }
-        )
-
-    # --- Promote-seed on/off (at default group size) ---
-    for v in [0, 1]:
-        configs.append(
-            {
-                "name": f"promote_seed_{v}",
-                "category": "promote_seed",
-                "defines": [f"-DDISPENSO_TUNE_PROMOTE_SEED={v}"],
             }
         )
 
@@ -348,7 +294,7 @@ def parse_args():
         "-c",
         type=str,
         default=None,
-        help="Only run configs in this category (e.g., wake_factor, spin_timeout)",
+        help="Only run configs in this category (e.g., wake_factor, wake_all_threshold)",
     )
     parser.add_argument(
         "--list",
