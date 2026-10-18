@@ -76,8 +76,14 @@ def format_test(key: TestKey) -> str:
 def load_benchmarks(
     path: Path,
     file_filter: Optional[str] = None,
-) -> Dict[TestKey, float]:
-    """Load benchmark results, returning {(executable, test_name): time_ns}.
+) -> Tuple[Dict[TestKey, float], Dict[TestKey, str]]:
+    """Load benchmark results.
+
+    Returns ({(executable, test_name): time_ns}, {(executable, test_name):
+    error_message}). Rows Google Benchmark marks with error_occurred carry a
+    real_time of 0, which is not a measurement; they are left out of the
+    timings and reported as errors instead, unless the same test also has a
+    valid (e.g. median) result.
 
     When --benchmark_repetitions is used, Google Benchmark outputs both
     individual iteration rows (run_type=iteration) and aggregate rows
@@ -90,6 +96,7 @@ def load_benchmarks(
 
     iteration_results: Dict[TestKey, float] = {}
     median_results: Dict[TestKey, float] = {}
+    errors: Dict[TestKey, str] = {}
     for entry in data.get("results", []):
         if not entry.get("success"):
             continue
@@ -98,6 +105,12 @@ def load_benchmarks(
             continue
         for bm in entry.get("data", {}).get("benchmarks", []):
             name = bm["name"]
+            if bm.get("error_occurred"):
+                run_name = bm.get("run_name", name)
+                errors.setdefault(
+                    (exe_name, run_name), bm.get("error_message") or "error"
+                )
+                continue
             time_ns = _normalize_to_ns(bm["real_time"], bm.get("time_unit", "ns"))
 
             run_type = bm.get("run_type")
@@ -112,7 +125,8 @@ def load_benchmarks(
     # Prefer median aggregates over raw iteration values
     results = dict(iteration_results)
     results.update(median_results)
-    return results
+    errors = {k: v for k, v in errors.items() if k not in results}
+    return results, errors
 
 
 def get_compiler_info(path: Path) -> str:
@@ -124,8 +138,12 @@ def get_compiler_info(path: Path) -> str:
     return compiler.get("compiler_summary", "unknown")
 
 
-def _format_comparison_cell(val: Optional[float], base_val: Optional[float]) -> str:
+def _format_comparison_cell(
+    val: Optional[float], base_val: Optional[float], errored: bool = False
+) -> str:
     """Format one comparison column cell (time + percentage change)."""
+    if errored:
+        return f"  {'ERROR':>10} {'':>7}"
     if val is None:
         return f"  {'---':>10} {'':>7}"
     cell = f"  {format_time(val):>10}"
@@ -173,6 +191,23 @@ def _print_summary(
         print()
 
 
+def _print_errors(
+    error_sets: List[Dict[TestKey, str]],
+    labels: List[str],
+    tests: List[TestKey],
+):
+    """List tests that reported errors instead of a timing, per run."""
+    shown = set(tests)
+    for errors, label in zip(error_sets, labels):
+        rows = sorted(k for k in errors if k in shown)
+        if not rows:
+            continue
+        print(f"[{label}] errored (excluded from comparison):")
+        for key in rows:
+            print(f"  {format_test(key)}: {errors[key]}")
+        print()
+
+
 def compare(
     files: List[Path],
     labels: List[str],
@@ -180,19 +215,23 @@ def compare(
     prefix_filter: Optional[str] = None,
 ):
     """Compare benchmark results across files."""
-    datasets = [load_benchmarks(path, file_filter) for path in files]
+    loaded = [load_benchmarks(path, file_filter) for path in files]
+    datasets = [results for results, _ in loaded]
+    error_sets = [errors for _, errors in loaded]
 
     # Print headers with compiler info
     print("Runs:")
     for i, (path, label) in enumerate(zip(files, labels)):
         compiler = get_compiler_info(path)
         count = len(datasets[i])
-        print(f"  [{label}] {path.name} ({compiler}, {count} tests)")
+        errored = len(error_sets[i])
+        extra = f", {errored} errored" if errored else ""
+        print(f"  [{label}] {path.name} ({compiler}, {count} tests{extra})")
     print()
 
     # Collect and filter test names
     all_tests = set()
-    for ds in datasets:
+    for ds in datasets + error_sets:
         all_tests.update(ds.keys())
     if prefix_filter:
         all_tests = {t for t in all_tests if t[1].startswith(prefix_filter)}
@@ -227,16 +266,20 @@ def compare(
         base_val = datasets[0].get(test)
 
         line = f"{name:<{name_width}}"
-        line += (
-            f"  {format_time(base_val):>10}"
-            if base_val is not None
-            else f"  {'---':>10}"
-        )
+        if test in error_sets[0]:
+            line += f"  {'ERROR':>10}"
+        elif base_val is not None:
+            line += f"  {format_time(base_val):>10}"
+        else:
+            line += f"  {'---':>10}"
         for i in range(1, len(labels)):
-            line += _format_comparison_cell(datasets[i].get(test), base_val)
+            line += _format_comparison_cell(
+                datasets[i].get(test), base_val, test in error_sets[i]
+            )
         print(line)
 
     print()
+    _print_errors(error_sets, labels, tests)
     _print_summary(datasets, labels, tests)
 
 
