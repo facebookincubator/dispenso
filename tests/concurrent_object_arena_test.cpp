@@ -272,3 +272,39 @@ TEST(ConcurrentObjectArena, SingleElementGrowth) {
     EXPECT_EQ(arena[static_cast<size_t>(i)], i);
   }
 }
+
+// The buffer pointer table grows by doubling, so it usually has spare, unset slots past the last
+// allocated buffer. Copying must only copy the allocated buffers.
+TEST(ConcurrentObjectArena, CopyWithSparePointerSlots) {
+  constexpr size_t bufSize = 16;
+  dispenso::ConcurrentObjectArena<size_t> arena(bufSize);
+  // 40 elements need 3 buffers; the pointer table doubles 2 -> 4, leaving one spare slot.
+  const size_t first = arena.grow_by(40);
+  ASSERT_EQ(first, 0u);
+  ASSERT_EQ(arena.numBuffers(), 3u);
+  for (size_t i = 0; i < arena.size(); ++i) {
+    arena[i] = i * 3;
+  }
+
+  dispenso::ConcurrentObjectArena<size_t> copy(arena);
+  ASSERT_EQ(copy.size(), arena.size());
+  ASSERT_EQ(copy.numBuffers(), arena.numBuffers());
+  for (size_t i = 0; i < copy.size(); ++i) {
+    EXPECT_EQ(copy[i], i * 3);
+  }
+
+  // The copy must keep growing correctly into its spare slot and beyond.
+  copy.grow_by(40);
+  EXPECT_EQ(copy.size(), 80u);
+  EXPECT_EQ(copy.numBuffers(), 6u);
+  for (size_t i = 0; i < 40; ++i) {
+    EXPECT_EQ(copy[i], i * 3);
+  }
+
+  dispenso::ConcurrentObjectArena<size_t> assigned(bufSize);
+  assigned = arena;
+  ASSERT_EQ(assigned.size(), arena.size());
+  for (size_t i = 0; i < assigned.size(); ++i) {
+    EXPECT_EQ(assigned[i], i * 3);
+  }
+}
