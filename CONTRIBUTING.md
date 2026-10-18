@@ -12,7 +12,7 @@ This library has another home inside Facebook repos.  From there it is subjected
 ## Pull Requests
 We actively welcome your pull requests.
 
-1. Fork the repo and create your branch from `master`.
+1. Fork the repo and create your branch from `main`.
 2. If you've added code that should be tested, add tests.
 3. If you've changed APIs, update the documentation.
 4. Ensure the test suite passes.
@@ -45,4 +45,4 @@ outlined on that page and do not file a public issue.
 
 ## License
 By contributing to dispenso, you agree that your contributions will be licensed
-under the LICENSE.md file in the root directory of this source tree.
+under the LICENSE file in the root directory of this source tree.
