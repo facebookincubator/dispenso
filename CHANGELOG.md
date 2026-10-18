@@ -27,6 +27,7 @@ Unreleased
 * `SPSCRingBuffer::try_push_batch` and `try_pop_batch` are now exception safe. If moving an element threw part-way through a batch, `try_push_batch` leaked the elements it had already constructed, and `try_pop_batch` left already-destroyed elements in the buffer to be popped or destroyed again. The part of the batch that completed is now published before the exception propagates.
 * Fixed misaligned per-thread data in `ThreadPool` in C++14 builds. Workers were stored in a `std::deque` of a cache-line-aligned type, and before C++17 `std::allocator` ignores over-alignment, so most entries sat at misaligned addresses (undefined behaviour, and no false-sharing protection). The `CacheAligned` documentation now notes that standard containers of it need an alignment-aware allocator before C++17.
 * `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
+* On Windows, dispenso headers no longer leave `_AMD64_`/`_X86_`/`_ARM64_`/`_ARM_` defined in user code, and no longer define `_X86_` alongside an existing `_AMD64_` when `<windows.h>` was included first.
 
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
