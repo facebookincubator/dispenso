@@ -125,6 +125,14 @@ python3 scripts/run_benchmarks.py \
 Where `<platform-name>` is a descriptive identifier like `linux-threadripper-96c`,
 `macos-m4-12c`, `windows-zen4-24c`, etc. (auto-detected if omitted).
 
+Besides `machine_info` (CPU, memory, compiler, dependency versions) the JSON
+records `provenance`: the git revision of the source tree the build was
+configured from (`git describe` and full SHA), whether it had uncommitted
+changes (and which tracked files), whether this run built the binaries, and
+the command line. Since result files are published, the tree's location is
+not recorded and paths on the command line are reduced to file names. Commit
+before publishing measurements so the revision identifies what was measured.
+
 ### Run Options
 
 - `-B <regex>` — filter which benchmark executables to run
