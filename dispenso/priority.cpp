@@ -15,7 +15,7 @@
 #include <pthread.h>
 #include <sys/resource.h>
 #include <unistd.h>
-#elif defined(__MACH__)
+#elif defined(__APPLE__)
 #include <mach/mach_time.h>
 #include <mach/thread_act.h>
 #include <pthread.h>
@@ -36,7 +36,7 @@ ThreadPriority getCurrentThreadPriority() {
   return g_threadPriority;
 }
 
-#ifdef __MACH__
+#ifdef __APPLE__
 bool setCurrentThreadPriority(ThreadPriority prio) {
   mach_port_t threadport = pthread_mach_thread_np(pthread_self());
   if (prio == ThreadPriority::kRealtime) {
