@@ -97,8 +97,15 @@ else()
 endif()
 
 # Export the C++ standard requirement so downstream consumers compile with at
-# least the same standard dispenso was built with (default: C++14).
-target_compile_features(dispenso PUBLIC cxx_std_${CMAKE_CXX_STANDARD})
+# least the same standard dispenso was built with, and never below C++14, which
+# dispenso requires. As a subproject CMAKE_CXX_STANDARD is whatever the parent
+# set, possibly nothing or something older than 14.
+set(_dispenso_cxx_std 14)
+if(CMAKE_CXX_STANDARD AND NOT CMAKE_CXX_STANDARD MATCHES "^(98|11)$"
+   AND CMAKE_CXX_STANDARD GREATER 14)
+  set(_dispenso_cxx_std ${CMAKE_CXX_STANDARD})
+endif()
+target_compile_features(dispenso PUBLIC cxx_std_${_dispenso_cxx_std})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)

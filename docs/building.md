@@ -45,6 +45,12 @@ dashboard.
 cmake PATH_TO_DISPENSO_ROOT -DCMAKE_CXX_STANDARD=20
 ```
 
+When dispenso is built as part of another project (`add_subdirectory()` or
+`FetchContent`), it does not set `CMAKE_CXX_STANDARD`; it builds with whatever
+standard the parent project uses. The `dispenso` target requires at least C++14
+through `target_compile_features`, so a parent on an older standard is raised to
+C++14 for dispenso and for targets that link it.
+
 ## Building the Library
 
 ### Linux and macOS

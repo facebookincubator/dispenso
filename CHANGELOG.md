@@ -38,6 +38,7 @@ Unreleased
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
 * Projects that vendor dispenso through `add_subdirectory()` or `FetchContent` can now link `Dispenso::dispenso`, the same target name an installed dispenso exports, so switching between a vendored and an installed copy no longer means editing the consuming CMake. The plain `dispenso` target still works.
+* dispenso no longer forces C++14 on a project that includes it with `add_subdirectory()` or `FetchContent`. It used to write `CMAKE_CXX_STANDARD=14` to the cache unconditionally, so parent targets created afterwards were built as C++14 (a downgrade from the C++17 default of current GCC and Clang), and a parent's own `CMAKE_CXX_STANDARD` was ignored inside dispenso. As a subproject dispenso now follows the parent's standard, and still requires at least C++14 through `target_compile_features`. Standalone builds still default to C++14.
 
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.

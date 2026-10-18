@@ -64,7 +64,16 @@ elseif (THREAD_SANITIZER)
   add_link_options(-fsanitize=thread)
 endif()
 
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "the C++ standard to use for this project")
+# Only a default for our own builds. As a subproject, setting the cache entry
+# would leak into the parent: every parent target created afterwards without
+# its own CMAKE_CXX_STANDARD would be built as C++14 (a downgrade on compilers
+# that default to C++17), and with CMP0126 OLD the cache write also hides a
+# parent's normal CMAKE_CXX_STANDARD from this directory. Vendored builds
+# follow the parent's standard; the dispenso target itself requires at least
+# C++14 (see dispenso/CMakeLists.txt).
+if(DISPENSO_STANDALONE)
+  set(CMAKE_CXX_STANDARD 14 CACHE STRING "the C++ standard to use for this project")
+endif()
 
 set(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE OFF CACHE BOOL
     "Use system-installed moodycamel::concurrentqueue instead of bundled copy")
