@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include <dispenso/parallel_for.h>
