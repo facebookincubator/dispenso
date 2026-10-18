@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -476,6 +477,77 @@ TEST(Util, OpResultReturnByValueLifetime) {
   }
   EXPECT_EQ(OpLifetimeLive, 0);
 }
+
+#if defined(__cpp_exceptions)
+namespace {
+int OpThrowLive = 0;
+bool OpThrowArmed = false;
+struct OpThrowing {
+  int value;
+  explicit OpThrowing(int v) : value(v) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  OpThrowing(const OpThrowing& o) : value(o.value) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  OpThrowing(OpThrowing&& o) : value(o.value) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  ~OpThrowing() {
+    --OpThrowLive;
+  }
+  static void maybeThrow() {
+    if (OpThrowArmed) {
+      throw std::runtime_error("OpThrowing");
+    }
+  }
+};
+} // namespace
+
+// If constructing the replacement value throws, the OpResult must be left disengaged, so that its
+// destructor does not destroy the old value a second time.
+TEST(Util, OpResultThrowingReplacementLeavesEmpty) {
+  OpThrowLive = 0;
+  OpThrowArmed = false;
+  {
+    dispenso::OpResult<OpThrowing> r(OpThrowing(1));
+    OpThrowArmed = true;
+    EXPECT_THROW(r.emplace(2), std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(r);
+    EXPECT_EQ(OpThrowLive, 0);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+
+  {
+    dispenso::OpResult<OpThrowing> src(OpThrowing(3));
+    dispenso::OpResult<OpThrowing> dst(OpThrowing(4));
+    OpThrowArmed = true;
+    EXPECT_THROW(dst = src, std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(dst);
+    ASSERT_TRUE(src);
+    EXPECT_EQ(src.value().value, 3);
+    EXPECT_EQ(OpThrowLive, 1);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+
+  {
+    dispenso::OpResult<OpThrowing> src(OpThrowing(5));
+    dispenso::OpResult<OpThrowing> dst(OpThrowing(6));
+    OpThrowArmed = true;
+    EXPECT_THROW(dst = std::move(src), std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(dst);
+    EXPECT_TRUE(src);
+    EXPECT_EQ(OpThrowLive, 1);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+}
+#endif // __cpp_exceptions
 
 TEST(Util, StaticChunkSize) {
   // Test exact division
