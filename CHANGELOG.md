@@ -48,6 +48,9 @@ Unreleased
 * CI now builds the benchmarks (with TBB and OpenMP available) and checks that each binary starts, so breakage in benchmark sources or their dependency discovery is caught on the pull request that causes it. No timings are taken.
 * CI now builds a small external project against installed dispenso packages (shared, static, and with `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON`) using `find_package(Dispenso)` and `Dispenso::dispenso`, so breakage in the exported CMake package is caught before release.
 
+### Benchmarks
+* The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
+
 1.6.2 (August 19, 2026)
 
 ### Bug fixes
