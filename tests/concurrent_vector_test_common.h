@@ -1549,3 +1549,73 @@ TYPED_TEST(ConcurrentVectorTest, EraseDestroysVacatedTail) {
   }
   EXPECT_EQ(LifetimeCounted::live(), 0);
 }
+
+#if defined(__cpp_exceptions)
+// Counts live instances; copy construction throws once copiesUntilThrow() reaches zero.
+struct ThrowingCopy {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  static int& copiesUntilThrow() {
+    static int n = -1;
+    return n;
+  }
+  ThrowingCopy() {
+    ++live();
+  }
+  ThrowingCopy(const ThrowingCopy&) {
+    if (copiesUntilThrow() >= 0 && copiesUntilThrow()-- == 0) {
+      throw std::runtime_error("copy failed");
+    }
+    ++live();
+  }
+  ThrowingCopy& operator=(const ThrowingCopy&) = default;
+  ~ThrowingCopy() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, ThrowingElementConstructionDestroysOnlyConstructed) {
+  using Vec = dispenso::ConcurrentVector<ThrowingCopy, TypeParam>;
+  ThrowingCopy::live() = 0;
+  ThrowingCopy::copiesUntilThrow() = -1;
+  {
+    const ThrowingCopy value;
+    const std::vector<ThrowingCopy> src(100);
+    const Vec srcVec(100, value);
+    const int baseline = ThrowingCopy::live();
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec(100, value), std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec(src.begin(), src.end()), std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec{srcVec}, std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    // Assignment gives the basic guarantee: the vector holds the elements constructed before the
+    // throw, and they (and only they) are destroyed later.
+    {
+      Vec vec;
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec.assign(100, value), std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec.assign(src.begin(), src.end()), std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec = srcVec, std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      EXPECT_EQ(ThrowingCopy::live(), baseline + 37);
+    }
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+    ThrowingCopy::copiesUntilThrow() = -1;
+  }
+  EXPECT_EQ(ThrowingCopy::live(), 0);
+}
+#endif // __cpp_exceptions
