@@ -61,6 +61,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include <dispenso/detail/math.h>
 #include <dispenso/platform.h>
@@ -248,17 +249,17 @@ class ConcurrentVector {
    **/
   template <typename InIterator, typename = cv::EnableIfInputIterator<InIterator>>
   ConcurrentVector(InIterator start, InIterator end)
-      : ConcurrentVector(std::distance(start, end), start, end) {}
+      : ConcurrentVector(start, end, cv::IteratorCategory<InIterator>{}) {}
 
   /**
    * Sizing constructor taking an iterator range.  If size is known in advance, this may be faster
    * than just providing the iterator range, especially for input iterators that are not random
-   * access.
+   * access.  The range must contain exactly startSize elements.
    **/
   template <typename InIterator, typename = cv::EnableIfInputIterator<InIterator>>
   ConcurrentVector(size_type startSize, InIterator start, InIterator end)
       : ConcurrentVector(startSize, ReserveTag) {
-    assert(std::distance(start, end) == static_cast<difference_type>(startSize));
+    assert(cv::rangeLengthIs(start, end, startSize, cv::IteratorCategory<InIterator>{}));
     initFromEmpty(start, end);
   }
 
@@ -359,9 +360,7 @@ class ConcurrentVector {
       typename = typename std::iterator_traits<It>::iterator_category>
   void assign(It start, It end) {
     clear();
-    auto count = std::distance(start, end);
-    reserve(count);
-    initFromEmpty(start, end);
+    assignRange(start, end, cv::IteratorCategory<It>{});
   }
 
   /**
@@ -548,10 +547,7 @@ class ConcurrentVector {
       typename = typename std::iterator_traits<InputIt>::value_type,
       typename = typename std::iterator_traits<InputIt>::iterator_category>
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
-    size_t len = std::distance(first, last);
-    auto it = insertPartial(pos, len);
-    std::copy_n(first, len, it);
-    return it;
+    return insertRange(pos, first, last, cv::IteratorCategory<InputIt>{});
   }
 
   /**
@@ -713,9 +709,7 @@ class ConcurrentVector {
       typename = typename std::iterator_traits<It>::value_type,
       typename = typename std::iterator_traits<It>::iterator_category>
   iterator grow_by(It start, It end) {
-    iterator ret = growByUninitialized(std::distance(start, end));
-    internalInit(start, end, ret);
-    return ret;
+    return growByRange(start, end, cv::IteratorCategory<It>{});
   }
 
   /**
@@ -1029,6 +1023,74 @@ class ConcurrentVector {
   }
 
  private:
+  // Range operations dispatch on iterator category, as std::vector does: forward (and stronger)
+  // iterators can be measured with std::distance up front, but that would consume a single-pass
+  // input range, so those are consumed exactly once, element by element.
+  template <typename It>
+  ConcurrentVector(It start, It end, std::forward_iterator_tag)
+      : ConcurrentVector(static_cast<size_type>(std::distance(start, end)), start, end) {}
+
+  template <typename It>
+  ConcurrentVector(It start, It end, std::input_iterator_tag) : ConcurrentVector() {
+    for (; start != end; ++start) {
+      emplace_back(*start);
+    }
+  }
+
+  template <typename It>
+  void assignRange(It start, It end, std::forward_iterator_tag) {
+    reserve(std::distance(start, end));
+    initFromEmpty(start, end);
+  }
+
+  template <typename It>
+  void assignRange(It start, It end, std::input_iterator_tag) {
+    for (; start != end; ++start) {
+      emplace_back(*start);
+    }
+  }
+
+  template <typename It>
+  iterator insertRange(const_iterator pos, It first, It last, std::forward_iterator_tag) {
+    size_t len = std::distance(first, last);
+    auto it = insertPartial(pos, len);
+    std::copy_n(first, len, it);
+    return it;
+  }
+
+  template <typename It>
+  iterator insertRange(const_iterator pos, It first, It last, std::input_iterator_tag) {
+    // Append, then rotate the new elements into place (as std::vector implementations do).
+    const difference_type index = pos - cbegin();
+    const difference_type oldSize = static_cast<difference_type>(size());
+    for (; first != last; ++first) {
+      emplace_back(*first);
+    }
+    auto b = begin();
+    std::rotate(b + index, b + oldSize, end());
+    return b + index;
+  }
+
+  template <typename It>
+  iterator growByRange(It start, It end, std::forward_iterator_tag) {
+    iterator ret = growByUninitialized(std::distance(start, end));
+    internalInit(start, end, ret);
+    return ret;
+  }
+
+  template <typename It>
+  iterator growByRange(It start, It end, std::input_iterator_tag) {
+    // Only single-pass input iterators come here; forward iterators take the overload above, with
+    // no copy. grow_by must claim one contiguous block in a single atomic step, so it needs the
+    // length first, and a single-pass range can be read only once: buffer it to learn the length,
+    // then move the buffered elements in.
+    std::vector<T> buffered(start, end);
+    return growByRange(
+        std::make_move_iterator(buffered.begin()),
+        std::make_move_iterator(buffered.end()),
+        std::random_access_iterator_tag{});
+  }
+
   DISPENSO_INLINE cv::BucketInfo bucketAndSubIndexForIndex(size_t index) const {
 #if defined(_MSC_VER) || defined(__aarch64__) || defined(_M_ARM64)
     // Branching fast path — benefits MSVC and ARM where branch prediction handles
