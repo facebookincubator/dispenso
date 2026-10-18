@@ -33,7 +33,7 @@
 
 namespace dispenso {
 namespace detail {
-static int futex(
+inline int futex(
     int* uaddr,
     int futex_op,
     int val,
@@ -59,7 +59,7 @@ static int futex(
 
 namespace dispenso {
 namespace detail {
-static int futex(
+inline int futex(
     int* uaddr,
     int futex_op,
     int val,
