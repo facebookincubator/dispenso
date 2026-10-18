@@ -8,6 +8,11 @@
 #include <dispenso/concurrent_object_arena.h>
 #include <dispenso/task_set.h>
 
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+
 #include <gtest/gtest.h>
 
 TEST(ConcurrentObjectArena, ParallelGrowBy) {
@@ -308,3 +313,144 @@ TEST(ConcurrentObjectArena, CopyWithSparePointerSlots) {
     EXPECT_EQ(assigned[i], i * 3);
   }
 }
+
+namespace {
+// Counts live instances so tests can check every constructed element is destroyed exactly once.
+struct Counted {
+  static std::atomic<int> live;
+  Counted() {
+    ++live;
+  }
+  ~Counted() {
+    --live;
+  }
+  // Non-trivial destructor, so the arena must run it.
+  int payload = 7;
+};
+std::atomic<int> Counted::live{0};
+} // namespace
+
+TEST(ConcurrentObjectArena, DestroysElements) {
+  Counted::live = 0;
+  {
+    dispenso::ConcurrentObjectArena<Counted> arena(16, 5);
+    arena.grow_by(40);
+    arena.grow_by(0);
+    arena.grow_by(3);
+    EXPECT_EQ(Counted::live.load(), 48);
+  }
+  EXPECT_EQ(Counted::live.load(), 0);
+}
+
+TEST(ConcurrentObjectArena, DestroysElementsOfNonTrivialType) {
+  auto shared = std::make_shared<int>(3);
+  {
+    dispenso::ConcurrentObjectArena<std::shared_ptr<int>, uint32_t> arena(4);
+    const uint32_t first = arena.grow_by(10);
+    for (uint32_t i = first; i < first + 10; ++i) {
+      arena[i] = shared;
+    }
+    EXPECT_EQ(shared.use_count(), 11);
+  }
+  EXPECT_EQ(shared.use_count(), 1);
+}
+
+TEST(ConcurrentObjectArena, AssignmentDestroysPreviousElements) {
+  Counted::live = 0;
+  {
+    dispenso::ConcurrentObjectArena<Counted> a(8, 20);
+    dispenso::ConcurrentObjectArena<Counted> b(8, 3);
+    EXPECT_EQ(Counted::live.load(), 23);
+    a = std::move(b);
+    EXPECT_EQ(a.size(), 3u);
+    // The moved-from arena now owns a's former elements and destroys them.
+    dispenso::ConcurrentObjectArena<Counted> sink(std::move(b));
+    EXPECT_EQ(Counted::live.load(), 23);
+  }
+  EXPECT_EQ(Counted::live.load(), 0);
+}
+
+TEST(ConcurrentObjectArena, ParallelGrowByDestroysEverything) {
+  Counted::live = 0;
+  {
+    dispenso::ConcurrentObjectArena<Counted> arena(16);
+    dispenso::TaskSet taskSet(dispenso::globalThreadPool());
+    for (size_t t = 0; t < 16; ++t) {
+      taskSet.schedule([&arena]() {
+        for (size_t i = 0; i < 50; ++i) {
+          arena.grow_by(3);
+        }
+      });
+    }
+    taskSet.wait();
+    EXPECT_EQ(Counted::live.load(), 16 * 50 * 3);
+  }
+  EXPECT_EQ(Counted::live.load(), 0);
+}
+
+#if defined(__cpp_exceptions)
+namespace {
+// Throws from the constructor that brings the live count to throwAt, optionally growing
+// growDuringThrow first so the failing grow_by is no longer at the end of the arena.
+struct ThrowingCounted {
+  static int live;
+  static int throwAt;
+  static dispenso::ConcurrentObjectArena<ThrowingCounted>* growDuringThrow;
+  ThrowingCounted() {
+    if (live + 1 == throwAt) {
+      throwAt = -1;
+      if (growDuringThrow != nullptr) {
+        growDuringThrow->grow_by(2);
+      }
+      throw std::runtime_error("ThrowingCounted");
+    }
+    ++live;
+  }
+  ~ThrowingCounted() {
+    --live;
+  }
+};
+int ThrowingCounted::live = 0;
+int ThrowingCounted::throwAt = -1;
+dispenso::ConcurrentObjectArena<ThrowingCounted>* ThrowingCounted::growDuringThrow = nullptr;
+} // namespace
+
+TEST(ConcurrentObjectArena, ThrowingConstructorLeavesGap) {
+  ThrowingCounted::live = 0;
+  {
+    dispenso::ConcurrentObjectArena<ThrowingCounted> arena(4, 6);
+    // Fail on the 4th element of the next grow, after it has crossed into a new buffer.
+    ThrowingCounted::throwAt = 6 + 4;
+    EXPECT_THROW(arena.grow_by(8), std::runtime_error);
+    // The 3 elements built before the throw were destroyed; the 8 slots stay reserved.
+    EXPECT_EQ(ThrowingCounted::live, 6);
+    EXPECT_EQ(arena.size(), 14u);
+
+    // Growth continues after the gap.
+    EXPECT_EQ(arena.grow_by(5), 14u);
+    EXPECT_EQ(ThrowingCounted::live, 11);
+  }
+  // Only constructed elements were destroyed: no destruction of the gap, nothing left over.
+  EXPECT_EQ(ThrowingCounted::live, 0);
+}
+
+TEST(ConcurrentObjectArena, ThrowingConstructorAfterLaterGrowLeavesGap) {
+  ThrowingCounted::live = 0;
+  {
+    dispenso::ConcurrentObjectArena<ThrowingCounted> arena(4, 3);
+    ThrowingCounted::growDuringThrow = &arena;
+    // The 2nd element of the next grow throws after a nested grow_by(2) has claimed the slots
+    // behind it, so the gap is followed by live elements.
+    ThrowingCounted::throwAt = 3 + 2;
+    EXPECT_THROW(arena.grow_by(5), std::runtime_error);
+    ThrowingCounted::growDuringThrow = nullptr;
+    EXPECT_EQ(ThrowingCounted::live, 3 + 2);
+    EXPECT_EQ(arena.size(), 3u + 5u + 2u);
+
+    arena.grow_by(4);
+    EXPECT_EQ(ThrowingCounted::live, 3 + 2 + 4);
+  }
+  // Only constructed elements were destroyed: no double destruction, nothing left over.
+  EXPECT_EQ(ThrowingCounted::live, 0);
+}
+#endif // __cpp_exceptions
