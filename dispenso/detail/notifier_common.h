@@ -98,7 +98,7 @@ inline int futex(
 } // namespace detail
 } // namespace dispenso
 
-#elif defined(__MACH__)
+#elif defined(__APPLE__)
 #include <Availability.h>
 #include <errno.h>
 #include <mach/mach_time.h>

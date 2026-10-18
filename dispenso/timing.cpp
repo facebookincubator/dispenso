@@ -16,10 +16,10 @@
 #include <Windows.h>
 #endif // _WIN32
 
-#if defined(__MACH__)
+#if defined(__APPLE__)
 #include <mach/mach.h>
 #include <mach/mach_time.h>
-#endif // __MACH__
+#endif // __APPLE__
 
 namespace dispenso {
 
@@ -106,7 +106,7 @@ static double ticksPerSecond() {
   __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(val));
   return static_cast<double>(val);
 }
-#elif defined(__MACH__)
+#elif defined(__APPLE__)
 static double ticksPerSecond() {
   mach_timebase_info_data_t info;
   if (mach_timebase_info(&info) != KERN_SUCCESS) {
