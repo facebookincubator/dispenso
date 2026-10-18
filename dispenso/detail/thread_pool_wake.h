@@ -7,9 +7,33 @@
 
 // Wake infrastructure for ThreadPool's fork-join and central queue scheduling.
 //
-// Implements a budget-limited cascade wake strategy with per-thread
-// EpochWaiters and per-group atomic sleep masks. See
-// docs/development/architecture/wake_cascade.md for the design rationale.
+// Threads are partitioned into wake groups of groupSize consecutive threads.
+// Each group shares one EpochWaiter (one futex address) and one atomic sleep
+// mask. Small wakes claim individual sleepers (claimAndWakeOne). Large wakes
+// (cascadeWakeSeed) bump and wake every affected group directly; on the
+// fork-join ring path, woken cascade-host threads additionally run pre-staged
+// cascadeWake tasks for further groups (see "Pattern C cascade" below).
+//
+// Invariants the wake paths rely on:
+//  - A sleeping thread's bit is set only by that thread (enterSleep), and the
+//    thread clears it again itself on every return from its wait (exitSleep),
+//    including timeouts. Wakers may also clear a bit early (tryClaimSleeper)
+//    to claim the wake; the atomic test-and-clear lets exactly one waker win.
+//  - Every wake path bumps the target group's epoch, even when no bit is set.
+//    A worker samples the epoch before it marks itself asleep and waits on
+//    that value, so a bump that races with it going to sleep makes its wait
+//    return at once instead of being lost. The EpochWaiter's timeout is a
+//    backstop, not the mechanism.
+//  - The cascade terminates: cascadeTargets_ is built once, assigns each
+//    group other than g0 to at most one host thread, and a host wakes only
+//    its one target, so a dispatch issues at most numGroups - 1 cascade
+//    wakes.
+//  - wakeAll (shutdown) bumps every group's epoch and wakes every group with
+//    a set bit, so no worker can stay parked past shutdown beyond the
+//    timeout backstop.
+//
+// Tuning knobs and how their defaults were chosen are in
+// docs/development/architecture/wake_tuning.md.
 
 #pragma once
 
@@ -26,18 +50,17 @@ namespace dispenso {
 namespace detail {
 
 // Platform-tunable wake parameters.
-// BranchFactor: max children per node in the wake cascade tree.
-// Higher values = fewer cascade levels but more serial futex calls per level.
+// BranchFactor: the largest wake count ThreadPool serves with direct
+// claimAndWakeOne calls; larger wakes go through cascadeWakeSeed.
 // Override via -DDISPENSO_TUNE_WAKE_BRANCH_FACTOR=N for cross-platform tuning.
 #if defined(DISPENSO_TUNE_WAKE_BRANCH_FACTOR)
 constexpr int32_t kDefaultWakeBranchFactor = DISPENSO_TUNE_WAKE_BRANCH_FACTOR;
 #elif defined(_WIN32)
-// Windows: WaitOnAddress is more expensive per-call, so use wider fan-out
-// to reduce cascade depth.
+// Windows: 8. Chosen when this knob set cascade fan-out; the Windows tuning
+// sweep found results flat across the values tried.
 constexpr int32_t kDefaultWakeBranchFactor = 8;
 #else
-// Linux/macOS: futex is cheap per-call, so 4-wide gives the best
-// balance of cascade depth vs per-level cost.
+// Linux/macOS: 4.
 constexpr int32_t kDefaultWakeBranchFactor = 4;
 #endif
 
@@ -67,7 +90,7 @@ struct DISPENSO_CACHELINE_ALIGNED WaiterBlock {
 
 // Wake infrastructure for a ThreadPool.
 //
-// Manages per-thread EpochWaiters, per-group sleep masks, and a static
+// Manages per-group EpochWaiters and sleep masks, and a static
 // 1-seed 2-level cascade table for fan-out wakes. Used by ThreadPool for both
 // fork-join (per-thread ring dispatch via cascadeWakeSeed + cascade lambdas)
 // and central queue (also via cascadeWakeSeed) work dispatch.
@@ -85,17 +108,17 @@ class PoolWakeState {
   //  - numThreads: total number of pool worker threads.
   //  - groupSize: number of threads per wake group (typically matching CpuSet
   //    topology groups).
-  //  - branchFactor: maximum children per node in budget cascade.
+  //  - branchFactor: largest wake count served by direct claimAndWakeOne calls;
+  //    larger wakes go through the cascade (ThreadPool's bulk-enqueue path).
   DISPENSO_DLL_ACCESS PoolWakeState(
       int32_t numThreads,
 #if defined(DISPENSO_TUNE_WAKE_GROUP_SIZE)
       int32_t groupSize = DISPENSO_TUNE_WAKE_GROUP_SIZE,
 #else
-      // Default G=8 across platforms based on the Linux tuning sweep
-      // (smaller groups reduce steal-ring + group-futex contention, with
-      // promote-seed cascade absorbing the extra cascade hop). Expected to
-      // be reasonable on macOS/Windows but not yet validated there — see
-      // docs/development/architecture/wake_tuning.md for the per-platform tuning process.
+      // Default G=8 on all platforms. It won the Linux group-size sweep
+      // (smaller groups reduce steal-ring and group-futex contention), and the
+      // Windows sweep was flat across group sizes; see
+      // docs/development/architecture/wake_tuning.md.
       int32_t groupSize = 8,
 #endif
       int32_t branchFactor = kDefaultWakeBranchFactor);
@@ -177,7 +200,7 @@ class PoolWakeState {
   int32_t groupSize() const {
     return groupSize_;
   }
-  // Maximum children per node in the cascade tree.
+  // Largest wake count served by direct claimAndWakeOne calls.
   int32_t branchFactor() const {
     return branchFactor_;
   }
@@ -232,9 +255,10 @@ class PoolWakeState {
     }
   }
 
-  // Single-pass wake for scheduleBulkToRings. Bumps every affected group's
-  // epoch and wakes seed group g0 if any sleepers exist in [0, count).
-  // Returns true if the cold path was taken (sleepers found).
+  // Single-pass wake for [0, count). Bumps every affected group's epoch and
+  // wakes the sleepers in each affected group directly (the central-queue
+  // path has no cascade-host lambdas to do it). Returns false on the
+  // no-sleepers fast path, true otherwise.
   DISPENSO_DLL_ACCESS bool cascadeWakeSeed(int32_t count);
 
  private:

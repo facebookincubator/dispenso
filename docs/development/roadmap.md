@@ -34,7 +34,7 @@ not dangle once done.
 | `util.h` public utilities | 1.5.0 | Exposes internal utilities |
 | OpenMP migration guide | 1.4.x | docs/migrating_from_openmp.md |
 | TBB migration guide | 1.4.x | docs/migrating_from_tbb.md |
-| Fork-join scheduling and thread groups | 1.6.0 | Locality rings, steal rings, wake cascade, CpuSet topology. See [three_tier_scheduling.md](architecture/three_tier_scheduling.md) and [wake_cascade.md](architecture/wake_cascade.md) |
+| Fork-join scheduling and thread groups | 1.6.0 | Locality rings, steal rings, wake cascade, CpuSet topology. See [three_tier_scheduling.md](architecture/three_tier_scheduling.md), and `dispenso/detail/thread_pool_wake.h` for the wake cascade |
 
 ## Investigation Items
 
