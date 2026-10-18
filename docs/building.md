@@ -147,7 +147,7 @@ hand-rolled builds do.
 | `DISPENSO_BUILD_TESTS` | OFF | Build the unit tests (needs GoogleTest; see Testing below) |
 | `DISPENSO_BUILD_BENCHMARKS` | OFF | Build the benchmarks (see Benchmarking below) |
 | `DISPENSO_BUILD_EXAMPLES` | OFF | Build the programs in `examples/` |
-| `DISPENSO_WERROR` | ON | Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing `-Wno-error` in `CMAKE_CXX_FLAGS` does not work, because dispenso's own flags come later. |
+| `DISPENSO_WERROR` | ON (OFF as a subproject) | Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing `-Wno-error` in `CMAKE_CXX_FLAGS` does not work, because dispenso's own flags come later. |
 | `ADDRESS_SANITIZER` | OFF | Build everything with `-fsanitize=address -fsanitize=undefined` (GCC and Clang) |
 | `THREAD_SANITIZER` | OFF | Build everything with `-fsanitize=thread` (GCC and Clang). Use Clang: GCC's ThreadSanitizer does not model `std::atomic_thread_fence` and reports false races in the lock-free queues. |
 | `DISPENSO_BUILD_FAST_MATH` | OFF | Build the experimental `fast_math` sublibrary. Its API is unstable. |
@@ -184,6 +184,21 @@ target_link_libraries(myDispensoApp Dispenso::dispenso)
 
 This brings in all required include paths, library files to link, and any other properties
 to the `myDispensoApp` target.
+
+## Using Dispenso as a Subproject
+
+dispenso can also be built as part of your project with `add_subdirectory()` or
+`FetchContent` (see the [FAQ](faq.md)). Link the same `Dispenso::dispenso`
+target as above. A few defaults differ from a standalone build:
+
+- `DISPENSO_WERROR` defaults to **OFF**, so a warning that only your (possibly
+  newer) compiler emits does not fail your build. Set it to `ON` to opt in.
+- `DISPENSO_SHARED_LIB` is not defined, so dispenso is built as a static
+  library, and `BUILD_SHARED_LIBS` is not consulted. Set `DISPENSO_SHARED_LIB`
+  before adding dispenso to get a shared library. To link the static library
+  into one of your shared libraries, enable `CMAKE_POSITION_INDEPENDENT_CODE`.
+- `CMAKE_CXX_STANDARD` is left to your project; see "C++ Standard" above.
+- No install rules are generated.
 
 ## Testing
 
