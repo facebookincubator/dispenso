@@ -48,6 +48,7 @@ Unreleased
 * Building with `DISPENSO_BUILD_EXAMPLES=ON` now registers each example as a ctest smoke test (label `example`), and CI runs them. An example fails if it exits non-zero, prints a result that disagrees with the value it says it expected, or never reaches its closing success line; previously the examples were only compiled, which is how a crash in `pipeline_example` went unnoticed.
 * CI now builds the benchmarks (with TBB and OpenMP available) and checks that each binary starts, so breakage in benchmark sources or their dependency discovery is caught on the pull request that causes it. No timings are taken.
 * CI now builds a small external project against installed dispenso packages (shared, static, and with `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON`) using `find_package(Dispenso)` and `Dispenso::dispenso`, so breakage in the exported CMake package is caught before release.
+* Projects that vendor dispenso through `add_subdirectory()` or `FetchContent` can now link `Dispenso::dispenso`, the same target name an installed dispenso exports, so switching between a vendored and an installed copy no longer means editing the consuming CMake. The plain `dispenso` target still works.
 
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.

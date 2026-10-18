@@ -33,6 +33,11 @@ else()
   add_library(dispenso STATIC ${SOURCES} ${HEADERS})
 endif()
 
+# Same name the installed package exports, so consumers that vendor dispenso via
+# add_subdirectory() or FetchContent can link Dispenso::dispenso too, and switch
+# between vendored and installed copies without touching their CMake.
+add_library(Dispenso::dispenso ALIAS dispenso)
+
 target_compile_options(dispenso PRIVATE
   # /wd4316: OnceFunction is intentionally cache-line (64B) aligned (see
   # once_function.h); MSVC's make_shared/make_unique control-block allocator does
