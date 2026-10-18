@@ -4,6 +4,7 @@ Unreleased
 * `dispenso/utils/graph_dot.h` can now be included more than once and on its own: it gained an include guard and includes the standard headers it uses. Its undocumented helper `getName` moved from a global `namespace detail` to `dispenso::detail`, so it can no longer collide with a user's own `detail` namespace.
 * `ThreadPool` bulk scheduling no longer dereferences a null producer when a `moodycamel` producer token could not allocate its producer; it falls back to the tokenless enqueue. Checking the token also removes the 369 `-Wstringop-overflow` warnings GCC 14 reported for this path.
 * Fixed `OnceFunction` corrupting callables whose captures point into themselves. Moves byte-copied the inline buffer, so a callable capturing a short `std::string` (libstdc++'s small-string buffer is self-referential), or any functor holding a pointer to its own storage, was left pointing at the moved-from object: `pipeline_example` aborted with `free(): invalid pointer`, and ASAN reports stack-use-after-scope. Every `OnceFunction`-based API was exposed (`ThreadPool::schedule`, `TaskSet`, futures, pipelines). Inline callables that are not trivially copyable are now move-constructed into place; trivially copyable and spilled callables keep the byte-copy move. A callable whose move constructor can throw is now stored out of line, so `OnceFunction`'s moves stay `noexcept`; its size (64 bytes) and layout are unchanged.
+* `OnceFunction` no longer leaks its out-of-line buffer when copying or moving the callable into it throws.
 
 1.6.2 (August 19, 2026)
 
