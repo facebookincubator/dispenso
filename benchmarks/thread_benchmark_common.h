@@ -47,7 +47,8 @@ inline void startRusage() {
 }
 
 inline double duration(struct timeval start, struct timeval end) {
-  return (end.tv_sec + 1e-6 * end.tv_usec) - (start.tv_sec + 1e-6 * start.tv_usec);
+  return (static_cast<double>(end.tv_sec) + 1e-6 * static_cast<double>(end.tv_usec)) -
+      (static_cast<double>(start.tv_sec) + 1e-6 * static_cast<double>(start.tv_usec));
 }
 
 inline void endRusage(benchmark::State& state) {
@@ -72,7 +73,7 @@ inline double getMean(const std::vector<double>& data) {
   for (auto d : data) {
     sum += d;
   }
-  return sum / data.size();
+  return sum / static_cast<double>(data.size());
 }
 
 inline double getStddev(double mean, const std::vector<double>& data) {
@@ -81,7 +82,7 @@ inline double getStddev(double mean, const std::vector<double>& data) {
     auto dev = mean - d;
     sumsq += dev * dev;
   }
-  return std::sqrt(sumsq / data.size());
+  return std::sqrt(sumsq / static_cast<double>(data.size()));
 }
 
 void doStats(const std::vector<double>& times, benchmark::State& state) {

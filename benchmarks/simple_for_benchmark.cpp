@@ -78,8 +78,8 @@ void checkResults(const std::vector<int>& input, const std::vector<int>& output)
 }
 
 void BM_taskflow(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   std::vector<int> output(num_elements, 0);
   auto& input = getInputs(num_elements);
@@ -102,8 +102,8 @@ void BM_taskflow(benchmark::State& state) {
 }
 
 void BM_dispenso_static_chunk(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
 
   std::vector<int> output(num_elements, 0);
   dispenso::ThreadPool pool(num_threads);
@@ -130,8 +130,8 @@ void BM_dispenso_static_chunk(benchmark::State& state) {
 
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   std::vector<int> output(num_elements, 0);
   omp_set_num_threads(num_threads);
@@ -149,8 +149,8 @@ void BM_omp(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   std::vector<int> output(num_elements, 0);
 

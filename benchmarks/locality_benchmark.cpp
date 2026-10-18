@@ -98,7 +98,7 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_dispenso_static(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   const size_t num_elements = state.range(1);
 
   std::vector<double> input, output;
@@ -123,7 +123,7 @@ void BM_dispenso_static(benchmark::State& state) {
 }
 
 void BM_dispenso_auto_reference(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   const size_t num_elements = state.range(1);
 
   std::vector<double> input, output;
@@ -149,7 +149,7 @@ void BM_dispenso_auto_reference(benchmark::State& state) {
 
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   const size_t num_elements = state.range(1);
 
   std::vector<double> input, output;
@@ -164,7 +164,7 @@ void BM_omp(benchmark::State& state) {
 #pragma omp parallel for schedule(static)
       for (int64_t i = 0; i < static_cast<int64_t>(num_elements); ++i) {
         size_t im = (i > 0) ? i - 1 : 0;
-        size_t ip = (i < num_elements - 1) ? i + 1 : num_elements - 1;
+        size_t ip = (i < static_cast<int64_t>(num_elements) - 1) ? i + 1 : num_elements - 1;
         dst[i] = 0.25 * (src[im] + 2.0 * src[i] + src[ip]);
       }
       std::swap(input, output);
@@ -176,7 +176,7 @@ void BM_omp(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   const size_t num_elements = state.range(1);
 
   std::vector<double> input, output;

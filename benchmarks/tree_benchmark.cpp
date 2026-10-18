@@ -65,7 +65,7 @@ struct Node {
 class Allocator {
  public:
   void reset(size_t depth) {
-    nodes_.resize(std::pow(2, depth) - 1);
+    nodes_.resize(static_cast<size_t>(std::pow(2, depth)) - 1);
     next_.store(0, std::memory_order_release);
   }
 
@@ -102,7 +102,7 @@ uint64_t sumTree(Node* root) {
 void checkTree(Node* root, uint32_t depth, uint32_t modulo) {
   uint64_t expectedSum = 0;
 
-  uint32_t num = std::pow(2, depth);
+  uint32_t num = static_cast<uint32_t>(std::pow(2, depth));
   for (uint32_t i = 0; i < num; ++i) {
     auto bitset = i;
     while (bitset) {
@@ -139,9 +139,9 @@ void BM_serial_tree(benchmark::State& state) {
   alloc.reset(depth);
   getModulos();
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
 
-  Node* root;
+  Node* root = nullptr;
 
   size_t m = 0;
 
@@ -187,9 +187,9 @@ void BM_dispenso_tree_naive(benchmark::State& state) {
   getModulos();
   dispenso::globalThreadPool();
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
 
-  Node* root;
+  Node* root = nullptr;
 
   size_t m = 0;
 
@@ -240,7 +240,7 @@ void BM_folly_tree(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
 
   Node root;
 
@@ -288,7 +288,7 @@ void BM_dispenso_taskset_tree_inline(benchmark::State& state) {
   alloc.reset(depth);
   getModulos();
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
   Node root;
 
   dispenso::ConcurrentTaskSet tasks(
@@ -328,8 +328,8 @@ void BM_tbb_tree(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
-  uint32_t modulo;
-  Node* root;
+  uint32_t modulo = 0;
+  Node* root = nullptr;
   size_t m = 0;
   for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
@@ -365,8 +365,8 @@ void BM_tbb_tree_work(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
-  uint32_t modulo;
-  Node* root;
+  uint32_t modulo = 0;
+  Node* root = nullptr;
   size_t m = 0;
   for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
@@ -420,8 +420,8 @@ void BM_serial_tree_work(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
-  uint32_t modulo;
-  Node* root;
+  uint32_t modulo = 0;
+  Node* root = nullptr;
   size_t m = 0;
   for (auto UNUSED_VAR : state) {
     alloc.reset(depth);
@@ -469,7 +469,7 @@ void BM_dispenso_taskset_tree_parallel_invoke_work(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
-  uint32_t modulo;
+  uint32_t modulo = 0;
   Node root;
   dispenso::ConcurrentTaskSet tasks(
       dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2, taskCostFor(workIters));
@@ -526,7 +526,7 @@ void BM_dispenso_taskset_tree_hybrid_work(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
-  uint32_t modulo;
+  uint32_t modulo = 0;
   Node root;
 
   auto& pool = dispenso::globalThreadPool();
@@ -563,7 +563,7 @@ struct ParForLeaf {
   Node** dest;
   uint32_t depth;
   uint32_t bitset;
-  uint32_t modulo;
+  uint32_t modulo = 0;
 };
 
 void collectTreeLeaves(
@@ -629,7 +629,7 @@ void BM_dispenso_parfor_tree(benchmark::State& state) {
   getModulos();
   dispenso::globalThreadPool();
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
   Node root;
 
   constexpr uint32_t kSerialLevels = 9;
@@ -662,7 +662,7 @@ void BM_dispenso_parfor_tree_work(benchmark::State& state) {
   getModulos();
   dispenso::globalThreadPool();
 
-  uint32_t modulo;
+  uint32_t modulo = 0;
   Node root;
 
   constexpr uint32_t kSerialLevels = 9;

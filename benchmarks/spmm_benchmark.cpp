@@ -134,7 +134,7 @@ BENCHMARK_TEMPLATE(BM_serial, kLargeRows);
 
 template <int32_t kRows>
 void BM_dispenso_static_reference(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   const CsrMatrix& m = getMatrix(kRows, kMeanNnz);
   std::vector<double> B(static_cast<size_t>(m.numCols) * kRhsCols, 1.0);
   std::vector<double> C(static_cast<size_t>(m.numRows) * kRhsCols, 0.0);
@@ -157,7 +157,7 @@ void BM_dispenso_static_reference(benchmark::State& state) {
 
 template <int32_t kRows>
 void BM_dispenso_auto(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   const CsrMatrix& m = getMatrix(kRows, kMeanNnz);
   std::vector<double> B(static_cast<size_t>(m.numCols) * kRhsCols, 1.0);
   std::vector<double> C(static_cast<size_t>(m.numRows) * kRhsCols, 0.0);
@@ -185,7 +185,7 @@ void BM_dispenso_auto(benchmark::State& state) {
 #if !defined(BENCHMARK_WITHOUT_TBB)
 template <int32_t kRows>
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   const CsrMatrix& m = getMatrix(kRows, kMeanNnz);
   std::vector<double> B(static_cast<size_t>(m.numCols) * kRhsCols, 1.0);
   std::vector<double> C(static_cast<size_t>(m.numRows) * kRhsCols, 0.0);
