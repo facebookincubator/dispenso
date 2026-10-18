@@ -502,7 +502,9 @@ class ConcurrentVector {
    **/
   iterator insert(const_iterator pos, const T& value) {
     auto it = insertPartial(pos);
-    new (&*it) T(value);
+    // insertPartial leaves a live (moved-from or default-constructed) element at pos; assign over
+    // it rather than constructing on top of it, so that element's resources are released.
+    *it = value;
     return it;
   }
 
@@ -514,7 +516,7 @@ class ConcurrentVector {
    **/
   iterator insert(const_iterator pos, T&& value) {
     auto it = insertPartial(pos);
-    new (&*it) T(std::move(value));
+    *it = std::move(value);
     return it;
   }
 

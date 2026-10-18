@@ -1465,3 +1465,56 @@ TYPED_TEST(ConcurrentVectorTest, OtherConstructorsTest) {
     EXPECT_EQ(cv, v++);
   }
 }
+
+// Tracks the number of live instances so tests can check that every constructed element is
+// destroyed exactly once.
+struct LifetimeCounted {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  int value;
+  LifetimeCounted() : value(0) {
+    ++live();
+  }
+  LifetimeCounted(int v) : value(v) {
+    ++live();
+  }
+  LifetimeCounted(const LifetimeCounted& other) : value(other.value) {
+    ++live();
+  }
+  LifetimeCounted(LifetimeCounted&& other) : value(other.value) {
+    ++live();
+  }
+  LifetimeCounted& operator=(const LifetimeCounted& other) = default;
+  LifetimeCounted& operator=(LifetimeCounted&& other) = default;
+  ~LifetimeCounted() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, InsertDoesNotLeak) {
+  LifetimeCounted::live() = 0;
+  {
+    dispenso::ConcurrentVector<LifetimeCounted, TypeParam> vec;
+    for (int i = 0; i < 10; ++i) {
+      vec.emplace_back(i);
+    }
+    LifetimeCounted value(100);
+    vec.insert(vec.begin(), value);
+    vec.insert(vec.begin() + 5, LifetimeCounted(101));
+    vec.insert(vec.end(), value);
+    vec.insert(vec.end(), LifetimeCounted(102));
+    vec.insert(vec.begin() + 3, 3, value);
+    std::vector<LifetimeCounted> range(4, LifetimeCounted(103));
+    vec.insert(vec.begin() + 2, range.begin(), range.end());
+    vec.insert(vec.end(), range.begin(), range.end());
+    // vec elements, plus `value`, plus `range`.
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()) + 1 + 4);
+    ASSERT_EQ(vec.size(), 25u);
+    EXPECT_EQ(vec[0].value, 100);
+    EXPECT_EQ(vec[1].value, 0);
+    EXPECT_EQ(vec.back().value, 103);
+  }
+  EXPECT_EQ(LifetimeCounted::live(), 0);
+}
