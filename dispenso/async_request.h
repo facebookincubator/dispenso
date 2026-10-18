@@ -14,13 +14,13 @@
 
 #pragma once
 
-#if __cplusplus >= 201703L
+#include <dispenso/platform.h>
+
+#if DISPENSO_CPLUSPLUS >= 201703L
 #include <optional>
 #else
 #include <dispenso/detail/op_result.h>
 #endif // C++17
-
-#include <dispenso/platform.h>
 
 namespace dispenso {
 
@@ -39,7 +39,7 @@ template <typename T>
 class AsyncRequest {
  public:
   // A lightweight std::optional-like type with a subset of functionality.
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
   using OpResult = std::optional<T>;
 #else
   using OpResult = detail::OpResult<T>;
