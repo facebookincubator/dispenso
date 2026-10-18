@@ -37,6 +37,7 @@ Unreleased
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
+* Projects that vendor dispenso through `add_subdirectory()` or `FetchContent` can now link `Dispenso::dispenso`, the same target name an installed dispenso exports, so switching between a vendored and an installed copy no longer means editing the consuming CMake. The plain `dispenso` target still works.
 
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
