@@ -192,18 +192,33 @@ inline void mac_futex_wake_all(void* addr, size_t size) {
 
 #elif defined(_WIN32)
 
-#if (defined(_M_ARM64) || defined(__aarch64__)) && !defined(_ARM64_)
+// <synchapi.h> and <errhandlingapi.h> are leaf headers that, unlike
+// <windows.h>, do not define the target-architecture macro winnt.h needs.
+// Define it only when nobody has (e.g. <windows.h> was not included first),
+// and remove it again afterwards so it does not leak into user code.
+#if !defined(_ARM64_) && !defined(_ARM_) && !defined(_AMD64_) && !defined(_X86_)
+#define DISPENSO_DEFINED_WIN_ARCH_MACRO
+#if defined(_M_ARM64) || defined(__aarch64__)
 #define _ARM64_
-#elif (defined(_M_ARM) || defined(__arm__)) && !defined(_ARM_)
+#elif defined(_M_ARM) || defined(__arm__)
 #define _ARM_
-#elif (defined(_M_AMD64) || defined(__x86_64__) || defined(_WIN64)) && !defined(_AMD64_)
+#elif defined(_M_AMD64) || defined(__x86_64__) || defined(_WIN64)
 #define _AMD64_
-#elif !defined(_X86_)
+#else
 #define _X86_
 #endif // platform
+#endif // no architecture macro defined yet
 
 #include <errhandlingapi.h>
 #include <synchapi.h>
+
+#if defined(DISPENSO_DEFINED_WIN_ARCH_MACRO)
+#undef _ARM64_
+#undef _ARM_
+#undef _AMD64_
+#undef _X86_
+#undef DISPENSO_DEFINED_WIN_ARCH_MACRO
+#endif // DISPENSO_DEFINED_WIN_ARCH_MACRO
 
 namespace dispenso {
 namespace detail {
