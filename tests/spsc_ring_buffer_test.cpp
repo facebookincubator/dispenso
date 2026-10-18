@@ -10,6 +10,7 @@
 #include <array>
 #include <atomic>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -1102,3 +1103,100 @@ TEST(SPSCRingBuffer, StressTest) {
   int64_t expectedSum = static_cast<int64_t>(kNumItems) * (kNumItems + 1) / 2;
   EXPECT_EQ(consumedSum.load(), expectedSum);
 }
+
+#if defined(__cpp_exceptions)
+namespace {
+// Counts live instances; move construction / move assignment throw once the respective countdown
+// reaches zero.
+struct ThrowingMove {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  static int& movesUntilThrow() {
+    static int n = -1;
+    return n;
+  }
+  static void maybeThrow() {
+    if (movesUntilThrow() >= 0 && movesUntilThrow()-- == 0) {
+      throw std::runtime_error("move failed");
+    }
+  }
+  explicit ThrowingMove(int v = 0) : value(v) {
+    ++live();
+  }
+  ThrowingMove(ThrowingMove&& other) : value(other.value) {
+    maybeThrow();
+    ++live();
+  }
+  ThrowingMove& operator=(ThrowingMove&& other) {
+    maybeThrow();
+    value = other.value;
+    return *this;
+  }
+  ~ThrowingMove() {
+    --live();
+  }
+  int value;
+};
+} // namespace
+
+TEST(SPSCRingBuffer, PushBatchThrowKeepsConstructedElements) {
+  ThrowingMove::live() = 0;
+  ThrowingMove::movesUntilThrow() = -1;
+  {
+    std::vector<ThrowingMove> src;
+    for (int i = 0; i < 6; ++i) {
+      src.emplace_back(i);
+    }
+    const int srcLive = ThrowingMove::live();
+    {
+      dispenso::SPSCRingBuffer<ThrowingMove, 16> buffer;
+      ThrowingMove::movesUntilThrow() = 3;
+      EXPECT_THROW(buffer.try_push_batch(src.begin(), src.end()), std::runtime_error);
+      ThrowingMove::movesUntilThrow() = -1;
+      // The three elements constructed before the throw are in the buffer, in order.
+      ASSERT_EQ(buffer.size(), 3u);
+      EXPECT_EQ(ThrowingMove::live(), srcLive + 3);
+      std::vector<ThrowingMove> out(3);
+      ASSERT_EQ(buffer.try_pop_batch(out.begin(), 3), 3u);
+      for (int i = 0; i < 3; ++i) {
+        EXPECT_EQ(out[i].value, i);
+      }
+      EXPECT_TRUE(buffer.empty());
+    }
+    EXPECT_EQ(ThrowingMove::live(), srcLive);
+  }
+  EXPECT_EQ(ThrowingMove::live(), 0);
+}
+
+TEST(SPSCRingBuffer, PopBatchThrowKeepsUnpoppedElements) {
+  ThrowingMove::live() = 0;
+  ThrowingMove::movesUntilThrow() = -1;
+  {
+    std::vector<ThrowingMove> dest(6);
+    const int destLive = ThrowingMove::live();
+    {
+      dispenso::SPSCRingBuffer<ThrowingMove, 16> buffer;
+      for (int i = 0; i < 6; ++i) {
+        ASSERT_TRUE(buffer.try_emplace(i));
+      }
+      ThrowingMove::movesUntilThrow() = 2;
+      EXPECT_THROW(buffer.try_pop_batch(dest.begin(), 6), std::runtime_error);
+      ThrowingMove::movesUntilThrow() = -1;
+      // Two elements were popped; the one whose move threw and the rest are still in the buffer.
+      EXPECT_EQ(dest[0].value, 0);
+      EXPECT_EQ(dest[1].value, 1);
+      ASSERT_EQ(buffer.size(), 4u);
+      EXPECT_EQ(ThrowingMove::live(), destLive + 4);
+      std::vector<ThrowingMove> rest(4);
+      ASSERT_EQ(buffer.try_pop_batch(rest.begin(), 4), 4u);
+      for (int i = 0; i < 4; ++i) {
+        EXPECT_EQ(rest[i].value, i + 2);
+      }
+    }
+    EXPECT_EQ(ThrowingMove::live(), destLive);
+  }
+  EXPECT_EQ(ThrowingMove::live(), 0);
+}
+#endif // __cpp_exceptions

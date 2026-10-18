@@ -24,6 +24,7 @@ Unreleased
 * `ConcurrentVector` stays destructible when an element constructor throws during growth (`push_back`, `emplace_back`, the `grow_` functions, `resize`, `insert`). The exception propagates and `size()` is not reduced, since other threads may already have grown past the failed range. Elements built before the throw are kept; the rest of that range is default-constructed when that cannot throw, and otherwise left as a gap that `clear()` and the destructor skip. Previously destruction ran `~T()` on the unconstructed slots. Other access to a gap is undefined; `clear()` makes the vector fully usable again. Builds without exceptions are unchanged apart from an 8-byte member.
 * `ResourcePool` no longer leaks its backing buffer and the resources already created when the init functor (or a resource constructor) throws during pool construction.
 * `Graph::addNode` / `Subgraph::addNode` no longer leak the node's functor storage when copying or moving the functor into the node throws.
+* `SPSCRingBuffer::try_push_batch` and `try_pop_batch` are now exception safe. If moving an element threw part-way through a batch, `try_push_batch` leaked the elements it had already constructed, and `try_pop_batch` left already-destroyed elements in the buffer to be popped or destroyed again. The part of the batch that completed is now published before the exception propagates.
 
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
