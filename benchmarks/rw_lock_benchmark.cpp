@@ -52,7 +52,7 @@ struct NopMutex {
 
 template <typename MutexT>
 void BM_serial(benchmark::State& state) {
-  int writePeriod = state.range(0);
+  int writePeriod = static_cast<int>(state.range(0));
   std::vector<int64_t> values(kNumValues);
   int64_t total = 0;
   MutexT mtx;
@@ -75,8 +75,8 @@ static void CustomArgumentsSerial(benchmark::internal::Benchmark* b) {
 
 template <typename MutexT>
 void BM_parallel(benchmark::State& state) {
-  int concurrency = state.range(0);
-  int writePeriod = state.range(1);
+  int concurrency = static_cast<int>(state.range(0));
+  int writePeriod = static_cast<int>(state.range(1));
   std::vector<int64_t> values(kNumValues);
   std::atomic<int64_t> total(0);
   MutexT mtx;

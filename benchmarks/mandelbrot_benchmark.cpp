@@ -119,7 +119,7 @@ void BM_serial(benchmark::State& state) {
 
 template <Region region>
 void BM_dispenso_auto(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   const int dim = static_cast<int>(state.range(1));
   const int numPixels = dim * dim;
   const Viewport vp = viewportFor(region);
@@ -159,7 +159,7 @@ void BM_dispenso_auto(benchmark::State& state) {
 #if !defined(BENCHMARK_WITHOUT_TBB)
 template <Region region>
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   const int dim = static_cast<int>(state.range(1));
   const int numPixels = dim * dim;
   const Viewport vp = viewportFor(region);
@@ -186,7 +186,7 @@ void BM_tbb(benchmark::State& state) {
 #if defined(_OPENMP)
 template <Region region>
 void BM_omp_guided(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   const int dim = static_cast<int>(state.range(1));
   const int numPixels = dim * dim;
   const Viewport vp = viewportFor(region);

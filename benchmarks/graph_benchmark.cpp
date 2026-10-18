@@ -271,7 +271,7 @@ static void BM_forward_propagator_node(benchmark::State& state) {
   nodes[0] = &graph.addNode([&counter]() { counter++; }); // root
   for (size_t i = 1; i < numNodes; ++i) {
     nodes[i] = &graph.addNode([&counter]() { counter++; });
-    std::uniform_int_distribution<> parentDistr(0, i - 1);
+    std::uniform_int_distribution<> parentDistr(0, static_cast<int>(i) - 1);
     nodes[i]->dependsOn(*nodes[parentDistr(rng)]);
   }
 

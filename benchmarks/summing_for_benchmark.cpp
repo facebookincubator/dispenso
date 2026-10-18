@@ -81,8 +81,8 @@ void BM_serial(benchmark::State& state) {
 // scripts/generate_plotly_benchmarks.py), so it should use the method we recommend for this
 // workload: the default kStatic chunking, since every element costs the same.
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
 
   dispenso::ThreadPool pool(num_threads);
 
@@ -123,8 +123,8 @@ void BM_dispenso(benchmark::State& state) {
 
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   omp_set_num_threads(num_threads);
 
@@ -147,8 +147,8 @@ void BM_omp(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   int64_t sum = 0;
 

@@ -172,7 +172,7 @@ int main() {
     dispenso::parallel_for(0, 20, [&streamPool](size_t i) {
       auto stream = streamPool.acquire();
       stream.get().str("");
-      stream.get() << "Value: " << i * 3.14159;
+      stream.get() << "Value: " << static_cast<double>(i) * 3.14159;
       // Stream reused, not recreated
     });
 

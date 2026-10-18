@@ -105,7 +105,7 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int numThreads = state.range(0) - 1;
+  const int numThreads = static_cast<int>(state.range(0) - 1);
 
   std::vector<int> output(kSize, 0);
   dispenso::resizeGlobalThreadPool(numThreads);
@@ -131,7 +131,7 @@ void BM_dispenso(benchmark::State& state) {
 
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
-  const int numThreads = state.range(0);
+  const int numThreads = static_cast<int>(state.range(0));
 
   std::vector<int> output(kSize, 0);
   omp_set_num_threads(numThreads);
@@ -155,7 +155,7 @@ void BM_omp(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int numThreads = state.range(0);
+  const int numThreads = static_cast<int>(state.range(0));
 
   std::vector<int> output(kSize, 0);
 

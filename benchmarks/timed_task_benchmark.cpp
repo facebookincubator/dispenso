@@ -151,11 +151,14 @@ void BM_folly_mixed(benchmark::State& state) {
   if (kSteady) {
     // We need to adjust prevTime because for steady scheduling, folly tries to schedule right away.
     for (auto& item : items) {
-      absTimesToSteadyErrors(item.times, prevTime - item.millis * 1e-3, item.millis * 1e-3);
+      absTimesToSteadyErrors(
+          item.times,
+          prevTime - static_cast<double>(item.millis) * 1e-3,
+          static_cast<double>(item.millis) * 1e-3);
     }
   } else {
     for (auto& item : items) {
-      absTimesToErrors(item.times, prevTime, item.millis * 1e-3);
+      absTimesToErrors(item.times, prevTime, static_cast<double>(item.millis) * 1e-3);
     }
   }
   endRusage(state);
@@ -248,7 +251,7 @@ void BM_dispenso_mixed(benchmark::State& state) {
   double prevTime = dispenso::getTime();
   auto type = kSteady ? dispenso::TimedTaskType::kSteady : dispenso::TimedTaskType::kNormal;
   auto doSchedule = [&](DispensoItem& ditem) {
-    double period = 1e-3 * ditem.millis;
+    double period = 1e-3 * static_cast<double>(ditem.millis);
 
     tasks.push_back(
         getScheduler().schedule(
@@ -285,11 +288,11 @@ void BM_dispenso_mixed(benchmark::State& state) {
 
   if (kSteady) {
     for (auto& item : items) {
-      absTimesToSteadyErrors(item.times, prevTime, item.millis * 1e-3);
+      absTimesToSteadyErrors(item.times, prevTime, static_cast<double>(item.millis) * 1e-3);
     }
   } else {
     for (auto& item : items) {
-      absTimesToErrors(item.times, prevTime, item.millis * 1e-3);
+      absTimesToErrors(item.times, prevTime, static_cast<double>(item.millis) * 1e-3);
     }
   }
   endRusage(state);
