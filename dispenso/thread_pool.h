@@ -344,7 +344,8 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
 
  private:
   // Per-thread ring buffer type for fork-join scheduling.
-  // 16 slots matches kAuto's oversubscription factor and fits in one cache line group.
+  // 16 slots matches ChunkedRange::calcChunkSize's default maxDynFactor (at most 16 chunks per
+  // working thread, parallel_for.h); tasks that do not fit fall back to the central queue.
   using Ring = MpmcRingBuffer<OnceFunction, 16>;
 
   // Steal ring configuration.
