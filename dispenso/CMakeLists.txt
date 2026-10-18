@@ -16,8 +16,15 @@ endif()
 message("SOURCES:  ${SOURCES}")
 
 if(DISPENSO_SHARED_LIB)
-  add_compile_definitions(DISPENSO_SHARED_LIB DISPENSO_LIB_EXPORT)
   add_library(dispenso SHARED ${SOURCES} ${HEADERS})
+  # DISPENSO_SHARED_LIB is PUBLIC: consumers need it too, so that on Windows
+  # DISPENSO_DLL_ACCESS expands to dllimport for them (dllexport only while
+  # building dispenso itself, via the PRIVATE DISPENSO_LIB_EXPORT). It is also
+  # recorded on the exported target, so find_package(Dispenso) users get it.
+  target_compile_definitions(dispenso
+    PUBLIC DISPENSO_SHARED_LIB
+    PRIVATE DISPENSO_LIB_EXPORT
+  )
 
   target_compile_options(dispenso PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fvisibility=hidden>

@@ -35,6 +35,9 @@ Unreleased
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
 
+### Build system
+* Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
+
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
 
