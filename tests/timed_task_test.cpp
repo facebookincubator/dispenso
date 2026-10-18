@@ -28,7 +28,7 @@ bool g_isRealtime = false;
 // Adjust basic epsilons via multipliers based on real-time status and platform.
 double errAdjust(double eps) {
   if (g_isRealtime) {
-#if defined(__MACH__)
+#if defined(__APPLE__)
     return eps * 0.5;
 #elif defined(_WIN32)
     return 2.0 * eps;
