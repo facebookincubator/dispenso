@@ -788,15 +788,20 @@ def build_once_function_charts(benchmarks, suite):
     return charts
 
 
-_ALLOC_PREFIXES = [
-    ("mallocfree_threaded", "malloc/free", 19),
-    ("mallocfree", "malloc/free", 10),
-    ("nl_pool_allocator_arena", "NoLock Arena", 23),
-    ("nl_pool_allocator", "NoLock", 17),
-    ("pool_allocator_arena", "Arena", 20),
-    ("pool_allocator_threaded", "PoolAllocator", 23),
-    ("pool_allocator", "PoolAllocator", 14),
-]
+# Benchmark family (name before the template arguments) -> allocator label.
+# The malloc/free families now carry a _baseline suffix; the bare names
+# are kept so older result files still parse.
+_ALLOC_FAMILIES = {
+    "mallocfree_baseline": "malloc/free",
+    "mallocfree_threaded_baseline": "malloc/free",
+    "mallocfree": "malloc/free",
+    "mallocfree_threaded": "malloc/free",
+    "nl_pool_allocator_arena": "NoLock Arena",
+    "nl_pool_allocator": "NoLock",
+    "pool_allocator_arena": "Arena",
+    "pool_allocator_threaded": "PoolAllocator",
+    "pool_allocator": "PoolAllocator",
+}
 
 
 def _parse_pool_allocator_benchmarks(benchmarks):
@@ -806,31 +811,15 @@ def _parse_pool_allocator_benchmarks(benchmarks):
         if bm.get("run_type") != "iteration":
             continue
         clean = bm["name"].replace("BM_", "").replace("/real_time", "")
-        at = None
-        rest = ""
-        for prefix, alloc_type, prefix_len in _ALLOC_PREFIXES:
-            if clean.startswith(prefix):
-                at = alloc_type
-                rest = clean[prefix_len:]
-                break
-        if at is None:
+        # family<size[,threads]>[/iters]
+        m = re.match(r"([a-z_]+)<([^>]*)>(?:/(\d+))?$", clean)
+        if not m or m.group(1) not in _ALLOC_FAMILIES:
             continue
-
-        size = "unknown"
-        threads = 1
-        iters = 0
-        if "<" in rest:
-            params, iters_str = rest.split(">")
-            params = params.lstrip("<")
-            if "," in params:
-                size, threads = params.split(",")
-                threads = int(threads)
-            else:
-                size = params
-            if "/" in iters_str:
-                iters = int(iters_str.lstrip("/"))
-        elif "/" in rest:
-            iters = int(rest.lstrip("/"))
+        at = _ALLOC_FAMILIES[m.group(1)]
+        params = [p.strip() for p in m.group(2).split(",")]
+        size = params[0]
+        threads = int(params[1]) if len(params) > 1 else 1
+        iters = int(m.group(3)) if m.group(3) else 0
         data[(at, size, threads, iters)] = bm["real_time"]
     return data
 

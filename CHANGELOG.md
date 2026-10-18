@@ -41,6 +41,7 @@ Unreleased
 * The benchmark dashboard no longer shows a meaningless serial-only "Cascading Parallel For" chart that plotted element counts as thread counts; the serial time now appears as the dashed reference line in the 100K and 10M cascading charts.
 * The benchmark dashboard's future section was an empty chart because it still looked for tree-build benchmarks that moved to tree_benchmark. It now charts the benchmark's actual workloads: speculative search with when_any, and KV-cache memoization with shared futures.
 * Thread-scaling charts on the benchmark dashboard (nested_for, for_each, locality, for_latency) now show the serial reference line; previously it was missing because of a size-mapping bug or because those suites' serial cases were ignored.
+* The benchmark dashboard's pool allocator charts now show the malloc/free baseline; since the baselines were renamed with a _baseline suffix, every malloc/free bar had been published as 0.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
