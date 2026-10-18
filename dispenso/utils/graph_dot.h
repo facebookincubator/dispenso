@@ -7,6 +7,7 @@
 
 /**
  * @file graph_dot.h
+ * @ingroup group_graph
  * Utility for writing a <code>Graph</code> or <code>BiPropGraph</code> as a Graphviz DOT file.
  **/
 
