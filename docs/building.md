@@ -127,6 +127,23 @@ something dispenso or any packager adds. Its CMake target sets the matching
 include directory, so `find_package(Dispenso)` needs none of this; only
 hand-rolled builds do.
 
+## Other Build Options
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `DISPENSO_BUILD_TESTS` | OFF | Build the unit tests (needs GoogleTest; see Testing below) |
+| `DISPENSO_BUILD_BENCHMARKS` | OFF | Build the benchmarks (see Benchmarking below) |
+| `DISPENSO_BUILD_EXAMPLES` | OFF | Build the programs in `examples/` |
+| `DISPENSO_WERROR` | ON | Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing `-Wno-error` in `CMAKE_CXX_FLAGS` does not work, because dispenso's own flags come later. |
+| `ADDRESS_SANITIZER` | OFF | Build everything with `-fsanitize=address -fsanitize=undefined` (GCC and Clang) |
+| `THREAD_SANITIZER` | OFF | Build everything with `-fsanitize=thread` (GCC and Clang). Use Clang: GCC's ThreadSanitizer does not model `std::atomic_thread_fence` and reports false races in the lock-free queues. |
+| `DISPENSO_BUILD_FAST_MATH` | OFF | Build the experimental `fast_math` sublibrary. Its API is unstable. |
+| `DISPENSO_FAST_MATH_SIMD` | `none` | SIMD instruction set for the `fast_math` targets: `none`, `native`, `sse4.1`, `avx2`, `avx512` or `neon` |
+| `DISPENSO_FAST_MATH_HIGHWAY` | OFF | Add the [Highway](https://github.com/google/highway) backend to `fast_math`, fetching Highway if it is not installed |
+| `DISPENSO_FAST_MATH_CUDA` | OFF | Build the `fast_math` CUDA tests (needs the CUDA toolkit) |
+
+The sanitizer options are mutually exclusive. The `asan` and `tsan` presets set them for you.
+
 ## Installing
 
 Once built, install by building the "install" target:
