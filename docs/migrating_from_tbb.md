@@ -56,7 +56,7 @@ dispenso::parallel_for(0, N, [&](size_t i) {
 
 // Chunked form - like TBB's blocked_range
 dispenso::parallel_for(
-    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),
+    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),
     [&](size_t begin, size_t end) {
         for (size_t i = begin; i < end; ++i) {
             process(data[i]);
@@ -297,6 +297,8 @@ Dispenso's `Graph` is optimized for task DAGs with potential partial re-executio
 
 ```cpp
 #include <dispenso/graph.h>
+#include <dispenso/graph_executor.h>
+#include <dispenso/task_set.h>
 
 dispenso::Graph graph;
 
@@ -309,11 +311,16 @@ nodeB.dependsOn(nodeA);
 nodeC.dependsOn(nodeA);
 
 // Execute the graph
-dispenso::execute(graph, dispenso::globalThreadPool());
+dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+dispenso::ConcurrentTaskSetExecutor executor;
+setAllNodesIncomplete(graph);
+executor(taskSet, graph);
 
 // For repeated execution with partial updates:
-nodeA.setIncomplete();  // Mark as needing re-execution
-dispenso::execute(graph, dispenso::globalThreadPool());  // Only re-runs A and dependents
+nodeA.setIncomplete();                 // Mark as needing re-execution
+dispenso::ForwardPropagator propagator;
+propagator(graph);                     // Mark everything downstream of A incomplete too
+executor(taskSet, graph);              // Only re-runs A and its dependents
 ```
 
 ## Futures (Dispenso Advantage)
@@ -409,9 +416,9 @@ tbb::parallel_for(range, body, ap);
 ```cpp
 #include <dispenso/parallel_for.h>
 
-// Auto chunking (like auto_partitioner)
+// Adaptive chunking (closest to auto_partitioner)
 dispenso::parallel_for(
-    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),
+    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),
     body);
 
 // Static chunking (like static_partitioner)
@@ -438,6 +445,7 @@ tbb::spin_mutex mutex;
 ```cpp
 #include <dispenso/rw_lock.h>
 #include <mutex>
+#include <shared_mutex>  // std::shared_lock
 
 // For exclusive access, use std::mutex or dispenso::RWLock
 std::mutex mutex;
@@ -449,11 +457,11 @@ std::mutex mutex;
 // For read-heavy workloads, use RWLock
 dispenso::RWLock rwLock;
 {
-    dispenso::RWLock::ReadGuard rlock(rwLock);
+    std::shared_lock<dispenso::RWLock> rlock(rwLock);
     // Read-only access
 }
 {
-    dispenso::RWLock::WriteGuard wlock(rwLock);
+    std::unique_lock<dispenso::RWLock> wlock(rwLock);
     // Exclusive write access
 }
 ```
@@ -518,7 +526,7 @@ auto result = future.get();
 3. **TBB may be faster for very large, uniform workloads** - TBB's cache-affinity
    partitioner can help in specific scenarios
 
-4. **Use appropriate chunking** - `kStatic` for uniform work, `kAuto` for variable work
+4. **Use appropriate chunking** - `kStatic` for uniform work, `kAdaptive` for variable work
 
 5. **Reuse pools and TaskSets** - creation has overhead; reuse when possible
 

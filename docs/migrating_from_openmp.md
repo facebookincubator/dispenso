@@ -322,9 +322,9 @@ dispenso::parallel_for(
         }
     });
 
-// Dynamic-like (auto) chunking - adapts to workload
+// Dynamic-like (adaptive) chunking - adapts to workload
 dispenso::parallel_for(
-    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),
+    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),
     [&](size_t begin, size_t end) {
         for (size_t i = begin; i < end; ++i) {
             process(data[i]);
