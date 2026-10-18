@@ -20,6 +20,7 @@ Unreleased
 * `ConcurrentVector` constructors no longer destroy elements that were never constructed when an element constructor throws. The count, count/value, iterator-range, initializer_list and copy constructors set the final size before constructing elements, so a throw part-way through ran destructors on raw memory. `assign` and copy assignment had the same flaw; they now leave the vector holding the elements constructed before the exception.
 * `ResourcePool` no longer leaks its backing buffer and the resources already created when the init functor (or a resource constructor) throws during pool construction.
 * `Graph::addNode` / `Subgraph::addNode` no longer leak the node's functor storage when copying or moving the functor into the node throws.
+* `SPSCRingBuffer::try_push_batch` and `try_pop_batch` are now exception safe. If moving an element threw part-way through a batch, `try_push_batch` leaked the elements it had already constructed, and `try_pop_batch` left already-destroyed elements in the buffer to be popped or destroyed again. The part of the batch that completed is now published before the exception propagates.
 
 1.6.2 (August 19, 2026)
 
