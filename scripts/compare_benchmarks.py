@@ -18,9 +18,15 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+
+# A test is identified by (executable, benchmark name). Benchmark names alone
+# are not unique: e.g. BM_omp/1/100000/real_time exists in both
+# cascading_parallel_for_benchmark and locality_benchmark.
+TestKey = Tuple[str, str]
 
 
 def format_time(ns: float) -> str:
@@ -50,11 +56,28 @@ def _normalize_to_ns(time_val: float, unit: str) -> float:
     return time_val * _TIME_UNIT_MULTIPLIERS.get(unit, 1)
 
 
+def normalize_exe_name(name: str) -> str:
+    """Reduce a recorded executable name to a platform-independent identity.
+
+    Drops any directory (either separator) and a trailing ".exe", so Windows
+    and POSIX runs of the same benchmark compare against each other.
+    """
+    base = re.split(r"[\\/]", name)[-1]
+    if base.lower().endswith(".exe"):
+        base = base[: -len(".exe")]
+    return base
+
+
+def format_test(key: TestKey) -> str:
+    """Render a test key for display."""
+    return f"{key[0]}: {key[1]}"
+
+
 def load_benchmarks(
     path: Path,
     file_filter: Optional[str] = None,
-) -> Dict[str, float]:
-    """Load benchmark results, returning {test_name: time_ns}.
+) -> Dict[TestKey, float]:
+    """Load benchmark results, returning {(executable, test_name): time_ns}.
 
     When --benchmark_repetitions is used, Google Benchmark outputs both
     individual iteration rows (run_type=iteration) and aggregate rows
@@ -65,12 +88,12 @@ def load_benchmarks(
     with open(path) as f:
         data = json.load(f)
 
-    iteration_results = {}
-    median_results = {}
+    iteration_results: Dict[TestKey, float] = {}
+    median_results: Dict[TestKey, float] = {}
     for entry in data.get("results", []):
         if not entry.get("success"):
             continue
-        exe_name = entry["name"].replace(".exe", "")
+        exe_name = normalize_exe_name(entry["name"])
         if file_filter and file_filter.lower() not in exe_name.lower():
             continue
         for bm in entry.get("data", {}).get("benchmarks", []):
@@ -79,19 +102,16 @@ def load_benchmarks(
 
             run_type = bm.get("run_type")
             if run_type == "iteration":
-                if name not in iteration_results:
-                    iteration_results[name] = time_ns
+                key = (exe_name, name)
+                if key not in iteration_results:
+                    iteration_results[key] = time_ns
             elif run_type == "aggregate" and name.endswith("_median"):
                 base_name = name[: -len("_median")]
-                median_results[base_name] = time_ns
+                median_results[(exe_name, base_name)] = time_ns
 
     # Prefer median aggregates over raw iteration values
-    results = {}
-    for name in set(list(iteration_results.keys()) + list(median_results.keys())):
-        if name in median_results:
-            results[name] = median_results[name]
-        elif name in iteration_results:
-            results[name] = iteration_results[name]
+    results = dict(iteration_results)
+    results.update(median_results)
     return results
 
 
@@ -119,9 +139,9 @@ def _format_comparison_cell(val: Optional[float], base_val: Optional[float]) -> 
 
 
 def _print_summary(
-    datasets: List[Dict[str, float]],
+    datasets: List[Dict[TestKey, float]],
     labels: List[str],
-    tests: List[str],
+    tests: List[TestKey],
 ):
     """Print summary of significant changes (>10%) vs baseline."""
     base_label = labels[0]
@@ -144,10 +164,10 @@ def _print_summary(
         print(f"[{label}] vs [{base_label}] significant changes (>10%):")
         if improvements:
             for test, pct in sorted(improvements, key=lambda x: x[1]):
-                print(f"  {pct:>+7.1f}%  {test}")
+                print(f"  {pct:>+7.1f}%  {format_test(test)}")
         if regressions:
             for test, pct in sorted(regressions, key=lambda x: -x[1]):
-                print(f"  {pct:>+7.1f}%  {test}")
+                print(f"  {pct:>+7.1f}%  {format_test(test)}")
         if not improvements and not regressions:
             print("  (none)")
         print()
@@ -175,14 +195,14 @@ def compare(
     for ds in datasets:
         all_tests.update(ds.keys())
     if prefix_filter:
-        all_tests = {t for t in all_tests if t.startswith(prefix_filter)}
+        all_tests = {t for t in all_tests if t[1].startswith(prefix_filter)}
 
     if not all_tests:
         print("No matching tests found.")
         return
 
     tests = sorted(all_tests)
-    name_width = min(max(len(t) for t in tests), 55)
+    name_width = min(max(len(t[1]) for t in tests), 55)
 
     # Print header
     base_label = labels[0]
@@ -192,9 +212,18 @@ def compare(
     print(header)
     print("-" * len(header))
 
-    # Print each test row
+    # Print each test row, grouped under the executable that produced it
+    current_exe = None
     for test in tests:
-        name = test if len(test) <= name_width else test[: name_width - 2] + ".."
+        exe, test_name = test
+        if exe != current_exe:
+            print(f"[{exe}]")
+            current_exe = exe
+        name = (
+            test_name
+            if len(test_name) <= name_width
+            else test_name[: name_width - 2] + ".."
+        )
         base_val = datasets[0].get(test)
 
         line = f"{name:<{name_width}}"
