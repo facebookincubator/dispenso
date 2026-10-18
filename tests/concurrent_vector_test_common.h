@@ -1619,3 +1619,43 @@ TYPED_TEST(ConcurrentVectorTest, ThrowingElementConstructionDestroysOnlyConstruc
   EXPECT_EQ(ThrowingCopy::live(), 0);
 }
 #endif // __cpp_exceptions
+
+TYPED_TEST(ConcurrentVectorTest, IntegralArgumentsAreNotIterators) {
+  using Vec = dispenso::ConcurrentVector<int, TypeParam>;
+  // The iterator-range constructors must not capture (count, value) pairs of integral type, as
+  // with std::vector.
+  static_assert(std::is_constructible<Vec, int, int>::value, "count/value constructor");
+  static_assert(!std::is_constructible<Vec, int, int, int>::value, "not a sized iterator range");
+  static_assert(std::is_constructible<Vec, const int*, const int*>::value, "iterator range");
+  static_assert(
+      std::is_constructible<Vec, size_t, const int*, const int*>::value, "sized iterator range");
+
+  Vec vec(5, 3);
+  ASSERT_EQ(vec.size(), 5u);
+  for (int v : vec) {
+    EXPECT_EQ(v, 3);
+  }
+
+  vec.assign(4, 7);
+  ASSERT_EQ(vec.size(), 4u);
+  for (int v : vec) {
+    EXPECT_EQ(v, 7);
+  }
+
+  vec.insert(vec.begin() + 1, 2, 9);
+  std::vector<int> expected = {7, 9, 9, 7, 7, 7};
+  ASSERT_EQ(vec.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_EQ(vec[i], expected[i]);
+  }
+
+  const int arr[] = {1, 2, 3};
+  Vec fromRange(std::begin(arr), std::end(arr));
+  Vec fromSizedRange(3, std::begin(arr), std::end(arr));
+  ASSERT_EQ(fromRange.size(), 3u);
+  ASSERT_EQ(fromSizedRange.size(), 3u);
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_EQ(fromRange[i], arr[i]);
+    EXPECT_EQ(fromSizedRange[i], arr[i]);
+  }
+}

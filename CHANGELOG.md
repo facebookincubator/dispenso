@@ -22,6 +22,7 @@ Unreleased
 * `Graph::addNode` / `Subgraph::addNode` no longer leak the node's functor storage when copying or moving the functor into the node throws.
 * `SPSCRingBuffer::try_push_batch` and `try_pop_batch` are now exception safe. If moving an element threw part-way through a batch, `try_push_batch` leaked the elements it had already constructed, and `try_pop_batch` left already-destroyed elements in the buffer to be popped or destroyed again. The part of the batch that completed is now published before the exception propagates.
 * Fixed misaligned per-thread data in `ThreadPool` in C++14 builds. Workers were stored in a `std::deque` of a cache-line-aligned type, and before C++17 `std::allocator` ignores over-alignment, so most entries sat at misaligned addresses (undefined behaviour, and no false-sharing protection). The `CacheAligned` documentation now notes that standard containers of it need an alignment-aware allocator before C++17.
+* `ConcurrentVector<int> v(5, 3)` (and other count/value constructions with an integral element type) now compiles and creates five 3s, as with `std::vector`. The iterator-range constructors previously captured such calls and failed to compile.
 
 1.6.2 (August 19, 2026)
 
