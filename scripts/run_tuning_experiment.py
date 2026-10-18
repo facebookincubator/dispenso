@@ -11,10 +11,17 @@ Builds and runs a representative set of benchmarks across different
 tuning configurations, producing a JSON report for comparison. Run on
 each target platform (Linux, macOS, Windows) to find optimal constants.
 
+This is a tool for platform bring-up and targeted retuning, not for routine
+runs. Configurations whose knob the host platform's implementation does not
+read are skipped (they would only measure the defaults plus noise); pass
+--force to run them anyway, e.g. when bringing up a platform whose
+implementation is new or not yet characterized.
+
 Usage:
-    python3 run_tuning_experiment.py                    # all configs
+    python3 run_tuning_experiment.py                    # all applicable configs
     python3 run_tuning_experiment.py -c wake_factor     # single knob
     python3 run_tuning_experiment.py --list              # list configs
+    python3 run_tuning_experiment.py -c wake_all_threshold --force
 
 Output: JSON file with per-config benchmark results for comparison.
 """
@@ -75,6 +82,37 @@ BENCHMARK_SUITE = [
     ),
     ("graph_scene_benchmark", "BM_scene_graph", "graph scene"),
 ]
+
+
+# Knobs that only some platform implementations read, keyed by category:
+# (platform.system() values that read it, explanation for everyone else).
+# Categories not listed here are read on every platform.
+PLATFORM_SPECIFIC_CATEGORIES = {
+    "wake_all_threshold": (
+        {"Darwin"},
+        "DISPENSO_TUNE_WAKE_ALL_THRESHOLD is read only by the macOS "
+        "EpochWaiter (dispenso/detail/epoch_waiter.h). Linux/FreeBSD wake "
+        "exactly K waiters in one futex call, Windows wakes all whenever more "
+        "than one thread waits, and the generic fallback ignores it",
+    ),
+}
+
+
+# Platforms with a tailored EpochWaiter backend whose tunable behaviour is
+# characterized above. Anything else (NetBSD, OpenBSD, DragonFly, ...) builds
+# the generic fallback, whose knobs may not behave like any of these.
+CHARACTERIZED_SYSTEMS = {"Linux", "Darwin", "Windows", "FreeBSD"}
+
+
+def category_applies(category, system):
+    """Return (applies, reason) for running `category` on `system`."""
+    entry = PLATFORM_SPECIFIC_CATEGORIES.get(category)
+    if entry is None:
+        return True, ""
+    systems, reason = entry
+    if system in systems:
+        return True, ""
+    return False, reason
 
 
 def define_configurations():
@@ -150,11 +188,11 @@ def define_configurations():
             }
         )
 
-    # --- Wake-all threshold (mainly relevant on macOS/Windows) ---
-    # K above which `bumpAndWakeN` switches from looping wake-one to a
-    # single wake-all. Linux's exact-K syscall makes this irrelevant
-    # there; on macOS/Windows the optimal K depends on the per-syscall
-    # cost ratio, which this sweep measures end to end.
+    # --- Wake-all threshold (macOS only) ---
+    # K at which `bumpAndWakeN` switches from looping wake-one to a single
+    # wake-all. Only the macOS EpochWaiter reads it (see
+    # PLATFORM_SPECIFIC_CATEGORIES); there the optimal K depends on the
+    # per-syscall cost ratio, which this sweep measures end to end.
     for k in [2, 3, 4, 6, 8, 12, 16]:
         configs.append(
             {
@@ -336,6 +374,12 @@ def parse_args():
         help="Extra cmake arguments (e.g., --cmake-args='-DDISPENSO_DEPS_DIR=...')",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Also run configs whose knob this platform's implementation does "
+        "not read (for bring-up of new platforms, e.g. the BSDs)",
+    )
+    parser.add_argument(
         "--clean",
         action="store_true",
         help="Clean build directory between configs (slower but avoids stale artifacts)",
@@ -343,13 +387,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def list_configurations(configs):
+def list_configurations(configs, system):
     """Print available configurations grouped by category."""
     categories = {}
     for c in configs:
         categories.setdefault(c["category"], []).append(c)
     for cat, cfgs in sorted(categories.items()):
-        print(f"\n{cat}:")
+        applies, _ = category_applies(cat, system)
+        note = ""
+        if not applies:
+            note = f"  (not read on {system}; skipped without --force)"
+        print(f"\n{cat}:{note}")
         for c in cfgs:
             defines = " ".join(c["defines"]) if c["defines"] else "(defaults)"
             print(f"  {c['name']:30s} {defines}")
@@ -449,19 +497,57 @@ def print_summary(all_results):
             )
 
 
+def select_applicable(configs, system, force):
+    """Drop configs whose knob `system` does not read, unless `force`."""
+    selected = []
+    skipped = {}
+    for c in configs:
+        applies, reason = category_applies(c["category"], system)
+        if applies or force:
+            selected.append(c)
+        else:
+            skipped.setdefault(c["category"], (reason, []))[1].append(c["name"])
+    for cat, (reason, names) in sorted(skipped.items()):
+        print(
+            f"Skipping {cat} ({len(names)} configs) on {system}: {reason}. "
+            "Pass --force to run it anyway."
+        )
+    if system not in CHARACTERIZED_SYSTEMS:
+        print(
+            f"Note: {system} has no tailored EpochWaiter backend; dispenso uses "
+            "the generic fallback there, so treat these results as characterizing "
+            "that fallback, not as evidence about the tuned platforms."
+        )
+    if force:
+        for cat in sorted({c["category"] for c in configs}):
+            applies, reason = category_applies(cat, system)
+            if not applies:
+                print(f"Running {cat} on {system} despite: {reason} (--force).")
+    return selected
+
+
 def main():
     args = parse_args()
     configs = define_configurations()
+    system = platform.system()
 
     if args.list:
-        list_configurations(configs)
+        list_configurations(configs, system)
         return
 
     if args.category:
-        configs = [c for c in configs if c["category"] in (args.category, "baseline")]
-        if not configs:
+        if not any(c["category"] == args.category for c in configs):
             print(f"No configs found for category '{args.category}'")
             sys.exit(1)
+        configs = [c for c in configs if c["category"] in (args.category, "baseline")]
+
+    selected = select_applicable(configs, system, args.force)
+    if len(selected) < len(configs) and all(
+        c["category"] == "baseline" for c in selected
+    ):
+        print("Nothing left to run on this platform.")
+        sys.exit(1)
+    configs = selected
 
     print(f"Platform: {platform.system()} {platform.machine()}")
     print(f"Source:   {args.source_dir}")
