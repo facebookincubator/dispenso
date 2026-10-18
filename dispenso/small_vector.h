@@ -23,6 +23,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <initializer_list>
 #include <new>
 #include <utility>
@@ -355,6 +356,13 @@ class SmallVector {
   void resize(size_type count, const T& value) {
     size_type sz = rawSize();
     if (count > sz) {
+      if (count > capacity() && isElement(&value)) {
+        // Growing moves the elements and releases their storage, so value would dangle; fill
+        // from a copy instead (as std::vector supports v.resize(n, v[0])).
+        const T copy(value);
+        resize(count, copy);
+        return;
+      }
       ensureCapacity(count);
       constructRange(data(), sz, count, [&value](T* p) { new (p) T(value); });
       setSize(count);
@@ -415,6 +423,13 @@ class SmallVector {
   }
   const T* inlineData() const noexcept {
     return reinterpret_cast<const T*>(&storage_.inline_);
+  }
+
+  // Whether p points at one of this vector's elements. std::less gives a total order even for
+  // pointers into unrelated objects.
+  bool isElement(const T* p) const noexcept {
+    const T* begin = data();
+    return !std::less<const T*>()(p, begin) && std::less<const T*>()(p, begin + rawSize());
   }
 
   // For constructors: run fill(), and if it throws, destroy whatever it built and free any heap
