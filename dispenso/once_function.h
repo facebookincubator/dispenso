@@ -56,12 +56,7 @@ class OnceFunction {
   /**
    * Construct a <code>OnceFunction</code> with invalid state.
    **/
-  OnceFunction()
-#if defined DISPENSO_DEBUG
-      : invoke_(nullptr)
-#endif // DISPENSO_DEBUG
-  {
-  }
+  OnceFunction() : ops_(&detail::EmptyOnceCallableOps<>::kOps) {}
 
   /**
    * Construct a <code>OnceFunction</code> with a valid functor.
@@ -72,32 +67,26 @@ class OnceFunction {
    **/
   template <typename F>
   DISPENSO_REQUIRES(OnceCallableFunc<F>)
-  OnceFunction(F&& f) {
-    auto callable = detail::createOnceCallable(std::forward<F>(f), buf_);
-    invoke_ = callable.invoke;
-  }
+  OnceFunction(F&& f) : ops_(detail::createOnceCallable(std::forward<F>(f), buf_)) {}
 
   OnceFunction(const OnceFunction& other) = delete;
 
-  /** Move constructor.  Copies the full 64-byte object (one cache line). */
+  /**
+   * Move constructor.  Copies the full 64-byte object (one cache line), except for inline functors
+   * that are not trivially copyable, which are move-constructed into place.
+   **/
   OnceFunction(OnceFunction&& other) noexcept {
-    std::memcpy(static_cast<void*>(this), &other, sizeof(OnceFunction));
-#if defined DISPENSO_DEBUG
-    other.invoke_ = nullptr;
-#endif // DISPENSO_DEBUG
+    moveFrom(other);
   }
 
   OnceFunction& operator=(OnceFunction&& other) noexcept {
     if (this != &other) {
 #if defined DISPENSO_DEBUG
       assert(
-          invoke_ == nullptr &&
+          ops_->invoke == nullptr &&
           "OnceFunction must be invoked or cleanupNotRun() before reassignment");
 #endif // DISPENSO_DEBUG
-      std::memcpy(static_cast<void*>(this), &other, sizeof(OnceFunction));
-#if defined DISPENSO_DEBUG
-      other.invoke_ = nullptr;
-#endif // DISPENSO_DEBUG
+      moveFrom(other);
     }
     return *this;
   }
@@ -109,12 +98,9 @@ class OnceFunction {
    **/
   void cleanupNotRun() {
 #if defined DISPENSO_DEBUG
-    assert(invoke_ != nullptr && "Must not cleanup an invalid OnceFunction!");
-    invoke_(buf_, false);
-    invoke_ = nullptr;
-#else
-    invoke_(buf_, false);
-#endif // DISPENSO_DEBUG
+    assert(ops_->invoke != nullptr && "Must not cleanup an invalid OnceFunction!");
+#endif
+    consumeOps()->invoke(buf_, false);
   }
 
   /**
@@ -123,23 +109,40 @@ class OnceFunction {
    **/
   void operator()() const {
 #if defined DISPENSO_DEBUG
-    assert(invoke_ != nullptr && "Must not use OnceFunction more than once!");
+    assert(ops_->invoke != nullptr && "Must not use OnceFunction more than once!");
 #endif // DISPENSO_DEBUG
-
-    invoke_(buf_, true);
-
-#if defined DISPENSO_DEBUG
-    invoke_ = nullptr;
-#endif // DISPENSO_DEBUG
+    consumeOps()->invoke(buf_, true);
   }
 
  private:
-  // 64 bytes total (one cache line): 56 bytes inline storage + 8 bytes invoke ptr.
+  // 64 bytes total (one cache line): 56 bytes inline storage + 8 bytes operations ptr.
   // Inline: buf_ holds the functor directly.
   // Spill: buf_[0..7] holds a void* to pool-allocated storage.
-  // Moves are a 64-byte memcpy — no pointer fixup needed.
+  // Moves are a 64-byte memcpy, except for inline functors that are not trivially copyable, which
+  // the operations' relocate entry move-constructs into place.
+  void moveFrom(OnceFunction& other) noexcept {
+    if (DISPENSO_EXPECT(other.ops_->relocate == nullptr, true)) {
+      std::memcpy(static_cast<void*>(this), &other, sizeof(OnceFunction));
+    } else {
+      ops_ = other.ops_;
+      ops_->relocate(other.buf_, buf_);
+      other.ops_ = &detail::EmptyOnceCallableOps<>::kOps;
+    }
+#if defined DISPENSO_DEBUG
+    other.ops_ = &detail::EmptyOnceCallableOps<>::kOps;
+#endif // DISPENSO_DEBUG
+  }
+
+  // Marks this object consumed before the call, because the invoked functor may free the memory
+  // holding this OnceFunction.  Leaves no stale relocate entry for a later move to act on.
+  const detail::OnceCallableOps* consumeOps() const {
+    const detail::OnceCallableOps* ops = ops_;
+    ops_ = &detail::EmptyOnceCallableOps<>::kOps;
+    return ops;
+  }
+
   alignas(64) mutable char buf_[detail::kOnceFunctionInlineSize];
-  mutable void (*invoke_)(void*, bool);
+  mutable const detail::OnceCallableOps* ops_;
 
   template <typename Result>
   friend class detail::FutureBase;
