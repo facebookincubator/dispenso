@@ -734,12 +734,6 @@ def main():
         help="Minimum time per benchmark in seconds (passed to --benchmark_min_time)",
     )
     parser.add_argument(
-        "--tcmalloc",
-        type=str,
-        default=None,
-        help="Path to libtcmalloc.so for LD_PRELOAD tests (e.g., /usr/lib64/libtcmalloc.so.4)",
-    )
-    parser.add_argument(
         "--jobs",
         "-j",
         type=int,
