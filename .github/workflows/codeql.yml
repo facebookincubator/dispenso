@@ -8,10 +8,17 @@ on:
   schedule:
     - cron: '17 9 * * 1'
 
+# Cancel a superseded pull request analysis; pushes to main and scheduled
+# runs each get their own group, so they are never cancelled or dropped.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze (C/C++)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       security-events: write
       contents: read

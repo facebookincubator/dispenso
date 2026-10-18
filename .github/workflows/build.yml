@@ -10,6 +10,20 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request supersedes the run already going for it, so
+# cancel that one. Every other event (pushes to main) gets a group of its own
+# via run_id: a shared group would still drop a queued run when a third
+# arrives, even with cancel-in-progress off, and each main commit deserves its
+# own result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Time bounds: every job has timeout-minutes: 30, roughly five times the
+# slowest job's usual run (about 6 minutes for Windows and coverage), so a
+# deadlocked test fails in half an hour instead of holding a runner for the
+# 6-hour default. ctest --timeout 300 bounds each test in the same spirit,
+# naming the test that hung rather than just the job.
 env:
   CTEST_OUTPUT_ON_FAILURE: 1
 
@@ -20,6 +34,7 @@ jobs:
   build-matrix:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +75,7 @@ jobs:
         run: cmake --build . --parallel 4 --config Release
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky --build-config Release
+        run: ctest --timeout 300 -LE flaky --build-config Release
 
   #############################################################################
   # Architecture-specific builds
@@ -68,6 +83,7 @@ jobs:
   build-linux-x86:
     name: Linux x86 (32-bit)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Install 32-bit support
@@ -82,11 +98,12 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   build-linux-aarch64:
     name: Linux aarch64 ${{ matrix.compiler }}
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -113,11 +130,12 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   build-macos-gcc:
     name: macOS GCC C++14 (ARM64)
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Set up GCC
@@ -137,11 +155,12 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   build-windows-x86:
     name: Windows x86 (32-bit)
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Configure
@@ -153,7 +172,7 @@ jobs:
         run: cmake --build . --parallel 4 --config Release
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky --build-config Release
+        run: ctest --timeout 300 -LE flaky --build-config Release
 
   #############################################################################
   # Cross-compiled architectures, executed under QEMU
@@ -161,6 +180,7 @@ jobs:
   build-cross:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -231,7 +251,7 @@ jobs:
         working-directory: ./build
         env:
           QEMU_LD_PREFIX: ${{ matrix.sysroot }}
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   #############################################################################
   # Packaging configurations - what the package managers actually ship
@@ -239,6 +259,7 @@ jobs:
   build-system-concurrentqueue:
     name: Linux system concurrentqueue
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       # The vcpkg and conan ports both build with
@@ -264,7 +285,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
       # The installed DispensoConfig.cmake must find concurrentqueue itself
       # (find_dependency) in this configuration, which only a real consumer of
       # the installed package exercises.
@@ -280,6 +301,7 @@ jobs:
   build-install-consumer:
     name: Linux installed CMake package
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # docs/building.md tells users to consume an installed dispenso through
     # find_package(Dispenso) and Dispenso::dispenso. The external-consumer
     # steps in the GCC 16 and Clang 22 jobs deliberately use bare -I/-L, the
@@ -312,6 +334,7 @@ jobs:
   build-clang-trunk:
     name: Linux Clang trunk (advisory)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Trunk breaks for reasons that are usually LLVM's rather than ours, so a
     # failure here is a heads-up and must not gate a pull request. Read it
     # before a new Clang release, not during review.
@@ -347,7 +370,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   # Neither runner image ships anything newer than GCC 13, so these two are the
   # only coverage of current compilers -- and the only jobs that build the
@@ -361,6 +384,7 @@ jobs:
   build-gcc-16:
     name: Linux GCC 16 + libstdc++
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Docker official image, so this is the compiler a user gets rather than
     # whatever the runner happens to ship.
     container: gcc:16.2
@@ -380,7 +404,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
       - name: Compile as an external consumer
         run: |
           cmake --install build --prefix /tmp/prefix
@@ -393,6 +417,7 @@ jobs:
   build-clang-22-libcxx:
     name: Linux Clang 22 + libc++
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # libc++ rather than libstdc++ deliberately. Every other Linux job uses
     # libstdc++, and clang-trunk already covers clang against it, so pairing the
     # newest Clang with libc++ is the only configuration here that exercises a
@@ -430,7 +455,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
       - name: Compile as an external consumer
         run: |
           cmake --install build --prefix /tmp/prefix
@@ -446,6 +471,7 @@ jobs:
   build-benchmarks:
     name: Linux benchmarks (build only)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Nothing else enables DISPENSO_BUILD_BENCHMARKS, so benchmark sources and
     # benchmarks/CMakeLists.txt's dependency discovery (Google Benchmark and
     # Taskflow via FetchContent, TBB, OpenMP) could break unnoticed. This builds
@@ -484,6 +510,7 @@ jobs:
   sanitizers:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -509,7 +536,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
 
   #############################################################################
   # Documentation build
@@ -517,6 +544,7 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       # Shared with docs.yml so the validated version and the published one
@@ -541,6 +569,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Install lcov
@@ -557,10 +586,10 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test (stable tests)
         working-directory: ./build
-        run: ctest -LE flaky
+        run: ctest --timeout 300 -LE flaky
       - name: Test (TimedTask, with retries)
         working-directory: ./build
-        run: ctest -L flaky -R "^TimedTaskTest\." --repeat until-pass:5
+        run: ctest --timeout 300 -L flaky -R "^TimedTaskTest\." --repeat until-pass:5
       - name: Generate coverage report
         run: |
           lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,gcov,negative
