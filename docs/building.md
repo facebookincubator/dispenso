@@ -90,7 +90,11 @@ Two options change what the built library is, and both matter to packagers:
 
 - `DISPENSO_SHARED_LIB` (default **ON**) selects a shared library. Set it to
   `OFF` for a static build. Note the default: a packager wanting a static
-  library has to ask for one.
+  library has to ask for one. A shared build also defines the preprocessor
+  macro `DISPENSO_SHARED_LIB` for consumers of the `Dispenso::dispenso`
+  target; on Windows that makes dispenso's headers import their symbols from
+  the DLL. Builds that do not use the CMake target must define
+  `DISPENSO_SHARED_LIB` themselves when linking against a shared dispenso.
 - `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE` (default OFF) builds against an
   installed [concurrentqueue](https://github.com/cameron314/concurrentqueue)
   rather than the copy bundled in `dispenso/third-party/moodycamel`. The
