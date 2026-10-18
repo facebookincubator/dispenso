@@ -26,9 +26,9 @@ class OpResult {
 
   OpResult(const OpResult<T>& oth) : ptr_(oth ? new (buf_) T(*oth.ptr_) : nullptr) {}
 
-  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {
-    oth.ptr_ = nullptr;
-  }
+  // Like std::optional, moving leaves the source engaged, holding a moved-from T that is destroyed
+  // by the source's destructor (or a later assignment/emplace) as usual.
+  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {}
 
   OpResult& operator=(const OpResult& oth) {
     if (&oth == this) {
@@ -56,7 +56,6 @@ class OpResult {
 
     if (oth) {
       ptr_ = new (buf_) T(std::move(*oth.ptr_));
-      oth.ptr_ = nullptr;
     } else {
       ptr_ = nullptr;
     }
