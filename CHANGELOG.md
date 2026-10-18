@@ -36,6 +36,7 @@ Unreleased
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
 * The online documentation now has a light/dark mode toggle next to the search box; it follows the system preference by default and remembers your choice.
 * Getting Started now says its code blocks are fragments and links each section's complete program in `examples/`; those links previously broke on the documentation site.
+* The README now leads with installation and a guide to choosing an API, and links its performance claims to the benchmark sources, dashboard and methodology.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
