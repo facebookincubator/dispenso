@@ -36,6 +36,7 @@ Unreleased
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
 * Building with `DISPENSO_BUILD_EXAMPLES=ON` now registers each example as a ctest smoke test (label `example`), and CI runs them. An example fails if it exits non-zero, prints a result that disagrees with the value it says it expected, or never reaches its closing success line; previously the examples were only compiled, which is how a crash in `pipeline_example` went unnoticed.
+* CI now builds the benchmarks (with TBB and OpenMP available) and checks that each binary starts, so breakage in benchmark sources or their dependency discovery is caught on the pull request that causes it. No timings are taken.
 
 1.6.2 (August 19, 2026)
 
