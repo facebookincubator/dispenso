@@ -27,6 +27,7 @@ Unreleased
 * `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
 * On Windows, dispenso headers no longer leave `_AMD64_`/`_X86_`/`_ARM64_`/`_ARM_` defined in user code, and no longer define `_X86_` alongside an existing `_AMD64_` when `<windows.h>` was included first.
 * Language-version checks now use `_MSVC_LANG` on MSVC (via the new `DISPENSO_CPLUSPLUS` macro), so MSVC builds with `/std:c++17` or later get the C++17/C++20 features (std::optional in `AsyncRequest` and pipelines, C++20 concept constraints, `[[deprecated]]` warnings) without needing `/Zc:__cplusplus`.
+* `graph.h` no longer declares `callFunctor`, `destroyFunctor` and `ExecutorBase` in a global `detail` namespace, which broke compilation of user code that has its own `::detail` names.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
