@@ -216,14 +216,64 @@ def select_representative_rows(benchmarks):
     return rows
 
 
+_SYMBOLIC_SIZES = ["kSmallSize", "kMediumSize", "kLargeSize"]
+
+
+def _serial_baseline_key(name):
+    """Return the worksize key of a serial baseline row, or None.
+
+    Serial baselines take no thread count and come in three shapes:
+    BM_serial<kSmallSize> (template), BM_serial/100000 (one argument, the
+    worksize) and plain BM_serial (single-worksize suites, key "default").
+    """
+    m = re.match(r"BM_serial<([^>]+)>", name)
+    if m:
+        return m.group(1)
+    parts = name.replace("BM_", "", 1).split("/")
+    if parts and parts[-1] == "real_time":
+        parts = parts[:-1]
+    if parts[0] != "serial":
+        return None
+    if len(parts) == 1:
+        return "default"
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[1]
+    return None
+
+
+def _resolve_serial_sizes(serial_points, worksizes):
+    """Map symbolic serial<kXxxSize> keys onto the suite's numeric worksizes.
+
+    Each benchmark defines its own kSmallSize/kMediumSize/kLargeSize (e.g.
+    1000/1M/100M in simple_for, 10/500/2500 in nested_for), so match them by
+    rank against the numeric worksizes the parallel cases ran with.
+    """
+    symbolic = [k for k in _SYMBOLIC_SIZES if k in serial_points]
+    numeric = sorted((ws for ws in worksizes if ws.isdigit()), key=int)
+    resolved = {k: v for k, v in serial_points.items() if k not in symbolic}
+    if symbolic and len(symbolic) == len(numeric):
+        for key, ws in zip(symbolic, numeric):
+            resolved[ws] = serial_points[key]
+    return resolved
+
+
+def _serial_baseline_trace(serial_points, ws, thread_set):
+    """Dashed horizontal serial reference line for worksize `ws`, or None."""
+    if ws not in serial_points:
+        return None
+    max_t = max(thread_set) if thread_set else 1
+    return {
+        "name": "serial",
+        "x": [1, max_t],
+        "y": [serial_points[ws], serial_points[ws]],
+        "color": get_color("serial"),
+        "dash": "dash",
+        "baseline": True,
+    }
+
+
 def _parse_line_benchmarks(benchmarks):
     """Parse benchmarks into grouped thread-scaling data and serial baselines."""
-    size_map = {
-        "kSmallSize": "1000",
-        "kMediumSize": "1000000",
-        "kLargeSize": "100000000",
-        "100": "100",
-    }
     grouped = defaultdict(dict)
     serial_points = {}
 
@@ -250,23 +300,16 @@ def _parse_line_benchmarks(benchmarks):
         if _is_hidden_variant(lib.lower()):
             continue
 
-        if lib == "serial" and parsed.get("worksize") == "default":
-            # Slash-delimited serial baseline: serial/worksize (no thread
-            # count), e.g. cascading_parallel_for's BM_serial/100000.
-            serial_points[str(parsed["threads"])] = bm["real_time"]
+        serial_key = _serial_baseline_key(bm["name"])
+        if serial_key is not None:
+            serial_points[serial_key] = bm["real_time"]
         elif parsed.get("worksize") and "<" not in bm["name"]:
             # Slash-delimited: lib/threads/worksize
             threads = parsed["threads"]
             if threads is not None:
                 grouped[parsed["worksize"]][(lib, threads)] = bm["real_time"]
-        elif "<" in bm["name"]:
-            # Template: serial<kSmallSize>
-            m = re.match(r"BM_([^<]+)<([^>]+)>", bm["name"])
-            if m:
-                ws_key = m.group(2)
-                serial_points[size_map.get(ws_key, ws_key)] = bm["real_time"]
 
-    return grouped, serial_points
+    return grouped, _resolve_serial_sizes(serial_points, grouped)
 
 
 def build_line_charts(benchmarks, suite):
@@ -283,18 +326,9 @@ def build_line_charts(benchmarks, suite):
 
         traces = []
         # Add serial baseline first (acts as reference point)
-        if ws in serial_points:
-            max_t = max(thread_set) if thread_set else 1
-            traces.append(
-                {
-                    "name": "serial",
-                    "x": [1, max_t],
-                    "y": [serial_points[ws], serial_points[ws]],
-                    "color": get_color("serial"),
-                    "dash": "dash",
-                    "baseline": True,
-                }
-            )
+        baseline = _serial_baseline_trace(serial_points, ws, thread_set)
+        if baseline:
+            traces.append(baseline)
 
         for lib in sorted(by_lib.keys(), key=_lib_sort_key):
             points = sorted(by_lib[lib])
@@ -1054,17 +1088,24 @@ def build_pipeline_charts(benchmarks, suite):
 def _parse_generic_line_benchmarks(benchmarks):
     """Parse benchmarks into thread-scaling data and error tracking.
 
-    Returns (grouped, errored, grouped_cpu) where:
+    Returns (grouped, errored, grouped_cpu, serial_points) where:
     - grouped: {worksize: {(lib, threads): real_time}}
     - errored: {worksize: set of libs with error_occurred}
     - grouped_cpu: {worksize: {(lib, threads): cpu_time}}
+    - serial_points: {worksize: real_time} serial baselines
     """
     grouped = defaultdict(dict)
     grouped_cpu = defaultdict(dict)
     errored = defaultdict(set)
+    serial_points = {}
 
     for bm in benchmarks:
         if bm.get("run_type") != "iteration":
+            continue
+        serial_key = _serial_baseline_key(bm["name"])
+        if serial_key is not None:
+            if not bm.get("error_occurred"):
+                serial_points[serial_key] = bm["real_time"]
             continue
         parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
         lib = parsed["library"]
@@ -1077,7 +1118,8 @@ def _parse_generic_line_benchmarks(benchmarks):
             grouped[ws][(lib, threads)] = bm["real_time"]
             grouped_cpu[ws][(lib, threads)] = bm.get("cpu_time", bm["real_time"])
 
-    return grouped, errored, grouped_cpu
+    serial_points = _resolve_serial_sizes(serial_points, grouped)
+    return grouped, errored, grouped_cpu, serial_points
 
 
 def _skipped_libs_list(errored_libs, valid_libs):
@@ -1090,7 +1132,9 @@ def _skipped_libs_list(errored_libs, valid_libs):
 
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
-    grouped, errored, grouped_cpu = _parse_generic_line_benchmarks(benchmarks)
+    grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
+        benchmarks
+    )
 
     charts = []
     for ws in sorted(grouped.keys(), key=lambda x: int(x) if x.isdigit() else 0):
@@ -1102,6 +1146,10 @@ def build_generic_line_charts(benchmarks, suite):
             by_lib_cpu[lib].append((threads, t))
 
         traces = []
+        thread_set = {threads for (_, threads) in grouped[ws]}
+        baseline = _serial_baseline_trace(serial_points, ws, thread_set)
+        if baseline:
+            traces.append(baseline)
         for lib in sorted(by_lib.keys(), key=_lib_sort_key):
             points = sorted(by_lib[lib])
             trace = {
