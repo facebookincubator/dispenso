@@ -163,10 +163,10 @@ constexpr size_t kCacheLineSize = 64;
 
 // clang-format off
 #if (defined(__GNUC__) || defined(__clang__))
-#define DO_PRAGMA(X) _Pragma(#X)
-#define DISPENSO_DISABLE_WARNING_PUSH DO_PRAGMA(GCC diagnostic push)
-#define DISPENSO_DISABLE_WARNING_POP DO_PRAGMA(GCC diagnostic pop)
-#define DISPENSO_DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)
+#define DISPENSO_DO_PRAGMA(X) _Pragma(#X)
+#define DISPENSO_DISABLE_WARNING_PUSH DISPENSO_DO_PRAGMA(GCC diagnostic push)
+#define DISPENSO_DISABLE_WARNING_POP DISPENSO_DO_PRAGMA(GCC diagnostic pop)
+#define DISPENSO_DISABLE_WARNING(warningName) DISPENSO_DO_PRAGMA(GCC diagnostic ignored #warningName)
 #if !defined(__clang__)
 #define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS
 #define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS
