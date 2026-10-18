@@ -176,7 +176,8 @@ class SmallBufferAllocator {
       }
       uint32_t allocId = lock.fetch_add(1, std::memory_order_acquire);
       if (allocId == 0) {
-        char* buffer = reinterpret_cast<char*>(detail::alignedMalloc(kMallocBytes, kChunkSize));
+        char* buffer =
+            reinterpret_cast<char*>(detail::alignedMallocOrThrow(kMallocBytes, kChunkSize));
         backingStore.push_back(buffer);
 
         constexpr size_t kNumToPush = kBuffersPerMalloc - kIdealNumTLBuffers;

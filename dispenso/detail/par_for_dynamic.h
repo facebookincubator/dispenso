@@ -67,7 +67,7 @@ void parallel_for_dynamicMultiGroupImpl(
   // finish frees it. A thread-local buffer-reuse optimization for the wait
   // path was intentionally not used here: it is unsafe under nested multi-group
   // parallel_for on the same thread.
-  void* blockMem = detail::alignedMalloc(blockBytes, kCacheLineSize);
+  void* blockMem = detail::alignedMallocOrThrow(blockBytes, kCacheLineSize);
 
   auto* block = new (blockMem) GroupBlock{};
   block->numGroups = effectiveGroups;

@@ -436,7 +436,7 @@ class SmallVector {
 
   static T* allocate(size_type count) {
     if (kOverAligned) {
-      return static_cast<T*>(detail::alignedMalloc(count * sizeof(T), alignof(T)));
+      return static_cast<T*>(detail::alignedMallocOrThrow(count * sizeof(T), alignof(T)));
     }
     return static_cast<T*>(::operator new(count * sizeof(T)));
   }
