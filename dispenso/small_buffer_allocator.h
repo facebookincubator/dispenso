@@ -46,7 +46,7 @@ constexpr size_t getOrdinal(size_t blockSize) {
 template <size_t kBlockSize>
 inline std::enable_if_t<(kBlockSize <= kMaxSmallBufferSize), char*> allocSmallOrLarge() {
 #if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)
-  return reinterpret_cast<char*>(alignedMalloc(kBlockSize, kBlockSize));
+  return reinterpret_cast<char*>(alignedMallocOrThrow(kBlockSize, kBlockSize));
 #else
   return allocSmallBufferImpl(getOrdinal(kBlockSize));
 #endif // DISPENSO_NO_SMALL_BUFFER_ALLOCATOR
@@ -54,7 +54,7 @@ inline std::enable_if_t<(kBlockSize <= kMaxSmallBufferSize), char*> allocSmallOr
 
 template <size_t kBlockSize>
 inline std::enable_if_t<(kBlockSize > kMaxSmallBufferSize), char*> allocSmallOrLarge() {
-  return reinterpret_cast<char*>(alignedMalloc(kBlockSize, kBlockSize));
+  return reinterpret_cast<char*>(alignedMallocOrThrow(kBlockSize, kBlockSize));
 }
 
 template <size_t kBlockSize>
