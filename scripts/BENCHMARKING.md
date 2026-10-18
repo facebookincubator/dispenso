@@ -132,7 +132,6 @@ Where `<platform-name>` is a descriptive identifier like `linux-threadripper-96c
 - `-f <pattern>` — filter individual test cases within benchmarks
   (passed to `--benchmark_filter`)
 - `--min-time <seconds>` — minimum time per benchmark
-- `--tcmalloc <path>` — use tcmalloc via LD_PRELOAD
 - `-p <name>` — override auto-detected platform identifier
 
 ## Step 2: Generate the Interactive Dashboard
