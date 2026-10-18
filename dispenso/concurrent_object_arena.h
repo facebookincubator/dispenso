@@ -97,7 +97,9 @@ struct ConcurrentObjectArena {
         "ConcurrentObjectArena copy constructor uses memcpy; T must be trivially copyable.");
     T** otherBuffers = other.buffers_.load(std::memory_order_acquire);
     T** newBuffers = new T*[buffersSize_];
-    for (Index i = 0; i < buffersSize_; ++i) {
+    // Only the first buffersPos_ slots of the pointer table hold buffers; the rest are
+    // uninitialized spare capacity, filled in by allocateBuffer() as the arena grows.
+    for (Index i = 0; i < buffersPos_; ++i) {
       void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
 #if defined(__cpp_exceptions)
       if (ptr == nullptr)
