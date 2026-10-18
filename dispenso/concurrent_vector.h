@@ -223,10 +223,10 @@ class ConcurrentVector {
    * Sizing constructor with default initialization.
    **/
   explicit ConcurrentVector(size_t startSize) : ConcurrentVector(startSize, ReserveTag) {
-    size_.store(startSize, std::memory_order_relaxed);
     T* buf = buffers_[0].load(std::memory_order_relaxed);
-    for (size_t i = 0; i < startSize; ++i) {
-      new (buf + i) T();
+    SizeOnExit constructed{size_, 0};
+    for (; constructed.count < startSize; ++constructed.count) {
+      new (buf + constructed.count) T();
     }
   }
 
@@ -235,10 +235,10 @@ class ConcurrentVector {
    **/
   ConcurrentVector(size_t startSize, const T& defaultValue)
       : ConcurrentVector(startSize, ReserveTag) {
-    size_.store(startSize, std::memory_order_relaxed);
     T* buf = buffers_[0].load(std::memory_order_relaxed);
-    for (size_t i = 0; i < startSize; ++i) {
-      new (buf + i) T(defaultValue);
+    SizeOnExit constructed{size_, 0};
+    for (; constructed.count < startSize; ++constructed.count) {
+      new (buf + constructed.count) T(defaultValue);
     }
   }
 
@@ -257,9 +257,8 @@ class ConcurrentVector {
   template <typename InIterator>
   ConcurrentVector(size_type startSize, InIterator start, InIterator end)
       : ConcurrentVector(startSize, ReserveTag) {
-    size_.store(startSize, std::memory_order_relaxed);
     assert(std::distance(start, end) == static_cast<difference_type>(startSize));
-    internalInit(start, end, begin());
+    initFromEmpty(start, end);
   }
 
   /**
@@ -303,8 +302,7 @@ class ConcurrentVector {
 
     clear();
     reserve(other.size());
-    size_.store(other.size(), std::memory_order_relaxed);
-    internalInit(other.cbegin(), other.cend(), begin());
+    initFromEmpty(other.cbegin(), other.cend());
 
     return *this;
   }
@@ -339,8 +337,10 @@ class ConcurrentVector {
   void assign(size_type count, const T& value) {
     clear();
     reserve(count);
-    size_.store(count, std::memory_order_relaxed);
-    internalFillN(begin(), count, value);
+    SizeOnExit constructed{size_, 0};
+    for (iterator it = begin(); constructed.count < count; ++it, ++constructed.count) {
+      new (&*it) T(value);
+    }
   }
 
   /**
@@ -360,8 +360,7 @@ class ConcurrentVector {
     clear();
     auto count = std::distance(start, end);
     reserve(count);
-    size_.store(count, std::memory_order_relaxed);
-    internalInit(start, end, begin());
+    initFromEmpty(start, end);
   }
 
   /**
@@ -1059,6 +1058,26 @@ class ConcurrentVector {
     bucketCapacity = index < firstBucketLen_ ? firstBucketLen_ : bucketCapacity;
 
     return {bucket, bucketIndex, bucketCapacity};
+  }
+
+  // Sets size_ to the number of elements constructed so far when it goes out of scope, including
+  // when a T constructor throws. Used where the vector is filled from empty, not concurrently, so
+  // that the destructor (or a later clear()) destroys exactly the elements that were constructed.
+  struct SizeOnExit {
+    std::atomic<size_t>& size;
+    size_t count;
+    ~SizeOnExit() {
+      size.store(count, std::memory_order_relaxed);
+    }
+  };
+
+  // Copy-construct [start, end) into an empty vector whose capacity is already reserved.
+  template <typename InIterator>
+  void initFromEmpty(InIterator start, InIterator end) {
+    SizeOnExit constructed{size_, 0};
+    for (iterator it = begin(); start != end; ++it, ++start, ++constructed.count) {
+      new (&*it) T(*start);
+    }
   }
 
   template <typename InIterator>
