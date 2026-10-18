@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 template <typename T>
 using TestOptional = std::optional<T>;
 #else
@@ -77,7 +77,7 @@ TEST(Pipeline, MultiStageSerial) {
   EXPECT_EQ(sum.load(std::memory_order_acquire), actualSum);
 }
 
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 // This test is nearly identical to the one above, but ensures that we always are testing
 // dispenso::OpResult, because the rest of the tests use std::optional if we are in C++17 mode.
 TEST(Pipeline, MultiStageSerialOpResult) {
