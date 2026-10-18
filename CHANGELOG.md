@@ -40,6 +40,7 @@ Unreleased
 * Getting Started now says its code blocks are fragments and links each section's complete program in `examples/`; those links previously broke on the documentation site.
 * The README now leads with installation and a guide to choosing an API, and links its performance claims to the benchmark sources, dashboard and methodology.
 * The benchmark dashboard's simple_for and nested_for charts now include dispenso. The chart generator hid every benchmark named with "auto" or "static", and since those suites' only dispenso cases are `BM_dispenso_static_chunk` and `BM_dispenso_auto`, the published charts compared OpenMP, TBB and TaskFlow without a dispenso line on any platform.
+* The benchmark dashboard no longer shows a meaningless serial-only "Cascading Parallel For" chart that plotted element counts as thread counts; the serial time now appears as the dashed reference line in the 100K and 10M cascading charts.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so consumers compile dispenso's headers as intended: with `__declspec(dllimport)` on Windows, and with default visibility for dispenso's symbols elsewhere. Without it, consumers built with `-fvisibility=hidden` (and every Windows consumer) kept private copies of the static state inside dispenso's inline functions instead of sharing the library's. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
