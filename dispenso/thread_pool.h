@@ -334,7 +334,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   // If we are not yet C++17, we provide aligned new/delete to avoid false sharing.
 #if __cplusplus < 201703L
   static void* operator new(size_t sz) {
-    return detail::alignedMalloc(sz);
+    return detail::alignedMallocOrThrow(sz);
   }
   static void operator delete(void* ptr) {
     return detail::alignedFree(ptr);

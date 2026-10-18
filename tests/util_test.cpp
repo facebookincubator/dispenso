@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <new>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -53,6 +54,28 @@ struct NonTrivial {
     ++NonTrivialDestructCount;
   }
 };
+
+// A request that cannot be satisfied reports failure instead of writing through a null pointer.
+// (bytes + alignment overflows here, so malloc is never asked; that keeps the test deterministic
+// and sanitizer-friendly, since sanitizers abort on a genuinely huge malloc by default.)
+TEST(Util, AlignedMallocFailureReturnsNull) {
+  const size_t huge = ~size_t{0} - 8;
+  EXPECT_EQ(dispenso::alignedMalloc(huge, 64), nullptr);
+  EXPECT_EQ(dispenso::alignedMalloc(huge), nullptr);
+  dispenso::alignedFree(nullptr);
+}
+
+#if defined(__cpp_exceptions)
+TEST(Util, AlignedMallocOrThrowFailureThrows) {
+  const size_t huge = ~size_t{0} - 8;
+  EXPECT_THROW(dispenso::detail::alignedMallocOrThrow(huge, 64), std::bad_alloc);
+  EXPECT_THROW(dispenso::detail::alignedMallocOrThrow(huge), std::bad_alloc);
+  void* ptr = dispenso::detail::alignedMallocOrThrow(256, 128);
+  ASSERT_NE(ptr, nullptr);
+  EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) % 128, 0u);
+  dispenso::detail::alignedFree(ptr);
+}
+#endif // __cpp_exceptions
 
 TEST(Util, AlignedMallocAndFree) {
   // Test basic allocation and deallocation

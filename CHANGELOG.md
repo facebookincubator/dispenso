@@ -11,6 +11,7 @@ Unreleased
 * `SmallVector` now honours `alignof(T)` for elements stored on the heap. Once a vector outgrew its inline storage, over-aligned element types (for example `alignas(64)` cache-line-padded structs) were placed at only the default `operator new` alignment, which is undefined behaviour and crashes aligned SIMD access.
 * Copying a `ConcurrentObjectArena` (copy construction or copy assignment) no longer reads uninitialized buffer pointers. Unless the number of allocated buffers happened to be a power of two, the copy dereferenced unset pointer-table slots, typically crashing, and leaked a buffer per spare slot.
 * `ConcurrentObjectArena` now destroys its elements when it is destroyed or assigned over; previously it released their storage without running `~T()`, leaking anything a non-trivially-destructible element owned. If an element's default constructor throws, `grow_by()` destroys the elements it had built and rethrows instead of leaving them unreachable.
+* `dispenso::alignedMalloc` now returns `nullptr` when the allocation fails, as documented, instead of writing through the failed result; a size so large that adding the alignment overflows also returns `nullptr` rather than a tiny buffer. Allocations made internally through it (thread pool, `make_shared`, pipelines, graphs, `ResourcePool`, `parallel_for`, `ConcurrentVector`, `SmallVector`, the small buffer allocator, `ConcurrentObjectArena`) now throw `std::bad_alloc` on failure (abort when built without exceptions) instead of crashing.
 
 1.6.2 (August 19, 2026)
 
