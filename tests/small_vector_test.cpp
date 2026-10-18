@@ -7,6 +7,7 @@
 
 #include <dispenso/small_vector.h>
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -592,4 +593,50 @@ TEST(SmallVector, EmplaceBackOwnElementAcrossGrowth) {
   EXPECT_EQ(v[0], std::string(64, 'x'));
   EXPECT_EQ(v[1], std::string(64, 'x'));
   EXPECT_EQ(v[2], std::string(10, 'x'));
+}
+
+namespace {
+struct alignas(64) Aligned64 {
+  int value;
+};
+struct alignas(128) Aligned128 {
+  int value;
+  Aligned128(int v) : value(v) {}
+};
+
+template <typename Vec>
+bool dataIsAligned(const Vec& v, size_t alignment) {
+  return reinterpret_cast<uintptr_t>(v.data()) % alignment == 0;
+}
+} // namespace
+
+// Heap storage must honour alignof(T), not just the default new alignment.
+TEST(SmallVector, HeapStorageHonoursOverAlignment64) {
+  SmallVector<Aligned64, 2> v;
+  for (int i = 0; i < 40; ++i) {
+    v.push_back(Aligned64{i});
+    ASSERT_TRUE(dataIsAligned(v, 64)) << "size " << v.size();
+  }
+  for (int i = 0; i < 40; ++i) {
+    EXPECT_EQ(v[static_cast<size_t>(i)].value, i);
+  }
+  SmallVector<Aligned64, 2> copy(v);
+  EXPECT_TRUE(dataIsAligned(copy, 64));
+  v.reserve(1000);
+  EXPECT_TRUE(dataIsAligned(v, 64));
+  EXPECT_EQ(v[39].value, 39);
+}
+
+TEST(SmallVector, HeapStorageHonoursOverAlignment128) {
+  SmallVector<Aligned128, 1> v;
+  for (int i = 0; i < 40; ++i) {
+    v.emplace_back(i);
+    ASSERT_TRUE(dataIsAligned(v, 128)) << "size " << v.size();
+  }
+  v.resize(100, Aligned128(7));
+  EXPECT_TRUE(dataIsAligned(v, 128));
+  EXPECT_EQ(v[39].value, 39);
+  EXPECT_EQ(v[99].value, 7);
+  v.clear();
+  EXPECT_TRUE(dataIsAligned(v, 128));
 }
