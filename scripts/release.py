@@ -18,8 +18,12 @@ a tag invalidates hashes that are already recorded downstream. Everything that
 can be validated is therefore validated first, and `tag` refuses to run when
 `check` fails.
 
-    python3 scripts/release.py check --version 1.6.0
+    python3 scripts/release.py check --version 1.6.0 [--commit SHA]
     python3 scripts/release.py tag --version 1.6.0 [--commit SHA] [--no-sign]
+
+`check` reads the working tree unless given `--commit`; `tag` always checks the
+tree of the exact commit it is about to tag (`--commit`, default HEAD), so
+uncommitted release edits cannot make a stale commit look ready.
 
 `tag` creates a signed annotated tag locally and stops. It deliberately does not
 push: review `git show v<version>` before making it permanent.
@@ -39,18 +43,45 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
 
 
-def _read(relpath):
-    with open(os.path.join(REPO_ROOT, relpath), encoding="utf-8") as f:
-        return f.read()
+# A release version is MAJOR.MINOR.PATCH, nothing more: every reference checked
+# below (and the v<version> tag) uses exactly that shape.
+VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
-def _check_changelog(version, errors):
+def _version_arg(value):
+    """argparse type: reject anything that is not MAJOR.MINOR.PATCH up front."""
+    if not VERSION_RE.match(value):
+        raise argparse.ArgumentTypeError(
+            f"invalid version {value!r}: expected MAJOR.MINOR.PATCH, e.g. 1.6.0"
+        )
+    return value
+
+
+def _read(relpath, rev=None):
+    """Read `relpath` from the working tree, or from commit `rev` if given.
+
+    Raises FileNotFoundError when the file is absent from that tree.
+    """
+    if rev is None:
+        with open(os.path.join(REPO_ROOT, relpath), encoding="utf-8") as f:
+            return f.read()
+    result = _git("show", f"{rev}:{relpath}")
+    if result.returncode != 0:
+        raise FileNotFoundError(f"{relpath} at {rev[:12]}: {result.stderr.strip()}")
+    return result.stdout
+
+
+def _check_changelog(version, errors, rev=None):
     """The top section must name this version and carry a full, specific date.
 
     A bare "June 2026" is rejected: it reads like a real heading, survives review,
     and is only ever noticed once the release is out under a different date.
     """
-    first = _read("CHANGELOG.md").splitlines()[0].strip()
+    try:
+        first = _read("CHANGELOG.md", rev).splitlines()[0].strip()
+    except (OSError, IndexError) as e:
+        errors.append(f"CHANGELOG.md: cannot read first line ({e})")
+        return
     m = re.match(r"^(\S+)\s+\((.+)\)$", first)
     if not m:
         errors.append(
@@ -69,9 +100,13 @@ def _check_changelog(version, errors):
         )
 
 
-def _check_pattern(relpath, pattern, expected, errors, label=None):
+def _check_pattern(relpath, pattern, expected, errors, label=None, rev=None):
     """Assert every capture of `pattern` in `relpath` equals `expected`."""
-    text = _read(relpath)
+    try:
+        text = _read(relpath, rev)
+    except OSError as e:
+        errors.append(f"{relpath}: cannot read ({e})")
+        return
     found = re.findall(pattern, text, flags=re.MULTILINE)
     if not found:
         errors.append(f"{relpath}: no match for {label or pattern}")
@@ -83,17 +118,26 @@ def _check_pattern(relpath, pattern, expected, errors, label=None):
             )
 
 
-def check(version):
-    major, minor, patch = version.split(".")
+def check(version, rev=None):
+    """Check every version reference, in commit `rev` or else the working tree."""
+    m = VERSION_RE.match(version)
+    if not m:
+        print(
+            f"Invalid version {version!r}: expected MAJOR.MINOR.PATCH, e.g. 1.6.0",
+            file=sys.stderr,
+        )
+        return 1
+    major, minor, patch = m.groups()
     errors = []
 
-    _check_changelog(version, errors)
+    _check_changelog(version, errors, rev)
     _check_pattern(
         "dispenso/platform.h",
         r"#define DISPENSO_MAJOR_VERSION (\d+)",
         major,
         errors,
         "DISPENSO_MAJOR_VERSION",
+        rev=rev,
     )
     _check_pattern(
         "dispenso/platform.h",
@@ -101,6 +145,7 @@ def check(version):
         minor,
         errors,
         "DISPENSO_MINOR_VERSION",
+        rev=rev,
     )
     _check_pattern(
         "dispenso/platform.h",
@@ -108,6 +153,7 @@ def check(version):
         patch,
         errors,
         "DISPENSO_PATCH_VERSION",
+        rev=rev,
     )
     _check_pattern(
         "CMakeLists.txt",
@@ -115,6 +161,7 @@ def check(version):
         version,
         errors,
         "project VERSION",
+        rev=rev,
     )
     _check_pattern(
         "docs/Doxyfile",
@@ -122,9 +169,15 @@ def check(version):
         version,
         errors,
         "PROJECT_NUMBER",
+        rev=rev,
     )
     _check_pattern(
-        "docs/faq.md", r"GIT_TAG\s+v(\d+\.\d+\.\d+)", version, errors, "GIT_TAG"
+        "docs/faq.md",
+        r"GIT_TAG\s+v(\d+\.\d+\.\d+)",
+        version,
+        errors,
+        "GIT_TAG",
+        rev=rev,
     )
     _check_pattern(
         "README.md",
@@ -132,14 +185,19 @@ def check(version):
         version,
         errors,
         "conan requires",
+        rev=rev,
     )
 
+    where = f"commit {rev[:12]}" if rev else "the working tree"
     if errors:
-        print(f"Release consistency check FAILED for {version}:", file=sys.stderr)
+        print(
+            f"Release consistency check FAILED for {version} in {where}:",
+            file=sys.stderr,
+        )
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
         return 1
-    print(f"Release consistency check passed for {version}.")
+    print(f"Release consistency check passed for {version} in {where}.")
     return 0
 
 
@@ -149,9 +207,32 @@ def _git(*args, **kwargs):
     )
 
 
+def _resolve_commit(target):
+    """Return the full SHA of `target`, or None after reporting why not."""
+    resolved = _git("rev-parse", "--verify", f"{target}^{{commit}}")
+    if resolved.returncode != 0:
+        print(f"Cannot resolve {target!r}: {resolved.stderr.strip()}", file=sys.stderr)
+        return None
+    return resolved.stdout.strip()
+
+
+def check_command(version, commit):
+    """`check`: the working tree by default, or exactly `commit` if given."""
+    if commit is None:
+        return check(version)
+    sha = _resolve_commit(commit)
+    if sha is None:
+        return 1
+    return check(version, sha)
+
+
 def tag(version, commit, sign):
-    if check(version) != 0:
-        print("\nRefusing to tag while the checks above fail.", file=sys.stderr)
+    # Resolve the target before checking anything: the tag lands on this exact
+    # commit, so its tree -- not the working tree, which may hold uncommitted
+    # release edits or sit on another branch -- is what has to be consistent.
+    target = commit or "HEAD"
+    sha = _resolve_commit(target)
+    if sha is None:
         return 1
 
     tag_name = f"v{version}"
@@ -164,12 +245,9 @@ def tag(version, commit, sign):
         )
         return 1
 
-    target = commit or "HEAD"
-    resolved = _git("rev-parse", "--verify", f"{target}^{{commit}}")
-    if resolved.returncode != 0:
-        print(f"Cannot resolve {target!r}: {resolved.stderr.strip()}", file=sys.stderr)
+    if check(version, sha) != 0:
+        print("\nRefusing to tag while the checks above fail.", file=sys.stderr)
         return 1
-    sha = resolved.stdout.strip()
 
     args = ["tag", "-s" if sign else "-a", tag_name, sha, "-m", f"dispenso {version}"]
     result = _git(*args)
@@ -413,11 +491,21 @@ def main():
 
     p_check = sub.add_parser("check", help="verify every version reference agrees")
     p_check.add_argument(
-        "--version", required=True, help="expected version, e.g. 1.6.0"
+        "--version",
+        required=True,
+        type=_version_arg,
+        help="expected version, e.g. 1.6.0",
+    )
+    p_check.add_argument(
+        "--commit",
+        help="check this commit's tree instead of the working tree (what `tag` "
+        "does for the commit it tags)",
     )
 
     p_tag = sub.add_parser("tag", help="check, then create a signed annotated tag")
-    p_tag.add_argument("--version", required=True, help="version to tag, e.g. 1.6.0")
+    p_tag.add_argument(
+        "--version", required=True, type=_version_arg, help="version to tag, e.g. 1.6.0"
+    )
     p_tag.add_argument(
         "--commit",
         help="commit to tag; defaults to HEAD. Use the commit CI validated, not "
@@ -432,7 +520,9 @@ def main():
     p_pre = sub.add_parser(
         "preflight", help="build and consume dispenso the way packagers do"
     )
-    p_pre.add_argument("--version", required=True, help="version to validate")
+    p_pre.add_argument(
+        "--version", required=True, type=_version_arg, help="version to validate"
+    )
     p_pre.add_argument(
         "--jobs", type=int, default=os.cpu_count() or 4, help="parallel build jobs"
     )
@@ -447,7 +537,7 @@ def main():
 
     args = parser.parse_args()
     if args.command == "check":
-        return check(args.version)
+        return check_command(args.version, args.commit)
     if args.command == "preflight":
         return preflight(
             args.version, args.jobs, args.keep, args.concurrentqueue_prefix
