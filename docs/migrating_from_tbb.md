@@ -535,4 +535,4 @@ auto result = future.get();
 - [Dispenso Documentation](https://facebookincubator.github.io/dispenso)
 - [Getting Started Guide](getting_started.md)
 - [Migrating from OpenMP](migrating_from_openmp.md)
-- [API Reference](https://facebookincubator.github.io/dispenso/modules.html)
+- [API Reference](https://facebookincubator.github.io/dispenso/topics.html)
