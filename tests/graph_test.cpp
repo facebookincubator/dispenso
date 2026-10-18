@@ -994,6 +994,47 @@ TEST(GraphExceptionSafety, ConcurrentTaskSetExecutor_DeepGraphException) {
   EXPECT_EQ(result, 123);
 }
 
+// A functor too large for the small-buffer pools (so its storage comes straight from
+// alignedMalloc and LSan sees a leak) whose copy constructor can be made to throw.
+struct ThrowingCopyFunctor {
+  static bool& throwOnCopy() {
+    static bool b = false;
+    return b;
+  }
+  explicit ThrowingCopyFunctor(int* out) : out_(out) {}
+  ThrowingCopyFunctor(const ThrowingCopyFunctor& other) : out_(other.out_) {
+    if (throwOnCopy()) {
+      throw GraphTestException();
+    }
+  }
+  void operator()() {
+    *out_ += 1 + payload_[0];
+  }
+  int* out_;
+  char payload_[1024] = {};
+};
+
+TEST(GraphExceptionSafety, AddNodeWithThrowingFunctorCopy) {
+  for (int round = 0; round < 2; ++round) {
+    dispenso::Graph g;
+    int result = 0;
+    ThrowingCopyFunctor f(&result);
+    g.addNode(f);
+
+    ThrowingCopyFunctor::throwOnCopy() = true;
+    EXPECT_THROW(g.addNode(f), GraphTestException);
+    ThrowingCopyFunctor::throwOnCopy() = false;
+    EXPECT_EQ(g.numNodes(), 1u);
+
+    g.addNode(f);
+    EXPECT_EQ(g.numNodes(), 2u);
+    dispenso::SingleThreadExecutor executor;
+    setAllNodesIncomplete(g);
+    executor(g);
+    EXPECT_EQ(result, 2);
+  }
+}
+
 #endif // __cpp_exceptions
 
 // Non-exception deep graph test — verifies depth guard prevents stack overflow

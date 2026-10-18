@@ -360,8 +360,19 @@ class Node {
     using FNoRef = typename std::remove_reference<F>::type;
 
     constexpr size_t kFuncSize = static_cast<size_t>(detail::nextPow2(sizeof(FNoRef)));
-    funcBuffer_ = allocSmallBuffer<kFuncSize>();
-    new (funcBuffer_) FNoRef(std::forward<F>(f));
+    // ~Node does not run if this constructor throws, so return the buffer here if copying or
+    // moving the functor into it throws.
+    struct BufferGuard {
+      char* buf;
+      ~BufferGuard() {
+        if (buf) {
+          deallocSmallBuffer<kFuncSize>(buf);
+        }
+      }
+    } guard{allocSmallBuffer<kFuncSize>()};
+    new (guard.buf) FNoRef(std::forward<F>(f));
+    funcBuffer_ = guard.buf;
+    guard.buf = nullptr;
     invoke_ = ::detail::callFunctor<FNoRef>;
     destroy_ = ::detail::destroyFunctor<FNoRef>;
   }
