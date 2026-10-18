@@ -42,8 +42,10 @@ foreach(TEST_FILE ${FAST_MATH_TEST_FILES})
   add_executable(${TEST_NAME} ${TEST_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/eval.cpp)
   target_compile_features(${TEST_NAME} PRIVATE cxx_std_17)
   target_compile_options(${TEST_NAME} PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W3>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+    $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+    $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
     ${FAST_MATH_EXTRA_FLAGS}
   )
   target_link_libraries(${TEST_NAME} gmock_main gtest dispenso ${FAST_MATH_EXTRA_LIBS})
@@ -82,8 +84,10 @@ foreach(TEST_FILE ${SIMD_TEST_FILES})
   add_executable(${TEST_NAME} ${TEST_FILE})
   target_compile_features(${TEST_NAME} PRIVATE cxx_std_17)
   target_compile_options(${TEST_NAME} PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W3>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+    $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+    $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
     ${FAST_MATH_EXTRA_FLAGS}
   )
   target_link_libraries(${TEST_NAME} gmock_main gtest dispenso ${FAST_MATH_EXTRA_LIBS})

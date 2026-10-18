@@ -37,12 +37,15 @@ macro(package_add_test TEST_NAME LABEL TEST_FILE)
     target_compile_options(${TEST_NAME} PRIVATE
       # /wd4316: see dispenso/CMakeLists.txt — over-aligned OnceFunction in
       # make_shared/make_unique (incl. std::thread internals) is benign on MSVC.
-      $<$<CXX_COMPILER_ID:MSVC>:/W3 /WX /wd4316>
+      $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4316>
       # GCC false positives: stringop-overflow through deeply inlined atomics
       # (seen with GCC 13 on Linux, GCC 14 on macOS ARM64), and
       # maybe-uninitialized through inlined try_pop + gtest macros (GCC 13).
       $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow -Wno-maybe-uninitialized>
-      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion -Werror>
+      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+      # Fatal only under DISPENSO_WERROR, as for the library itself.
+      $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+      $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
       )
     target_link_libraries(${TEST_NAME} gmock_main dispenso)
     gtest_discover_tests(${TEST_NAME}
