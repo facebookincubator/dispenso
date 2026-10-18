@@ -38,6 +38,7 @@ Unreleased
 * Fixed the API Reference links in the Getting Started and TBB migration guides, which pointed at a page Doxygen no longer generates.
 * The online documentation now has a light/dark mode toggle next to the search box; it follows the system preference by default and remembers your choice.
 * Getting Started now says its code blocks are fragments and links each section's complete program in `examples/`; those links previously broke on the documentation site.
+* The README now leads with installation and a guide to choosing an API, and links its performance claims to the benchmark sources, dashboard and methodology.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so consumers compile dispenso's headers as intended: with `__declspec(dllimport)` on Windows, and with default visibility for dispenso's symbols elsewhere. Without it, consumers built with `-fvisibility=hidden` (and every Windows consumer) kept private copies of the static state inside dispenso's inline functions instead of sharing the library's. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
