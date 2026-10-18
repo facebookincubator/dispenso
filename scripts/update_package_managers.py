@@ -120,14 +120,20 @@ def download_and_hash(version):
     url = f"https://github.com/{GITHUB_REPO}/archive/refs/tags/v{version}.tar.gz"
     print(f"Downloading {url} ...")
 
-    tarball_path = os.path.join(tempfile.gettempdir(), f"dispenso-v{version}.tar.gz")
-
-    # Download (or reuse if already present and non-empty)
-    if os.path.exists(tarball_path) and os.path.getsize(tarball_path) > 0:
-        print(f"  Using cached tarball: {tarball_path}")
-    else:
+    # Always download into a fresh private directory. These hashes are pinned
+    # by every package manager, so they must describe what GitHub serves now:
+    # a file reused from a fixed path in the shared temp dir could be a
+    # truncated earlier download (urlretrieve writes in place, and an
+    # interrupted run never reaches cleanup), a tarball for a tag that was
+    # since recreated, or a file another local user put there.
+    download_dir = tempfile.mkdtemp(prefix="dispenso-release-")
+    tarball_path = os.path.join(download_dir, f"dispenso-v{version}.tar.gz")
+    try:
         urllib.request.urlretrieve(url, tarball_path)
-        print(f"  Saved to {tarball_path}")
+    except BaseException:
+        shutil.rmtree(download_dir, ignore_errors=True)
+        raise
+    print(f"  Saved to {tarball_path}")
 
     data = open(tarball_path, "rb").read()
     size = len(data)
@@ -2421,10 +2427,20 @@ def guided_flow(args):
     _guided_review_push_pr(args, results, pushable, tarball_path)
 
 
+def remove_tarball(tarball_path):
+    """Delete the tarball and the private directory download_and_hash made."""
+    download_dir = os.path.dirname(tarball_path)
+    if os.path.basename(download_dir).startswith("dispenso-release-") and (
+        os.path.isdir(download_dir)
+    ):
+        shutil.rmtree(download_dir, ignore_errors=True)
+        return True
+    return False
+
+
 def _guided_cleanup(tarball_path):
     """Clean up the downloaded tarball."""
-    if os.path.exists(tarball_path):
-        os.unlink(tarball_path)
+    if remove_tarball(tarball_path):
         print(f"\n  Cleaned up {tarball_path}")
 
 
@@ -2473,8 +2489,7 @@ def main():
             post_pr_steps(pr_urls, args.version)
 
     # Clean up tarball
-    if os.path.exists(tarball_path):
-        os.unlink(tarball_path)
+    if remove_tarball(tarball_path):
         print(f"Cleaned up {tarball_path}")
 
     # Check if any macOS-only managers need full testing
