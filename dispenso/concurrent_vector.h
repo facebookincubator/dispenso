@@ -58,6 +58,7 @@
 #include <climits>
 #include <cstring>
 #include <initializer_list>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
 
@@ -245,7 +246,7 @@ class ConcurrentVector {
   /**
    * Constructor taking an iterator range.
    **/
-  template <typename InIterator>
+  template <typename InIterator, typename = cv::EnableIfInputIterator<InIterator>>
   ConcurrentVector(InIterator start, InIterator end)
       : ConcurrentVector(std::distance(start, end), start, end) {}
 
@@ -254,7 +255,7 @@ class ConcurrentVector {
    * than just providing the iterator range, especially for input iterators that are not random
    * access.
    **/
-  template <typename InIterator>
+  template <typename InIterator, typename = cv::EnableIfInputIterator<InIterator>>
   ConcurrentVector(size_type startSize, InIterator start, InIterator end)
       : ConcurrentVector(startSize, ReserveTag) {
     assert(std::distance(start, end) == static_cast<difference_type>(startSize));

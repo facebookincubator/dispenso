@@ -9,6 +9,27 @@
 
 namespace cv {
 
+template <typename...>
+struct VoidT {
+  using type = void;
+};
+
+// True when It is (at least) an input iterator. Used to keep the iterator-range constructors from
+// matching integral arguments, e.g. ConcurrentVector<int>(5, 3), the way std::vector does.
+template <typename It, typename = void>
+struct IsInputIterator : std::false_type {};
+
+template <typename It>
+struct IsInputIterator<
+    It,
+    typename VoidT<typename std::iterator_traits<It>::iterator_category>::type>
+    : std::is_convertible<
+          typename std::iterator_traits<It>::iterator_category,
+          std::input_iterator_tag> {};
+
+template <typename It>
+using EnableIfInputIterator = typename std::enable_if<IsInputIterator<It>::value>::type;
+
 struct BucketInfo {
   size_t bucket;
   size_t bucketIndex;
