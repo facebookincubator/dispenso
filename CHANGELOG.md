@@ -25,6 +25,7 @@ Unreleased
 * `ConcurrentVector<int> v(5, 3)` (and other count/value constructions with an integral element type) now compiles and creates five 3s, as with `std::vector`. The iterator-range constructors previously captured such calls and failed to compile.
 * Fixed an intermittent hang of `parallel_for` with adaptive chunking under ThreadSanitizer on many-core machines, where spinning workers starved the final completion update.
 * `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
+* On Windows, dispenso headers no longer leave `_AMD64_`/`_X86_`/`_ARM64_`/`_ARM_` defined in user code, and no longer define `_X86_` alongside an existing `_AMD64_` when `<windows.h>` was included first.
 
 1.6.2 (August 19, 2026)
 
