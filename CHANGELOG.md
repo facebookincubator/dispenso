@@ -34,6 +34,7 @@ Unreleased
 * The Latch example and the API reference's Latch snippet ran tasks that block in `arrive_and_wait()` on the global thread pool or inside `parallel_for`, so they deadlocked whenever fewer threads were available than participants; the example hung on 4-core machines. They now give the participants a pool with a thread for each, and the API reference explains why. `Latch` itself is unchanged; any blocking barrier deadlocks the same way when its participants can't all run at once.
 * Fixed the API Reference links in the Getting Started and TBB migration guides, which pointed at a page Doxygen no longer generates.
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
+* The online documentation now has a light/dark mode toggle next to the search box; it follows the system preference by default and remembers your choice.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
