@@ -66,15 +66,15 @@ inline Work& work() {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
 
   dispenso::ThreadPool pool(num_threads);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet outerTasks(pool);
     for (int i = 0; i < num_elements; ++i) {
       outerTasks.schedule([&pool, num_elements]() {
-        int num = std::sqrt(num_elements);
+        int num = static_cast<int>(std::sqrt(num_elements));
         dispenso::TaskSet tasks(pool);
         for (int j = 0; j < num; ++j) {
           tasks.schedule([j]() { work() += j; });
@@ -85,15 +85,15 @@ void BM_dispenso(benchmark::State& state) {
 }
 
 void BM_dispenso_bulk(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
 
   dispenso::ThreadPool pool(num_threads);
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet outerTasks(pool);
     outerTasks.scheduleBulk(static_cast<size_t>(num_elements), [&pool, num_elements](size_t) {
       return [&pool, num_elements]() {
-        int num = std::sqrt(num_elements);
+        int num = static_cast<int>(std::sqrt(num_elements));
         dispenso::TaskSet tasks(pool);
         tasks.scheduleBulk(
             static_cast<size_t>(num), [](size_t j) { return [j]() { work() += j; }; });
@@ -104,15 +104,15 @@ void BM_dispenso_bulk(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   tbb_compat::task_scheduler_init initsched(num_threads);
   for (auto UNUSED_VAR : state) {
     tbb::task_group g;
     for (int i = 0; i < num_elements; ++i) {
       g.run([num_elements]() {
-        int num = std::sqrt(num_elements);
+        int num = static_cast<int>(std::sqrt(num_elements));
         tbb::task_group g2;
         for (int j = 0; j < num; ++j) {
           g2.run([j]() { work() += j; });
@@ -127,8 +127,8 @@ void BM_tbb(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 void BM_folly(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   // Folly's coroutine collectAllRange fan-out OOMs at the large size, so it is
   // skipped there and the large-size comparison is dispenso-vs-TBB only. A
@@ -145,7 +145,7 @@ void BM_folly(benchmark::State& state) {
         tasks.push_back(folly::coro::co_invoke([num_elements]() -> folly::coro::Task<void> {
           co_await folly::coro::co_reschedule_on_current_executor;
           std::vector<folly::coro::Task<void>> tasks2;
-          int num = std::sqrt(num_elements);
+          int num = static_cast<int>(std::sqrt(num_elements));
           for (int j = 0; j < num; ++j) {
             tasks2.push_back(folly::coro::co_invoke([j]() -> folly::coro::Task<void> {
               co_await folly::coro::co_reschedule_on_current_executor;

@@ -56,7 +56,7 @@ void pushBackImpl(benchmark::State& state, ContainerInit containerInit) {
   for (auto UNUSED_VAR : state) {
     auto values = containerInit();
     for (size_t i = 0; i < kLength; ++i) {
-      values.push_back(i);
+      values.push_back(static_cast<int>(i));
     }
   }
 }
@@ -70,7 +70,7 @@ void pushBackGrowByAlternativeTbb(benchmark::State& state, ContainerInit contain
     auto end = values.end();
     size_t i = 0;
     for (; it != end; ++it) {
-      *it = i++;
+      *it = static_cast<int>(i++);
     }
   }
 }
@@ -80,7 +80,7 @@ template <typename ContainerInit>
 void pushBackGrowByAlternativeDispenso(benchmark::State& state, ContainerInit containerInit) {
   for (auto UNUSED_VAR : state) {
     auto values = containerInit();
-    values.grow_by_generator(kLength, [i = size_t{0}]() mutable { return i++; });
+    values.grow_by_generator(kLength, [i = 0]() mutable { return i++; });
   }
 }
 
@@ -154,9 +154,9 @@ template <typename ContainerInit>
 void iterateImpl(benchmark::State& state, ContainerInit containerInit) {
   auto values = containerInit();
   for (size_t i = 0; i < kLength; ++i) {
-    values.push_back(i);
+    values.push_back(static_cast<int>(i));
   }
-  int64_t sum;
+  int64_t sum = 0;
   for (auto UNUSED_VAR : state) {
     sum = 0;
     for (auto i : values) {
@@ -209,9 +209,9 @@ template <typename ContainerInit>
 void iterateReverseImpl(benchmark::State& state, ContainerInit containerInit) {
   auto values = containerInit();
   for (size_t i = 0; i < kLength; ++i) {
-    values.push_back(i);
+    values.push_back(static_cast<int>(i));
   }
-  int64_t sum;
+  int64_t sum = 0;
   for (auto UNUSED_VAR : state) {
     sum = 0;
     for (auto i : reverse(values)) {
@@ -229,9 +229,9 @@ template <typename ContainerInit>
 void lowerBoundImpl(benchmark::State& state, ContainerInit containerInit) {
   auto values = containerInit();
   for (size_t i = 0; i < kLength; ++i) {
-    values.push_back(i);
+    values.push_back(static_cast<int>(i));
   }
-  int64_t sum;
+  int64_t sum = 0;
   for (auto UNUSED_VAR : state) {
     sum = 0;
     for (size_t i = 0; i < kLength; ++i) {
@@ -249,9 +249,9 @@ template <typename ContainerInit>
 void indexImpl(benchmark::State& state, ContainerInit containerInit) {
   auto values = containerInit();
   for (size_t i = 0; i < kLength; ++i) {
-    values.push_back(i);
+    values.push_back(static_cast<int>(i));
   }
-  int64_t sum;
+  int64_t sum = 0;
   for (auto UNUSED_VAR : state) {
     sum = 0;
     size_t len = values.size();
@@ -286,7 +286,7 @@ void randomImpl(benchmark::State& state, ContainerInit containerInit) {
   auto values = containerInit();
   std::vector<size_t> indices;
   for (size_t i = 0; i < kLength; ++i) {
-    values.push_back(i);
+    values.push_back(static_cast<int>(i));
     indices.push_back(i);
   }
 
@@ -294,7 +294,7 @@ void randomImpl(benchmark::State& state, ContainerInit containerInit) {
   std::mt19937 rng(27);
   std::shuffle(indices.begin(), indices.end(), rng);
 
-  int64_t sum;
+  int64_t sum = 0;
   for (auto UNUSED_VAR : state) {
     sum = 0;
     for (auto i : indices) {
@@ -330,8 +330,9 @@ void parallelImpl(
     ContainerPush containerPush) {
   for (auto UNUSED_VAR : state) {
     auto values = containerInit();
-    dispenso::parallel_for(
-        0, kLength, [&values, containerPush](size_t i) { containerPush(values, i); });
+    dispenso::parallel_for(0, kLength, [&values, containerPush](size_t i) {
+      containerPush(values, static_cast<int>(i));
+    });
   }
 }
 
@@ -417,8 +418,9 @@ void parallelImplClear(
 
   for (auto UNUSED_VAR : state) {
     values.clear();
-    dispenso::parallel_for(
-        0, kLength, [&values, containerPush](size_t i) { containerPush(values, i); });
+    dispenso::parallel_for(0, kLength, [&values, containerPush](size_t i) {
+      containerPush(values, static_cast<int>(i));
+    });
   }
 
   int64_t sum = 0;
@@ -482,10 +484,10 @@ void parallelImplGrowBy(
         dispenso::makeChunkedRange(0, kLength, dispenso::ParForChunking::kStatic),
         [&values, containerPush, growBy](size_t i, size_t end) {
           while (i + growBy <= end) {
-            containerPush(values, i, i + growBy);
+            containerPush(values, static_cast<int>(i), static_cast<int>(i + growBy));
             i += growBy;
           }
-          containerPush(values, i, end);
+          containerPush(values, static_cast<int>(i), static_cast<int>(end));
         });
   }
 
@@ -565,7 +567,9 @@ void parallelImplGrowByMax(
     values.clear();
     dispenso::parallel_for(
         dispenso::makeChunkedRange(0, kLength, dispenso::ParForChunking::kStatic),
-        [&values, containerPush](size_t i, size_t end) { containerPush(values, i, end); });
+        [&values, containerPush](size_t i, size_t end) {
+          containerPush(values, static_cast<int>(i), static_cast<int>(end));
+        });
   }
 
   int64_t sum = 0;

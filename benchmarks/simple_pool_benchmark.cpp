@@ -60,8 +60,8 @@ inline Work& work() {
 }
 
 void BM_dispenso(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
   dispenso::ThreadPool pool(num_threads);
 
   for (auto UNUSED_VAR : state) {
@@ -73,8 +73,8 @@ void BM_dispenso(benchmark::State& state) {
 }
 
 void BM_dispenso_bulk(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
   dispenso::ThreadPool pool(num_threads);
 
   for (auto UNUSED_VAR : state) {
@@ -86,8 +86,8 @@ void BM_dispenso_bulk(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
   tbb_compat::task_scheduler_init initsched(num_threads);
 
   for (auto UNUSED_VAR : state) {
@@ -102,8 +102,8 @@ void BM_tbb(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_FOLLY)
 void BM_folly(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
   folly::CPUThreadPoolExecutor follyExec(num_threads);
 
   for (auto UNUSED_VAR : state) {

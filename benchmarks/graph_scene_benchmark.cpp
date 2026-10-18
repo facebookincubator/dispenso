@@ -166,7 +166,7 @@ Vec3 calculateGeoPoint(size_t inGeoIndex, size_t pointIndex) {
   const float tStep = 2.f * 2.f * kPi / (static_cast<float>(numPoints) - 1.f);
   const float t = tStep * static_cast<float>(pointIndex);
 
-  const float r = 0.01;
+  const float r = 0.01f;
   return {r * t * std::cos(t), r * t * std::sin(t), r * (t + std::sin(16 * t))};
 }
 //--------------------------------------------------------------------------------
@@ -433,7 +433,8 @@ static void BM_scene_graph_partial_reeval(benchmark::State& state) {
   Subgraphs subgraphs = prepareGraph(threadPool, scene, g);
 
   const size_t numTransforms = scene.transforms.size();
-  std::uniform_real_distribution<float> transformIndexDistr(0, numTransforms - 1);
+  std::uniform_real_distribution<float> transformIndexDistr(
+      0, static_cast<float>(numTransforms - 1));
 
   dispenso::ConcurrentTaskSet concurrentTaskSet(threadPool);
   dispenso::ConcurrentTaskSetExecutor concurrentTaskSetExecutor;
@@ -450,7 +451,7 @@ static void BM_scene_graph_partial_reeval(benchmark::State& state) {
     // change several transforms
     rng.seed(123456);
     for (size_t i = 0; i < 10; ++i) {
-      const size_t index = transformIndexDistr(rng);
+      const size_t index = static_cast<size_t>(transformIndexDistr(rng));
       Transform& t = scene.transforms[index];
       t.matrix = getRandomTransformMatrix(rng);
       subgraphs.transforms->node(index).setIncomplete();
