@@ -5,11 +5,29 @@
 
 cmake_minimum_required(VERSION 3.12)
 
-# Macro to add example executables
+# Macro to add example executables. Each one is also registered as a CTest
+# smoke test (label "example"), so CI runs the examples rather than only
+# compiling them; see run_example.cmake for what counts as passing.
 macro(add_example EXAMPLE_NAME)
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_NAME}.cpp)
     target_link_libraries(${EXAMPLE_NAME} dispenso)
     target_compile_features(${EXAMPLE_NAME} PRIVATE cxx_std_14)
+
+    # Examples that announce completion must get there.
+    file(STRINGS ${EXAMPLE_NAME}.cpp _example_done REGEX "completed successfully")
+    if(_example_done)
+      set(_example_expect_done ON)
+    else()
+      set(_example_expect_done OFF)
+    endif()
+    add_test(NAME example.${EXAMPLE_NAME}
+      COMMAND ${CMAKE_COMMAND}
+        -DEXAMPLE=$<TARGET_FILE:${EXAMPLE_NAME}>
+        -DEXPECT_DONE=${_example_expect_done}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/run_example.cmake)
+    set_tests_properties(example.${EXAMPLE_NAME} PROPERTIES
+      LABELS example
+      TIMEOUT 120)
 endmacro()
 
 # Add all examples
