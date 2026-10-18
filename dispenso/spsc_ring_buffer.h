@@ -453,16 +453,14 @@ class SPSCRingBuffer {
       return 0;
     }
 
-    // Push as many items as possible
+    // Push as many items as possible. The new tail is published on scope exit, so if a T
+    // constructor throws, the elements already constructed are still handed to the consumer
+    // (and destroyed with the buffer) rather than being stranded past the tail.
     size_t count = 0;
-    size_t tailPos = currentTail;
+    IndexPublisher tail{tail_, currentTail};
     for (; first != last && count < available; ++first, ++count) {
-      new (elementAt(tailPos)) T(std::move(*first));
-      tailPos = increment(tailPos);
-    }
-
-    if (count > 0) {
-      tail_.store(tailPos, std::memory_order_release);
+      new (elementAt(tail.pos)) T(std::move(*first));
+      tail.pos = increment(tail.pos);
     }
     return count;
   }
@@ -511,16 +509,14 @@ class SPSCRingBuffer {
 
     // Pop as many items as requested and available
     size_t count = std::min(available, maxCount);
-    size_t headPos = currentHead;
+    // The new head is published on scope exit, so if assigning to dest throws, the elements
+    // already moved out and destroyed are released, and the remaining ones stay in the buffer.
+    IndexPublisher head{head_, currentHead};
     for (size_t i = 0; i < count; ++i, ++dest) {
-      T* elem = elementAt(headPos);
+      T* elem = elementAt(head.pos);
       *dest = std::move(*elem);
       elem->~T();
-      headPos = increment(headPos);
-    }
-
-    if (count > 0) {
-      head_.store(headPos, std::memory_order_release);
+      head.pos = increment(head.pos);
     }
     return count;
   }
@@ -593,6 +589,27 @@ class SPSCRingBuffer {
   }
 
  private:
+  /**
+   * @brief Release-stores a head or tail index on scope exit if it has advanced.
+   *
+   * Used by the batch operations so that the elements already transferred are published even if
+   * a T operation throws part-way through the batch.
+   */
+  struct IndexPublisher {
+    std::atomic<size_t>& index;
+    size_t start;
+    size_t pos;
+    IndexPublisher(std::atomic<size_t>& idx, size_t current)
+        : index(idx), start(current), pos(current) {}
+    IndexPublisher(const IndexPublisher&) = delete;
+    IndexPublisher& operator=(const IndexPublisher&) = delete;
+    ~IndexPublisher() {
+      if (pos != start) {
+        index.store(pos, std::memory_order_release);
+      }
+    }
+  };
+
   /**
    * @brief Computes the internal buffer size at compile time.
    *
