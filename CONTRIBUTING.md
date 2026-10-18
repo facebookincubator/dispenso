@@ -7,7 +7,9 @@ underlying behavior substantially.  Let's avoid situations where you put in a lo
 to have to change it substantially or get your pull request rejected.
 
 ## Our Development Process
-This library has another home inside Facebook repos.  From there it is subjected to regular continuous integration testing on many platforms, and used by many projects.
+Pull requests are reviewed and merged here on GitHub, where CI builds and tests every change across
+Linux, macOS and Windows; see [GOVERNANCE.md](GOVERNANCE.md) for how changes get merged. A copy of
+dispenso is also synced into Meta's monorepo, where it is built with Buck and used by many projects.
 
 ## Pull Requests
 We actively welcome your pull requests.
@@ -39,9 +41,8 @@ outlined on that page and do not file a public issue.
 * Member variables have trailing underscore_
 * BigCamelCase for classes and structs, and smallCamelCase for functions and variables (exception is if you are trying to match a substantial part of a standard library interface).
 * [1TBS braces](https://en.wikipedia.org/wiki/Indentation_style#Variant:_1TBS_(OTBS))
-* Most of all, try to be consistent with the surrounding code.  We have automated tools that will
-  enforce clang-format style for some files (e.g. the C++ core) once we import your pull request
-  into our internal code reviewing tools.
+* Most of all, try to be consistent with the surrounding code.  Please run clang-format (the
+  repository's `.clang-format` defines the style) before submitting; CI does not check it.
 
 ## License
 By contributing to dispenso, you agree that your contributions will be licensed

@@ -34,12 +34,12 @@ patch version rather than repointing the old one.
    specific day, because a placeholder month reads like a real heading and
    survives review.
 
-   **`METADATA.bzl` is the seventh place, and nothing checks it.** It is
-   fbsource-only, so the check was removed from the public script deliberately
-   — `release.py` runs from a clone of the exported repository, where the file
-   does not exist. Bump it by hand and confirm both strings, because the
-   `package_url` purl carries the version too and does not look like a version
-   field:
+   **`METADATA.bzl` is the seventh place, and nothing checks it.** It exists
+   only in the copy synced into Meta's monorepo, not in this repository, so
+   `release.py` cannot see it and the check was removed from it deliberately.
+   The maintainer who syncs that copy bumps it by hand and confirms both
+   strings, because the `package_url` purl carries the version too and does not
+   look like a version field:
    ```bash
    grep -n 1\.6\. METADATA.bzl
    ```
@@ -75,8 +75,8 @@ to stop after committing and testing.
 
 ### Before you start
 
-- Public network access. None of this runs from a devserver — the script
-  downloads the release tarball and clones upstream package repos.
+- Public network access: the script downloads the release tarball and clones
+  upstream package repos, so it will not work from a network-restricted host.
 - macOS if you end up touching macports. On Linux the script degrades homebrew
   and macports to checksum verification only; vcpkg and conan are unaffected,
   so a Linux machine with public network access is enough for those.
@@ -161,7 +161,8 @@ package* version rather than the upstream project's, so it reports the real
 Testing only the conan round would have shown all green.
 
 **Every port should build with `-Werror` disabled.** dispenso compiles itself
-with `-Wall -Wextra -pedantic -Wconversion -Werror`. Package managers build
+with `-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion`, plus `-Werror`
+(`/WX` on MSVC) while `DISPENSO_WERROR` is on, which is the default. Package managers build
 across compilers we never see, so one new warning turns a perfectly good
 release into a failed package build for them. `DISPENSO_WERROR` exists as of
 1.6.1 so a distributor can decline that risk without patching
