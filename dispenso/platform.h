@@ -27,8 +27,6 @@
 #include <intrin.h>
 #endif
 
-namespace dispenso {
-
 #define DISPENSO_MAJOR_VERSION 1
 #define DISPENSO_MINOR_VERSION 6
 #define DISPENSO_PATCH_VERSION 2
@@ -54,6 +52,8 @@ namespace dispenso {
 #else
 #define DISPENSO_HAS_CONCEPTS 0
 #endif
+
+namespace dispenso {
 
 /**
  * @def DISPENSO_REQUIRES
