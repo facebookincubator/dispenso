@@ -7,6 +7,7 @@ Unreleased
 * `OnceFunction` no longer leaks its out-of-line buffer when copying or moving the callable into it throws.
 * Moving from an engaged `OpResult` no longer skips the destructor of the moved-from value. The source of a move now stays engaged holding its moved-from value, exactly as `std::optional` behaves, and that value is destroyed normally; previously the source was left empty and its value was never destroyed, which leaked anything a moved-from object still owned. This affected `OpResult` returned by value from pipeline stages and from `SPSCRingBuffer`/`MpmcRingBuffer::try_pop()`, and `AsyncRequest` in C++14 builds.
 * `OpResult` no longer destroys a value twice when constructing a replacement throws. `emplace()` and copy/move assignment destroyed the old value before constructing the new one but stayed engaged if that construction threw, so the destructor later ran on the dead object again. The `OpResult` is now left empty in that case, as `std::optional` is. This also covers `AsyncRequest::tryEmplaceUpdate()` in C++14 builds.
+* `SmallVector::push_back()` and `emplace_back()` now work when the argument is an element of the same vector and the call has to grow it (for example `v.push_back(v[0])` on a full vector). Growth used to move and free the old elements before constructing the new one, so the appended value was read after being moved from or freed.
 
 1.6.2 (August 19, 2026)
 
