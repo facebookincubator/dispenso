@@ -94,6 +94,10 @@ void BM_serial(benchmark::State& state) {
     for (size_t i = 0; i < kSize; ++i) {
       output[i] = isPrime(input[i]);
     }
+    // output is never read, so without this the compiler may drop the work being timed (clang
+    // did, timing it at ~70 ns).
+    benchmark::DoNotOptimize(output.data());
+    benchmark::ClobberMemory();
     times.back() = dispenso::getTime() - times.back();
   }
 

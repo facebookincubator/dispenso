@@ -57,6 +57,10 @@ void BM_serial(benchmark::State& state) {
     for (size_t i = 0; i < num_elements; ++i) {
       output[i] = input[i] * input[i] - 3 * input[i];
     }
+    // output is never read, so without this the compiler may drop the stores and with them the
+    // work being timed (clang did, timing this at ~0 ns).
+    benchmark::DoNotOptimize(output.data());
+    benchmark::ClobberMemory();
   }
 }
 
