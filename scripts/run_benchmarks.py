@@ -504,6 +504,12 @@ def configure_and_build(
         # otherwise compiles the folly cases out, so this is safe on platforms
         # without folly.
         "-DBENCHMARK_WITHOUT_FOLLY=OFF",
+        # The benchmarks build with the project's warning flags, fatal by
+        # default. This script runs on toolchains CI never sees (vendor
+        # compilers, NDKs, folly-enabled builds), where a new warning is not a
+        # reason to lose a benchmark run; warnings still print. Pass
+        # --cmake-args=-DDISPENSO_WERROR=ON to make them fatal again.
+        "-DDISPENSO_WERROR=OFF",
     ]
 
     # User-supplied flags come last so they win on conflicting -D options.
