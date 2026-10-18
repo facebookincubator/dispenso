@@ -51,18 +51,20 @@ class FuncConsumer {
   std::deque<Func> funcs_;
 };
 
-template <size_t kSize>
+// Foo's move constructor may throw, so OnceFunction stores it out of line; FooNothrowMove is stored
+// inline and moved with its move constructor.
+template <size_t kSize, bool kNothrowMove = false>
 struct Foo {
   Foo() {
     buf[0] = 0;
     benchmark::ClobberMemory();
   }
 
-  Foo(Foo<kSize>&& f) {
+  Foo(Foo&& f) noexcept(kNothrowMove) {
     std::memcpy(buf, f.buf, kSize);
   }
 
-  Foo(const Foo<kSize>& f) {
+  Foo(const Foo& f) {
     std::memcpy(buf, f.buf, kSize);
   }
 
@@ -72,6 +74,9 @@ struct Foo {
 
   uint32_t buf[kSize / 4];
 };
+
+template <size_t kSize>
+using FooNothrowMove = Foo<kSize, true>;
 
 template <typename F>
 void onceCall(F&& f) {
@@ -90,6 +95,11 @@ void BM_move_once_function(benchmark::State& state) {
 }
 
 constexpr int kMediumLoopLen = 200;
+
+template <size_t kSize>
+void BM_move_once_function_nothrow_move(benchmark::State& state) {
+  runMoveLoop<dispenso::OnceFunction>(state, FooNothrowMove<kSize>());
+}
 
 template <size_t kSize>
 void BM_queue_inline_function(benchmark::State& state) {
@@ -124,8 +134,20 @@ void BM_queue_once_function(benchmark::State& state) {
   }
 }
 
+template <size_t kSize>
+void BM_queue_once_function_nothrow_move(benchmark::State& state) {
+  FuncConsumer<dispenso::OnceFunction> consumer;
+  for (auto UNUSED_VAR : state) {
+    for (int i = 0; i < kMediumLoopLen; ++i) {
+      consumer.add(FooNothrowMove<kSize>());
+    }
+    consumer.consumeAll();
+  }
+}
+
 BENCHMARK_TEMPLATE(BM_move_std_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_move_once_function, kSmallSize);
+BENCHMARK_TEMPLATE(BM_move_once_function_nothrow_move, kSmallSize);
 
 BENCHMARK_TEMPLATE(BM_move_std_function, kLargeSize);
 BENCHMARK_TEMPLATE(BM_move_once_function, kLargeSize);
@@ -136,6 +158,7 @@ BENCHMARK_TEMPLATE(BM_move_once_function, kExtraLargeSize);
 BENCHMARK_TEMPLATE(BM_queue_inline_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_queue_std_function, kSmallSize);
 BENCHMARK_TEMPLATE(BM_queue_once_function, kSmallSize);
+BENCHMARK_TEMPLATE(BM_queue_once_function_nothrow_move, kSmallSize);
 
 BENCHMARK_TEMPLATE(BM_queue_inline_function, kLargeSize);
 BENCHMARK_TEMPLATE(BM_queue_std_function, kLargeSize);
