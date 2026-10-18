@@ -154,11 +154,12 @@ python3 scripts/generate_plotly_benchmarks.py \
   docs/benchmark_results/<platform-name>.json \
   -o docs/benchmarks/index.html
 
-# Multiple platforms in one dashboard (switch between them in the UI)
+# Multiple platforms in one dashboard (switch between them in the UI).
+# This is the command that produces the published dashboard:
 python3 scripts/generate_plotly_benchmarks.py \
   docs/benchmark_results/linux_x64.json \
-  docs/benchmark_results/macos_arm64.json \
   docs/benchmark_results/windows_x64.json \
+  docs/benchmark_results/macos_arm64.json \
   docs/benchmark_results/android_arm64.json \
   -o docs/benchmarks/index.html
 ```
@@ -166,6 +167,14 @@ python3 scripts/generate_plotly_benchmarks.py \
 The generator reads the embedded machine info to label each platform, so no
 separate compose or landing-page step is needed. `-o` defaults to
 `/tmp/dispenso-benchmarks.html` if omitted.
+
+Input order matters: platforms appear in the dashboard in the order given, and
+the output is byte-identical only for the same inputs in the same order. To
+regenerate the published `docs/benchmarks/index.html` (for example after
+changing the generator), pass the files in the order above -- linux_x64,
+windows_x64, macos_arm64, android_arm64 -- not `docs/benchmark_results/*.json`,
+whose alphabetical order differs. Regenerating with an unchanged generator and
+unchanged results should leave `git diff docs/benchmarks/index.html` empty.
 
 ## Notes
 

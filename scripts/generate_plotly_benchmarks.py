@@ -13,7 +13,12 @@ sidebar navigation, platform switching, and suite-specific visualizations.
 Usage:
     python generate_plotly_benchmarks.py docs/benchmark_results/macos.json
     python generate_plotly_benchmarks.py docs/benchmark_results/macos.json docs/benchmark_results/linux.json
-    python generate_plotly_benchmarks.py docs/benchmark_results/*.json -o docs/benchmarks/index.html
+
+Published dashboard (input order sets platform order; keep it to reproduce
+docs/benchmarks/index.html byte-for-byte, see scripts/BENCHMARKING.md):
+    python generate_plotly_benchmarks.py docs/benchmark_results/linux_x64.json \
+        docs/benchmark_results/windows_x64.json docs/benchmark_results/macos_arm64.json \
+        docs/benchmark_results/android_arm64.json -o docs/benchmarks/index.html
 """
 
 import argparse
