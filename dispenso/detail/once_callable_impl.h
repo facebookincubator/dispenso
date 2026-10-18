@@ -100,7 +100,16 @@ createOnceCallableImpl(F&& f, void* inlineBuf, std::false_type /*spill*/) {
   constexpr size_t kAllocSize =
       static_cast<size_t>(nextPow2(std::max(sizeof(FNoRef), alignof(FNoRef))));
   void* ptr = allocSmallBuffer<kAllocSize>();
+#if defined(__cpp_exceptions)
+  try {
+    new (ptr) FNoRef(std::forward<F>(f));
+  } catch (...) {
+    deallocSmallBuffer<kAllocSize>(ptr);
+    throw;
+  }
+#else
   new (ptr) FNoRef(std::forward<F>(f));
+#endif // __cpp_exceptions
   *static_cast<void**>(inlineBuf) = ptr;
   return &SpillOnceCallableOps<kAllocSize, FNoRef>::kOps;
 }
