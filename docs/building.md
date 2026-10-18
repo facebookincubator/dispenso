@@ -76,11 +76,14 @@ ctest --preset dev
 
 | Preset | Configuration |
 | --- | --- |
-| `default` | The library alone at C++17, using system-installed dependencies |
+| `default` | The library alone at C++17 in Release, using system-installed dependencies |
 | `vcpkg` | As `default`, with dependencies from vcpkg; `VCPKG_ROOT` must be set |
-| `dev` | Tests, benchmarks and examples at C++20, with dependencies from vcpkg |
-| `asan`, `tsan` | `dev` with Address or Thread Sanitizer; build with `cmake --build build/asan` (or `build/tsan`) |
+| `dev` | Tests, benchmarks and examples at C++20 in Release, with dependencies from vcpkg |
+| `asan`, `tsan` | `dev` built as RelWithDebInfo with Address (plus UndefinedBehavior) or Thread Sanitizer |
 | `win-dev` | `dev` on Windows with Ninja, built under `%TEMP%`; run from a Developer Command Prompt |
+
+Release and RelWithDebInfo both define `NDEBUG`, so asserts are off in every preset,
+the sanitizer presets included. Configure with `-DCMAKE_BUILD_TYPE=Debug` to enable them.
 
 Personal presets belong in `CMakeUserPresets.json`, which git ignores.
 
