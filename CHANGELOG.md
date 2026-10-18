@@ -24,6 +24,7 @@ Unreleased
 * Fixed misaligned per-thread data in `ThreadPool` in C++14 builds. Workers were stored in a `std::deque` of a cache-line-aligned type, and before C++17 `std::allocator` ignores over-alignment, so most entries sat at misaligned addresses (undefined behaviour, and no false-sharing protection). The `CacheAligned` documentation now notes that standard containers of it need an alignment-aware allocator before C++17.
 * `ConcurrentVector<int> v(5, 3)` (and other count/value constructions with an integral element type) now compiles and creates five 3s, as with `std::vector`. The iterator-range constructors previously captured such calls and failed to compile.
 * Fixed an intermittent hang of `parallel_for` with adaptive chunking under ThreadSanitizer on many-core machines, where spinning workers starved the final completion update.
+* `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
 
 1.6.2 (August 19, 2026)
 
