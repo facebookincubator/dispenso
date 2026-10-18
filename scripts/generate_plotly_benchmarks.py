@@ -250,7 +250,11 @@ def _parse_line_benchmarks(benchmarks):
         if _is_hidden_variant(lib.lower()):
             continue
 
-        if parsed.get("worksize") and "<" not in bm["name"]:
+        if lib == "serial" and parsed.get("worksize") == "default":
+            # Slash-delimited serial baseline: serial/worksize (no thread
+            # count), e.g. cascading_parallel_for's BM_serial/100000.
+            serial_points[str(parsed["threads"])] = bm["real_time"]
+        elif parsed.get("worksize") and "<" not in bm["name"]:
             # Slash-delimited: lib/threads/worksize
             threads = parsed["threads"]
             if threads is not None:
