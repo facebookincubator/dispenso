@@ -312,9 +312,12 @@ jobs:
   # Neither runner image ships anything newer than GCC 13, so these two are the
   # only coverage of current compilers -- and the only jobs that build the
   # examples at all, which is what keeps examples/ from rotting unnoticed.
+  # DISPENSO_BUILD_EXAMPLES also registers each example as a ctest smoke test
+  # (label "example"), so the Test step runs them and checks the results they
+  # print, not just that they compile.
   # Blocking rather than advisory for exactly that reason: an example that stops
-  # compiling should fail CI. Both versions are pinned, so neither can break
-  # spontaneously under us.
+  # compiling or working should fail CI. Both versions are pinned, so neither
+  # can break spontaneously under us.
   build-gcc-16:
     name: Linux GCC 16 + libstdc++
     runs-on: ubuntu-latest
