@@ -73,7 +73,7 @@ class SmallVector {
    * @param count The number of elements.
    **/
   explicit SmallVector(size_type count) : size_(0) {
-    resize(count);
+    constructOrRelease([&]() { resize(count); });
   }
 
   /**
@@ -83,7 +83,7 @@ class SmallVector {
    * @param value The value to copy into each element.
    **/
   SmallVector(size_type count, const T& value) : size_(0) {
-    resize(count, value);
+    constructOrRelease([&]() { resize(count, value); });
   }
 
   /**
@@ -92,18 +92,22 @@ class SmallVector {
    * @param init The initializer list of elements.
    **/
   SmallVector(std::initializer_list<T> init) : size_(0) {
-    ensureCapacity(init.size());
-    for (const auto& v : init) {
-      emplace_back(v);
-    }
+    constructOrRelease([&]() {
+      ensureCapacity(init.size());
+      for (const auto& v : init) {
+        emplace_back(v);
+      }
+    });
   }
 
   /** Copy constructor. **/
   SmallVector(const SmallVector& other) : size_(0) {
-    ensureCapacity(other.rawSize());
-    for (const auto& v : other) {
-      emplace_back(v);
-    }
+    constructOrRelease([&]() {
+      ensureCapacity(other.rawSize());
+      for (const auto& v : other) {
+        emplace_back(v);
+      }
+    });
   }
 
   /** Move constructor. Moves elements and leaves @p other empty. **/
@@ -330,10 +334,7 @@ class SmallVector {
     size_type sz = rawSize();
     if (count > sz) {
       ensureCapacity(count);
-      T* ptr = data();
-      for (size_type i = sz; i < count; ++i) {
-        new (ptr + i) T();
-      }
+      constructRange(data(), sz, count, [](T* p) { new (p) T(); });
       setSize(count);
     } else if (count < sz) {
       T* ptr = data();
@@ -355,10 +356,7 @@ class SmallVector {
     size_type sz = rawSize();
     if (count > sz) {
       ensureCapacity(count);
-      T* ptr = data();
-      for (size_type i = sz; i < count; ++i) {
-        new (ptr + i) T(value);
-      }
+      constructRange(data(), sz, count, [&value](T* p) { new (p) T(value); });
       setSize(count);
     } else if (count < sz) {
       T* ptr = data();
@@ -417,6 +415,43 @@ class SmallVector {
   }
   const T* inlineData() const noexcept {
     return reinterpret_cast<const T*>(&storage_.inline_);
+  }
+
+  // For constructors: run fill(), and if it throws, destroy whatever it built and free any heap
+  // storage before propagating, since the destructor does not run for a constructor that throws.
+  template <typename Fill>
+  void constructOrRelease(Fill fill) {
+#if defined(__cpp_exceptions)
+    try {
+      fill();
+    } catch (...) {
+      destroyAll();
+      throw;
+    }
+#else
+    fill();
+#endif // __cpp_exceptions
+  }
+
+  // Construct ptr[begin, end) by calling construct(ptr + i) for each slot. If one throws, the
+  // elements already built in this range are destroyed before the exception propagates.
+  template <typename Construct>
+  static void constructRange(T* ptr, size_type begin, size_type end, Construct construct) {
+    size_type i = begin;
+#if defined(__cpp_exceptions)
+    try {
+#endif // __cpp_exceptions
+      for (; i < end; ++i) {
+        construct(ptr + i);
+      }
+#if defined(__cpp_exceptions)
+    } catch (...) {
+      for (size_type j = begin; j < i; ++j) {
+        ptr[j].~T();
+      }
+      throw;
+    }
+#endif // __cpp_exceptions
   }
 
   void destroyAll() noexcept {
