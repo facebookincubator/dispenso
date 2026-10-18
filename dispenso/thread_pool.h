@@ -969,7 +969,10 @@ void ThreadPool::scheduleBulkEnqueue(
 
   DISPENSO_TSAN_ANNOTATE_IGNORE_WRITES_BEGIN();
   bool enqueued;
-  if (token) {
+  // A token whose producer could not be allocated is invalid; enqueueing through it would
+  // dereference a null producer.  Checking also tells GCC the producer is non-null, which
+  // otherwise reports -Wstringop-overflow on that path inside moodycamel.
+  if (token && DISPENSO_EXPECT(token->valid(), true)) {
     enqueued = work_.enqueue_bulk(*token, it, count);
   } else {
     enqueued = work_.enqueue_bulk(it, count);
