@@ -223,6 +223,8 @@ concurrentTaskSetExecutor(concurrentTaskSet, g);
 Please read tests from `graph_test.cpp` for more examples.
 */
 
+namespace dispenso {
+
 namespace detail {
 class ExecutorBase;
 
@@ -237,13 +239,6 @@ void destroyFunctor(void* ptr) {
   constexpr size_t kFuncSize = static_cast<size_t>(dispenso::detail::nextPow2(sizeof(F)));
   dispenso::deallocSmallBuffer<kFuncSize>(ptr);
 }
-
-} // namespace detail
-
-namespace dispenso {
-
-namespace detail {
-class ExecutorBase;
 } // namespace detail
 
 /**
@@ -373,8 +368,8 @@ class Node {
     new (guard.buf) FNoRef(std::forward<F>(f));
     funcBuffer_ = guard.buf;
     guard.buf = nullptr;
-    invoke_ = ::detail::callFunctor<FNoRef>;
-    destroy_ = ::detail::destroyFunctor<FNoRef>;
+    invoke_ = detail::callFunctor<FNoRef>;
+    destroy_ = detail::destroyFunctor<FNoRef>;
   }
 
   void dependsOnOneNode(Node& node) {
