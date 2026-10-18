@@ -37,6 +37,7 @@ Unreleased
 * The online documentation now has a light/dark mode toggle next to the search box; it follows the system preference by default and remembers your choice.
 * Getting Started now says its code blocks are fragments and links each section's complete program in `examples/`; those links previously broke on the documentation site.
 * The README now leads with installation and a guide to choosing an API, and links its performance claims to the benchmark sources, dashboard and methodology.
+* The benchmark dashboard's simple_for and nested_for charts now include dispenso. The chart generator hid every benchmark named with "auto" or "static", and since those suites' only dispenso cases are `BM_dispenso_static_chunk` and `BM_dispenso_auto`, the published charts compared OpenMP, TBB and TaskFlow without a dispenso line on any platform.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.

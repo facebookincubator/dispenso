@@ -227,17 +227,27 @@ def _parse_line_benchmarks(benchmarks):
     grouped = defaultdict(dict)
     serial_points = {}
 
-    for bm in benchmarks:
-        if bm.get("run_type") != "iteration":
-            continue
+    rows = [bm for bm in benchmarks if bm.get("run_type") == "iteration"]
+    libs = {
+        parse_benchmark_name(bm["name"].replace("BM_", ""))["library"].lower()
+        for bm in rows
+    }
+
+    def _is_hidden_variant(lib_lower):
+        # Hide chunking variants (e.g. dispenso_static_chunk, dispenso_auto)
+        # only when the suite also has the plain library line, so the chart
+        # shows one line per library.  Suites whose only dispenso benchmark
+        # is a variant (simple_for, nested_for) keep it under its own name.
+        if "auto" not in lib_lower and "static" not in lib_lower:
+            return False
+        return lib_lower.split("_", 1)[0] in libs
+
+    for bm in rows:
         name = bm["name"].replace("BM_", "")
         parsed = parse_benchmark_name(name)
         lib = parsed["library"]
 
-        # Filter out auto_chunk, static_chunk, and other variants (auto, static)
-        # to keep charts clean
-        lib_lower = lib.lower()
-        if "auto" in lib_lower or "static" in lib_lower:
+        if _is_hidden_variant(lib.lower()):
             continue
 
         if parsed.get("worksize") and "<" not in bm["name"]:
