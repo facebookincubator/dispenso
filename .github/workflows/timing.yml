@@ -1,0 +1,135 @@
+name: Timing diagnostics
+
+# The tests labelled "flaky" in tests/CMakeLists.txt (priority_test,
+# timed_task_test, timing_test) measure OS scheduling and timer behaviour, so
+# they are excluded from every build.yml job: a pull request should not fail
+# because a shared runner was busy. Left entirely unrun, though, a real
+# regression in thread priorities or timed tasks would go unseen. This
+# workflow runs them weekly, and on demand, on each desktop OS. It is
+# diagnostic only -- it is not triggered by pull requests and is not a
+# required check. Read a failure as "look at this", not as a broken build.
+#
+# Results are tracked in one open "Timing test health" issue (label
+# timing-health): a table of the last eight runs, plus a comment whenever a
+# test starts or stops failing in 3 of the last 4 runs. Set the repository
+# variable TIMING_HEALTH_MENTION (e.g. "@someone") to be mentioned when a test
+# starts failing. See .github/scripts/timing_health.py.
+on:
+  schedule:
+    - cron: '41 7 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CTEST_OUTPUT_ON_FAILURE: 1
+
+jobs:
+  flaky-tests:
+    name: Timing and priority tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4 --config Release
+      # On Linux, kHigh needs RLIMIT_NICE above 20 and kRealtime needs
+      # RLIMIT_RTPRIO for SCHED_FIFO 99; the runner user has neither, so
+      # PriorityGetsCycles would fail on permissions rather than on scheduling.
+      # Raise both limits on this shell, which ctest and the tests inherit,
+      # instead of running the tests as root.
+      #
+      # Each test gets up to three attempts, so a red run means a test failed
+      # repeatedly, not once on a noisy runner.
+      - name: Test (flaky label)
+        id: test
+        working-directory: ./build
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo prlimit --pid $$ --nice=40:40 --rtprio=99:99
+            prlimit --pid $$ --nice --rtprio
+          fi
+          ctest -L flaky --build-config Release --timeout 300 \
+            --repeat until-pass:3
+      # One "<test><TAB>pass|fail" line per test, after the retries above.
+      # ctest lists the tests that still failed in LastTestsFailed.log as
+      # "<number>:<name>". Per-test lines are written only with evidence that
+      # ctest ran the tests: its LastTest.log, plus LastTestsFailed.log when
+      # the step failed. Otherwise the tests never ran, or the step failed
+      # outside ctest (the build, say, or sudo prlimit), so only the outcome
+      # line is written and the report records "(no results)" rather than
+      # counting every test as passed.
+      - name: Collect results
+        if: always()
+        working-directory: ./build
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          printf 'outcome\t%s\n' "$OUTCOME" > results.tsv
+          ran=Testing/Temporary/LastTest.log
+          failed=Testing/Temporary/LastTestsFailed.log
+          if [ -f "$ran" ] && { [ "$OUTCOME" = success ] ||
+             { [ "$OUTCOME" = failure ] && [ -f "$failed" ]; }; }; then
+            : > failed.txt
+            if [ "$OUTCOME" = failure ]; then
+              cut -d: -f2- "$failed" | tr -d '\r' > failed.txt
+            fi
+            ctest -N -L flaky --build-config Release | tr -d '\r' |
+              sed -n 's/^ *Test *#[0-9]*: //p' | sed 's/[[:space:]]*$//' |
+              while IFS= read -r name; do
+                if grep -qxF -- "$name" failed.txt; then
+                  printf '%s\tfail\n' "$name"
+                else
+                  printf '%s\tpass\n' "$name"
+                fi
+              done >> results.tsv
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timing-${{ matrix.os }}
+          path: build/results.tsv
+          if-no-files-found: ignore
+
+  report:
+    name: Update the timing health issue
+    needs: flaky-tests
+    # Only runs of main feed the issue; a manual run on another branch does not.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          path: results
+      - name: Update issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MENTION: ${{ vars.TIMING_HEALTH_MENTION }}
+        run: |
+          # An OS whose job uploaded nothing still needs a column entry.
+          for os in ubuntu-latest macos-latest windows-latest; do
+            mkdir -p "results/timing-$os"
+          done
+          python3 .github/scripts/timing_health.py results \
+            --date "$(date -u +%Y-%m-%d)" --sha "$GITHUB_SHA" \
+            --run-url "$RUN_URL" --mention "$MENTION"
