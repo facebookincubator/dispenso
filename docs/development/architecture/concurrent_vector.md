@@ -2,7 +2,7 @@
 
 How `ConcurrentVector`'s indexed access path is optimized, and how those
 optimizations interact with its traits. Planned follow-on work is on the
-[roadmap](../roadmap.md#concurrentvector).
+[roadmap](../roadmap/containers.md#concurrentvector-follow-on).
 
 ## Optimizations Applied (Default Traits)
 
