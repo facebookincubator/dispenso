@@ -83,7 +83,13 @@ set(DISPENSO_USE_SYSTEM_CONCURRENTQUEUE OFF CACHE BOOL
 # a reason to fail the build. Note this cannot be worked around downstream:
 # the flags are set via target_compile_options, so they land after
 # CMAKE_CXX_FLAGS and -Wno-error passed there would be overridden.
-option(DISPENSO_WERROR "Treat compiler warnings as errors when building dispenso" ON)
+# Defaults to ON only for our own builds. A project that vendors dispenso via
+# add_subdirectory() or FetchContent is in the same position as a distributor:
+# its compiler may be newer than anything we test with, and a new warning in
+# our code should not fail its build. Such a project can still opt in with
+# -DDISPENSO_WERROR=ON.
+option(DISPENSO_WERROR "Treat compiler warnings as errors when building dispenso"
+       ${DISPENSO_STANDALONE})
 
 ###########################################################
 # Targets
