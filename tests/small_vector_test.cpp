@@ -550,3 +550,46 @@ TEST(SmallVector, PopBackOnHeap) {
   EXPECT_EQ(v.size(), 6u);
   EXPECT_EQ(v.back(), 5);
 }
+
+// push_back/emplace_back of one of the vector's own elements must work across growth, as it does
+// for std::vector: the argument refers into the storage that growth moves from and frees. Strings
+// are long enough to defeat SSO, so a use-after-move or use-after-free is visible (and ASAN-able).
+TEST(SmallVector, PushBackOwnElementAcrossInlineToHeapGrowth) {
+  const std::string a(64, 'a');
+  const std::string b(64, 'b');
+  SmallVector<std::string, 2> v;
+  v.push_back(a);
+  v.push_back(b);
+  ASSERT_EQ(v.capacity(), 2u);
+  v.push_back(v[0]);
+  ASSERT_EQ(v.size(), 3u);
+  EXPECT_EQ(v[0], a);
+  EXPECT_EQ(v[1], b);
+  EXPECT_EQ(v[2], a);
+}
+
+TEST(SmallVector, PushBackOwnElementAcrossHeapGrowth) {
+  SmallVector<std::string, 2> v;
+  for (int i = 0; i < 4; ++i) {
+    v.push_back(std::string(64, static_cast<char>('a' + i)));
+  }
+  ASSERT_EQ(v.size(), v.capacity());
+  v.push_back(v[1]);
+  ASSERT_EQ(v.size(), 5u);
+  EXPECT_EQ(v[1], std::string(64, 'b'));
+  EXPECT_EQ(v[4], std::string(64, 'b'));
+}
+
+TEST(SmallVector, EmplaceBackOwnElementAcrossGrowth) {
+  SmallVector<std::string, 1> v;
+  v.emplace_back(64, 'x');
+  ASSERT_EQ(v.size(), v.capacity());
+  v.emplace_back(v.back());
+  ASSERT_EQ(v.size(), v.capacity());
+  // Constructor arguments taken from an element: std::string(const std::string&, pos, count).
+  v.emplace_back(v[0], 0, 10);
+  ASSERT_EQ(v.size(), 3u);
+  EXPECT_EQ(v[0], std::string(64, 'x'));
+  EXPECT_EQ(v[1], std::string(64, 'x'));
+  EXPECT_EQ(v[2], std::string(10, 'x'));
+}

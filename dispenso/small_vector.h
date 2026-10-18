@@ -295,13 +295,12 @@ class SmallVector {
       if (sz < N) {
         ptr = inlineData();
       } else {
-        growToHeap(N * 2);
-        ptr = storage_.heap_.ptr;
+        return growAndEmplaceBack(N * 2, std::forward<Args>(args)...);
       }
     } else {
       size_type sz = rawSize();
       if (sz == storage_.heap_.capacity) {
-        growToHeap(storage_.heap_.capacity * 2);
+        return growAndEmplaceBack(storage_.heap_.capacity * 2, std::forward<Args>(args)...);
       }
       ptr = storage_.heap_.ptr;
     }
@@ -445,7 +444,12 @@ class SmallVector {
   // Grow to heap storage with the specified capacity.
   // Moves existing elements, frees old heap if applicable, sets heap bit.
   void growToHeap(size_type newCap) {
-    T* newData = static_cast<T*>(::operator new(newCap * sizeof(T)));
+    adoptHeap(static_cast<T*>(::operator new(newCap * sizeof(T))), newCap);
+  }
+
+  // Move the existing elements into newData (capacity newCap), free the old heap storage if any,
+  // and switch to heap mode using newData.
+  void adoptHeap(T* newData, size_type newCap) {
     T* oldData = data();
     size_type sz = rawSize();
 
@@ -461,6 +465,29 @@ class SmallVector {
     storage_.heap_.ptr = newData;
     storage_.heap_.capacity = newCap;
     size_ = kHeapBit | sz;
+  }
+
+  // emplace_back() when full: grow to newCap and append. The new element is constructed in the new
+  // storage before the existing elements are moved out of the old storage, because args may refer
+  // to one of those elements (e.g. v.push_back(v[0])).
+  template <typename... Args>
+  reference growAndEmplaceBack(size_type newCap, Args&&... args) {
+    T* newData = static_cast<T*>(::operator new(newCap * sizeof(T)));
+    size_type sz = rawSize();
+#if defined(__cpp_exceptions)
+    try {
+      new (newData + sz) T(std::forward<Args>(args)...);
+    } catch (...) {
+      ::operator delete(newData);
+      throw;
+    }
+#else
+    new (newData + sz) T(std::forward<Args>(args)...);
+#endif // __cpp_exceptions
+    adoptHeap(newData, newCap);
+    ++size_; // Preserves heap bit
+    assert(rawSize() > 0 && "Size overflow into heap bit");
+    return newData[sz];
   }
 
   void ensureCapacity(size_type newCap) {
