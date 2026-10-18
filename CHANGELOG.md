@@ -41,6 +41,7 @@ Unreleased
 * The README now leads with installation and a guide to choosing an API, and links its performance claims to the benchmark sources, dashboard and methodology.
 * The benchmark dashboard's simple_for and nested_for charts now include dispenso. The chart generator hid every benchmark named with "auto" or "static", and since those suites' only dispenso cases are `BM_dispenso_static_chunk` and `BM_dispenso_auto`, the published charts compared OpenMP, TBB and TaskFlow without a dispenso line on any platform.
 * The benchmark dashboard no longer shows a meaningless serial-only "Cascading Parallel For" chart that plotted element counts as thread counts; the serial time now appears as the dashed reference line in the 100K and 10M cascading charts.
+* The benchmark dashboard's future section was an empty chart because it still looked for tree-build benchmarks that moved to tree_benchmark. It now charts the benchmark's actual workloads: speculative search with when_any, and KV-cache memoization with shared futures.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.

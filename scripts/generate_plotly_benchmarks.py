@@ -428,101 +428,90 @@ def build_concurrent_vector_charts(benchmarks, suite):
     return charts
 
 
-def _parse_future_benchmarks(benchmarks, impl_map, sizes):
-    """Parse future benchmarks into data dict and error set."""
-    data = {}
-    error_set = set()
-    for bm in benchmarks:
-        clean = bm["name"].replace("BM_", "").replace("/real_time", "")
-        size = None
-        for sz in ["kSmallSize", "kMediumSize", "kLargeSize"]:
-            if sz in clean:
-                size = sz.replace("k", "").replace("Size", "")
-                clean = clean.replace(f"<{sz}>", "")
-                break
-        impl = impl_map.get(clean, clean.replace("_", " "))
-        if bm.get("error_occurred"):
-            if size:
-                error_set.add((impl, size))
-            continue
-        if bm.get("run_type") != "iteration":
-            continue
-        if size:
-            data[(impl, size)] = bm["real_time"]
-    return data, error_set
-
-
-def _build_error_aware_groups(impls, available_sizes, data, error_set):
-    """Build grouped bar data with error placeholders at max category height."""
-    cat_maxes = {}
-    for s in available_sizes:
-        vals = [data.get((i, s), 0) for i in impls]
-        cat_maxes[s] = max(vals) if vals else 0
-
-    groups = []
-    for impl in impls:
-        values = []
-        error_indices = []
-        for idx, s in enumerate(available_sizes):
-            if (impl, s) in error_set:
-                values.append(cat_maxes[s])
-                error_indices.append(idx)
-            else:
-                values.append(data.get((impl, s), 0))
-        group = {"name": impl, "values": values, "color": get_color(impl)}
-        if error_indices:
-            group["error_indices"] = error_indices
-        groups.append(group)
-    return groups
+_FUTURE_SPEC_IMPLS = [
+    ("dispenso", "dispenso::when_any"),
+    ("folly", "folly::collectAny"),
+]
+_FUTURE_KV_IMPLS = [
+    ("kv_no_cache", "no cache (recompute)"),
+    ("kv_std_shared_future", "std::shared_future"),
+    ("kv_folly", "folly::SharedPromise"),
+    ("kv_dispenso", "dispenso::Future"),
+]
 
 
 def build_future_charts(benchmarks, suite):
-    """Grouped bar chart by tree size for future benchmark."""
-    impl_map = {
-        "serial_tree": "serial",
-        "std_tree": "std::async",
-        "folly_tree": "folly::Future",
-        "dispenso_tree": "dispenso::Future",
-        "dispenso_tree_when_all": "dispenso::when_all",
-        "dispenso_taskset_tree": "dispenso::TaskSet",
-        "dispenso_taskset_tree_bulk": "dispenso::TaskSet (bulk)",
-    }
-    impl_order = [
-        "serial",
-        "std::async",
-        "folly::Future",
-        "dispenso::Future",
-        "dispenso::TaskSet",
-        "dispenso::TaskSet (bulk)",
-        "dispenso::when_all",
-    ]
-    sizes = ["Small", "Medium", "Large"]
+    """Charts for future_benchmark's two workloads.
 
-    data, error_set = _parse_future_benchmarks(benchmarks, impl_map, sizes)
+    Speculative search (BM_speculative_<impl><K>): time to the first of K
+    candidates, grouped by K, with the single-candidate serial run repeated
+    in each group as the reference.  KV-cache memoization (BM_kv_<impl>):
+    one bar per implementation.
+    """
+    spec = {}
+    kv = {}
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        clean = bm["name"].replace("BM_", "").replace("/real_time", "")
+        m = re.match(r"speculative_([a-z]+)(?:<(\d+)>)?$", clean)
+        if m:
+            spec[(m.group(1), m.group(2))] = bm["real_time"]
+        elif clean.startswith("kv_"):
+            kv[clean] = bm["real_time"]
 
-    impls = [
-        i
-        for i in impl_order
-        if any((i, s) in data or (i, s) in error_set for s in sizes)
-    ]
-    available_sizes = [
-        s for s in sizes if any((i, s) in data or (i, s) in error_set for i in impls)
-    ]
+    charts = []
+    ks = sorted({k for _, k in spec if k is not None}, key=int)
+    if ks:
+        groups = []
+        serial = spec.get(("serial", None))
+        if serial is not None:
+            groups.append(
+                {
+                    "name": "serial (1 candidate)",
+                    "values": [serial] * len(ks),
+                    "color": get_color("serial"),
+                }
+            )
+        for key, display in _FUTURE_SPEC_IMPLS:
+            if any((key, k) in spec for k in ks):
+                groups.append(
+                    {
+                        "name": display,
+                        "values": [spec.get((key, k), 0) for k in ks],
+                        "color": get_color(key),
+                    }
+                )
+        charts.append(
+            {
+                "id": "future_speculative",
+                "suite": suite,
+                "type": "grouped_bar_v",
+                "title": "Speculative Search: Time to First Result",
+                "categories": [f"{k} candidates" for k in ks],
+                "groups": groups,
+                "yaxis_unit": "ns",
+                "xaxis": "Candidates launched",
+            }
+        )
 
-    groups = _build_error_aware_groups(impls, available_sizes, data, error_set)
-
-    return [
-        {
-            "id": "future",
-            "suite": suite,
-            "type": "grouped_bar_v",
-            "title": "Future/Async Tree Build Benchmark",
-            "categories": available_sizes,
-            "groups": groups,
-            "yaxis_unit": "ns",
-            "xaxis": "Tree Size",
-        }
+    items = [
+        {"name": display, "time_ns": kv[key], "color": get_color(key[3:])}
+        for key, display in _FUTURE_KV_IMPLS
+        if key in kv
     ]
+    if items:
+        charts.append(
+            {
+                "id": "future_kv",
+                "suite": suite,
+                "type": "bar_h_colored",
+                "title": "KV Cache Memoization (shared futures)",
+                "items": items,
+                "xaxis_unit": "ns",
+            }
+        )
+    return charts
 
 
 def build_graph_charts(benchmarks, suite):
