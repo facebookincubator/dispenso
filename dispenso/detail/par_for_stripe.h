@@ -225,6 +225,24 @@ inline bool stripeClaim(
   return true;
 }
 
+// Termination check for the steal loop. Spins on a relaxed load and pays for
+// the acquire only once the count has reached zero: re-reading the same
+// atomic with acquire then reads that zero (or nothing older), so it
+// synchronizes with every release decrement exactly as an acquire spin would.
+// The split matters under ThreadSanitizer, which implements each acquire load
+// by taking a lock on the atomic's sync object. With ~100 workers spinning on
+// acquire loads, the final release fetch_sub could wait on that lock
+// indefinitely, hanging parallel_for. Relaxed loads take no lock. On normal
+// builds the cost is one extra load on exit.
+template <typename IntegerT>
+inline bool allStripesRetired(const StripeState<IntegerT>& state) {
+  if (state.activeStripes.load(std::memory_order_relaxed) != 0) {
+    return false;
+  }
+  (void)state.activeStripes.load(std::memory_order_acquire);
+  return true;
+}
+
 // Try to find a stripe with work, preferring same-L3 victims. Returns
 // stripe index or -1 if none. Doesn't claim — caller must follow with
 // stripeClaim (which may itself find the stripe exhausted in the race
@@ -296,7 +314,7 @@ runStripeWorker(StripeState<IntegerT>& state, uint32_t myIdx, UserState& userSta
   // Own stripe done. Help peers via mask-driven steal scan with last-victim
   // retry (warms cursor cache line for the second claim in a row).
   while (true) {
-    if (state.activeStripes.load(std::memory_order_acquire) == 0) {
+    if (allStripesRetired(state)) {
       return;
     }
 
@@ -324,7 +342,7 @@ runStripeWorker(StripeState<IntegerT>& state, uint32_t myIdx, UserState& userSta
 
     // No work found. Either we're done or a peer is mid-claim on the last
     // stripe(s). Re-check active count and back off briefly.
-    if (state.activeStripes.load(std::memory_order_acquire) == 0) {
+    if (allStripesRetired(state)) {
       return;
     }
     for (int i = 0; i < 64; ++i) {
