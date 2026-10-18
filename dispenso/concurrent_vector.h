@@ -581,10 +581,12 @@ class ConcurrentVector {
       e->~T();
       return e;
     }
-    ++e;
     auto it = begin();
     it += (pos - it);
-    return std::move(pos + 1, const_iterator(e), it);
+    it = std::move(pos + 1, const_iterator(e + 1), it);
+    // The last slot was vacated by the shift; destroy the moved-from object left there.
+    e->~T();
+    return it;
   }
 
   /**
@@ -604,14 +606,14 @@ class ConcurrentVector {
     }
     it += startIdx;
 
-    auto e_it = std::move(last, cend(), it);
+    auto e = end();
+    auto e_it = std::move(last, const_iterator(e), it);
 
-    if (e_it < last) {
-      // remove any values that were not already moved into
-      do {
-        --last;
-        last->~T();
-      } while (e_it != last);
+    // Destroy the vacated tail [e_it, end()): these are either moved-from or, when the tail was
+    // shorter than the erased range, erased elements that nothing was moved into.
+    while (e != e_it) {
+      --e;
+      e->~T();
     }
     size_.fetch_sub(len, std::memory_order_relaxed);
     return e_it;
