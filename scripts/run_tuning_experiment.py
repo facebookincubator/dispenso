@@ -207,14 +207,28 @@ def build_config(source_dir, build_dir, config, jobs, extra_cmake_args=None):
     return True
 
 
+def find_benchmark_executable(build_dir, bench_name):
+    """Locate a built benchmark, or return None.
+
+    Single-config generators (Makefiles, Ninja) put it directly in bin/.
+    Multi-config generators (Visual Studio, Xcode, Ninja Multi-Config) add a
+    per-configuration subdirectory; build_config always builds Release.
+    Windows executables carry an .exe suffix.
+    """
+    names = [bench_name, bench_name + ".exe"]
+    for base in [build_dir / "bin", build_dir / "benchmarks", build_dir]:
+        for search in [base, base / "Release"]:
+            for name in names:
+                exe = search / name
+                if exe.is_file():
+                    return exe
+    return None
+
+
 def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
     """Run a single benchmark and return parsed results."""
-    # Search for the benchmark executable
-    for search in [build_dir / "bin", build_dir / "benchmarks", build_dir]:
-        exe = search / bench_name
-        if exe.exists():
-            break
-    else:
+    exe = find_benchmark_executable(build_dir, bench_name)
+    if exe is None:
         return {"error": f"Benchmark {bench_name} not found"}
 
     args = [
