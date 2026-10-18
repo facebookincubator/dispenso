@@ -5,8 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <dispenso/platform.h>
+
 // This benchmark relies on shared_lock from C++17
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 
 #include <dispenso/distributed_rw_lock.h>
 #include <dispenso/rw_lock.h>

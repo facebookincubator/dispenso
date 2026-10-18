@@ -26,6 +26,7 @@ Unreleased
 * Fixed an intermittent hang of `parallel_for` with adaptive chunking under ThreadSanitizer on many-core machines, where spinning workers starved the final completion update.
 * `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
 * On Windows, dispenso headers no longer leave `_AMD64_`/`_X86_`/`_ARM64_`/`_ARM_` defined in user code, and no longer define `_X86_` alongside an existing `_AMD64_` when `<windows.h>` was included first.
+* Language-version checks now use `_MSVC_LANG` on MSVC (via the new `DISPENSO_CPLUSPLUS` macro), so MSVC builds with `/std:c++17` or later get the C++17/C++20 features (std::optional in `AsyncRequest` and pipelines, C++20 concept constraints, `[[deprecated]]` warnings) without needing `/Zc:__cplusplus`.
 
 1.6.2 (August 19, 2026)
 

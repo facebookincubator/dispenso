@@ -33,8 +33,22 @@ namespace dispenso {
 #define DISPENSO_MINOR_VERSION 6
 #define DISPENSO_PATCH_VERSION 2
 
+/**
+ * @def DISPENSO_CPLUSPLUS
+ * @brief The C++ language standard in effect, with the same values as <code>__cplusplus</code>.
+ *
+ * MSVC reports <code>__cplusplus</code> as 199711L regardless of <code>/std:</code> unless
+ * <code>/Zc:__cplusplus</code> is passed; <code>_MSVC_LANG</code> always carries the real value.
+ * Use this macro, not <code>__cplusplus</code>, for language-version checks.
+ **/
+#if defined(_MSVC_LANG) && _MSVC_LANG > __cplusplus
+#define DISPENSO_CPLUSPLUS _MSVC_LANG
+#else
+#define DISPENSO_CPLUSPLUS __cplusplus
+#endif
+
 // C++20 concepts support detection
-#if __cplusplus >= 202002L && defined(__cpp_concepts) && __cpp_concepts >= 201907L
+#if DISPENSO_CPLUSPLUS >= 202002L && defined(__cpp_concepts) && __cpp_concepts >= 201907L
 #define DISPENSO_HAS_CONCEPTS 1
 #include <concepts>
 #else
@@ -72,7 +86,7 @@ namespace dispenso {
  *
  * Example: <code>kAuto DISPENSO_DEPRECATED("Use kAdaptive") = kAdaptive,</code>
  **/
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 #define DISPENSO_DEPRECATED(msg) [[deprecated(msg)]]
 #else
 #define DISPENSO_DEPRECATED(msg)
