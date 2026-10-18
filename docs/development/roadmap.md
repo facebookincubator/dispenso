@@ -45,7 +45,6 @@ standalone note; results here inform roadmap items rather than being them.
 |---------------|
 | [SmallBufferAllocator vs System Malloc Performance](investigations/smallbufferallocator_vs_system_malloc.md) |
 | [PoolAllocator Thread-Local Optimization](investigations/poolallocator_thread_local.md) |
-| [Nested parallel_for Benchmark Optimization Artifact](investigations/nested_parallel_for_benchmark_artifact.md) |
 | [Decouple sleep mask from group concept](investigations/decouple_sleep_mask_from_groups.md) |
 | [Idle-Pool Wake Latency vs CPU Cost (mostly-idle then burst)](investigations/idle_pool_wake_latency.md) |
 | [Recursive fork-join vs TBB task_group (deep / heavy trees)](investigations/recursive_forkjoin_vs_tbb_task_group.md) |

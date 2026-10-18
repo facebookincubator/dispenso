@@ -47,4 +47,3 @@ Proposal: [barrier_dispatch](../proposals/barrier_dispatch.md).
 - [Recursive fork-join vs TBB task_group](../investigations/recursive_forkjoin_vs_tbb_task_group.md)
 - [Topology-hierarchy-aware scheduling](../investigations/topology_hierarchy_aware_scheduling.md)
 - [Externalize per-group locality; simplify tiers](../investigations/externalize_per_group_locality.md)
-- [Nested parallel_for benchmark artifact](../investigations/nested_parallel_for_benchmark_artifact.md)
