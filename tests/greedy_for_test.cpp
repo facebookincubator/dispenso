@@ -324,7 +324,11 @@ TEST(GreedyFor, AvoidOverflow2) {
   options.wait = false;
   options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 
-  std::vector<dispenso::CacheAligned<uint32_t>> vals;
+  // CacheAligned is over-aligned; before C++17 std::allocator would misalign it.
+  std::vector<
+      dispenso::CacheAligned<uint32_t>,
+      dispenso::detail::AlignedAllocator<dispenso::CacheAligned<uint32_t>>>
+      vals;
   dispenso::parallel_for(
       taskSet,
       vals,
