@@ -207,6 +207,11 @@ def build_config(source_dir, build_dir, config, jobs, extra_cmake_args=None):
     return True
 
 
+# Medians are recorded in microseconds. Google Benchmark reports each row in
+# its own time_unit (ns, us, ms or s).
+_TO_MICROSECONDS = {"ns": 1e-3, "us": 1.0, "ms": 1e3, "s": 1e6}
+
+
 def find_benchmark_executable(build_dir, bench_name):
     """Locate a built benchmark, or return None.
 
@@ -252,12 +257,7 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
         medians = {}
         for bm in data.get("benchmarks", []):
             if "_median" in bm["name"]:
-                t = bm["real_time"]
-                unit = bm.get("time_unit", "ns")
-                if unit == "ns":
-                    t /= 1000
-                elif unit == "ms":
-                    t *= 1000
+                t = bm["real_time"] * _TO_MICROSECONDS[bm.get("time_unit", "ns")]
                 name = bm["name"].replace("/real_time_median", "")
                 medians[name] = t
         return {"medians": medians}
