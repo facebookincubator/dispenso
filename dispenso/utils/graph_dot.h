@@ -5,11 +5,22 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <dispenso/graph.h>
+/**
+ * @file graph_dot.h
+ * Utility for writing a <code>Graph</code> or <code>BiPropGraph</code> as a Graphviz DOT file.
+ **/
+
+#pragma once
+
+#include <cstdint>
 #include <fstream>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 
+#include <dispenso/graph.h>
+
+namespace dispenso {
 namespace detail {
 inline std::string getName(
     const void* ptr,
@@ -26,7 +37,17 @@ inline std::string getName(
 }
 } // namespace detail
 
-namespace dispenso {
+/**
+ * Write <code>graph</code> to <code>filename</code> in Graphviz DOT format, for example to render
+ * with <code>dot -Tsvg</code>. Each subgraph after the first is drawn as a cluster, completed nodes
+ * are coloured differently from incomplete ones, and for a <code>BiPropGraph</code> edges within
+ * a bidirectional-propagation set are drawn with open arrowheads.
+ *
+ * @param filename path of the file to write; it is overwritten.
+ * @param graph the graph to write.
+ * @param nodeNames optional labels, keyed by the address of a node or subgraph cast to
+ *   <code>uintptr_t</code>. Nodes and subgraphs without an entry are labelled by their index.
+ **/
 template <typename G>
 void graphsToDot(
     const char* filename,
@@ -55,14 +76,14 @@ void graphsToDot(
     const SubgraphType& s = graph.subgraph(i);
     if (i != 0) {
       datfile << "  " << "subgraph cluster_" << i << " { label = \""
-              << ::detail::getName(&s, i, nodeNames) << "\"\n";
+              << detail::getName(&s, i, nodeNames) << "\"\n";
     }
     const size_t numNodes = s.numNodes();
     for (size_t j = 0; j < numNodes; ++j) {
       const NodeType& node = s.node(j);
       datfile << "    " << reinterpret_cast<uintptr_t>(&node)
               << " [color = " << (node.isCompleted() ? 2 : 1);
-      datfile << " label = \"" << ::detail::getName(&node, j, nodeNames) << "\"]\n";
+      datfile << " label = \"" << detail::getName(&node, j, nodeNames) << "\"]\n";
     }
 
     if (i != 0) {
