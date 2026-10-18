@@ -447,7 +447,8 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   static constexpr int32_t kSpinnerWakeThreshold = 2;
 
   mutable std::mutex threadsMutex_;
-  std::deque<PerThreadData> threads_;
+  // PerThreadData is cache-line aligned; before C++17 std::allocator would misalign it.
+  std::deque<PerThreadData, detail::AlignedAllocator<PerThreadData>> threads_;
   size_t poolLoadMultiplier_;
 
   // These atomics are read frequently in the hot schedule() path, so they need
