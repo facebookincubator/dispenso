@@ -76,10 +76,10 @@ ctest --preset dev
 
 | Preset | Configuration |
 | --- | --- |
-| `default` | The library alone at C++17, using system-installed dependencies |
+| `default` | The library alone at C++17 in Release, using system-installed dependencies |
 | `vcpkg` | As `default`, with dependencies from vcpkg; `VCPKG_ROOT` must be set |
 | `dev` | Tests, benchmarks and examples at C++20, with dependencies from vcpkg |
-| `asan`, `tsan` | `dev` with Address or Thread Sanitizer; build with `cmake --build build/asan` (or `build/tsan`) |
+| `asan`, `tsan` | `dev` built as RelWithDebInfo with Address (plus UndefinedBehavior) or Thread Sanitizer |
 | `win-dev` | `dev` on Windows with Ninja, built under `%TEMP%`; run from a Developer Command Prompt |
 
 Personal presets belong in `CMakeUserPresets.json`, which git ignores.

@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 21,
@@ -12,7 +12,8 @@
       "description": "Basic build without vcpkg. Uses system-installed dependencies.",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "17"
+        "CMAKE_CXX_STANDARD": "17",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -22,7 +23,8 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "17"
+        "CMAKE_CXX_STANDARD": "17",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -59,7 +61,8 @@
       "displayName": "Address Sanitizer",
       "inherits": "dev",
       "cacheVariables": {
-        "ADDRESS_SANITIZER": "ON"
+        "ADDRESS_SANITIZER": "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     },
     {
@@ -67,7 +70,8 @@
       "displayName": "Thread Sanitizer",
       "inherits": "dev",
       "cacheVariables": {
-        "THREAD_SANITIZER": "ON"
+        "THREAD_SANITIZER": "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
   ],
@@ -78,6 +82,11 @@
       "configuration": "Release"
     },
     {
+      "name": "vcpkg",
+      "configurePreset": "vcpkg",
+      "configuration": "Release"
+    },
+    {
       "name": "dev",
       "configurePreset": "dev",
       "configuration": "Release"
@@ -85,6 +94,16 @@
     {
       "name": "win-dev",
       "configurePreset": "win-dev"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "configuration": "RelWithDebInfo"
     }
   ],
   "testPresets": [
@@ -99,6 +118,22 @@
     {
       "name": "win-dev",
       "configurePreset": "win-dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "configuration": "RelWithDebInfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "configuration": "RelWithDebInfo",
       "output": {
         "outputOnFailure": true
       }
