@@ -98,10 +98,29 @@ class ResourcePool {
     //    multithreaded programs.
     // 3. We can easily ensure that the objects are cache aligned to help avoid false sharing.
 
-    for (size_t i = 0; i < size; ++i) {
-      pool_.enqueue(new (buf) T(init()));
+    // If init() or a T constructor throws, the destructor will not run, so release what has been
+    // built so far here.
+    struct Cleanup {
+      char* backing;
+      size_t constructed;
+      ~Cleanup() {
+        if (!backing) {
+          return;
+        }
+        for (size_t i = 0; i < constructed; ++i) {
+          reinterpret_cast<T*>(backing + i * detail::alignToCacheLine(sizeof(T)))->~T();
+        }
+        detail::alignedFree(backing);
+      }
+    } cleanup{backingResources_, 0};
+
+    while (cleanup.constructed < size) {
+      T* t = new (buf) T(init());
+      ++cleanup.constructed;
+      pool_.enqueue(t);
       buf += detail::alignToCacheLine(sizeof(T));
     }
+    cleanup.backing = nullptr;
   }
 
   /**
