@@ -30,6 +30,22 @@ struct IsInputIterator<
 template <typename It>
 using EnableIfInputIterator = typename std::enable_if<IsInputIterator<It>::value>::type;
 
+template <typename It>
+using IteratorCategory = typename std::iterator_traits<It>::iterator_category;
+
+// Debug check that a range has the stated length. Single-pass input ranges cannot be measured
+// without consuming them, so they are not checked.
+template <typename It>
+bool rangeLengthIs(It start, It end, size_t len, std::forward_iterator_tag) {
+  return std::distance(start, end) ==
+      static_cast<typename std::iterator_traits<It>::difference_type>(len);
+}
+
+template <typename It>
+bool rangeLengthIs(It, It, size_t, std::input_iterator_tag) {
+  return true;
+}
+
 struct BucketInfo {
   size_t bucket;
   size_t bucketIndex;

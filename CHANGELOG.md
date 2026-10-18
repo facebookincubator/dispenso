@@ -19,6 +19,7 @@ Unreleased
 * `ConcurrentVector::erase` now destroys the elements it removes. Both overloads shifted the remaining elements down and shrank the vector without destroying the moved-from objects left past the new end (the range overload destroyed some of them, only when the tail was shorter than the erased range), so their destructors never ran.
 * `ConcurrentVector` constructors no longer destroy elements that were never constructed when an element constructor throws. The count, count/value, iterator-range, initializer_list and copy constructors set the final size before constructing elements, so a throw part-way through ran destructors on raw memory. `assign` and copy assignment had the same flaw; they now leave the vector holding the elements constructed before the exception.
 * `ConcurrentVector<int> v(5, 3)` (and other count/value constructions with an integral element type) now compiles and creates five 3s, as with `std::vector`. The iterator-range constructors previously captured such calls and failed to compile.
+* `ConcurrentVector` range construction, `assign`, `insert` and `grow_by` now work with single-pass input iterators such as `std::istream_iterator`. They measured the range with `std::distance` before reading it, which consumes a single-pass range, so the vector got the wrong contents; the sized range constructor did the same in debug builds through its assert.
 
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
