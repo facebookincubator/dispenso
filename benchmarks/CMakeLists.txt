@@ -29,7 +29,7 @@ if(NOT Taskflow_FOUND)
   if(_taskflow_local_dir)
     message(STATUS "Found local Taskflow at ${_taskflow_local_dir}")
     add_library(taskflow INTERFACE)
-    target_include_directories(taskflow INTERFACE "${_taskflow_local_dir}")
+    target_include_directories(taskflow SYSTEM INTERFACE "${_taskflow_local_dir}")
   else()
     message(STATUS "Taskflow not found locally, fetching from GitHub...")
     include(FetchContent)
@@ -47,7 +47,7 @@ if(NOT Taskflow_FOUND)
     endif()
     FetchContent_MakeAvailable(taskflow)
     add_library(taskflow INTERFACE)
-    target_include_directories(taskflow INTERFACE ${taskflow_SOURCE_DIR})
+    target_include_directories(taskflow SYSTEM INTERFACE ${taskflow_SOURCE_DIR})
   endif()
 else()
   message(STATUS "Found system Taskflow")
@@ -155,6 +155,13 @@ file(APPEND "${_dispenso_dep_versions}" "  \"openmp_spec_date\": \"${OpenMP_CXX_
 file(APPEND "${_dispenso_dep_versions}" "}\n")
 message(STATUS "Wrote dependency versions to ${_dispenso_dep_versions}")
 
+set(DISPENSO_BENCHMARK_WARNING_FLAGS
+  $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4316>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+  $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+  $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
+)
+
 file(GLOB BENCHMARK_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/*.cpp)
 
 foreach(BENCHMARK_FILE ${BENCHMARK_FILES})
@@ -162,6 +169,8 @@ foreach(BENCHMARK_FILE ${BENCHMARK_FILES})
   get_filename_component(BENCHMARK_NAME ${BENCHMARK_FILE} NAME_WE)
   add_executable(${BENCHMARK_NAME} ${BENCHMARK_FILE})
   target_compile_features(${BENCHMARK_NAME} PRIVATE cxx_std_20)
+  # Same warnings as the library and tests; fatal under DISPENSO_WERROR.
+  target_compile_options(${BENCHMARK_NAME} PRIVATE ${DISPENSO_BENCHMARK_WARNING_FLAGS})
   target_link_libraries(${BENCHMARK_NAME} ${REQUIRED_LIBS} ${OPTIONAL_LIBS})
 endforeach()
 
