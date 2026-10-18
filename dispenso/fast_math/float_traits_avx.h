@@ -24,6 +24,14 @@ namespace fast_math {
 struct AvxInt32;
 struct AvxUint32;
 
+// __m256 spelled so it can be a template argument without GCC's
+// -Wignored-attributes; see SseRawFloat in float_traits_x86.h.
+#if defined(__GNUC__)
+typedef float AvxRawFloat __attribute__((__vector_size__(32)));
+#else
+using AvxRawFloat = __m256;
+#endif
+
 // 8-wide float SIMD wrapper around __m256.
 struct AvxFloat {
   __m256 v;
@@ -317,9 +325,9 @@ inline AvxFloat::AvxFloat(AvxInt32 i) : v(_mm256_cvtepi32_ps(i.v)) {}
 // AvxInt32 ↔ AvxUint32 reinterpret (no-op on __m256i).
 inline AvxInt32::AvxInt32(AvxUint32 u) : v(u.v) {}
 
-// Map raw __m256 to AvxFloat for SimdTypeFor.
+// Map raw __m256 (AvxRawFloat) to AvxFloat for SimdTypeFor.
 template <>
-struct SimdTypeFor<__m256> {
+struct SimdTypeFor<AvxRawFloat> {
   using type = AvxFloat;
 };
 

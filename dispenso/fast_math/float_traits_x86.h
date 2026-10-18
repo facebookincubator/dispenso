@@ -24,6 +24,20 @@ namespace fast_math {
 struct SseInt32;
 struct SseUint32;
 
+// __m128 spelled so it can be a template argument. GCC declares __m128 with
+// __may_alias__, which a template argument cannot carry, so writing
+// SomeTemplate<__m128> discards it and warns (-Wignored-attributes). The plain
+// vector type below is what remains once the attribute is gone -- it is also
+// what template argument deduction from a __m128 value yields -- so it names the
+// same specialization without the warning. Use it, not __m128, when naming a
+// template argument (e.g. IntType_t<SseRawFloat>). MSVC's __m128 is an ordinary
+// union with no such attribute.
+#if defined(__GNUC__)
+typedef float SseRawFloat __attribute__((__vector_size__(16)));
+#else
+using SseRawFloat = __m128;
+#endif
+
 // 4-wide float SIMD wrapper around __m128.
 struct SseFloat {
   __m128 v;
@@ -317,9 +331,9 @@ inline SseFloat::SseFloat(SseInt32 i) : v(_mm_cvtepi32_ps(i.v)) {}
 // SseInt32 ↔ SseUint32 reinterpret (no-op on __m128i).
 inline SseInt32::SseInt32(SseUint32 u) : v(u.v) {}
 
-// Map raw __m128 to SseFloat for SimdTypeFor.
+// Map raw __m128 (SseRawFloat) to SseFloat for SimdTypeFor.
 template <>
-struct SimdTypeFor<__m128> {
+struct SimdTypeFor<SseRawFloat> {
   using type = SseFloat;
 };
 

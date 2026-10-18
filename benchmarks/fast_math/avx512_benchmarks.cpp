@@ -11,7 +11,8 @@
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;
-using Flt = __m512;
+// __m512 as a template argument; see SseRawFloat in float_traits_x86.h.
+using Flt = dfm::Avx512RawFloat;
 
 // --- One-arg benchmarks ---
 

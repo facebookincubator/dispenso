@@ -77,9 +77,11 @@ struct SimdTestTraits {
 };
 
 // --- x86 SSE ---
+// Specialized on the *RawFloat spellings of __m128/__m256/__m512; see SseRawFloat
+// in float_traits_x86.h for why.
 #if DISPENSO_FAST_MATH_HAS_SSE4_1
 template <>
-struct SimdTestTraits<__m128> {
+struct SimdTestTraits<SseRawFloat> {
   static int32_t laneCount() {
     return 4;
   }
@@ -100,7 +102,7 @@ struct SimdTestTraits<__m128> {
 // --- x86 AVX2 ---
 #if DISPENSO_FAST_MATH_HAS_AVX2
 template <>
-struct SimdTestTraits<__m256> {
+struct SimdTestTraits<AvxRawFloat> {
   static int32_t laneCount() {
     return 8;
   }
@@ -121,7 +123,7 @@ struct SimdTestTraits<__m256> {
 // --- x86 AVX-512 ---
 #if DISPENSO_FAST_MATH_HAS_AVX512F
 template <>
-struct SimdTestTraits<__m512> {
+struct SimdTestTraits<Avx512RawFloat> {
   static int32_t laneCount() {
     return 16;
   }
