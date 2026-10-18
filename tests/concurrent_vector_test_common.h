@@ -1518,3 +1518,34 @@ TYPED_TEST(ConcurrentVectorTest, InsertDoesNotLeak) {
   }
   EXPECT_EQ(LifetimeCounted::live(), 0);
 }
+
+TYPED_TEST(ConcurrentVectorTest, EraseDestroysVacatedTail) {
+  LifetimeCounted::live() = 0;
+  {
+    dispenso::ConcurrentVector<LifetimeCounted, TypeParam> vec;
+    for (int i = 0; i < 40; ++i) {
+      vec.emplace_back(i);
+    }
+    // Single element: front, middle, last.
+    vec.erase(vec.begin());
+    vec.erase(vec.begin() + 10);
+    vec.erase(vec.end() - 1);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range shorter than the tail that follows it.
+    vec.erase(vec.begin() + 2, vec.begin() + 4);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range longer than the tail that follows it.
+    vec.erase(vec.begin() + 5, vec.end() - 3);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range running to the end.
+    vec.erase(vec.begin() + 6, vec.end());
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+
+    std::vector<int> expected = {1, 2, 5, 6, 7, 36};
+    ASSERT_EQ(vec.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      EXPECT_EQ(vec[i].value, expected[i]);
+    }
+  }
+  EXPECT_EQ(LifetimeCounted::live(), 0);
+}

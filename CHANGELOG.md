@@ -16,6 +16,7 @@ Unreleased
 * `SmallVector` no longer leaks when an element constructor throws partway through `resize()` or through the count, count-and-value, initializer-list or copy constructors. The elements already constructed are destroyed and any heap storage is freed; `resize()` leaves the vector at its previous size.
 * `SmallVector::resize(count, value)` now works when `value` is an element of the same vector and the call has to grow it (for example `v.resize(n, v[0])`). The new elements were copied from an element that growth had already moved from or freed.
 * `ConcurrentVector::insert(pos, value)` no longer leaks an element. The single-element overloads constructed the new value on top of an element that was already alive (the moved-from element at `pos`, or a default-constructed one when inserting at `end()`), so that element's destructor never ran; for types that own resources in those states, every such insert leaked.
+* `ConcurrentVector::erase` now destroys the elements it removes. Both overloads shifted the remaining elements down and shrank the vector without destroying the moved-from objects left past the new end (the range overload destroyed some of them, only when the tail was shorter than the erased range), so their destructors never ran.
 
 1.6.2 (August 19, 2026)
 
