@@ -874,3 +874,34 @@ TEST(SmallVector, ResizeThrowKeepsSize) {
   EXPECT_EQ(ThrowingConstruct::live, 0);
 }
 #endif // __cpp_exceptions
+
+// resize(count, value) with value referring to one of the vector's own elements must work when the
+// call grows the storage (inline -> heap and heap -> heap), as it does for std::vector.
+TEST(SmallVector, ResizeFromOwnElementAcrossGrowth) {
+  const std::string a(64, 'a');
+  const std::string b(64, 'b');
+  SmallVector<std::string, 2> v;
+  v.push_back(a);
+  v.push_back(b);
+  v.resize(5, v[0]);
+  ASSERT_EQ(v.size(), 5u);
+  EXPECT_EQ(v[0], a);
+  EXPECT_EQ(v[1], b);
+  for (size_t i = 2; i < 5; ++i) {
+    EXPECT_EQ(v[i], a);
+  }
+
+  const size_t cap = v.capacity();
+  v.resize(cap * 3, v[1]);
+  ASSERT_EQ(v.size(), cap * 3);
+  EXPECT_EQ(v[0], a);
+  EXPECT_EQ(v[1], b);
+  for (size_t i = 5; i < v.size(); ++i) {
+    EXPECT_EQ(v[i], b);
+  }
+
+  // Growing within capacity reads value in place.
+  v.reserve(v.size() + 4);
+  v.resize(v.size() + 4, v.back());
+  EXPECT_EQ(v.back(), b);
+}
