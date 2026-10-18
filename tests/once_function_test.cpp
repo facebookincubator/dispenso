@@ -9,6 +9,7 @@
 
 #include <deque>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -398,3 +399,26 @@ TEST(OnceFunction, MoveAfterInvoke) {
   h = std::move(g);
   EXPECT_EQ(result, "once");
 }
+
+#if defined(__cpp_exceptions)
+namespace {
+struct ThrowOnCopy {
+  ThrowOnCopy() = default;
+  ThrowOnCopy(const ThrowOnCopy&) {
+    throw std::runtime_error("copy");
+  }
+  void operator()() {}
+  // Larger than the pooled small-buffer sizes, so the spill goes to the heap and a leaked buffer is
+  // visible to LeakSanitizer.
+  char pad[1000];
+};
+} // namespace
+
+TEST(OnceFunction, ThrowingSpilledConstructionReleasesBuffer) {
+  // The spill buffer must be released when the callable's constructor throws.
+  ThrowOnCopy t;
+  for (int i = 0; i < 1000; ++i) {
+    EXPECT_THROW(OnceFunction f(t), std::runtime_error);
+  }
+}
+#endif // __cpp_exceptions
