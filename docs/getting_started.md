@@ -1,7 +1,11 @@
 # Getting Started {#getting_started}
 
-This guide walks through the core features of dispenso with working examples.
-Each section includes a complete, compilable example that you can build and run.
+This guide walks through the core features of dispenso. The code in each
+section is a short fragment showing the relevant calls; surrounding
+declarations (input arrays, helper types, `main()`) are left out. Most sections
+end with a link to a complete program in
+[`examples/`](https://github.com/facebookincubator/dispenso/tree/main/examples),
+which CI compiles and which you can build and run yourself (see below).
 
 > **Coming from another library?** Jump directly to the migration guide:
 > [Migrating from TBB](migrating_from_tbb.md) |
@@ -110,7 +114,7 @@ options.defaultChunking = dispenso::ParForChunking::kAdaptive;
 dispenso::parallel_for(0, kArraySize, [&](size_t i) { expensiveVariableWork(i); }, options);
 ```
 
-See [full example](../examples/parallel_for_example.cpp).
+Complete program: [examples/parallel_for_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/parallel_for_example.cpp).
 
 Key points:
 - Use the simple form for independent per-element work
@@ -146,7 +150,7 @@ std::vector<int> partial = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
 dispenso::for_each_n(partial.begin(), 5, [](int& n) { n += 100; });
 ```
 
-See [full example](../examples/for_each_example.cpp).
+Complete program: [examples/for_each_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/for_each_example.cpp).
 
 Key points:
 - Works with any iterator type (including non-random-access iterators)
@@ -195,7 +199,7 @@ for (int i = 0; i < 5; ++i) {
 taskSet.wait();
 ```
 
-See [full example](../examples/task_set_example.cpp).
+Complete program: [examples/task_set_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/task_set_example.cpp).
 
 Key points:
 - `TaskSet` is for single-threaded scheduling
@@ -264,7 +268,7 @@ dispenso::Future<size_t> which = dispenso::when_any(std::move(f1), std::move(f2)
 size_t firstReady = which.get();
 ```
 
-See [full example](../examples/future_example.cpp).
+Complete program: [examples/future_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/future_example.cpp).
 
 Key points:
 - `async()` launches work and returns a `Future`
@@ -308,7 +312,7 @@ dispenso::ConcurrentTaskSetExecutor executor;
 executor(taskSet, graph);
 ```
 
-See [full example](../examples/graph_example.cpp).
+Complete program: [examples/graph_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/graph_example.cpp).
 
 Key points:
 - Use `dependsOn()` to specify prerequisites
@@ -365,7 +369,7 @@ dispenso::pipeline(
     [&results](int value) { results.push_back(value); });
 ```
 
-See [full example](../examples/pipeline_example.cpp).
+Complete program: [examples/pipeline_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/pipeline_example.cpp).
 
 Key points:
 - Generator stage produces values (returns `OpResult<T>` or `std::optional<T>`)
@@ -402,7 +406,7 @@ tasks.wait();
 double result = a + b + c;
 ```
 
-See [full example](../examples/parallel_invoke_example.cpp).
+Complete program: [examples/parallel_invoke_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/parallel_invoke_example.cpp).
 
 Key points:
 - The last functor runs inline on the calling thread
@@ -439,7 +443,7 @@ pinSet.add(0);
 pinSet.bindCurrentThread();
 ```
 
-See [full example](../examples/cpu_set_example.cpp).
+Complete program: [examples/cpu_set_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/cpu_set_example.cpp).
 
 Key points:
 - Works on Linux (full support), Windows (full support), FreeBSD (full support), macOS (topology only)
@@ -486,7 +490,7 @@ assert(*it == 1);
 assert(firstElement == 1);
 ```
 
-See [full example](../examples/concurrent_vector_example.cpp).
+Complete program: [examples/concurrent_vector_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/concurrent_vector_example.cpp).
 
 Key points:
 - Iterators and references remain stable during growth
@@ -516,7 +520,7 @@ vec.push_back(200);  // Still inline (8 elements)
 vec.push_back(300);  // Transitions to heap — transparent to the caller
 ```
 
-See [full example](../examples/small_vector_example.cpp).
+Complete program: [examples/small_vector_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/small_vector_example.cpp).
 
 Key points:
 - Template parameter `N` controls inline capacity (default 4)
@@ -550,7 +554,7 @@ int stolen = 0;
 bool got = deque.try_steal(stolen);
 ```
 
-See [full example](../examples/chase_lev_deque_example.cpp).
+Complete program: [examples/chase_lev_deque_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/chase_lev_deque_example.cpp).
 
 Key points:
 - Lock-free and wait-free for the owner (push/pop)
@@ -587,7 +591,7 @@ std::vector<int> items = {1, 2, 3};
 size_t pushed = ring.try_push_batch(items.data(), items.size());
 ```
 
-See [full example](../examples/mpmc_ring_buffer_example.cpp).
+Complete program: [examples/mpmc_ring_buffer_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/mpmc_ring_buffer_example.cpp).
 
 Key points:
 - Capacity is fixed at compile time (rounded up to a power of two by default)
@@ -618,7 +622,7 @@ if (ring.try_pop(value)) {
 }
 ```
 
-See [full example](../examples/spsc_ring_buffer_example.cpp).
+Complete program: [examples/spsc_ring_buffer_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/spsc_ring_buffer_example.cpp).
 
 Key points:
 - Designed for exactly one producer and one consumer thread
@@ -655,7 +659,7 @@ for (int i = 0; i < kNumWorkers; ++i) {
 workComplete.wait();  // Main thread waits for all workers
 ```
 
-See [full example](../examples/latch_example.cpp).
+Complete program: [examples/latch_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/latch_example.cpp).
 
 Key points:
 - `arrive_and_wait()` decrements and blocks
@@ -690,7 +694,7 @@ dispenso::parallel_for(0, 100, [&bufferPool](size_t i) {
 });
 ```
 
-See [full example](../examples/resource_pool_example.cpp).
+Complete program: [examples/resource_pool_example.cpp](https://github.com/facebookincubator/dispenso/blob/main/examples/resource_pool_example.cpp).
 
 Key points:
 - Resources automatically return to pool when RAII wrapper destructs
