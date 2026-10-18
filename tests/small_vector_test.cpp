@@ -8,6 +8,8 @@
 #include <dispenso/small_vector.h>
 
 #include <cstdint>
+#include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -640,3 +642,136 @@ TEST(SmallVector, HeapStorageHonoursOverAlignment128) {
   v.clear();
   EXPECT_TRUE(dataIsAligned(v, 128));
 }
+
+namespace {
+// Copyable type whose move constructor is not noexcept, so growth must copy it (move_if_noexcept),
+// and whose copy constructor can be told to throw after a number of copies.
+struct ThrowingCopy {
+  static int live;
+  static int copiesBeforeThrow; // negative: never throw
+  static int moves;
+  int value;
+  explicit ThrowingCopy(int v) : value(v) {
+    ++live;
+  }
+  ThrowingCopy(const ThrowingCopy& o) : value(o.value) {
+    if (copiesBeforeThrow == 0) {
+#if defined(__cpp_exceptions)
+      throw std::runtime_error("copy");
+#else
+      std::abort(); // Only the __cpp_exceptions tests arm the throw.
+#endif // __cpp_exceptions
+    }
+    if (copiesBeforeThrow > 0) {
+      --copiesBeforeThrow;
+    }
+    ++live;
+  }
+  ThrowingCopy(ThrowingCopy&& o) : value(o.value) { // not noexcept
+    o.value = -1;
+    ++moves;
+    ++live;
+  }
+  ~ThrowingCopy() {
+    --live;
+  }
+};
+int ThrowingCopy::live = 0;
+int ThrowingCopy::copiesBeforeThrow = -1;
+int ThrowingCopy::moves = 0;
+
+template <size_t N>
+void fillThrowingCopy(SmallVector<ThrowingCopy, N>& v, int count) {
+  for (int i = 0; i < count; ++i) {
+    v.emplace_back(i);
+  }
+}
+
+template <size_t N>
+void expectThrowingCopyValues(const SmallVector<ThrowingCopy, N>& v, int count) {
+  ASSERT_EQ(v.size(), static_cast<size_t>(count));
+  for (int i = 0; i < count; ++i) {
+    EXPECT_EQ(v[static_cast<size_t>(i)].value, i);
+  }
+}
+} // namespace
+
+// Growth uses move_if_noexcept: a type whose move may throw is copied, leaving the source intact.
+TEST(SmallVector, GrowthCopiesWhenMoveMayThrow) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  ThrowingCopy::moves = 0;
+  {
+    SmallVector<ThrowingCopy, 2> v;
+    fillThrowingCopy(v, 10);
+    v.reserve(100);
+    EXPECT_EQ(ThrowingCopy::moves, 0);
+    expectThrowingCopyValues(v, 10);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+
+#if defined(__cpp_exceptions)
+// If transferring elements during growth throws, the vector is unchanged and nothing leaks.
+TEST(SmallVector, ReserveThrowLeavesVectorUnchanged) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  {
+    // Inline -> heap.
+    SmallVector<ThrowingCopy, 4> inl;
+    fillThrowingCopy(inl, 4);
+    ThrowingCopy::copiesBeforeThrow = 2;
+    EXPECT_THROW(inl.reserve(16), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(inl.capacity(), 4u);
+    expectThrowingCopyValues(inl, 4);
+    EXPECT_EQ(ThrowingCopy::live, 4);
+
+    // Heap -> bigger heap.
+    SmallVector<ThrowingCopy, 2> heap;
+    fillThrowingCopy(heap, 6);
+    const size_t cap = heap.capacity();
+    const ThrowingCopy* oldData = heap.data();
+    ThrowingCopy::copiesBeforeThrow = 3;
+    EXPECT_THROW(heap.reserve(cap * 4), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(heap.capacity(), cap);
+    EXPECT_EQ(heap.data(), oldData);
+    expectThrowingCopyValues(heap, 6);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+
+    // resize() grows through the same path.
+    ThrowingCopy::copiesBeforeThrow = 1;
+    EXPECT_THROW(heap.resize(50, ThrowingCopy(7)), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    expectThrowingCopyValues(heap, 6);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+
+    // The vector is still fully usable.
+    heap.reserve(64);
+    fillThrowingCopy(heap, 1);
+    EXPECT_EQ(heap.size(), 7u);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+
+TEST(SmallVector, PushBackGrowthThrowLeavesVectorUnchanged) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  {
+    SmallVector<ThrowingCopy, 2> v;
+    fillThrowingCopy(v, 4);
+    ASSERT_EQ(v.size(), v.capacity());
+    const ThrowingCopy* oldData = v.data();
+    // The new element is constructed from an int, then transferring the second old element throws.
+    ThrowingCopy::copiesBeforeThrow = 1;
+    EXPECT_THROW(v.emplace_back(99), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(v.data(), oldData);
+    expectThrowingCopyValues(v, 4);
+    EXPECT_EQ(ThrowingCopy::live, 4);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+#endif // __cpp_exceptions

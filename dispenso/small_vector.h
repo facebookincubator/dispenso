@@ -461,19 +461,55 @@ class SmallVector {
   }
 
   // Grow to heap storage with the specified capacity.
-  // Moves existing elements, frees old heap if applicable, sets heap bit.
+  // Moves existing elements, frees old heap if applicable, sets heap bit. If transferring an
+  // element throws, the new storage is freed and the vector is left as it was.
   void growToHeap(size_type newCap) {
-    adoptHeap(allocate(newCap), newCap);
+    T* newData = allocate(newCap);
+#if defined(__cpp_exceptions)
+    try {
+      transferTo(newData);
+    } catch (...) {
+      deallocate(newData);
+      throw;
+    }
+#else
+    transferTo(newData);
+#endif // __cpp_exceptions
+    adoptHeap(newData, newCap);
   }
 
-  // Move the existing elements into newData (capacity newCap), free the old heap storage if any,
-  // and switch to heap mode using newData.
-  void adoptHeap(T* newData, size_type newCap) {
+  // Construct the existing elements in newData, moving them when T's move constructor cannot throw
+  // and copying them otherwise (std::move_if_noexcept, as std::vector does). If a construction
+  // throws, the elements constructed in newData so far are destroyed and the exception propagates
+  // with the existing elements intact (unless T is move-only with a throwing move constructor, in
+  // which case some of them may have been moved from). newData is left for the caller to free.
+  void transferTo(T* newData) {
+    T* oldData = data();
+    size_type sz = rawSize();
+    size_type i = 0;
+#if defined(__cpp_exceptions)
+    try {
+#endif // __cpp_exceptions
+      for (; i < sz; ++i) {
+        new (newData + i) T(std::move_if_noexcept(oldData[i]));
+      }
+#if defined(__cpp_exceptions)
+    } catch (...) {
+      for (size_type j = 0; j < i; ++j) {
+        newData[j].~T();
+      }
+      throw;
+    }
+#endif // __cpp_exceptions
+  }
+
+  // Commit after a successful transferTo(newData): destroy the old elements, free the old heap
+  // storage if any, and switch to heap mode using newData (capacity newCap).
+  void adoptHeap(T* newData, size_type newCap) noexcept {
     T* oldData = data();
     size_type sz = rawSize();
 
     for (size_type i = 0; i < sz; ++i) {
-      new (newData + i) T(std::move(oldData[i]));
       oldData[i].~T();
     }
 
@@ -488,7 +524,8 @@ class SmallVector {
 
   // emplace_back() when full: grow to newCap and append. The new element is constructed in the new
   // storage before the existing elements are moved out of the old storage, because args may refer
-  // to one of those elements (e.g. v.push_back(v[0])).
+  // to one of those elements (e.g. v.push_back(v[0])). If anything throws, the new storage is freed
+  // and the vector is left as it was.
   template <typename... Args>
   reference growAndEmplaceBack(size_type newCap, Args&&... args) {
     T* newData = allocate(newCap);
@@ -500,8 +537,16 @@ class SmallVector {
       deallocate(newData);
       throw;
     }
+    try {
+      transferTo(newData);
+    } catch (...) {
+      newData[sz].~T();
+      deallocate(newData);
+      throw;
+    }
 #else
     new (newData + sz) T(std::forward<Args>(args)...);
+    transferTo(newData);
 #endif // __cpp_exceptions
     adoptHeap(newData, newCap);
     ++size_; // Preserves heap bit
