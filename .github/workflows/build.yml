@@ -24,6 +24,11 @@ concurrency:
 # deadlocked test fails in half an hour instead of holding a runner for the
 # 6-hour default. ctest --timeout 300 bounds each test in the same spirit,
 # naming the test that hung rather than just the job.
+#
+# The stable tests run four at a time (--parallel 4, the vCPU count of the
+# hosted runners): ctest starts one process per test, and most of each test's
+# time is process startup rather than CPU, so running them one by one left the
+# runner mostly idle. The flaky-labelled timing tests stay serial.
 env:
   CTEST_OUTPUT_ON_FAILURE: 1
 
@@ -75,7 +80,7 @@ jobs:
         run: cmake --build . --parallel 4 --config Release
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky --build-config Release
+        run: ctest --timeout 300 --parallel 4 -LE flaky --build-config Release
 
   #############################################################################
   # Architecture-specific builds
@@ -98,7 +103,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   build-linux-aarch64:
     name: Linux aarch64 ${{ matrix.compiler }}
@@ -130,7 +135,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   build-macos-gcc:
     name: macOS GCC C++14 (ARM64)
@@ -155,7 +160,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   build-windows-x86:
     name: Windows x86 (32-bit)
@@ -172,7 +177,7 @@ jobs:
         run: cmake --build . --parallel 4 --config Release
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky --build-config Release
+        run: ctest --timeout 300 --parallel 4 -LE flaky --build-config Release
 
   #############################################################################
   # Cross-compiled architectures, executed under QEMU
@@ -251,7 +256,7 @@ jobs:
         working-directory: ./build
         env:
           QEMU_LD_PREFIX: ${{ matrix.sysroot }}
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   #############################################################################
   # Packaging configurations - what the package managers actually ship
@@ -285,7 +290,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
       # The installed DispensoConfig.cmake must find concurrentqueue itself
       # (find_dependency) in this configuration, which only a real consumer of
       # the installed package exercises.
@@ -370,7 +375,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   # Neither runner image ships anything newer than GCC 13, so these two are the
   # only coverage of current compilers -- and the only jobs that build the
@@ -404,7 +409,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
       - name: Compile as an external consumer
         run: |
           cmake --install build --prefix /tmp/prefix
@@ -455,7 +460,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
       - name: Compile as an external consumer
         run: |
           cmake --install build --prefix /tmp/prefix
@@ -536,7 +541,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
 
   #############################################################################
   # Documentation build
@@ -586,7 +591,7 @@ jobs:
         run: cmake --build . --parallel 4
       - name: Test (stable tests)
         working-directory: ./build
-        run: ctest --timeout 300 -LE flaky
+        run: ctest --timeout 300 --parallel 4 -LE flaky
       - name: Test (TimedTask, with retries)
         working-directory: ./build
         run: ctest --timeout 300 -L flaky -R "^TimedTaskTest\." --repeat until-pass:5
