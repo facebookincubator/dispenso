@@ -197,6 +197,10 @@ target as above. A few defaults differ from a standalone build:
 - `CMAKE_CXX_STANDARD` is left to your project; see "C++ Standard" above.
 - No install rules are generated.
 
+dispenso's options can be set from your project either as cache entries or as
+normal variables before adding dispenso, e.g. `set(DISPENSO_WERROR ON)`; both
+take effect from the first configure.
+
 ## Testing
 
 Tests are not built by default to keep dependencies minimal. Building tests requires
