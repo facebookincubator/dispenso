@@ -21,6 +21,19 @@ if(POLICY CMP0155)
 endif()
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
+# Let a project that adds dispenso with add_subdirectory() or FetchContent set
+# dispenso's options as normal variables, e.g. set(DISPENSO_WERROR ON). Under
+# the OLD behaviour, option() (CMP0077) and set(... CACHE ...) (CMP0126) drop
+# such a variable when they first create the cache entry, so the parent's value
+# is ignored on the first configure and used on every later one. Policies are
+# scoped to this directory and below; the parent's own behaviour is unchanged.
+if(POLICY CMP0077)
+  cmake_policy(SET CMP0077 NEW)
+endif()
+if(POLICY CMP0126)
+  cmake_policy(SET CMP0126 NEW)
+endif()
+
 project(
   Dispenso
   VERSION 1.6.2
@@ -67,8 +80,7 @@ endif()
 # Only a default for our own builds. As a subproject, setting the cache entry
 # would leak into the parent: every parent target created afterwards without
 # its own CMAKE_CXX_STANDARD would be built as C++14 (a downgrade on compilers
-# that default to C++17), and with CMP0126 OLD the cache write also hides a
-# parent's normal CMAKE_CXX_STANDARD from this directory. Vendored builds
+# that default to C++17). Vendored builds
 # follow the parent's standard; the dispenso target itself requires at least
 # C++14 (see dispenso/CMakeLists.txt).
 if(DISPENSO_STANDALONE)
