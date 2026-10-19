@@ -36,6 +36,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from run_benchmarks import _build_windows_env_override
+
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_SOURCE_DIR = SCRIPT_DIR.parent
 
@@ -268,8 +270,11 @@ def find_benchmark_executable(build_dir, bench_name):
     return None
 
 
-def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
-    """Run a single benchmark and return parsed results."""
+def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3, env=None):
+    """Run a single benchmark and return parsed results.
+
+    env, when set, replaces the environment (see run_experiment).
+    """
     exe = find_benchmark_executable(build_dir, bench_name)
     if exe is None:
         return {"error": f"Benchmark {bench_name} not found"}
@@ -287,6 +292,7 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
             capture_output=True,
             text=True,
             timeout=600,
+            env=env,
         )
         if result.returncode != 0:
             return {"error": result.stderr[:200]}
@@ -307,12 +313,12 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
         return {"error": str(e)}
 
 
-def run_config(build_dir, repetitions=3):
+def run_config(build_dir, repetitions=3, env=None):
     """Run all benchmarks for a configuration."""
     results = {}
     for bench_name, filter_pattern, description in BENCHMARK_SUITE:
         print(f"    {description}...", end="", flush=True)
-        result = run_benchmark(build_dir, bench_name, filter_pattern, repetitions)
+        result = run_benchmark(build_dir, bench_name, filter_pattern, repetitions, env)
         if "error" in result:
             print(f" FAIL ({result['error'][:60]})")
         else:
@@ -418,6 +424,14 @@ def run_experiment(args, configs):
 
     base_build_dir = Path(tempfile.gettempdir()) / "dispenso-tuning"
 
+    # On Windows, DLLs from CMAKE_PREFIX_PATH (vcpkg's Google Benchmark, TBB)
+    # must be on PATH for the benchmarks to start, as in run_benchmarks.py.
+    env = None
+    env_override = _build_windows_env_override(args.cmake_args)
+    if env_override:
+        env = os.environ.copy()
+        env.update(env_override)
+
     for i, config in enumerate(configs):
         print(f"[{i + 1}/{len(configs)}] {config['name']}")
         defines_str = " ".join(config["defines"]) if config["defines"] else "(defaults)"
@@ -438,7 +452,7 @@ def run_experiment(args, configs):
             continue
 
         print("  Running benchmarks:")
-        results = run_config(build_dir, args.repetitions)
+        results = run_config(build_dir, args.repetitions, env)
 
         all_results["configs"].append({"config": config, "results": results})
         print()
