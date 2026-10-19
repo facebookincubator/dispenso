@@ -41,6 +41,15 @@
  * atomic flag, or task completion) between the writer finishing construction and the reader
  * accessing the element.  This is consistent with tbb::concurrent_vector's model.
  *
+ * @note Exceptions: if an element constructor throws during growth (push_back, emplace_back, the
+ * grow_ functions, or insert's new slots), the exception propagates and size() is not reduced,
+ * since other threads may already have grown past the failed range. Elements constructed before
+ * the throw are kept. The remaining slots of that range are default-constructed if that cannot
+ * throw, and otherwise left as a gap that holds no objects. Only clear() and the destructor know
+ * about gaps: any other access to a gap slot (indexing, iteration, erase, insert, pop_back,
+ * shrinking resize, copying the vector) has undefined behavior, so the caller must not touch the
+ * range of a growth call that threw. clear() removes gaps and makes the vector fully usable again.
+ *
  * As of this writing, with the benchmarks developed for testing ConcurrentVector, ConcurrentVector
  * appears to be faster than tbb::concurrent_vector by a factor of between about 15% and 3x
  * (depending on the operation).  ConcurrentVector's iteration and random access is on-par with
@@ -282,6 +291,7 @@ class ConcurrentVector {
       : buffers_(std::move(other.buffers_)),
         firstBucketShift_(other.firstBucketShift_),
         firstBucketLen_(other.firstBucketLen_),
+        gaps_(other.gaps_.exchange(nullptr, std::memory_order_relaxed)),
         size_(other.size_.load(std::memory_order_relaxed)) {
     moveCachedPtrsFrom(other);
     other.size_.store(0, std::memory_order_relaxed);
@@ -323,6 +333,7 @@ class ConcurrentVector {
     swap(firstBucketLen_, other.firstBucketLen_);
     buffers_ = std::move(other.buffers_);
     swapCachedPtrs(other);
+    swapGaps(other);
     size_t curLen = size_.load(std::memory_order_relaxed);
     size_.store(other.size_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     other.size_.store(curLen, std::memory_order_relaxed);
@@ -442,6 +453,12 @@ class ConcurrentVector {
    * destructed.  Size will be zero after the call.  Not concurrency safe.
    **/
   void clear() {
+#if defined(__cpp_exceptions)
+    if (DISPENSO_EXPECT(gaps_.load(std::memory_order_relaxed) != nullptr, false)) {
+      clearWithGaps();
+      return;
+    }
+#endif // __cpp_exceptions
     auto binfo = bucketAndSubIndex(size_.load(std::memory_order_relaxed));
     size_t len = binfo.bucketIndex;
     size_t cap = binfo.bucketCapacity;
@@ -647,11 +664,17 @@ class ConcurrentVector {
 
     iterator ret{this, index, binfo};
 
-    if (Traits::kIteratorPreferSpeed) {
-      new (&*ret) T(std::forward<Args>(args)...);
-    } else {
-      new (buffers_[binfo.bucket] + binfo.bucketIndex) T(std::forward<Args>(args)...);
+    T* slot = Traits::kIteratorPreferSpeed ? &*ret : buffers_[binfo.bucket] + binfo.bucketIndex;
+#if defined(__cpp_exceptions)
+    try {
+      new (slot) T(std::forward<Args>(args)...);
+    } catch (...) {
+      finishFailedGrowth(ret, 1);
+      throw;
     }
+#else
+    new (slot) T(std::forward<Args>(args)...);
+#endif // __cpp_exceptions
 
     return ret;
   }
@@ -666,9 +689,7 @@ class ConcurrentVector {
   template <typename Gen>
   iterator grow_by_generator(size_type delta, Gen gen) {
     iterator ret = growByUninitialized(delta);
-    for (auto it = ret; delta--; ++it) {
-      new (&*it) T(gen());
-    }
+    constructGrown(ret, delta, [&gen](T* p) { new (p) T(gen()); });
     return ret;
   }
 
@@ -1020,6 +1041,7 @@ class ConcurrentVector {
     // okay, this relies on the fact that we're essentially swapping in the move operator.
     buffers_ = std::move(oth.buffers_);
     swapCachedPtrs(oth);
+    swapGaps(oth);
   }
 
  private:
@@ -1073,8 +1095,9 @@ class ConcurrentVector {
 
   template <typename It>
   iterator growByRange(It start, It end, std::forward_iterator_tag) {
-    iterator ret = growByUninitialized(std::distance(start, end));
-    internalInit(start, end, ret);
+    const size_t len = static_cast<size_t>(std::distance(start, end));
+    iterator ret = growByUninitialized(len);
+    internalInit(start, ret, len);
     return ret;
   }
 
@@ -1134,6 +1157,105 @@ class ConcurrentVector {
     }
   };
 
+#if defined(__cpp_exceptions)
+  // A range [first, last) of slots that hold no objects. Gaps form a lock-free, push-only list:
+  // growth pushes concurrently, and only clear() (not concurrency safe) takes the list down.
+  struct Gap {
+    size_t first;
+    size_t last;
+    Gap* next;
+  };
+
+  void finishFailedGrowth(const iterator& it, size_t count) {
+    finishFailedGrowth(it, count, std::is_nothrow_default_constructible<T>{});
+  }
+
+  void finishFailedGrowth(const iterator& first, size_t count, std::true_type) noexcept {
+    for (iterator it = first; count--; ++it) {
+      new (&*it) T();
+    }
+  }
+
+  // Called while an exception propagates; if the gap record cannot be allocated, the program
+  // terminates.
+  void finishFailedGrowth(const iterator& it, size_t count, std::false_type) {
+    const size_t first = static_cast<size_t>(it - begin());
+    Gap* gap = new Gap{first, first + count, gaps_.load(std::memory_order_relaxed)};
+    while (!gaps_.compare_exchange_weak(
+        gap->next, gap, std::memory_order_release, std::memory_order_relaxed)) {
+    }
+  }
+
+  // clear() for a vector with gaps: destroys every element outside them, last to first, then
+  // frees the gap records. Allocates nothing.
+  void clearWithGaps() {
+    // Insertion-sort the list by descending start; failed growths are rare, so it is short.
+    Gap* sorted = nullptr;
+    Gap* gap = gaps_.exchange(nullptr, std::memory_order_acquire);
+    while (gap) {
+      Gap* next = gap->next;
+      Gap** pos = &sorted;
+      while (*pos && (*pos)->first > gap->first) {
+        pos = &(*pos)->next;
+      }
+      gap->next = *pos;
+      *pos = gap;
+      gap = next;
+    }
+
+    size_t index = size_.load(std::memory_order_relaxed);
+    while (index > 0) {
+      if (sorted && index == sorted->last) {
+        index = sorted->first;
+        Gap* done = sorted;
+        sorted = sorted->next;
+        delete done;
+        continue;
+      }
+      --index;
+      auto binfo = bucketAndSubIndex(index);
+      (buffers_[binfo.bucket].load(std::memory_order_relaxed) + binfo.bucketIndex)->~T();
+    }
+    size_.store(0, std::memory_order_release);
+  }
+#else
+  struct Gap;
+#endif // __cpp_exceptions
+
+  // Constructs the len elements of a range just reserved by growth, starting at it, calling
+  // construct(T*) for each. If a constructor throws, size_ already covers the whole range and
+  // other threads may have grown past it, so it cannot shrink: the constructed elements are kept,
+  // finishFailedGrowth() fills or records the rest, and the exception continues. When construct
+  // cannot throw, the compiler drops the handler and this is the plain loop.
+  template <typename Construct>
+  void constructGrown(iterator it, size_t len, Construct&& construct) {
+#if defined(__cpp_exceptions)
+    size_t built = 0;
+    try {
+      for (; built < len; ++built, ++it) {
+        construct(&*it);
+      }
+    } catch (...) {
+      finishFailedGrowth(it, len - built);
+      throw;
+    }
+#else
+    for (; len--; ++it) {
+      construct(&*it);
+    }
+#endif // __cpp_exceptions
+  }
+
+  void swapGaps(ConcurrentVector& other) {
+#if defined(__cpp_exceptions)
+    Gap* mine = gaps_.load(std::memory_order_relaxed);
+    gaps_.store(other.gaps_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    other.gaps_.store(mine, std::memory_order_relaxed);
+#else
+    (void)other;
+#endif // __cpp_exceptions
+  }
+
   // Copy-construct [start, end) into an empty vector whose capacity is already reserved.
   template <typename InIterator>
   void initFromEmpty(InIterator start, InIterator end) {
@@ -1143,25 +1265,21 @@ class ConcurrentVector {
     }
   }
 
+  // The following construct the elements of a range just reserved by growth; see constructGrown.
   template <typename InIterator>
-  void internalInit(InIterator start, InIterator end, iterator it) {
-    while (start != end) {
-      new (&*it) T(*start);
-      ++it;
+  void internalInit(InIterator start, iterator it, size_t len) {
+    constructGrown(it, len, [&start](T* p) {
+      new (p) T(*start);
       ++start;
-    }
+    });
   }
 
   void internalFillN(iterator it, size_t len, const T& value) {
-    for (; len--; ++it) {
-      new (&*it) T(value);
-    }
+    constructGrown(it, len, [&value](T* p) { new (p) T(value); });
   }
 
   void internalFillDefaultN(iterator it, size_t len) {
-    for (; len--; ++it) {
-      new (&*it) T();
-    }
+    constructGrown(it, len, [](T* p) { new (p) T(); });
   }
 
   iterator growByUninitialized(size_type delta) {
@@ -1177,7 +1295,7 @@ class ConcurrentVector {
     auto index = size_.fetch_add(1, std::memory_order_relaxed);
     auto binfo = bucketAndSubIndex(index);
     allocateBuffer(binfo);
-    new (&*e) T();
+    internalFillDefaultN(e, 1);
     return std::move_backward(pos, const_iterator(e), e + 1) - 1;
   }
 
@@ -1187,10 +1305,7 @@ class ConcurrentVector {
     auto binfo = bucketAndSubIndex(index);
     auto bend = bucketAndSubIndex(index + len);
     allocateBufferRange(binfo, len, bend);
-    for (auto it = e + len; it != e;) {
-      --it;
-      new (&*it) T();
-    }
+    internalFillDefaultN(e, len);
     return std::move_backward(pos, const_iterator(e), e + len) - len;
   }
 
@@ -1215,6 +1330,11 @@ class ConcurrentVector {
 
   size_t firstBucketShift_;
   size_t firstBucketLen_;
+
+  // Head of the list of gaps left by growth whose element constructor threw; null until that
+  // happens. Declared in every build so the layout does not depend on whether exceptions are
+  // enabled, but only read or written when they are.
+  std::atomic<Gap*> gaps_{nullptr};
 
   alignas(kCacheLineSize) std::atomic<size_t> size_{0};
 

@@ -1618,6 +1618,325 @@ TYPED_TEST(ConcurrentVectorTest, ThrowingElementConstructionDestroysOnlyConstruc
   }
   EXPECT_EQ(ThrowingCopy::live(), 0);
 }
+// Default construction cannot throw; copies throw once copiesUntilThrow() reaches zero. A failed
+// growth fills its remaining slots with default-constructed (payload 0) elements.
+struct NothrowDefaultThrowingCopy {
+  static std::atomic<int>& live() {
+    static std::atomic<int> n{0};
+    return n;
+  }
+  static std::atomic<int>& copiesUntilThrow() {
+    static std::atomic<int> n{-1};
+    return n;
+  }
+  NothrowDefaultThrowingCopy() noexcept {
+    ++live();
+  }
+  explicit NothrowDefaultThrowingCopy(int p) : payload(p) {
+    ++live();
+  }
+  NothrowDefaultThrowingCopy(const NothrowDefaultThrowingCopy& o) : payload(o.payload) {
+    if (copiesUntilThrow().load() >= 0 && copiesUntilThrow()-- == 0) {
+      throw std::runtime_error("copy failed");
+    }
+    ++live();
+  }
+  NothrowDefaultThrowingCopy& operator=(const NothrowDefaultThrowingCopy&) = default;
+  ~NothrowDefaultThrowingCopy() {
+    --live();
+  }
+  int payload = 0;
+};
+
+TYPED_TEST(ConcurrentVectorTest, ThrowingGrowthFillsRestWithDefaults) {
+  using Elt = NothrowDefaultThrowingCopy;
+  using Vec = dispenso::ConcurrentVector<Elt, TypeParam>;
+  Elt::live() = 0;
+  {
+    const Elt value(7);
+    const std::vector<Elt> src(6, value);
+    Vec vec;
+    vec.grow_by(5, value);
+
+    Elt::copiesUntilThrow() = 2;
+    EXPECT_THROW(vec.grow_by(6, value), std::runtime_error);
+    ASSERT_EQ(vec.size(), 11u);
+    for (size_t i = 0; i < 7; ++i) {
+      EXPECT_EQ(vec[i].payload, 7) << i;
+    }
+    for (size_t i = 7; i < 11; ++i) {
+      EXPECT_EQ(vec[i].payload, 0) << i;
+    }
+
+    Elt::copiesUntilThrow() = 0;
+    EXPECT_THROW(vec.push_back(value), std::runtime_error);
+    ASSERT_EQ(vec.size(), 12u);
+    EXPECT_EQ(vec[11].payload, 0);
+
+    Elt::copiesUntilThrow() = 3;
+    EXPECT_THROW(vec.grow_by(src.begin(), src.end()), std::runtime_error);
+    ASSERT_EQ(vec.size(), 18u);
+    EXPECT_EQ(vec[14].payload, 7);
+    EXPECT_EQ(vec[15].payload, 0);
+
+    // A generator that throws itself is handled the same way.
+    int calls = 0;
+    EXPECT_THROW(
+        vec.grow_by_generator(
+            4,
+            [&calls]() {
+              if (++calls == 3) {
+                throw std::runtime_error("generator failed");
+              }
+              return Elt(9);
+            }),
+        std::runtime_error);
+    ASSERT_EQ(vec.size(), 22u);
+    EXPECT_EQ(vec[19].payload, 9);
+    EXPECT_EQ(vec[20].payload, 0);
+    Elt::copiesUntilThrow() = -1;
+
+    // Every slot holds an object, so the vector stays fully usable.
+    EXPECT_EQ(Elt::live(), 1 + 6 + 22);
+    vec.erase(vec.begin() + 3, vec.begin() + 10);
+    EXPECT_EQ(vec.size(), 15u);
+    EXPECT_EQ(Elt::live(), 1 + 6 + 15);
+  }
+  EXPECT_EQ(Elt::live(), 0);
+}
+
+// Default construction throws once defaultsUntilThrow() reaches zero, so a failed growth leaves a
+// gap.
+struct ThrowingDefault {
+  static std::atomic<int>& live() {
+    static std::atomic<int> n{0};
+    return n;
+  }
+  static std::atomic<int>& defaultsUntilThrow() {
+    static std::atomic<int> n{-1};
+    return n;
+  }
+  ThrowingDefault() {
+    if (defaultsUntilThrow().load() >= 0 && defaultsUntilThrow()-- == 0) {
+      throw std::runtime_error("default construction failed");
+    }
+    ++live();
+  }
+  ThrowingDefault(const ThrowingDefault&) noexcept {
+    ++live();
+  }
+  ThrowingDefault& operator=(const ThrowingDefault&) = default;
+  ~ThrowingDefault() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, ThrowingGrowthLeavesGapThatClearSkips) {
+  using Elt = ThrowingDefault;
+  using Vec = dispenso::ConcurrentVector<Elt, TypeParam>;
+  Elt::live() = 0;
+  {
+    Vec vec;
+    vec.grow_by(3);
+
+    Elt::defaultsUntilThrow() = 1;
+    EXPECT_THROW(vec.grow_by(5), std::runtime_error);
+    // size() covers the whole failed range; only its first element was constructed.
+    EXPECT_EQ(vec.size(), 8u);
+    EXPECT_EQ(Elt::live(), 4);
+
+    // Growth continues after the gap.
+    vec.push_back(Elt{});
+    vec.grow_by(2);
+    EXPECT_EQ(vec.size(), 11u);
+    EXPECT_EQ(Elt::live(), 7);
+
+    // clear() destroys exactly the constructed elements and makes the vector usable again.
+    vec.clear();
+    EXPECT_EQ(vec.size(), 0u);
+    EXPECT_EQ(Elt::live(), 0);
+    vec.grow_by(40);
+    vec.erase(vec.begin(), vec.begin() + 10);
+    EXPECT_EQ(Elt::live(), 30);
+
+    // A gap at the very end, from insert's new slots.
+    Elt::defaultsUntilThrow() = 2;
+    EXPECT_THROW(vec.insert(vec.begin(), 4, Elt{}), std::runtime_error);
+    EXPECT_EQ(vec.size(), 34u);
+  }
+  // The destructor skips gaps too.
+  EXPECT_EQ(Elt::live(), 0);
+  Elt::defaultsUntilThrow() = -1;
+}
+
+TYPED_TEST(ConcurrentVectorTest, GapsFollowMoveAndSwap) {
+  using Elt = ThrowingDefault;
+  using Vec = dispenso::ConcurrentVector<Elt, TypeParam>;
+  Elt::live() = 0;
+  {
+    Vec a;
+    a.grow_by(5);
+    Elt::defaultsUntilThrow() = 0;
+    EXPECT_THROW(a.grow_by(3), std::runtime_error);
+    a.grow_by(2);
+    EXPECT_EQ(Elt::live(), 7);
+
+    Vec b(std::move(a));
+    EXPECT_EQ(b.size(), 10u);
+
+    Vec c;
+    c.grow_by(4);
+    Elt::defaultsUntilThrow() = 2;
+    EXPECT_THROW(c.grow_by(6), std::runtime_error);
+    EXPECT_EQ(Elt::live(), 7 + 6);
+
+    b.swap(c);
+    EXPECT_EQ(b.size(), 10u);
+    EXPECT_EQ(c.size(), 10u);
+
+    Vec d;
+    d.grow_by(1);
+    d = std::move(c);
+    EXPECT_EQ(Elt::live(), 7 + 6);
+  }
+  EXPECT_EQ(Elt::live(), 0);
+  Elt::defaultsUntilThrow() = -1;
+}
+
+// Default and copy construction both count down constructionsUntilThrow(), so either can throw.
+struct Fragile {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  static int& constructionsUntilThrow() {
+    static int n = -1;
+    return n;
+  }
+  static void maybeThrow() {
+    if (constructionsUntilThrow() >= 0 && constructionsUntilThrow()-- == 0) {
+      throw std::runtime_error("construction failed");
+    }
+  }
+  Fragile() {
+    maybeThrow();
+    ++live();
+  }
+  Fragile(const Fragile&) {
+    maybeThrow();
+    ++live();
+  }
+  Fragile& operator=(const Fragile&) = default;
+  ~Fragile() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, EveryGrowthPathSurvivesThrowingConstruction) {
+  using Vec = dispenso::ConcurrentVector<Fragile, TypeParam>;
+  struct Case {
+    const char* name;
+    size_t reserved; // slots the call reserves before constructing
+    std::function<void(Vec&, const Fragile&)> op;
+  };
+  const std::vector<Fragile>* srcPtr = nullptr;
+  const std::vector<Case> cases = {
+      {"emplace_back", 1, [](Vec& v, const Fragile&) { v.emplace_back(); }},
+      {"push_back", 1, [](Vec& v, const Fragile& x) { v.push_back(x); }},
+      {"grow_by", 5, [](Vec& v, const Fragile&) { v.grow_by(5); }},
+      {"grow_by value", 5, [](Vec& v, const Fragile& x) { v.grow_by(5, x); }},
+      {"grow_by range",
+       5,
+       [&srcPtr](Vec& v, const Fragile&) { v.grow_by(srcPtr->begin(), srcPtr->end()); }},
+      {"grow_by_generator",
+       5,
+       [](Vec& v, const Fragile& x) { v.grow_by_generator(5, [&x]() { return x; }); }},
+      {"grow_to_at_least", 5, [](Vec& v, const Fragile&) { v.grow_to_at_least(v.size() + 5); }},
+      {"grow_to_at_least value",
+       5,
+       [](Vec& v, const Fragile& x) { v.grow_to_at_least(v.size() + 5, x); }},
+      {"resize",
+       5,
+       [](Vec& v, const Fragile&) { v.resize(static_cast<dispenso::ssize_t>(v.size()) + 5); }},
+      {"resize value",
+       5,
+       [](Vec& v, const Fragile& x) { v.resize(static_cast<dispenso::ssize_t>(v.size()) + 5, x); }},
+      {"insert", 1, [](Vec& v, const Fragile& x) { v.insert(v.begin() + 1, x); }},
+      {"insert count", 5, [](Vec& v, const Fragile& x) { v.insert(v.begin() + 1, 5, x); }},
+  };
+
+  for (const Case& c : cases) {
+    for (int failAt : {0, 2}) {
+      if (failAt >= static_cast<int>(c.reserved)) {
+        continue;
+      }
+      SCOPED_TRACE(std::string(c.name) + ", failing construction " + std::to_string(failAt));
+      Fragile::live() = 0;
+      Fragile::constructionsUntilThrow() = -1;
+      {
+        const Fragile value;
+        const std::vector<Fragile> src(5);
+        srcPtr = &src;
+        Vec vec;
+        vec.grow_by(4);
+        const int outside = 1 + 5;
+
+        Fragile::constructionsUntilThrow() = failAt;
+        EXPECT_THROW(c.op(vec, value), std::runtime_error);
+        Fragile::constructionsUntilThrow() = -1;
+        EXPECT_EQ(vec.size(), 4 + c.reserved);
+        EXPECT_LE(Fragile::live(), outside + 4 + failAt);
+
+        // The vector can still grow; a later clear() empties it and it is fully usable again.
+        vec.grow_by(3);
+        vec.clear();
+        EXPECT_EQ(Fragile::live(), outside);
+        vec.grow_by(6);
+        vec.erase(vec.begin(), vec.begin() + 2);
+        EXPECT_EQ(Fragile::live(), outside + 4);
+
+        // And once more without the clear(), leaving the gap to the destructor.
+        Fragile::constructionsUntilThrow() = failAt;
+        EXPECT_THROW(c.op(vec, value), std::runtime_error);
+        Fragile::constructionsUntilThrow() = -1;
+      }
+      EXPECT_EQ(Fragile::live(), 0);
+    }
+  }
+}
+
+TYPED_TEST(ConcurrentVectorTest, ConcurrentThrowingGrowth) {
+  using Elt = ThrowingDefault;
+  using Vec = dispenso::ConcurrentVector<Elt, TypeParam>;
+  Elt::live() = 0;
+  std::atomic<int> failures{0};
+  {
+    Vec vec;
+    dispenso::parallel_for(0, 64, [&vec, &failures](int i) {
+      for (int j = 0; j < 50; ++j) {
+        try {
+          if ((i + j) % 11 == 0) {
+            // Arm a single throw somewhere in the next few constructions, from any thread.
+            int expected = -1;
+            Elt::defaultsUntilThrow().compare_exchange_strong(expected, 2);
+          }
+          if (j % 2) {
+            vec.grow_by(3);
+          } else {
+            vec.emplace_back();
+          }
+        } catch (const std::runtime_error&) {
+          ++failures;
+        }
+      }
+    });
+    EXPECT_GT(failures.load(), 0);
+    EXPECT_EQ(vec.size(), 64u * 25u * 3u + 64u * 25u);
+    EXPECT_LT(Elt::live(), static_cast<int>(vec.size()));
+  }
+  EXPECT_EQ(Elt::live(), 0);
+  Elt::defaultsUntilThrow() = -1;
+}
 #endif // __cpp_exceptions
 
 TYPED_TEST(ConcurrentVectorTest, IntegralArgumentsAreNotIterators) {

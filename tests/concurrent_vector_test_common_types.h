@@ -8,10 +8,13 @@
 #include <dispenso/concurrent_vector.h>
 
 #include <algorithm>
+#include <atomic>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <vector>
 
