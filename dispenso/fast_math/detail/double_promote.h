@@ -26,6 +26,10 @@
 
 #include <dispenso/fast_math/util.h>
 
+#if !defined(__CUDACC__) && __has_include("hwy/highway.h")
+#include <dispenso/fast_math/float_traits_hwy.h>
+#endif
+
 namespace dispenso {
 namespace fast_math {
 namespace detail {
@@ -459,8 +463,6 @@ DISPENSO_INLINE std::pair<DoubleVec<NeonFloat>, DoubleVec<NeonFloat>> exp2_split
 // Width adapts to the compile-time target (SSE→2×2, AVX→2×4, AVX-512→2×8).
 // ---------------------------------------------------------------------------
 #if !defined(__CUDACC__) && __has_include("hwy/highway.h")
-
-#include <dispenso/fast_math/float_traits_hwy.h>
 
 template <>
 struct DoubleVec<HwyFloat> {
