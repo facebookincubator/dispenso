@@ -3,8 +3,9 @@ name: Build and test
 on:
   push:
     branches: [main]
+  # Every PR, not just those targeting main, so that PRs higher in a stack
+  # (based on the branch below them) are built before they reach main.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
