@@ -16,6 +16,7 @@
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
+#include <limits>
 #include <memory>
 #include <new>
 #include <thread>
@@ -199,6 +200,11 @@ constexpr size_t kCacheLineSize = 64;
  *
  * Useful for avoiding false sharing in concurrent data structures.
  *
+ * @note Before C++17, std::allocator does not honour over-alignment, so elements of e.g. a
+ * <code>std::vector<CacheAligned<T>></code> are not guaranteed to be cache-line aligned (and
+ * accessing them is undefined behaviour) unless the container uses an allocator that respects
+ * <code>alignof(CacheAligned<T>)</code>.
+ *
  * @tparam T The type to wrap with cache line alignment.
  */
 template <typename T>
@@ -279,6 +285,40 @@ inline void alignedFree(void* ptr) {
   char* p = reinterpret_cast<char*>(ptr);
   uintptr_t recovered = *reinterpret_cast<uintptr_t*>(p - sizeof(uintptr_t));
   ::free(reinterpret_cast<void*>(recovered));
+}
+
+// Minimal standard allocator that honours alignof(T). Before C++17 std::allocator ignores
+// over-alignment, so standard containers of over-aligned types (e.g. CacheAligned<T>, or structs
+// with alignas(kCacheLineSize) members) would place elements at misaligned addresses. Deliberately
+// not an alias for std::allocator at C++17, so the container type (and which allocator frees its
+// memory) is the same whichever standard a translation unit is compiled with.
+template <typename T>
+struct AlignedAllocator {
+  using value_type = T;
+  AlignedAllocator() noexcept = default;
+  template <typename U>
+  AlignedAllocator(const AlignedAllocator<U>&) noexcept {}
+  T* allocate(size_t n) {
+    if (n > std::numeric_limits<size_t>::max() / sizeof(T)) {
+#if defined(__cpp_exceptions)
+      throw std::bad_alloc();
+#else
+      std::abort();
+#endif // __cpp_exceptions
+    }
+    return static_cast<T*>(detail::alignedMallocOrThrow(n * sizeof(T), alignof(T)));
+  }
+  void deallocate(T* p, size_t) noexcept {
+    detail::alignedFree(p);
+  }
+};
+template <typename T, typename U>
+bool operator==(const AlignedAllocator<T>&, const AlignedAllocator<U>&) noexcept {
+  return true;
+}
+template <typename T, typename U>
+bool operator!=(const AlignedAllocator<T>&, const AlignedAllocator<U>&) noexcept {
+  return false;
 }
 
 template <typename T>

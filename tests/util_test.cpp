@@ -11,6 +11,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <new>
 #include <stdexcept>
@@ -168,6 +169,24 @@ TEST(Util, AlignToCacheLine) {
   EXPECT_EQ(dispenso::alignToCacheLine(kCLS + 1), kCLS * 2);
   EXPECT_EQ(dispenso::alignToCacheLine(kCLS * 2), kCLS * 2);
   EXPECT_EQ(dispenso::alignToCacheLine(kCLS * 2 + 1), kCLS * 3);
+}
+
+TEST(Util, AlignedAllocatorAlignsOverAlignedElements) {
+  using Elt = dispenso::CacheAligned<uint32_t>;
+  static_assert(alignof(Elt) == dispenso::kCacheLineSize, "CacheAligned should be over-aligned");
+
+  std::vector<Elt, dispenso::detail::AlignedAllocator<Elt>> vec;
+  std::deque<Elt, dispenso::detail::AlignedAllocator<Elt>> deq;
+  for (uint32_t i = 0; i < 100; ++i) {
+    vec.emplace_back(i);
+    deq.emplace_back(i);
+  }
+  for (uint32_t i = 0; i < 100; ++i) {
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(&vec[i]) % alignof(Elt), 0u);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(&deq[i]) % alignof(Elt), 0u);
+    EXPECT_EQ(static_cast<uint32_t>(vec[i]), i);
+    EXPECT_EQ(static_cast<uint32_t>(deq[i]), i);
+  }
 }
 
 TEST(Util, CpuRelax) {
