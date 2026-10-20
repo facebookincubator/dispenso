@@ -31,6 +31,7 @@ Unreleased
 * `graph.h` no longer declares `callFunctor`, `destroyFunctor` and `ExecutorBase` in a global `detail` namespace, which broke compilation of user code that has its own `::detail` names.
 * Language-version checks now use `_MSVC_LANG` on MSVC (via the new `DISPENSO_CPLUSPLUS` macro), so MSVC builds with `/std:c++17` or later get the C++17/C++20 features (std::optional in `AsyncRequest` and pipelines, C++20 concept constraints, `[[deprecated]]` warnings) without needing `/Zc:__cplusplus`.
 * Fixed an intermittent hang of `parallel_for` with adaptive chunking under ThreadSanitizer on many-core machines, where spinning workers starved the final completion update.
+* fast_math no longer triggers GCC's `-Wignored-attributes` in every translation unit that includes it with an x86 SIMD backend enabled. The `SimdTypeFor` specializations named `__m128`/`__m256`/`__m512` as template arguments, which drops their `__may_alias__` attribute; they now use the new `SseRawFloat`/`AvxRawFloat`/`Avx512RawFloat` aliases, which name the same types without the attribute. Use these aliases when writing e.g. `IntType_t<...>` for raw intrinsic types.
 
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
