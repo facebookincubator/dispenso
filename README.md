@@ -22,17 +22,83 @@ Dispenso is a modern **C++ parallel computing library** that provides work-steal
 
 ## Table of Contents
 
+- [Quick Start](#quickstart)
+- [Installing](#installing)
+- [Which API Should I Use?](#whichapi)
 - [Choose Dispenso If...](#choosedispenso)
 - [Features](#features)
-- [Quick Start](#quickstart)
+- [Documentation and Examples](#examples)
 - [Comparison vs Other Libraries](#comparison)
 - [Migration Guides](#migrationguides)
-- [Documentation and Examples](#examples)
 - [Benchmark Results](#benchresults)
-- [Installing](#installing)
 - [Building](#building)
 - [Known Issues](#knownissues)
 - [License](#license)
+
+<div id='quickstart'/>
+
+## Quick Start
+
+**Parallel for loop** - the most common use case:
+
+```cpp
+#include <dispenso/parallel_for.h>
+
+// Sequential
+for (size_t i = 0; i < N; ++i) {
+    process(data[i]);
+}
+
+// Parallel with dispenso - just wrap it!
+dispenso::parallel_for(0, N, [&](size_t i) {
+    process(data[i]);
+});
+```
+
+**Try it live** - no install, no build:
+[run dispenso on Compiler Explorer](https://godbolt.org/z/W116zME61). Compiler
+Explorer is a shared sandbox with very few cores, so treat the timings there as
+illustrative rather than measured.
+
+To use dispenso in your project, install it from a package manager ([below](#installing)) or
+[build it from source](#building).
+
+<div id='installing'/>
+
+## Installing
+Binary builds of Dispenso are available through several package managers:
+
+- **Conda**: `conda install -c conda-forge dispenso`
+- **Conan**: `conan install --requires=dispenso/1.6.2`
+- **vcpkg**: `vcpkg install dispenso`
+- **Homebrew**: `brew install dispenso`
+- **MacPorts**: `sudo port install dispenso`
+- **Fedora/RHEL**: `sudo dnf install dispenso-devel`
+
+If your platform is not on the list, see [Building](#building) for instructions to build from source.
+To consume dispenso from CMake, use `find_package(Dispenso)` and link `Dispenso::dispenso`
+(see [docs/building.md](docs/building.md)), or pull it in with
+[FetchContent](docs/faq.md#can-i-use-dispenso-with-cmakes-fetchcontent).
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg?exclude_unsupported=1&columns=2)](https://repology.org/project/dispenso/versions)
+
+<div id='whichapi'/>
+
+## Which API Should I Use?
+
+| If you want to... | Use |
+|---|---|
+| Run a loop over an index range in parallel | [`parallel_for`](docs/getting_started.md#your-first-parallel-loop) |
+| Apply a function to each element of a container or iterator range | [`for_each`](docs/getting_started.md#parallel-iteration-with-for_each) |
+| Run a few different functions concurrently, or recurse (divide and conquer) | [`parallel_invoke`](docs/getting_started.md#parallel-invoke) |
+| Launch a group of tasks and wait for all of them | [`TaskSet`](docs/getting_started.md#working-with-tasks) (`ConcurrentTaskSet` if several threads schedule into the same set) |
+| Get a value back from asynchronous work, or chain work with `then()` / `when_all()` | [`Future`](docs/getting_started.md#futures-for-async-results) |
+| Run a fixed set of tasks with dependencies, possibly many times | [`Graph`](docs/getting_started.md#task-graphs) |
+| Stream items through a sequence of stages | [`pipeline`](docs/getting_started.md#pipelines) |
+
+All of these run on a [`ThreadPool`](docs/getting_started.md#thread-pools); the global pool is
+the right choice unless you need isolation or a specific thread count. The [Features](#features)
+list below covers the full set, including concurrent containers and allocators.
 
 <div id='choosedispenso'/>
 
@@ -83,46 +149,23 @@ Dispenso provides a comprehensive set of parallel programming primitives:
 * **`AsyncRequest`** — lightweight constrained message passing
 * **`ConcurrentObjectArena`** — fast same-type object arena
 
-<div id='quickstart'/>
+<div id='examples'/>
 
-## Quick Start
+## Documentation and Examples
 
-**Parallel for loop** - the most common use case:
-
-```cpp
-#include <dispenso/parallel_for.h>
-
-// Sequential
-for (size_t i = 0; i < N; ++i) {
-    process(data[i]);
-}
-
-// Parallel with dispenso - just wrap it!
-dispenso::parallel_for(0, N, [&](size_t i) {
-    process(data[i]);
-});
-```
-
-**Try it live** - no install, no build:
-[run dispenso on Compiler Explorer](https://godbolt.org/z/W116zME61). Compiler
-Explorer is a shared sandbox with very few cores, so treat the timings there as
-illustrative rather than measured.
-
-**Install via your favorite package manager:**
-
-```bash
-# Conda
-conda install -c conda-forge dispenso
-
-# Fedora/RHEL
-sudo dnf install dispenso-devel
-
-# Or build from source (see below)
-```
+- **[Getting Started](docs/getting_started.md)** — tutorials for parallel_for, tasks, futures, graphs, pipelines, containers, and more
+- **[API Reference](https://facebookincubator.github.io/dispenso)** — full Doxygen documentation
+- **[Examples](examples/)** — complete, compilable programs for each major feature
+- **[FAQ](docs/faq.md)** — common questions about performance, exception behavior, and when to use dispenso vs alternatives
 
 <div id='comparison'/>
 
 ## Comparison vs Other Libraries
+
+Performance statements in this section summarize dispenso's own benchmarks
+(see [Benchmark Results](#benchresults) for the data and how it is produced),
+except where noted as production experience. Results vary with platform, thread
+count, and work size, so check the dashboard for the case closest to yours.
 
 ### TBB (Intel Threading Building Blocks)
 
@@ -131,7 +174,7 @@ TBB has more functionality overall, but we built dispenso for three reasons:
 2. **Thread-safe shared futures** — TBB lacks a futures interface; dispenso provides `std::experimental::shared_future`-like futures safe for multiple concurrent waiters
 3. **Non-Intel hardware** — we needed to control performance on diverse platforms
 
-**Performance:** Dispenso tends to be faster for small and medium parallel loops, and on par for large ones. When many loops run independently, dispenso's cascading `parallel_for` avoids oversubscription and has delivered **32-50% speedups in production workloads** after porting from TBB at Meta. TBB lacks an equivalent mechanism.
+**Performance:** Dispenso tends to be faster for small and medium parallel loops, and on par for large ones. When many loops run independently, dispenso's cascading `parallel_for` avoids oversubscription and has delivered **32-50% speedups in production workloads** after porting from TBB at Meta (internal measurements; the public [`cascading_parallel_for` benchmark](benchmarks/cascading_parallel_for_benchmark.cpp) exercises the same pattern). TBB lacks an equivalent mechanism.
 
 See [Migrating from TBB](docs/migrating_from_tbb.md) for a step-by-step porting guide.
 
@@ -147,7 +190,7 @@ Folly excels at asynchronous I/O with coroutine support. Dispenso is designed fo
 
 ### TaskFlow
 
-TaskFlow focuses on task graph execution. Dispenso has faster graph construction, faster full and partial graph execution, much lower `parallel_for` overhead (10-100x in benchmarks), and simpler/faster pipeline construction. TaskFlow does offer CUDA graph mappings, which dispenso does not currently provide.
+TaskFlow focuses on task graph execution. Dispenso has faster graph construction, faster full and partial graph execution, much lower `parallel_for` overhead (10-100x in the [`simple_for` benchmark](benchmarks/simple_for_benchmark.cpp)), and simpler/faster pipeline construction. TaskFlow does offer CUDA graph mappings, which dispenso does not currently provide.
 
 ### Others (GCD, C++ std parallelism)
 
@@ -160,14 +203,6 @@ GCD is Apple-specific with ports to other platforms. C++ parallel algorithms are
 - **[Migrating from TBB](docs/migrating_from_tbb.md)** — API mappings, thread pool differences, and common porting patterns
 - **[Migrating from OpenMP](docs/migrating_from_openmp.md)** — Replacing `#pragma omp` with dispenso equivalents, handling reductions and nested parallelism
 
-<div id='examples'/>
-
-## Documentation and Examples
-
-- **[Getting Started](docs/getting_started.md)** — tutorials with compilable examples for parallel_for, tasks, futures, graphs, pipelines, containers, and more
-- **[API Reference](https://facebookincubator.github.io/dispenso)** — full Doxygen documentation
-- **[FAQ](docs/faq.md)** — common questions about performance, exception behavior, and when to use dispenso vs alternatives
-
 <div id='benchresults'/>
 
 ## Benchmark Results
@@ -177,23 +212,13 @@ comparing against OpenMP, TBB, TaskFlow, folly, and `std::async` across thread p
 loops, futures, graphs, concurrent containers, and more.
 
 **[Interactive Benchmark Dashboard](https://facebookincubator.github.io/dispenso/benchmarks/)** — explore all results
-with platform switching, dark/light theme, and detailed per-benchmark charts.
+with platform switching, dark/light theme, and detailed per-benchmark charts. Each platform's CPU,
+compiler, and comparison-library versions are listed on the dashboard.
 
-<div id='installing'/>
-
-## Installing
-Binary builds of Dispenso are available through several package managers:
-
-- **Conda**: `conda install -c conda-forge dispenso`
-- **Conan**: `conan install --requires=dispenso/1.6.2`
-- **vcpkg**: `vcpkg install dispenso`
-- **Homebrew**: `brew install dispenso`
-- **MacPorts**: `sudo port install dispenso`
-- **Fedora/RHEL**: `sudo dnf install dispenso-devel`
-
-If your platform is not on the list, see [the next section](#building) for instructions to build from source.
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/dispenso.svg?exclude_unsupported=1&columns=2)](https://repology.org/project/dispenso/versions)
+**Methodology:** the benchmark sources are in [`benchmarks/`](benchmarks/), and
+[scripts/BENCHMARKING.md](scripts/BENCHMARKING.md) describes how results are collected with
+`scripts/run_benchmarks.py` and turned into the dashboard, so you can reproduce them on your own
+hardware. See also [Benchmarking](docs/building.md#benchmarking) for build options.
 
 <div id='building'/>
 
