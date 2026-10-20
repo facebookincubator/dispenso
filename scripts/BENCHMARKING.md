@@ -16,21 +16,21 @@ The simplest way to build and run benchmarks is with `run_benchmarks.py --build`
 ```bash
 # Build and run all benchmarks
 python3 scripts/run_benchmarks.py --build \
-  -o results/my-platform.json
+  -o docs/benchmark_results/my-platform.json
 
 # Build and run only pipeline benchmark
 python3 scripts/run_benchmarks.py --build -B pipeline \
-  -o results/my-platform.json
+  -o docs/benchmark_results/my-platform.json
 
 # Use a custom compiler
 python3 scripts/run_benchmarks.py --build \
   --cmake-args="-DCMAKE_CXX_COMPILER=g++-13" \
-  -o results/my-platform.json
+  -o docs/benchmark_results/my-platform.json
 
 # Clean rebuild with custom build directory
 python3 scripts/run_benchmarks.py --build --clean \
   -b /tmp/dispenso-bench \
-  -o results/my-platform.json
+  -o docs/benchmark_results/my-platform.json
 ```
 
 The script auto-detects your platform (e.g., `linux-threadripper-96c`,
@@ -39,7 +39,7 @@ The script auto-detects your platform (e.g., `linux-threadripper-96c`,
 ```bash
 python3 scripts/run_benchmarks.py --build \
   --platform my-custom-label \
-  -o results/my-custom-label.json
+  -o docs/benchmark_results/my-custom-label.json
 ```
 
 ### Build Flags
@@ -108,7 +108,7 @@ Then run benchmarks against the existing build:
 ```bash
 python3 scripts/run_benchmarks.py \
   -b /tmp/dispenso-bench \
-  -o results/<platform-name>.json
+  -o docs/benchmark_results/<platform-name>.json
 ```
 
 ## Step 1: Run Benchmarks
@@ -119,7 +119,7 @@ capture results as JSON:
 ```bash
 python3 scripts/run_benchmarks.py \
   -b /tmp/dispenso-bench \
-  -o results/<platform-name>.json
+  -o docs/benchmark_results/<platform-name>.json
 ```
 
 Where `<platform-name>` is a descriptive identifier like `linux-threadripper-96c`,
@@ -144,14 +144,15 @@ and per-platform switching:
 ```bash
 # Single platform
 python3 scripts/generate_plotly_benchmarks.py \
-  results/<platform-name>.json \
+  docs/benchmark_results/<platform-name>.json \
   -o docs/benchmarks/index.html
 
 # Multiple platforms in one dashboard (switch between them in the UI)
 python3 scripts/generate_plotly_benchmarks.py \
-  results/linux-threadripper-96c.json \
-  results/macos-m4-pro-12c.json \
-  results/windows-zen4-24c.json \
+  docs/benchmark_results/linux_x64.json \
+  docs/benchmark_results/macos_arm64.json \
+  docs/benchmark_results/windows_x64.json \
+  docs/benchmark_results/android_arm64.json \
   -o docs/benchmarks/index.html
 ```
 
