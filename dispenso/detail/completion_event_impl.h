@@ -178,8 +178,7 @@ class CompletionEventImpl {
 
     uint64_t relTimeUs = static_cast<uint64_t>(relSeconds * 1e6);
 
-    // TODO: determine if we should worry about reducing timeout time subsequent times through the
-    // loop in the case of spurious wake.
+    // TODO: same open question as above about shortening the timeout after a spurious wake.
     uint64_t val = combined_.load(std::memory_order_acquire);
     while (static_cast<int>(val) != completedStatus) {
       uint64_t newVal = val + kOneWaiter;
@@ -266,8 +265,7 @@ class CompletionEventImpl {
 
     int msWait = std::max(1, static_cast<int>(relSeconds * 1000.0));
 
-    // TODO: determine if we should worry about reducing timeout time subsequent times through the
-    // loop in the case of spurious wake.
+    // TODO: same open question as above about shortening the timeout after a spurious wake.
     int current;
     while ((current = status_.load(std::memory_order_acquire)) != completedStatus) {
       if (!WaitOnAddress(&status_, &current, sizeof(int), msWait) &&

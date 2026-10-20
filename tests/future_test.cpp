@@ -381,7 +381,7 @@ TEST(Future, AsyncNotAsyncSpecifyNewThread) {
   EXPECT_EQ(&value, &refFuture.get());
 }
 
-// Regression test for T282829604. NewThreadInvoker threads still running at
+// Regression test: NewThreadInvoker threads still running at
 // process exit used to fault in ntdll's wait machinery on Windows shared-lib
 // builds (EXCEPTION_ACCESS_VIOLATION 0xC0000005) -- after the test itself had
 // already passed, so the symptom is a non-zero process exit, not a failed

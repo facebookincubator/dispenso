@@ -36,7 +36,7 @@ uses `abort()` instead of throwing.
 |----------|----------|--------------|
 | `kStatic` (default) | Uniform per-element work | Divides range into equal chunks up front. Lowest overhead. |
 | `kAdaptive` | Non-uniform work (e.g., Mandelbrot) | Stripe-based with work stealing. Prefers same-L3 cache victims. |
-| `kAuto` | General use | Currently selects `kStatic`. May change in future versions. |
+| `kAuto` (deprecated) | — | Alias for `kAdaptive`, kept for source compatibility. Use `kAdaptive`. |
 
 Use `ParForOptions::minItemsPerChunk` to set a lower bound on chunk size,
 preventing over-parallelization for cheap per-element work.

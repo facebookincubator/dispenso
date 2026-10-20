@@ -147,7 +147,7 @@ class NewThreadInvoker {
   // builds a *detached* thread that is still executing during process exit faults
   // (EXCEPTION_ACCESS_VIOLATION): it runs a synchronization primitive
   // (e.g. WakeByAddressAll, from CompletionEvent::notify) after ntdll has begun
-  // tearing down its wait machinery at shutdown. See T282829604.
+  // tearing down its wait machinery at shutdown.
   //
   // The fix is to wait for each thread to FULLY terminate before shutdown proceeds
   // -- not merely for its functor to return. Only the OS thread handle signals true

@@ -103,10 +103,10 @@ namespace dispenso {
  * on CAS failure. Here, contention (a peer claimed the same position first) simply returns
  * false/empty even when the buffer is not actually full/empty. This is a deliberate
  * spurious-failure trade-off for bounded fail-fast scheduling (callers retry or fall back to
- * another tier; see fork_join_scheduling.md). It never corrupts state, double-uses a slot, or loses
- * an element — the monotonic-counter + per-slot-sequence invariants above hold regardless of how
- * the single CAS resolves. (`try_push_batch` claims a contiguous run `[tail, tail+available)` with
- * one CAS; the same monotonic-counter argument makes that whole reserved run exclusively the
+ * another tier; see three_tier_scheduling.md). It never corrupts state, double-uses a slot, or
+ * loses an element — the monotonic-counter + per-slot-sequence invariants above hold regardless of
+ * how the single CAS resolves. (`try_push_batch` claims a contiguous run `[tail, tail+available)`
+ * with one CAS; the same monotonic-counter argument makes that whole reserved run exclusively the
  * caller's.)
  *
  * ## Memory Layout

@@ -180,7 +180,7 @@ def select_representative_rows(benchmarks):
     places, and tag the result as an iteration row so they need no changes.
 
     Two things this fixes. Runs recorded with aggregates only -- which is what
-    the Buck runner produces -- previously yielded no charts at all for the
+    the Meta-internal (Buck) runner produces -- previously yielded no charts at all for the
     thread-scaling suites, because every builder filtered for iteration rows.
     And where repetitions *were* present, the builders indexed rows by case
     into a dict, so the chart silently showed whichever repetition happened to
@@ -1680,8 +1680,8 @@ function renderChart(cfg) {{
 }}
 
 // ─── Platform switching ────────────────────────────────────────
-// Comparison-library versions. These vary by platform -- Buck-built columns
-// carry noticeably older TBB/Taskflow than the CMake ones -- so a reader
+// Comparison-library versions. These vary by platform -- some platforms'
+// columns were built against noticeably older TBB/Taskflow -- so a reader
 // comparing dispenso against TBB across platforms needs to see them.
 const DEP_LABELS = {{
   tbb: 'TBB', taskflow: 'Taskflow', folly: 'folly',
@@ -1820,7 +1820,7 @@ def load_platform(json_path):
         machine["cpu_model"] = (
             f"{device} ({soc})" if device and soc else (device or soc or "Unknown")
         )
-    # The Buck runner reports cpu_count where the CMake runner reports
+    # The Meta-internal (Buck) runner reports cpu_count where the CMake runner reports
     # cpu_cores; backfill so the label and the info card agree across platforms.
     if not machine.get("cpu_cores"):
         machine["cpu_cores"] = machine.get("cpu_count")

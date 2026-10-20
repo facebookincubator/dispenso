@@ -1,7 +1,7 @@
 # Building Dispenso {#building}
 
-Dispenso uses CMake as its build system for open-source builds. Internally at Meta, the Buck
-build system is used, but Buck build files are not shipped externally.
+Dispenso builds with CMake. A copy is also built with Buck inside Meta's monorepo; no Buck
+files ship in this repository.
 
 Improvements to the CMake build and build files for additional build systems are welcome, as
 are instructions for building on other platforms (BSD variants, Windows+Clang, etc).
@@ -204,8 +204,8 @@ Folly. When benchmarks are enabled via `-DDISPENSO_BUILD_BENCHMARKS=ON`, the bui
 attempt to find these libraries and enable their variants if found. None of these are
 dependencies of the dispenso library itself — only the benchmark binaries.
 
-The Folly variant is off by default due to common build issues across Folly releases.
-However, the Folly benchmarks do run successfully on Meta's internal platform.
+The Folly variant is off by default due to common build issues across Folly releases; it
+builds in environments that pin a compatible Folly.
 
 OpenMP should already be available on most platforms that support it. TBB can be installed
 via e.g. `sudo dnf install tbb-devel`.
