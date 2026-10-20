@@ -1,129 +1,114 @@
 # Wake-cost tuning guide
 
 How to tune the wake-side parameters of dispenso's thread pool for a new
-platform (or revalidate an existing one). The defaults in the source are
-chosen for a typical 16/32/96/166-core x86 Linux machine; mac and Windows
-have higher per-syscall overhead and benefit from different settings.
+platform, or revalidate an existing one, and why each current default was
+chosen. How the wake machinery works is documented next to the code, in
+`dispenso/detail/thread_pool_wake.h`.
 
 ## Background
 
-Workers wait on a per-group `EpochWaiter` (one futex address per group).
+Threads are partitioned into wake groups of G consecutive threads. Each
+group shares one `EpochWaiter` (one futex address) and one sleep mask.
 Producers wake threads via three primitives:
 
 | primitive | semantics | platform mapping |
 |---|---|---|
-| `bumpAndWake()` | wake one waiter | `futex_wake(addr, 1)` / `__ulock_wake_one` / `WakeByAddressSingle` |
+| `bumpAndWake()` | wake one waiter | `futex_wake(addr, 1)` / `__ulock_wake_one` / `WakeByAddressAll` on Windows (see Caveats) |
 | `bumpAndWakeAll()` | wake all parked waiters on this address | `futex_wake(addr, INT_MAX)` / `__ulock_wake_all` / `WakeByAddressAll` |
-| `bumpAndWakeN(n, total)` | wake N waiters | Linux: single syscall. Mac/Windows: loop wake-one or fall through to wake-all (see threshold below). |
+| `bumpAndWakeN(n, total)` | wake N waiters | Linux/FreeBSD: one exact-K syscall. macOS: loop wake-one, or fall through to wake-all at the threshold below. Windows: `WakeByAddressSingle` if the group has one waiter, otherwise `WakeByAddressAll`. |
 
-Producers also fan out across groups via the **bitmask cascade** (see
-`thread_pool_wake.h::wakeN`) and may pre-seed a second group via
-**promote-seed** so cascade can fan out from two seeds in parallel with
-just one producer syscall.
+A wake of up to `branchFactor` threads claims and wakes sleepers one at a
+time. Larger wakes bump and wake every affected group directly; on the
+fork-join ring path, the first threads to wake also run pre-staged tasks
+that wake further groups.
 
 ## The knobs
 
-All overridable at compile time via `-D` flags:
+All are compile-time overrides passed as `-D` flags:
 
 | macro | default | description |
 |---|---|---|
-| `DISPENSO_TUNE_WAKE_GROUP_SIZE` | 8 (all platforms) | Threads per group. Larger = fewer cascade hops, more bucket-lock contention, more queue-walk per wake. |
-| `DISPENSO_TUNE_STEAL_RING_SHARING` | 8 | Threads per steal ring. Lower = less ring contention, more rings to scan (mitigated by has-work bitmask). Typically matched to group size. |
-| `DISPENSO_TUNE_WAKE_ALL_THRESHOLD` | INT_MAX (Linux/Mac), 3 (Windows) | K at which `bumpAndWakeN` switches from looping wake-one to a single wake-all. Linux's exact-K syscall makes this irrelevant; on macOS Mach IPC wake-one is so cheap that K wake-ones cost about the same as one wake-all (so wake-one wins by avoiding spurious wakes); on Windows the per-call cost is high enough that wake-all wins early. |
-| `DISPENSO_TUNE_PROMOTE_SEED` | 1 (Linux/Mac), 0 (Windows) | Whether to use the promote-seed cascade trick when `numGroups > groupSize`. Disabled on Windows because the extra in-thread `WakeByAddressSingle` to bootstrap g1 doesn't pay for itself there. |
-| `DISPENSO_TUNE_WAKE_BRANCH_FACTOR` | 4 (Linux/Mac), 8 (Windows) | Producer-side fan-out branching for `wakeBudget` cascade. |
+| `DISPENSO_TUNE_WAKE_GROUP_SIZE` | 8 (all platforms) | Threads per wake group (max 64). Larger = fewer groups to wake, more contention on each group's futex and sleep mask. |
+| `DISPENSO_TUNE_STEAL_RING_SHARING` | 8 | Threads per steal ring. Lower = less ring contention, more rings to scan. Normally matched to the group size. |
+| `DISPENSO_TUNE_WAKE_BRANCH_FACTOR` | 4 (Linux/macOS), 8 (Windows) | Largest wake count served by claiming and waking sleepers one at a time; larger wakes wake whole groups. |
+| `DISPENSO_TUNE_WAKE_ALL_THRESHOLD` | INT_MAX | macOS only: K at which `bumpAndWakeN` switches from looping wake-one to a single wake-all. K wake-ones cost about the same as one wake-all there, so wake-one wins by avoiding spurious wakes. Linux/FreeBSD wake exactly K in one syscall, and Windows never loops wake-one (see Background), so no other platform reads it. |
+| `DISPENSO_TUNE_FIXED_SPIN_ITERS` | 400 (Linux/macOS), 200 (Windows) | Iterations of the work-finding loop before an idle worker parks. 0 parks immediately. |
+| `DISPENSO_TUNE_SPIN_CHECK_INTERVAL` | 64 (Linux), 32 (macOS), 256 (Windows) | Length of the lean-spin warm-up, during which an idle worker checks only its own ring. Must be a power of 2. |
 
 ## Tuning process
 
-### Step 1 — measure platform wake costs
+`scripts/run_tuning_experiment.py` rebuilds dispenso once per configuration,
+runs the representative cases in its `BENCHMARK_SUITE`, prints each
+configuration's change against a baseline at the current defaults, and
+writes `tuning_results_<os>.json`. `--list` shows every configuration, and
+`-c <category>` runs one category plus the baseline:
 
-Build and run `wake_cost_bench`:
+| category | sweeps |
+|---|---|
+| `wake_all_threshold` | `WAKE_ALL_THRESHOLD` ∈ {2, 3, 4, 6, 8, 12, 16} |
+| `wake_group` | `WAKE_GROUP_SIZE` ∈ {8, 16, 32, 64} |
+| `wake_combo` | `WAKE_GROUP_SIZE` = `STEAL_RING_SHARING` ∈ {4, 8, 16, 32} |
+| `wake_factor` | `WAKE_BRANCH_FACTOR` ∈ {2, 4, 8, 16} |
+| `spin_strategy` | `FIXED_SPIN_ITERS` ∈ {0, 32, 64, 128, 200, 400, 800} |
+| `spin_interval` | `SPIN_CHECK_INTERVAL` ∈ {16, 32, 64, 128, 256} |
+
+### Step 1 — wake-all threshold (macOS only)
+
+Only macOS reads the threshold (see the knobs table); on other platforms
+skip to step 2. On macOS:
 
 ```bash
-cmake -S . -B build -DDISPENSO_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target wake_cost_bench
-./build/bin/wake_cost_bench
+python3 scripts/run_tuning_experiment.py -c wake_all_threshold
 ```
 
-Output looks like:
+Measuring end to end matters here, not just timing the syscalls: a
+wake-all also wakes the group's other (G - K) parked threads, and their
+spurious wake-and-repark costs CPU that a syscall microbenchmark does
+not see.
 
-```
-Spurious-wake round-trip: 11200 ns
+Earlier tuning used a standalone syscall microbenchmark,
+`tools/wake_cost_bench.cpp` (removed after 2e41885). On Windows (Xeon
+Gold 6450C, August 2026) it measured `WakeByAddressSingle` and
+`WakeByAddressAll` within 5% of each other at every N, consistent with
+Windows using wake-all whenever more than one thread is waiting.
 
-Producer-side wake costs (avg over 200 trials):
-    N |     wake-1 |   wake-all | K threshold (wake-all wins for K >=)
-------+------------+------------+------------------------------------
-    4 |     3300 ns |    10300 ns | 4
-    8 |     3700 ns |    20700 ns | 6
-   16 |     3300 ns |    38400 ns | 12
-   32 |     3400 ns |    75300 ns | 22
-   ...
-```
+### Step 2 — group size
 
-Read off the K threshold for your intended group size. Set
-`DISPENSO_TUNE_WAKE_ALL_THRESHOLD` to that value.
+Sweep `-c wake_combo`, which keeps steal-ring sharing matched to the group
+size as the defaults do; `-c wake_group` varies the group size alone.
 
-For a default group size of 16 on Linux, the threshold is irrelevant
-(Linux uses exact-K). On macOS the row N=16 might show K=4-6; on Windows
-the threshold tends to land at K=2-3 because each `WakeByAddressSingle`
-syscall is more expensive.
-
-### Step 2 — choose group size
-
-The default G=8 came out of a sweep across G ∈ {16, 8, 4} on a 166-thread
-Linux machine; G=8 + promote-seed was the net winner (see commit log).
-G=16 was the previous default and may still be worth measuring on
-platforms with very expensive per-syscall costs.
-
-Smaller groups (G=8 vs G=16) win when:
+Smaller groups win when:
 
 - **Steal-ring contention** dominates: workloads with many small placed
   tasks (e.g. tree benchmarks) push tasks onto specific group rings.
   Fewer threads per ring = less contention on the ring's atomics.
-- **Bucket-lock contention on the group futex** is meaningful: every
-  per-thread wake acquires the group's futex bucket lock. Half the
-  threads per group = half the contenders.
+- **Contention on the group futex** is meaningful: every wake into a group
+  goes through that group's futex. Half the threads per group = half the
+  contenders.
 
-Smaller groups cost:
+Smaller groups cost more groups to wake when the whole pool is needed.
 
-- More cascade hops to wake the full pool.
-- More producer-side syscalls if the cascade can't single-indirect
-  (numGroups > groupSize without promote-seed).
+To change a default, edit the `groupSize` default argument of
+`PoolWakeState` in `thread_pool_wake.h`, and `kStealRingSharing` in
+`thread_pool.h`.
 
-To find the sweet spot, sweep G ∈ {8, 16, 32} across the benchmarks
-that matter for your workload (`pipeline_benchmark`,
-`idle_pool_benchmark` for burst patterns, `tree_benchmark` for
-fine-grained task dispatch).
+### Step 3 — branch factor and spinning
 
-Set per-platform defaults in `thread_pool_wake.h`:
-
-```cpp
-#elif defined(__APPLE__)
-constexpr int32_t kDefaultWakeGroupSize = 16;  // tune per measurements
-#elif defined(_WIN32)
-constexpr int32_t kDefaultWakeGroupSize = 8;   // tune per measurements
-```
-
-### Step 3 — promote-seed on/off
-
-Promote-seed adds one extra in-thread wake call when wakeN's cascade
-target count exceeds the chosen group size (i.e., the seed group's
-threads can't claim all the bits in parallel). For a 96-thread pool with
-G=16, numGroups=6 ≤ G, so promote-seed never fires — keeping it on is
-free.
-
-For G=8 on the same pool, numGroups=12 > G, so promote-seed engages on
-every full-pool wake. Worth keeping on unless wake_cost_bench shows the
-extra in-thread syscall is unusually expensive on this platform.
+`-c wake_factor`, `-c spin_strategy` and `-c spin_interval` cover the
+remaining knobs. The spin settings trade wake latency against CPU burned
+by idle workers, so judge them on `idle_pool_benchmark`'s CPU-usage cases
+as well as on throughput.
 
 ### Step 4 — validate with a benchmark sweep
 
-Run the standard benchmark suite against the previous default to confirm
-the new tuning is a net improvement:
+Run the standard benchmark suite with and without the new tuning and
+compare:
 
 ```bash
-python3 scripts/run_benchmarks.py --build -o new_results.json
-# Compare against your previous baseline.
+python3 scripts/run_benchmarks.py --build -o before.json
+# ... change the default ...
+python3 scripts/run_benchmarks.py --build -o after.json
+python3 scripts/compare_benchmarks.py before.json after.json
 ```
 
 Pay attention to:
@@ -135,15 +120,14 @@ Pay attention to:
 
 ## Current per-platform defaults
 
-These are starting points, not necessarily optimal. Each entry includes
-links to the historical sweep that informed the choice. Update this
-table as you tune.
+These are starting points, not necessarily optimal. Update this table as
+you tune.
 
-| platform | groupSize | sharing | wakeAllThreshold | promoteSeed | source |
+| platform | groupSize | sharing | wakeAllThreshold | spin limit | source |
 |---|---:|---:|---:|---:|---|
-| Linux x86_64 | 8 | 8 | INT_MAX (exact-K syscall) | 1 | group-size sweep, 166-thread machine: G=8 + promote-seed beat G=16 net |
-| macOS | 8 | 8 | INT_MAX | 1 | wake_cost_bench on M-series: K × wake-1 ≈ wake-all (Mach IPC wake-one is cheap), so wake-1 × K wins by avoiding spurious wakes. Group-size sweep showed no significant variation (low core count → cascade rarely engages). |
-| Windows | 8 | 8 | 2 | 0 | per-bench sweep on 96-thread Xeon: G/sharing/wake_factor flat across the swept range; promote_seed=0 wins ~1.5% mean (clearest on `BM_dispenso_blocking/*`) because each WakeByAddressSingle is expensive enough that the extra in-thread bootstrap wake doesn't amortize. |
+| Linux x86_64 | 8 | 8 | INT_MAX (exact-K syscall) | 400 | group-size sweep on a 166-thread machine: G=8 beat G=16 net. |
+| macOS | 8 | 8 | INT_MAX | 400 | syscall microbenchmark (since removed) on M-series: K × wake-1 ≈ wake-all (Mach IPC wake-one is cheap), so wake-1 × K wins by avoiding spurious wakes. Group-size sweep showed no significant variation (low core count). |
+| Windows | 8 | 8 | n/a (wake-all for >1 waiter) | 200 | per-bench sweep on a 96-thread Xeon: group size, sharing and branch factor flat across the swept range. A fixed spin of 200 was ~6% faster by geomean than the earlier adaptive spin on a 48-thread Xeon Platinum 8259CL. |
 
 ## Caveats
 

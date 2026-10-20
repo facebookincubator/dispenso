@@ -22,12 +22,13 @@ namespace detail {
 // K natively (one syscall), so no threshold is needed there. On macOS the
 // Mach IPC port wake-up is so cheap per call that K wake-ones are
 // competitive with one wake-all, and wake-one avoids the spurious-wake
-// CPU cost of waking all parked threads — measurements (wake_cost_bench)
-// show K * wake_1 ≈ wake_all across all N tested, so we set the threshold
+// CPU cost of waking all parked threads — syscall measurements showed
+// K * wake_1 ≈ wake_all across all N tested, so we set the threshold
 // effectively to "never" and only fall through to wake-all when n really
-// equals totalWaiters. On Windows the WaitOnAddress per-call cost is
-// genuinely high; lower threshold. Override via
-// -DDISPENSO_TUNE_WAKE_ALL_THRESHOLD=N.
+// equals totalWaiters. Only the macOS EpochWaiter below reads this: Windows'
+// bumpAndWakeN never loops wake-one (it uses WakeByAddressAll whenever more
+// than one thread waits), and the generic fallback ignores it too. Override
+// via -DDISPENSO_TUNE_WAKE_ALL_THRESHOLD=N.
 #if defined(DISPENSO_TUNE_WAKE_ALL_THRESHOLD)
 constexpr int kWakeAllThreshold = DISPENSO_TUNE_WAKE_ALL_THRESHOLD;
 #elif defined(__linux__) || defined(__FreeBSD__)
@@ -35,12 +36,11 @@ constexpr int kWakeAllThreshold = DISPENSO_TUNE_WAKE_ALL_THRESHOLD;
 constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
 #elif defined(__APPLE__)
 // Mach IPC wake-one is heavily optimized; K wake-ones cost about the same
-// as one wake-all (per wake_cost_bench), so prefer wake-one to avoid
+// as one wake-all, so prefer wake-one to avoid
 // spurious wakes on the (groupSize - K) threads we don't need to wake.
 constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
 #elif defined(_WIN32)
-// Windows WaitOnAddress per-syscall cost is highest; lower threshold.
-// (Pending wake_cost_bench measurement on Windows.)
+// Not read on Windows; see above.
 constexpr int kWakeAllThreshold = 3;
 #else
 constexpr int kWakeAllThreshold = std::numeric_limits<int>::max();
