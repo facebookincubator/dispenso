@@ -9,6 +9,43 @@
 
 namespace cv {
 
+template <typename...>
+struct VoidT {
+  using type = void;
+};
+
+// True when It is (at least) an input iterator. Used to keep the iterator-range constructors from
+// matching integral arguments, e.g. ConcurrentVector<int>(5, 3), the way std::vector does.
+template <typename It, typename = void>
+struct IsInputIterator : std::false_type {};
+
+template <typename It>
+struct IsInputIterator<
+    It,
+    typename VoidT<typename std::iterator_traits<It>::iterator_category>::type>
+    : std::is_convertible<
+          typename std::iterator_traits<It>::iterator_category,
+          std::input_iterator_tag> {};
+
+template <typename It>
+using EnableIfInputIterator = typename std::enable_if<IsInputIterator<It>::value>::type;
+
+template <typename It>
+using IteratorCategory = typename std::iterator_traits<It>::iterator_category;
+
+// Debug check that a range has the stated length. Single-pass input ranges cannot be measured
+// without consuming them, so they are not checked.
+template <typename It>
+bool rangeLengthIs(It start, It end, size_t len, std::forward_iterator_tag) {
+  return std::distance(start, end) ==
+      static_cast<typename std::iterator_traits<It>::difference_type>(len);
+}
+
+template <typename It>
+bool rangeLengthIs(It, It, size_t, std::input_iterator_tag) {
+  return true;
+}
+
 struct BucketInfo {
   size_t bucket;
   size_t bucketIndex;

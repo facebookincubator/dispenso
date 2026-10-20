@@ -1619,3 +1619,88 @@ TYPED_TEST(ConcurrentVectorTest, ThrowingElementConstructionDestroysOnlyConstruc
   EXPECT_EQ(ThrowingCopy::live(), 0);
 }
 #endif // __cpp_exceptions
+
+TYPED_TEST(ConcurrentVectorTest, IntegralArgumentsAreNotIterators) {
+  using Vec = dispenso::ConcurrentVector<int, TypeParam>;
+  // The iterator-range constructors must not capture (count, value) pairs of integral type, as
+  // with std::vector.
+  static_assert(std::is_constructible<Vec, int, int>::value, "count/value constructor");
+  static_assert(!std::is_constructible<Vec, int, int, int>::value, "not a sized iterator range");
+  static_assert(std::is_constructible<Vec, const int*, const int*>::value, "iterator range");
+  static_assert(
+      std::is_constructible<Vec, size_t, const int*, const int*>::value, "sized iterator range");
+
+  Vec vec(5, 3);
+  ASSERT_EQ(vec.size(), 5u);
+  for (int v : vec) {
+    EXPECT_EQ(v, 3);
+  }
+
+  vec.assign(4, 7);
+  ASSERT_EQ(vec.size(), 4u);
+  for (int v : vec) {
+    EXPECT_EQ(v, 7);
+  }
+
+  vec.insert(vec.begin() + 1, 2, 9);
+  std::vector<int> expected = {7, 9, 9, 7, 7, 7};
+  ASSERT_EQ(vec.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_EQ(vec[i], expected[i]);
+  }
+
+  const int arr[] = {1, 2, 3};
+  Vec fromRange(std::begin(arr), std::end(arr));
+  Vec fromSizedRange(3, std::begin(arr), std::end(arr));
+  ASSERT_EQ(fromRange.size(), 3u);
+  ASSERT_EQ(fromSizedRange.size(), 3u);
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_EQ(fromRange[i], arr[i]);
+    EXPECT_EQ(fromSizedRange[i], arr[i]);
+  }
+}
+
+TYPED_TEST(ConcurrentVectorTest, SinglePassInputIterators) {
+  using Vec = dispenso::ConcurrentVector<int, TypeParam>;
+  using InIt = std::istream_iterator<int>;
+  auto expectContents = [](const Vec& vec, const std::vector<int>& expected) {
+    ASSERT_EQ(vec.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      EXPECT_EQ(vec[i], expected[i]) << "at index " << i;
+    }
+  };
+
+  std::istringstream ctorStream("1 2 3 4 5");
+  Vec fromRange{InIt(ctorStream), InIt()};
+  expectContents(fromRange, {1, 2, 3, 4, 5});
+
+  std::istringstream sizedStream("6 7 8");
+  Vec fromSizedRange(3, InIt(sizedStream), InIt());
+  expectContents(fromSizedRange, {6, 7, 8});
+
+  Vec vec(size_t{2}, 0);
+  std::istringstream assignStream("9 10 11 12");
+  vec.assign(InIt(assignStream), InIt());
+  expectContents(vec, {9, 10, 11, 12});
+
+  std::istringstream insertStream("20 21 22");
+  auto it = vec.insert(vec.begin() + 1, InIt(insertStream), InIt());
+  EXPECT_EQ(*it, 20);
+  expectContents(vec, {9, 20, 21, 22, 10, 11, 12});
+
+  std::istringstream growStream("30 31");
+  auto grown = vec.grow_by(InIt(growStream), InIt());
+  EXPECT_EQ(*grown, 30);
+  expectContents(vec, {9, 20, 21, 22, 10, 11, 12, 30, 31});
+
+  // A large single-pass range crosses bucket boundaries.
+  std::ostringstream big;
+  std::vector<int> expectedBig;
+  for (int i = 0; i < 5000; ++i) {
+    big << i << ' ';
+    expectedBig.push_back(i);
+  }
+  std::istringstream bigStream(big.str());
+  Vec fromBig{InIt(bigStream), InIt()};
+  expectContents(fromBig, expectedBig);
+}
