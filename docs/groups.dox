@@ -187,16 +187,26 @@
  * ### Example: Latch for Thread Coordination
  * @code
  * #include <dispenso/latch.h>
- * #include <dispenso/parallel_for.h>
+ * #include <dispenso/task_set.h>
  *
  * dispenso::Latch latch(4);  // Wait for 4 threads
  *
- * dispenso::parallel_for(0, 4, [&](size_t) {
+ * // Every participant must be running at once, so give each its own thread.
+ * dispenso::ThreadPool pool(4);
+ * dispenso::TaskSet tasks(pool);
+ * for (int i = 0; i < 4; ++i) {
+ *   tasks.schedule([&]() {
  *     // Do initialization work...
  *     latch.arrive_and_wait();  // Synchronize before continuing
  *     // All threads proceed together from here
- * });
+ *   });
+ * }
+ * tasks.wait();
  * @endcode
+ *
+ * Tasks that block on a Latch occupy their thread while they wait. Run them on a
+ * pool with a thread for each, not on the global pool or inside `parallel_for`,
+ * which may have fewer threads than participants or run several on one thread.
  *
  * ### Example: RWLock for Reader/Writer Access
  * @code

@@ -27,7 +27,11 @@ int main() {
     dispenso::Latch latch(kNumThreads);
     std::atomic<int> readyCount(0);
 
-    dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+    // arrive_and_wait() blocks until every participant has arrived, so all of
+    // them must be running at once: give them a pool with a thread each. On the
+    // global pool, a machine with fewer cores than participants would deadlock.
+    dispenso::ThreadPool pool(kNumThreads);
+    dispenso::ConcurrentTaskSet taskSet(pool);
 
     for (int i = 0; i < kNumThreads; ++i) {
       taskSet.schedule([&latch, &readyCount, i]() {
@@ -101,7 +105,9 @@ int main() {
     std::atomic<int> phase1Sum(0);
     std::atomic<int> phase2Sum(0);
 
-    dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+    // A thread per participant, as in Example 1.
+    dispenso::ThreadPool pool(kNumThreads);
+    dispenso::ConcurrentTaskSet taskSet(pool);
 
     for (int i = 0; i < kNumThreads; ++i) {
       taskSet.schedule([&, i]() {
@@ -125,13 +131,18 @@ int main() {
   // Example 5: Latch as a one-shot gate
   std::cout << "\nExample 5: Latch as a one-shot start gate\n";
   {
+    constexpr int kNumWorkers = 5;
     dispenso::Latch startGate(1);
     std::atomic<int> workersStarted(0);
 
-    dispenso::ConcurrentTaskSet taskSet(dispenso::globalThreadPool());
+    // Each waiting worker holds a thread until the gate opens, so again use a
+    // pool with a thread per worker. On a small global pool, a worker could
+    // run inline here and block this thread on the gate it is about to open.
+    dispenso::ThreadPool pool(kNumWorkers);
+    dispenso::ConcurrentTaskSet taskSet(pool);
 
     // Schedule workers that wait for the start signal
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < kNumWorkers; ++i) {
       taskSet.schedule([&startGate, &workersStarted]() {
         // Wait for start signal
         startGate.wait();
