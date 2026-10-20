@@ -37,7 +37,7 @@ inline std::vector<int> benchmarkThreadCounts() {
   return result;
 }
 
-#if defined(_POSIX_C_SOURCE) || defined(__MACH__)
+#if defined(_POSIX_C_SOURCE) || defined(__APPLE__)
 struct rusage g_rusage;
 
 inline void startRusage() {

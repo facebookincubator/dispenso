@@ -61,7 +61,7 @@ class FutureImplBase;
 } // namespace detail
 
 #if !defined(DISPENSO_WAKEUP_ENABLE)
-#if defined(_WIN32) || defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__)
+#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 #define DISPENSO_WAKEUP_ENABLE 1
 #else
 #define DISPENSO_WAKEUP_ENABLE 0
@@ -332,14 +332,14 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
 
  public:
   // If we are not yet C++17, we provide aligned new/delete to avoid false sharing.
-#if __cplusplus < 201703L
+#if DISPENSO_CPLUSPLUS < 201703L
   static void* operator new(size_t sz) {
     return detail::alignedMallocOrThrow(sz);
   }
   static void operator delete(void* ptr) {
     return detail::alignedFree(ptr);
   }
-#endif // __cplusplus
+#endif // DISPENSO_CPLUSPLUS
 
  private:
   // Per-thread ring buffer type for fork-join scheduling.

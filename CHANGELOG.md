@@ -29,6 +29,7 @@ Unreleased
 * `platform.h` no longer defines the unprefixed `DO_PRAGMA` macro, which could collide with a consumer's own macro of that name; the helper is now `DISPENSO_DO_PRAGMA`.
 * On Windows, dispenso headers no longer leave `_AMD64_`/`_X86_`/`_ARM64_`/`_ARM_` defined in user code, and no longer define `_X86_` alongside an existing `_AMD64_` when `<windows.h>` was included first.
 * `graph.h` no longer declares `callFunctor`, `destroyFunctor` and `ExecutorBase` in a global `detail` namespace, which broke compilation of user code that has its own `::detail` names.
+* Language-version checks now use `_MSVC_LANG` on MSVC (via the new `DISPENSO_CPLUSPLUS` macro), so MSVC builds with `/std:c++17` or later get the C++17/C++20 features (std::optional in `AsyncRequest` and pipelines, C++20 concept constraints, `[[deprecated]]` warnings) without needing `/Zc:__cplusplus`.
 
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.

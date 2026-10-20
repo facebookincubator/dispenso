@@ -7,7 +7,9 @@
 
 #pragma once
 
-#if __cplusplus >= 201703L
+#include <dispenso/platform.h>
+
+#if DISPENSO_CPLUSPLUS >= 201703L
 #include <optional>
 #endif // C++17
 
@@ -280,7 +282,7 @@ struct TransformTraits {
   static constexpr StageClass kStageClass = StageClass::kTransform;
 };
 
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 template <typename T>
 struct TransformTraits<std::optional<T>> {
   static constexpr StageClass kStageClass = StageClass::kOpTransform;
@@ -297,7 +299,7 @@ struct OptionalStrippedTraits {
   using Type = T;
 };
 
-#if __cplusplus >= 201703L
+#if DISPENSO_CPLUSPLUS >= 201703L
 template <typename T>
 struct OptionalStrippedTraits<std::optional<T>> {
   using Type = T;

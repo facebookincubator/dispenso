@@ -109,7 +109,7 @@ class CompletionEventImpl {
   };
 };
 
-#elif defined(__MACH__) && defined(DISPENSO_HAS_OS_SYNC)
+#elif defined(__APPLE__) && defined(DISPENSO_HAS_OS_SYNC)
 
 // Uses a 64-bit combined {status, waiterCount} to eliminate the Dekker race between notify() and
 // wait(). notify() atomically sets status while observing waiterCount via CAS; wait() atomically
