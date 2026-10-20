@@ -55,7 +55,8 @@ endmacro()
 
 file(GLOB TEST_FILES CONFIGURE_DEPENDS "*test.cpp")
 
-#TODO(elliotsegal, bbudge): Help add the shared_pool_test for CMake
+# shared_pool_test checks that two separate shared libraries see the same globalThreadPool(),
+# which only holds when dispenso itself is a shared library; it is registered below.
 LIST(REMOVE_ITEM TEST_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/shared_pool_test.cpp)
 
@@ -72,6 +73,20 @@ foreach(TEST_FILE ${TEST_FILES})
   get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
   package_add_test(${TEST_NAME} unittest ${TEST_FILE})
 endforeach()
+
+if(DISPENSO_SHARED_LIB)
+  # forward_shared_pool.cpp is compiled twice, each copy exporting globalThreadPool()'s address
+  # under its own name, so the test can compare what two independent libraries see.
+  foreach(SUFFIX A B)
+    set(LIB_NAME shared_pool_${SUFFIX})
+    add_library(${LIB_NAME} SHARED forward_shared_pool.cpp)
+    target_compile_definitions(${LIB_NAME} PRIVATE DISPENSO_EXPORT_NAME=sharedPool${SUFFIX})
+    target_link_libraries(${LIB_NAME} PRIVATE dispenso)
+    set_target_properties(${LIB_NAME} PROPERTIES FOLDER tests)
+  endforeach()
+  package_add_test(shared_pool_test unittest ${CMAKE_CURRENT_SOURCE_DIR}/shared_pool_test.cpp)
+  target_link_libraries(shared_pool_test shared_pool_A shared_pool_B)
+endif()
 
 SET(FLAKY_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/priority_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timed_task_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/timing_test.cpp)
 
