@@ -23,6 +23,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <initializer_list>
 #include <new>
 #include <utility>
@@ -73,7 +74,7 @@ class SmallVector {
    * @param count The number of elements.
    **/
   explicit SmallVector(size_type count) : size_(0) {
-    resize(count);
+    constructOrRelease([&]() { resize(count); });
   }
 
   /**
@@ -83,7 +84,7 @@ class SmallVector {
    * @param value The value to copy into each element.
    **/
   SmallVector(size_type count, const T& value) : size_(0) {
-    resize(count, value);
+    constructOrRelease([&]() { resize(count, value); });
   }
 
   /**
@@ -92,18 +93,22 @@ class SmallVector {
    * @param init The initializer list of elements.
    **/
   SmallVector(std::initializer_list<T> init) : size_(0) {
-    ensureCapacity(init.size());
-    for (const auto& v : init) {
-      emplace_back(v);
-    }
+    constructOrRelease([&]() {
+      ensureCapacity(init.size());
+      for (const auto& v : init) {
+        emplace_back(v);
+      }
+    });
   }
 
   /** Copy constructor. **/
   SmallVector(const SmallVector& other) : size_(0) {
-    ensureCapacity(other.rawSize());
-    for (const auto& v : other) {
-      emplace_back(v);
-    }
+    constructOrRelease([&]() {
+      ensureCapacity(other.rawSize());
+      for (const auto& v : other) {
+        emplace_back(v);
+      }
+    });
   }
 
   /** Move constructor. Moves elements and leaves @p other empty. **/
@@ -330,10 +335,7 @@ class SmallVector {
     size_type sz = rawSize();
     if (count > sz) {
       ensureCapacity(count);
-      T* ptr = data();
-      for (size_type i = sz; i < count; ++i) {
-        new (ptr + i) T();
-      }
+      constructRange(data(), sz, count, [](T* p) { new (p) T(); });
       setSize(count);
     } else if (count < sz) {
       T* ptr = data();
@@ -354,11 +356,15 @@ class SmallVector {
   void resize(size_type count, const T& value) {
     size_type sz = rawSize();
     if (count > sz) {
-      ensureCapacity(count);
-      T* ptr = data();
-      for (size_type i = sz; i < count; ++i) {
-        new (ptr + i) T(value);
+      if (count > capacity() && isElement(&value)) {
+        // Growing moves the elements and releases their storage, so value would dangle; fill
+        // from a copy instead (as std::vector supports v.resize(n, v[0])).
+        const T copy(value);
+        resize(count, copy);
+        return;
       }
+      ensureCapacity(count);
+      constructRange(data(), sz, count, [&value](T* p) { new (p) T(value); });
       setSize(count);
     } else if (count < sz) {
       T* ptr = data();
@@ -419,6 +425,50 @@ class SmallVector {
     return reinterpret_cast<const T*>(&storage_.inline_);
   }
 
+  // Whether p points at one of this vector's elements. std::less gives a total order even for
+  // pointers into unrelated objects.
+  bool isElement(const T* p) const noexcept {
+    const T* begin = data();
+    return !std::less<const T*>()(p, begin) && std::less<const T*>()(p, begin + rawSize());
+  }
+
+  // For constructors: run fill(), and if it throws, destroy whatever it built and free any heap
+  // storage before propagating, since the destructor does not run for a constructor that throws.
+  template <typename Fill>
+  void constructOrRelease(Fill fill) {
+#if defined(__cpp_exceptions)
+    try {
+      fill();
+    } catch (...) {
+      destroyAll();
+      throw;
+    }
+#else
+    fill();
+#endif // __cpp_exceptions
+  }
+
+  // Construct ptr[begin, end) by calling construct(ptr + i) for each slot. If one throws, the
+  // elements already built in this range are destroyed before the exception propagates.
+  template <typename Construct>
+  static void constructRange(T* ptr, size_type begin, size_type end, Construct construct) {
+    size_type i = begin;
+#if defined(__cpp_exceptions)
+    try {
+#endif // __cpp_exceptions
+      for (; i < end; ++i) {
+        construct(ptr + i);
+      }
+#if defined(__cpp_exceptions)
+    } catch (...) {
+      for (size_type j = begin; j < i; ++j) {
+        ptr[j].~T();
+      }
+      throw;
+    }
+#endif // __cpp_exceptions
+  }
+
   void destroyAll() noexcept {
     T* ptr = data();
     size_type sz = rawSize();
@@ -461,19 +511,55 @@ class SmallVector {
   }
 
   // Grow to heap storage with the specified capacity.
-  // Moves existing elements, frees old heap if applicable, sets heap bit.
+  // Moves existing elements, frees old heap if applicable, sets heap bit. If transferring an
+  // element throws, the new storage is freed and the vector is left as it was.
   void growToHeap(size_type newCap) {
-    adoptHeap(allocate(newCap), newCap);
+    T* newData = allocate(newCap);
+#if defined(__cpp_exceptions)
+    try {
+      transferTo(newData);
+    } catch (...) {
+      deallocate(newData);
+      throw;
+    }
+#else
+    transferTo(newData);
+#endif // __cpp_exceptions
+    adoptHeap(newData, newCap);
   }
 
-  // Move the existing elements into newData (capacity newCap), free the old heap storage if any,
-  // and switch to heap mode using newData.
-  void adoptHeap(T* newData, size_type newCap) {
+  // Construct the existing elements in newData, moving them when T's move constructor cannot throw
+  // and copying them otherwise (std::move_if_noexcept, as std::vector does). If a construction
+  // throws, the elements constructed in newData so far are destroyed and the exception propagates
+  // with the existing elements intact (unless T is move-only with a throwing move constructor, in
+  // which case some of them may have been moved from). newData is left for the caller to free.
+  void transferTo(T* newData) {
+    T* oldData = data();
+    size_type sz = rawSize();
+    size_type i = 0;
+#if defined(__cpp_exceptions)
+    try {
+#endif // __cpp_exceptions
+      for (; i < sz; ++i) {
+        new (newData + i) T(std::move_if_noexcept(oldData[i]));
+      }
+#if defined(__cpp_exceptions)
+    } catch (...) {
+      for (size_type j = 0; j < i; ++j) {
+        newData[j].~T();
+      }
+      throw;
+    }
+#endif // __cpp_exceptions
+  }
+
+  // Commit after a successful transferTo(newData): destroy the old elements, free the old heap
+  // storage if any, and switch to heap mode using newData (capacity newCap).
+  void adoptHeap(T* newData, size_type newCap) noexcept {
     T* oldData = data();
     size_type sz = rawSize();
 
     for (size_type i = 0; i < sz; ++i) {
-      new (newData + i) T(std::move(oldData[i]));
       oldData[i].~T();
     }
 
@@ -488,7 +574,8 @@ class SmallVector {
 
   // emplace_back() when full: grow to newCap and append. The new element is constructed in the new
   // storage before the existing elements are moved out of the old storage, because args may refer
-  // to one of those elements (e.g. v.push_back(v[0])).
+  // to one of those elements (e.g. v.push_back(v[0])). If anything throws, the new storage is freed
+  // and the vector is left as it was.
   template <typename... Args>
   reference growAndEmplaceBack(size_type newCap, Args&&... args) {
     T* newData = allocate(newCap);
@@ -500,8 +587,16 @@ class SmallVector {
       deallocate(newData);
       throw;
     }
+    try {
+      transferTo(newData);
+    } catch (...) {
+      newData[sz].~T();
+      deallocate(newData);
+      throw;
+    }
 #else
     new (newData + sz) T(std::forward<Args>(args)...);
+    transferTo(newData);
 #endif // __cpp_exceptions
     adoptHeap(newData, newCap);
     ++size_; // Preserves heap bit
