@@ -1201,6 +1201,15 @@ HTML_EXTRA_STYLESHEET  = third-party/doxygen-awesome/doxygen-awesome.css custom.
 
 HTML_EXTRA_FILES       = third-party/doxygen-awesome/doxygen-awesome-darkmode-toggle.js
 
+# The HTML_COLORSTYLE tag specifies if the generated HTML output should be
+# rendered with a dark or light theme. doxygen-awesome provides the dark theme
+# itself (via doxygen-awesome-darkmode-toggle.js, loaded from header.html), so
+# doxygen's own dark style must stay off to avoid two competing dark themes.
+# Possible values are: LIGHT, DARK, AUTO_LIGHT, AUTO_DARK and TOGGLE.
+# This tag requires that the tag GENERATE_HTML is set to YES.
+
+HTML_COLORSTYLE        = LIGHT
+
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output. Doxygen
 # will adjust the colors in the style sheet and background images according to
 # this color. Hue is specified as an angle on a colorwheel, see
