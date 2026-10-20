@@ -6,6 +6,9 @@ Unreleased
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
 
+### Benchmarks
+* The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
+
 1.6.2 (August 19, 2026)
 
 ### Bug fixes

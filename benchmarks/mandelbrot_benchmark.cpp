@@ -112,8 +112,9 @@ void BM_serial(benchmark::State& state) {
     for (int i = 0; i < numPixels; ++i) {
       sum += pixelIters(i, dim, vp);
     }
+    // Each iteration overwrites sum; keep every iteration's work live, not just the last.
+    benchmark::DoNotOptimize(sum);
   }
-  benchmark::DoNotOptimize(sum);
 }
 
 template <Region region>
