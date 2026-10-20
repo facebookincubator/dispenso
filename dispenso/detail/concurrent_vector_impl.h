@@ -259,7 +259,7 @@ class CompactCVecIterator : public CompactCVecIterBase<VecT, T> {
 
 template <typename T>
 inline T* alloc(size_t elts) {
-  return reinterpret_cast<T*>(detail::alignedMalloc(elts * sizeof(T), alignof(T)));
+  return reinterpret_cast<T*>(detail::alignedMallocOrThrow(elts * sizeof(T), alignof(T)));
 }
 
 template <typename T>

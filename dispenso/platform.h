@@ -17,6 +17,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <memory>
+#include <new>
 #include <thread>
 #include <type_traits>
 
@@ -228,9 +229,16 @@ struct AlignedBuffer {
 template <typename T>
 struct alignas(kCacheLineSize) AlignedAtomic : public std::atomic<T*> {};
 
+// Returns nullptr if the allocation fails (or bytes + alignment overflows), like malloc.
 inline void* alignedMalloc(size_t bytes, size_t alignment) {
   alignment = std::max(alignment, sizeof(uintptr_t));
+  if (bytes > ~size_t{0} - alignment) {
+    return nullptr;
+  }
   char* ptr = reinterpret_cast<char*>(::malloc(bytes + alignment));
+  if (!ptr) {
+    return nullptr;
+  }
   uintptr_t base = reinterpret_cast<uintptr_t>(ptr);
   uintptr_t oldBase = base;
   uintptr_t mask = alignment - 1;
@@ -244,6 +252,24 @@ inline void* alignedMalloc(size_t bytes, size_t alignment) {
 
 inline void* alignedMalloc(size_t bytes) {
   return alignedMalloc(bytes, kCacheLineSize);
+}
+
+// alignedMalloc with operator new semantics, for callers that do not check for nullptr: throws
+// std::bad_alloc on failure (aborts when built without exceptions) and never returns nullptr.
+inline void* alignedMallocOrThrow(size_t bytes, size_t alignment) {
+  void* ptr = alignedMalloc(bytes, alignment);
+  if (DISPENSO_EXPECT(ptr == nullptr, false)) {
+#if defined(__cpp_exceptions)
+    throw std::bad_alloc();
+#else
+    std::abort();
+#endif // __cpp_exceptions
+  }
+  return ptr;
+}
+
+inline void* alignedMallocOrThrow(size_t bytes) {
+  return alignedMallocOrThrow(bytes, kCacheLineSize);
 }
 
 inline void alignedFree(void* ptr) {
@@ -286,7 +312,7 @@ struct AlignedArrayFreeDeleter {
 // Constructor/destructor loops are elided for trivial types.
 template <typename T>
 std::unique_ptr<T[], AlignedArrayFreeDeleter<T>> makeAlignedArray(size_t n) {
-  void* raw = detail::alignedMalloc(sizeof(T) * n, alignof(T));
+  void* raw = detail::alignedMallocOrThrow(sizeof(T) * n, alignof(T));
   T* arr = static_cast<T*>(raw);
   for (size_t i = 0; i < n; ++i) {
     new (&arr[i]) T();
@@ -297,14 +323,14 @@ std::unique_ptr<T[], AlignedArrayFreeDeleter<T>> makeAlignedArray(size_t n) {
 // Allocate a single object of T with alignof(T) alignment.
 template <typename T, class... Args>
 std::unique_ptr<T, AlignedFreeDeleter<T>> makeAligned(Args&&... args) {
-  void* raw = detail::alignedMalloc(sizeof(T), alignof(T));
+  void* raw = detail::alignedMallocOrThrow(sizeof(T), alignof(T));
   T* obj = new (raw) T(std::forward<Args>(args)...);
   return std::unique_ptr<T, AlignedFreeDeleter<T>>(obj);
 }
 
 template <typename T, class... Args>
 std::shared_ptr<T> make_shared(Args&&... args) {
-  void* tv = alignedMalloc(sizeof(T), alignof(T));
+  void* tv = alignedMallocOrThrow(sizeof(T), alignof(T));
   T* t = new (tv) T(std::forward<Args>(args)...);
   return std::shared_ptr<T>(t, AlignedFreeDeleter<T>());
 }
