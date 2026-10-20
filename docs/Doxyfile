@@ -912,7 +912,7 @@ EXCLUDE_SYMBOLS        = dispenso::detail::* \
                          numIncompletePredecessors_ \
                          numPredecessors_ \
                          dependsOnOneNode \
-                         DO_PRAGMA \
+                         DISPENSO_DO_PRAGMA \
                          dispenso::cv::* \
                          *cv::* \
                          alloc \
