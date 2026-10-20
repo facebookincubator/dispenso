@@ -30,6 +30,9 @@ Unreleased
 * `graph.h` no longer declares `callFunctor`, `destroyFunctor` and `ExecutorBase` in a global `detail` namespace, which broke compilation of user code that has its own `::detail` names.
 * `ConcurrentVector` range construction, `assign`, `insert` and `grow_by` now work with single-pass input iterators such as `std::istream_iterator`. They measured the range with `std::distance` before reading it, which consumes a single-pass range, so the vector got the wrong contents; the sized range constructor did the same in debug builds through its assert.
 
+### Documentation
+* The Latch example and the API reference's Latch snippet ran tasks that block in `arrive_and_wait()` on the global thread pool or inside `parallel_for`, so they deadlocked whenever fewer threads were available than participants; the example hung on 4-core machines. They now give the participants a pool with a thread for each, and the API reference explains why. `Latch` itself is unchanged; any blocking barrier deadlocks the same way when its participants can't all run at once.
+
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
 
