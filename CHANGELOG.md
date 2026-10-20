@@ -35,6 +35,13 @@ Unreleased
 ### Documentation
 * The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
 
+### Build system
+* Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so Windows consumers compile dispenso's headers with `__declspec(dllimport)` as intended. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
+* Projects that vendor dispenso through `add_subdirectory()` or `FetchContent` can now link `Dispenso::dispenso`, the same target name an installed dispenso exports, so switching between a vendored and an installed copy no longer means editing the consuming CMake. The plain `dispenso` target still works.
+* dispenso no longer forces C++14 on a project that includes it with `add_subdirectory()` or `FetchContent`. It used to write `CMAKE_CXX_STANDARD=14` to the cache unconditionally, so parent targets created afterwards were built as C++14 (a downgrade from the C++17 default of current GCC and Clang), and a parent's own `CMAKE_CXX_STANDARD` was ignored inside dispenso. As a subproject dispenso now follows the parent's standard, and still requires at least C++14 through `target_compile_features`. Standalone builds still default to C++14.
+* `DISPENSO_WERROR` now defaults to OFF when dispenso is built as part of another project through `add_subdirectory()` or `FetchContent`, so a warning that only the consumer's (possibly newer) compiler emits no longer fails the consumer's build. Standalone builds still default to ON; vendored builds can opt in with `-DDISPENSO_WERROR=ON`. `docs/building.md` now lists how subproject builds differ from standalone ones.
+* A project that adds dispenso with `add_subdirectory()` or `FetchContent` can set dispenso's options as normal variables (e.g. `set(DISPENSO_WERROR ON)`) and have them take effect on the first configure. dispenso now sets policies CMP0077 and CMP0126 to NEW; before, `option()` and `set(... CACHE ...)` dropped such variables when first creating the cache entry, so they were ignored on the first configure and honoured on later ones. Only dispenso's own directories are affected. Note that `ADDRESS_SANITIZER` and `THREAD_SANITIZER` are generic names: a parent's normal variable of that name now also enables sanitizers for dispenso's targets.
+
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
 
