@@ -12,6 +12,13 @@ macro(add_example EXAMPLE_NAME)
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_NAME}.cpp)
     target_link_libraries(${EXAMPLE_NAME} dispenso)
     target_compile_features(${EXAMPLE_NAME} PRIVATE cxx_std_14)
+    # Same warnings as the library and tests; fatal under DISPENSO_WERROR.
+    target_compile_options(${EXAMPLE_NAME} PRIVATE
+      $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4316>
+      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion>
+      $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+      $<$<AND:$<BOOL:${DISPENSO_WERROR}>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>
+    )
 
     # Examples that announce completion must get there.
     file(STRINGS ${EXAMPLE_NAME}.cpp _example_done REGEX "completed successfully")

@@ -54,6 +54,8 @@ Unreleased
 * Building with `DISPENSO_BUILD_EXAMPLES=ON` now registers each example as a ctest smoke test (label `example`), and CI runs them. An example fails if it exits non-zero, prints a result that disagrees with the value it says it expected, or never reaches its closing success line; previously the examples were only compiled, which is how a crash in `pipeline_example` went unnoticed.
 * CI now builds the benchmarks (with TBB and OpenMP available) and checks that each binary starts, so breakage in benchmark sources or their dependency discovery is caught on the pull request that causes it. No timings are taken.
 * CI now builds a small external project against installed dispenso packages (shared, static, and with `DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON`) using `find_package(Dispenso)` and `Dispenso::dispenso`, so breakage in the exported CMake package is caught before release.
+* Benchmarks and examples are now compiled with the same warning flags as the library (`-Wall -Wextra -pedantic -Wconversion -Wno-sign-conversion`, `/W3` on MSVC), and warnings are fatal when `DISPENSO_WERROR` is on. Previously they were built with no warning flags at all. Taskflow's headers are included as system headers so they do not trip these warnings.
+* `DISPENSO_WERROR=OFF` now also applies to the tests, which previously forced `-Werror` (`/WX` on MSVC) regardless, so turning the option off did not stop a new warning from failing a build with `DISPENSO_BUILD_TESTS=ON`.
 
 ### Benchmarks
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.

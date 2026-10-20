@@ -36,20 +36,19 @@ uint32_t getInputs(int numElements) {
 }
 
 inline uint64_t calculate(uint64_t input, uint64_t index, size_t foo) {
-  return std::cos(
-      std::log(
-          std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input))))));
+  return static_cast<uint64_t>(std::cos(std::log(
+      std::sin(std::exp(std::sqrt(static_cast<double>((input ^ index) - 3 * foo * input)))))));
 }
 
 uint64_t calculateInnerSerial(uint64_t input, size_t foo, int numElements) {
   uint64_t sum = 0;
-  for (size_t i = 0; i < kWorkMultiplier * numElements; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(kWorkMultiplier * numElements); ++i) {
     sum += calculate(input, i, foo);
   }
   return sum;
 }
 
-void checkResults(uint32_t input, uint64_t actual, int foo, size_t numElements) {
+void checkResults(uint32_t input, uint64_t actual, int foo, int numElements) {
   if (!foo)
     return;
   if (input != getInputs(numElements)) {
@@ -57,7 +56,7 @@ void checkResults(uint32_t input, uint64_t actual, int foo, size_t numElements) 
     abort();
   }
   uint64_t expected = 0;
-  for (size_t i = 0; i < numElements; ++i) {
+  for (int i = 0; i < numElements; ++i) {
     expected += calculateInnerSerial(input, foo, numElements);
   }
   if (expected != actual) {
@@ -110,8 +109,8 @@ uint64_t calculateInnerDispensoAuto(uint64_t input, size_t foo, int numElements)
 }
 
 void BM_dispenso_auto(benchmark::State& state) {
-  g_numThreads = state.range(0) - 1;
-  const int numElements = state.range(1);
+  g_numThreads = static_cast<int>(state.range(0) - 1);
+  const int numElements = static_cast<int>(state.range(1));
 
   dispenso::resizeGlobalThreadPool(g_numThreads);
 
@@ -159,8 +158,8 @@ uint64_t calculateInnerOmp(uint64_t input, size_t foo, int numElements) {
 }
 
 void BM_omp(benchmark::State& state) {
-  g_numThreads = state.range(0);
-  const int numElements = state.range(1);
+  g_numThreads = static_cast<int>(state.range(0));
+  const int numElements = static_cast<int>(state.range(1));
 
   omp_set_num_threads(g_numThreads);
 
@@ -195,8 +194,8 @@ uint64_t calculateInnerTbb(uint64_t input, size_t foo, int numElements) {
 }
 
 void BM_tbb(benchmark::State& state) {
-  g_numThreads = state.range(0);
-  const int numElements = state.range(1);
+  g_numThreads = static_cast<int>(state.range(0));
+  const int numElements = static_cast<int>(state.range(1));
 
   uint64_t sum = 0;
 

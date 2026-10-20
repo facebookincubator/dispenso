@@ -197,7 +197,7 @@ static constexpr int32_t kMediumSize = 100000;
 static constexpr int32_t kLargeSize = 10000000;
 
 void BM_serial(benchmark::State& state) {
-  const int32_t totalPixels = state.range(0);
+  const int32_t totalPixels = static_cast<int32_t>(state.range(0));
   auto& ib = getImageBuffers(totalPixels);
 
   for (auto UNUSED_VAR : state) {
@@ -213,8 +213,8 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_dispenso_blocking(benchmark::State& state) {
-  const int32_t numThreads = state.range(0) - 1;
-  const int32_t totalPixels = state.range(1);
+  const int32_t numThreads = static_cast<int32_t>(state.range(0) - 1);
+  const int32_t totalPixels = static_cast<int32_t>(state.range(1));
   auto& ib = getImageBuffers(totalPixels);
 
   dispenso::ThreadPool pool(numThreads);
@@ -229,8 +229,8 @@ void BM_dispenso_blocking(benchmark::State& state) {
 }
 
 void BM_dispenso_cascaded(benchmark::State& state) {
-  const int32_t numThreads = state.range(0) - 1;
-  const int32_t totalPixels = state.range(1);
+  const int32_t numThreads = static_cast<int32_t>(state.range(0) - 1);
+  const int32_t totalPixels = static_cast<int32_t>(state.range(1));
   auto& ib = getImageBuffers(totalPixels);
 
   dispenso::ThreadPool pool(numThreads);
@@ -250,8 +250,8 @@ void BM_dispenso_cascaded(benchmark::State& state) {
 
 #if defined(_OPENMP)
 void BM_omp(benchmark::State& state) {
-  const int32_t numThreads = state.range(0);
-  const int32_t totalPixels = state.range(1);
+  const int32_t numThreads = static_cast<int32_t>(state.range(0));
+  const int32_t totalPixels = static_cast<int32_t>(state.range(1));
   auto& ib = getImageBuffers(totalPixels);
 
   omp_set_num_threads(numThreads);
@@ -273,8 +273,8 @@ void BM_omp(benchmark::State& state) {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb(benchmark::State& state) {
-  const int32_t numThreads = state.range(0);
-  const int32_t totalPixels = state.range(1);
+  const int32_t numThreads = static_cast<int32_t>(state.range(0));
+  const int32_t totalPixels = static_cast<int32_t>(state.range(1));
   auto& ib = getImageBuffers(totalPixels);
 
   for (auto UNUSED_VAR : state) {
@@ -297,8 +297,8 @@ void BM_tbb(benchmark::State& state) {
 }
 
 void BM_tbb_task_group(benchmark::State& state) {
-  const int32_t numThreads = state.range(0);
-  const int32_t totalPixels = state.range(1);
+  const int32_t numThreads = static_cast<int32_t>(state.range(0));
+  const int32_t totalPixels = static_cast<int32_t>(state.range(1));
   auto& ib = getImageBuffers(totalPixels);
 
   for (auto UNUSED_VAR : state) {

@@ -65,8 +65,8 @@ void BM_serial(benchmark::State& state) {
 }
 
 void BM_for_each_n(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0) - 1);
+  const int num_elements = static_cast<int>(state.range(1));
 
   std::vector<int> output(num_elements, 0);
   dispenso::ThreadPool pool(num_threads);

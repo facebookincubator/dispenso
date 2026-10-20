@@ -55,11 +55,13 @@ int main() {
   // Example 2: Diamond dependency pattern
   std::cout << "\nExample 2: Diamond dependency pattern\n";
   {
-    //         A
-    //        / \
-    //       B   C
-    //        \ /
-    //         D
+    /*
+     *        A
+     *       / \
+     *      B   C
+     *       \ /
+     *        D
+     */
     std::array<float, 5> r = {0, 0, 0, 0, 0};
 
     dispenso::Graph graph;
