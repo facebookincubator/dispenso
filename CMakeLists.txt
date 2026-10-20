@@ -190,5 +190,8 @@ if(DISPENSO_BUILD_BENCHMARKS)
 endif()
 
 if(DISPENSO_BUILD_EXAMPLES)
+  # The examples register smoke tests, so ctest must be enabled even when the
+  # unit tests are not built.
+  enable_testing()
   add_subdirectory(examples)
 endif()
