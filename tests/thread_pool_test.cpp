@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -234,9 +237,6 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 
   std::vector<int64_t> outputs(kItemsPerRound, 0);
 
-  std::mutex mtx;
-  std::set<std::thread::id> tidSet;
-
   dispenso::ThreadPool pool(1);
 
   pool.resize(8);
@@ -247,11 +247,9 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 
     int64_t i = 0;
     for (int64_t& o : outputs) {
-      pool.schedule([i, &o, &completed, &mtx, &tidSet]() {
+      pool.schedule([i, &o, &completed]() {
         o = i * i;
         completed.fetch_add(1, std::memory_order_release);
-        std::lock_guard<std::mutex> lk(mtx);
-        tidSet.insert(std::this_thread::get_id());
       });
       ++i;
     }
@@ -276,15 +274,58 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
     }
   }
 
-  // We choose > 2 because there is 1 original thread, and one schedule thread (main thread). In
-  // order to not have an occasional flake, we choose much lower than 8, though this test is
-  // fundamentally flawed in that it cannot guarantee flake-free behavior.  Thus we turn this
-  // particular check off when running in TSAN.
-#if !DISPENSO_HAS_TSAN
-  EXPECT_GT(tidSet.size(), 2);
-#endif //! DISPENSO_HAS_TSAN
-
   EXPECT_THAT(static_cast<int>(pool.numThreads()), AnyOf(Eq(4), Eq(8)));
+
+  // Every thread that resize() added must run work. Counting the threads that ran the rounds above
+  // can't show that: on a machine with few cores, one worker and the scheduling thread can drain
+  // every round between them. Instead, schedule one probe per pool thread. Each probe records its
+  // thread, then waits until every pool thread has checked in, so no thread can run a second
+  // probe and the probes complete only if all the threads run one. ForceQueuingTag keeps the
+  // probes off this thread. The probes share state through a shared_ptr because, if the check
+  // fails, probes that never started still run during the pool's destruction.
+  struct Probe {
+    std::mutex mtx;
+    std::set<std::thread::id> tids;
+    std::atomic<size_t> done{0};
+  };
+  auto probe = std::make_shared<Probe>();
+  const size_t numThreads = static_cast<size_t>(pool.numThreads());
+  const auto probeDeadline = std::chrono::steady_clock::now() + kRoundTimeout;
+  auto threadsSeen = [&probe]() {
+    std::lock_guard<std::mutex> lk(probe->mtx);
+    return probe->tids.size();
+  };
+  for (size_t p = 0; p < numThreads; ++p) {
+    pool.schedule(
+        [probe, numThreads, probeDeadline]() {
+          {
+            std::lock_guard<std::mutex> lk(probe->mtx);
+            probe->tids.insert(std::this_thread::get_id());
+          }
+          for (;;) {
+            {
+              std::lock_guard<std::mutex> lk(probe->mtx);
+              if (probe->tids.size() >= numThreads) {
+                break;
+              }
+            }
+            if (std::chrono::steady_clock::now() >= probeDeadline) {
+              break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          probe->done.fetch_add(1, std::memory_order_release);
+        },
+        dispenso::ForceQueuingTag());
+  }
+  while (probe->done.load(std::memory_order_acquire) < numThreads) {
+    if (std::chrono::steady_clock::now() >= probeDeadline + std::chrono::seconds(1)) {
+      FAIL() << "only " << threadsSeen() << " of " << numThreads
+             << " pool threads ran a probe task after resize";
+    }
+    std::this_thread::yield();
+  }
+  EXPECT_EQ(threadsSeen(), numThreads);
 }
 
 TEST_P(ThreadPoolTest, CrossPoolTest) {
