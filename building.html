@@ -102,7 +102,7 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
   <div class="headertitle"><div class="title">Building Dispenso</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="md_building"></a> Dispenso uses CMake as its build system for open-source builds. Internally at Meta, the Buck build system is used, but Buck build files are not shipped externally.</p>
+<div class="textblock"><p><a class="anchor" id="md_building"></a> Dispenso builds with CMake. A copy is also built with Buck inside Meta's monorepo; no Buck files ship in this repository.</p>
 <p>Improvements to the CMake build and build files for additional build systems are welcome, as are instructions for building on other platforms (BSD variants, Windows+Clang, etc).</p>
 <h1>Prerequisites</h1>
 <h2>CMake</h2>
@@ -223,7 +223,7 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 </div><!-- fragment --><p>Visual Studio generators build several configurations into one build tree, so <code>ctest</code> needs <code>-C</code> to say which one to test; without it, no tests are found.</p>
 <h1>Benchmarking</h1>
 <p>Dispenso has several benchmarks that can optionally benchmark against OpenMP, TBB, and/or Folly. When benchmarks are enabled via <code>-DDISPENSO_BUILD_BENCHMARKS=ON</code>, the build will attempt to find these libraries and enable their variants if found. None of these are dependencies of the dispenso library itself — only the benchmark binaries.</p>
-<p>The Folly variant is off by default due to common build issues across Folly releases. However, the Folly benchmarks do run successfully on Meta's internal platform.</p>
+<p>The Folly variant is off by default due to common build issues across Folly releases; it builds in environments that pin a compatible Folly.</p>
 <p>OpenMP should already be available on most platforms that support it. TBB can be installed via e.g. <code>sudo dnf install tbb-devel</code>.</p>
 <h2>Linux and macOS</h2>
 <div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>

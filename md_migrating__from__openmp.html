@@ -363,9 +363,9 @@ $(function(){initNavTree('md_migrating__from__openmp.html',''); initResizable(tr
 <div class="line">        }</div>
 <div class="line">    });</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">// Dynamic-like (auto) chunking - adapts to workload</span></div>
+<div class="line"><span class="comment">// Dynamic-like (adaptive) chunking - adapts to workload</span></div>
 <div class="line"><a class="code hl_function" href="parallel__for_8h.html#a8201f4fc565c557f5cbaf6b4403991b1">dispenso::parallel_for</a>(</div>
-<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),</div>
+<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),</div>
 <div class="line">    [&amp;](<span class="keywordtype">size_t</span> begin, <span class="keywordtype">size_t</span> end) {</div>
 <div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = begin; i &lt; end; ++i) {</div>
 <div class="line">            process(data[i]);</div>
