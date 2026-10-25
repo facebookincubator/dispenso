@@ -70,6 +70,9 @@ void BM_serial(benchmark::State& state) {
     for (size_t i = 0; i < num_elements; ++i) {
       sum += input[i] * input[i] - 3 * foo * input[i];
     }
+    // Each iteration overwrites sum, so without this every iteration but the last is dead code
+    // and the compiler may elide the work being timed.
+    benchmark::DoNotOptimize(sum);
   }
   checkResults(input, sum, foo);
 }
