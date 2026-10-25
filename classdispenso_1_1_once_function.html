@@ -188,7 +188,7 @@ template&lt;typename F &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00075">75</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00070">70</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -214,9 +214,9 @@ template&lt;typename F &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Move constructor. Copies the full 64-byte object (one cache line). </p>
+<p>Move constructor. Copies the full 64-byte object (one cache line), except for inline functors that are not trivially copyable, which are move-constructed into place. </p>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00083">83</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00078">78</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
@@ -245,7 +245,7 @@ template&lt;typename F &gt; </div>
 </div><div class="memdoc">
 <p>Destroy the type-erased functor and release its resources without invoking it. Use this when a <a class="el" href="classdispenso_1_1_once_function.html">OnceFunction</a> will not be called but its resources must still be freed. Like operator(), this must be called at most once, and the <a class="el" href="classdispenso_1_1_once_function.html">OnceFunction</a> must not be used after. </p>
 
-<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00110">110</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="once__function_8h_source.html#l00099">99</a> of file <a class="el" href="once__function_8h_source.html">once_function.h</a>.</p>
 
 </div>
 </div>
