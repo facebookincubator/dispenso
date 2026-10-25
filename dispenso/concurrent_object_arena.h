@@ -15,10 +15,13 @@
 
 #include <dispenso/platform.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <cstring>
 #include <mutex>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace detail {
@@ -52,6 +55,15 @@ namespace dispenso {
  *    │*├───>│                              │
  *    └─┘    └──────────────────────────────┘
  *</pre>
+ *
+ * Elements are default-constructed by grow_by() and destroyed when the arena is
+ * destroyed or assigned over. Copying an arena requires <code>T</code> to be
+ * trivially copyable.
+ *
+ * If an element's constructor throws, grow_by() destroys the elements it had
+ * already built and rethrows. The slots it reserved stay inside size() (which
+ * never decreases) as a gap that holds no objects: the caller must not access
+ * them, and the arena skips them when destroying its elements.
  **/
 template <class T, class Index = size_t, size_t alignment = dispenso::kCacheLineSize>
 struct ConcurrentObjectArena {
@@ -91,13 +103,16 @@ struct ConcurrentObjectArena {
         pos_(other.pos_.load(std::memory_order_relaxed)),
         allocatedSize_(other.allocatedSize_.load(std::memory_order_relaxed)),
         buffersSize_(other.buffersSize_),
-        buffersPos_(other.buffersPos_) {
+        buffersPos_(other.buffersPos_),
+        gaps_(other.gaps_) {
     static_assert(
         std::is_trivially_copyable<T>::value,
         "ConcurrentObjectArena copy constructor uses memcpy; T must be trivially copyable.");
     T** otherBuffers = other.buffers_.load(std::memory_order_acquire);
     T** newBuffers = new T*[buffersSize_];
-    for (Index i = 0; i < buffersSize_; ++i) {
+    // Only the first buffersPos_ slots of the pointer table hold buffers; the rest are
+    // uninitialized spare capacity, filled in by allocateBuffer() as the arena grows.
+    for (Index i = 0; i < buffersPos_; ++i) {
       void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
 #if defined(__cpp_exceptions)
       if (ptr == nullptr)
@@ -126,6 +141,8 @@ struct ConcurrentObjectArena {
 
   ~ConcurrentObjectArena() {
     T** buffers = buffers_.load(std::memory_order_acquire);
+
+    destroyObjects(buffers);
 
     for (Index i = 0; i < buffersPos_; i++)
       detail::alignedFree(buffers[i]);
@@ -160,6 +177,9 @@ struct ConcurrentObjectArena {
    * This function is thread safe and never invalidates pointers or
    * references to the rest of the elements. It is lock-free if new elements
    * can be placed in current buffer. It locks if it allocates a new buffer.
+   * The new elements are default-constructed. If a constructor throws, the
+   * elements already built by this call are destroyed and the exception is
+   * rethrown; the reserved slots are left as a gap (see the class documentation).
    * @param delta New size of the container will be <code>delta</code> elements bigger.
    * @return index of the first element of the allocated group.
    **/
@@ -184,7 +204,18 @@ struct ConcurrentObjectArena {
     } while (!std::atomic_compare_exchange_weak_explicit(
         &pos_, &oldPos, newPos, std::memory_order_release, std::memory_order_relaxed));
 
-    constructObjects(oldPos, oldPos + delta);
+    Index built = oldPos;
+#if defined(__cpp_exceptions)
+    try {
+      constructObjects(oldPos, newPos, built);
+    } catch (...) {
+      destroyRange(buffers_.load(std::memory_order_acquire), oldPos, built);
+      recordGap(oldPos, newPos);
+      throw;
+    }
+#else
+    constructObjects(oldPos, newPos, built);
+#endif // __cpp_exceptions
 
     return oldPos;
   }
@@ -305,6 +336,7 @@ struct ConcurrentObjectArena {
     swap(lhs.buffersSize_, rhs.buffersSize_);
     swap(lhs.buffersPos_, rhs.buffersPos_);
     swap(lhs.deleteLater_, rhs.deleteLater_);
+    swap(lhs.gaps_, rhs.gaps_);
   }
 
  private:
@@ -334,7 +366,9 @@ struct ConcurrentObjectArena {
     }
   }
 
-  void constructObjects(const Index beginIndex, const Index endIndex) {
+  // Constructs [beginIndex, endIndex). built tracks one past the last constructed element, so a
+  // caller can destroy exactly those if a constructor throws.
+  void constructObjects(const Index beginIndex, const Index endIndex, Index& built) {
     const Index startBuffer = beginIndex >> kLog2BuffSize;
     const Index endBuffer = endIndex >> kLog2BuffSize;
 
@@ -342,11 +376,41 @@ struct ConcurrentObjectArena {
     for (Index b = startBuffer; b <= endBuffer; ++b) {
       T* buf = buffers_.load(std::memory_order_acquire)[b];
       const Index bufEnd = b == endBuffer ? (endIndex & kMask) : kBufferSize;
-      for (Index i = bufStart; i < bufEnd; ++i)
+      for (Index i = bufStart; i < bufEnd; ++i) {
         new (buf + i) T();
+        built = (b << kLog2BuffSize) + i + 1;
+      }
 
       bufStart = 0;
     }
+  }
+
+  void destroyRange(T** buffers, Index beginIndex, const Index endIndex) {
+    for (; beginIndex < endIndex; ++beginIndex) {
+      buffers[beginIndex >> kLog2BuffSize][beginIndex & kMask].~T();
+    }
+  }
+
+  // Destroys every element, skipping gaps left by constructors that threw. Not concurrency safe.
+  void destroyObjects(T** buffers) {
+    if (std::is_trivially_destructible<T>::value || buffers == nullptr) {
+      return;
+    }
+    std::sort(gaps_.begin(), gaps_.end());
+    const Index end = pos_.load(std::memory_order_relaxed);
+    Index next = 0;
+    for (const std::pair<Index, Index>& gap : gaps_) {
+      destroyRange(buffers, next, gap.first);
+      next = gap.second;
+    }
+    destroyRange(buffers, next, end);
+  }
+
+  // Records [beginIndex, endIndex), reserved by a grow_by() whose constructor threw, as holding no
+  // objects.
+  void recordGap(const Index beginIndex, const Index endIndex) {
+    const std::lock_guard<std::mutex> guard(resizeMutex_);
+    gaps_.emplace_back(beginIndex, endIndex);
   }
   //
   //    kBufferSize = 2^kLog2BuffSize
@@ -367,6 +431,8 @@ struct ConcurrentObjectArena {
   Index buffersSize_;
   Index buffersPos_;
   std::vector<T**> deleteLater_;
+  // Index ranges reserved by a grow_by() whose constructor threw. They hold no objects.
+  std::vector<std::pair<Index, Index>> gaps_;
 };
 
 } // namespace dispenso
