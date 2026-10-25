@@ -133,7 +133,28 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <p>All commands should be run from the Developer Command Prompt (install Build Tools for Visual Studio). </p><div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
 <div class="line">cmake PATH_TO_DISPENSO_ROOT</div>
 <div class="line">cmake --build . --config Release</div>
-</div><!-- fragment --><h1>Build Options Affecting Linkage</h1>
+</div><!-- fragment --><h2>With CMake presets</h2>
+<p>With CMake 3.21 or newer, the presets in <code>CMakePresets.json</code> replace the commands above. Each builds into <code>build/&lt;preset&gt;</code> under the source tree:</p>
+<div class="fragment"><div class="line">cmake --preset dev</div>
+<div class="line">cmake --build --preset dev</div>
+<div class="line">ctest --preset dev</div>
+</div><!-- fragment --><table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Preset   </th><th class="markdownTableHeadNone">Configuration    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>default</code>   </td><td class="markdownTableBodyNone">The library alone at C++17 in Release, using system-installed dependencies    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>vcpkg</code>   </td><td class="markdownTableBodyNone">As <code>default</code>, with dependencies from vcpkg; <code>VCPKG_ROOT</code> must be set    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>dev</code>   </td><td class="markdownTableBodyNone">Tests, benchmarks and examples at C++20 in Release, with dependencies from vcpkg    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>asan</code>, <code>tsan</code>   </td><td class="markdownTableBodyNone"><code>dev</code> built as RelWithDebInfo with Address (plus UndefinedBehavior) or Thread Sanitizer    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>win-dev</code>   </td><td class="markdownTableBodyNone"><code>dev</code> on Windows with Ninja, built under <code>TEMP%</code>; run from a Developer Command Prompt   </td></tr>
+</table>
+<p>Release and RelWithDebInfo both define <code>NDEBUG</code>, so asserts are off in every preset, the sanitizer presets included. Configure with <code>-DCMAKE_BUILD_TYPE=Debug</code> to enable them.</p>
+<p>Personal presets belong in <code>CMakeUserPresets.json</code>, which git ignores.</p>
+<h1>Build Options Affecting Linkage</h1>
 <p>Two options change what the built library is, and both matter to packagers:</p>
 <ul>
 <li><code>DISPENSO_SHARED_LIB</code> (default <b>ON</b>) selects a shared library. Set it to <code>OFF</code> for a static build. Note the default: a packager wanting a static library has to ask for one.</li>
@@ -152,6 +173,32 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <td class="markdownTableBodyNone">System concurrentqueue   </td><td class="markdownTableBodyNone"><code>&lt;cq-prefix&gt;/include/concurrentqueue/moodycamel/</code>   </td><td class="markdownTableBodyNone">also <code>-I&lt;cq-prefix&gt;/include/concurrentqueue</code>   </td></tr>
 </table>
 <p>The extra level in the second row is concurrentqueue's own install layout, not something dispenso or any packager adds. Its CMake target sets the matching include directory, so <code>find_package(Dispenso)</code> needs none of this; only hand-rolled builds do.</p>
+<h1>Other Build Options</h1>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Option   </th><th class="markdownTableHeadNone">Default   </th><th class="markdownTableHeadNone">Effect    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>DISPENSO_BUILD_TESTS</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the unit tests (needs GoogleTest; see Testing below)    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>DISPENSO_BUILD_BENCHMARKS</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the benchmarks (see Benchmarking below)    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>DISPENSO_BUILD_EXAMPLES</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the programs in <code>examples/</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>DISPENSO_WERROR</code>   </td><td class="markdownTableBodyNone">ON   </td><td class="markdownTableBodyNone">Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing <code>-Wno-error</code> in <code>CMAKE_CXX_FLAGS</code> does not work, because dispenso's own flags come later.    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>ADDRESS_SANITIZER</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build everything with <code>-fsanitize=address -fsanitize=undefined</code> (GCC and Clang)    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>THREAD_SANITIZER</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build everything with <code>-fsanitize=thread</code> (GCC and Clang). Use Clang: GCC's ThreadSanitizer does not model <code>std::atomic_thread_fence</code> and reports false races in the lock-free queues.    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>DISPENSO_BUILD_FAST_MATH</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the experimental <code>fast_math</code> sublibrary. Its API is unstable.    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>DISPENSO_FAST_MATH_SIMD</code>   </td><td class="markdownTableBodyNone"><code>none</code>   </td><td class="markdownTableBodyNone">SIMD instruction set for the <code>fast_math</code> targets: <code>none</code>, <code>native</code>, <code>sse4.1</code>, <code>avx2</code>, <code>avx512</code> or <code>neon</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>DISPENSO_FAST_MATH_HIGHWAY</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Add the <a href="https://github.com/google/highway">Highway</a> backend to <code>fast_math</code>, fetching Highway if it is not installed    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>DISPENSO_FAST_MATH_CUDA</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the <code>fast_math</code> CUDA tests (needs the CUDA toolkit)   </td></tr>
+</table>
+<p>The sanitizer options are mutually exclusive. The <code>asan</code> and <code>tsan</code> presets set them for you.</p>
 <h1>Installing</h1>
 <p>Once built, install by building the "install" target:</p>
 <p><b>Linux and macOS:</b> </p><div class="fragment"><div class="line">make install</div>
@@ -172,8 +219,9 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <p>All commands should be run from the Developer Command Prompt. </p><div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
 <div class="line">cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON</div>
 <div class="line">cmake --build . --config Release</div>
-<div class="line">ctest</div>
-</div><!-- fragment --><h1>Benchmarking</h1>
+<div class="line">ctest -C Release</div>
+</div><!-- fragment --><p>Visual Studio generators build several configurations into one build tree, so <code>ctest</code> needs <code>-C</code> to say which one to test; without it, no tests are found.</p>
+<h1>Benchmarking</h1>
 <p>Dispenso has several benchmarks that can optionally benchmark against OpenMP, TBB, and/or Folly. When benchmarks are enabled via <code>-DDISPENSO_BUILD_BENCHMARKS=ON</code>, the build will attempt to find these libraries and enable their variants if found. None of these are dependencies of the dispenso library itself — only the benchmark binaries.</p>
 <p>The Folly variant is off by default due to common build issues across Folly releases. However, the Folly benchmarks do run successfully on Meta's internal platform.</p>
 <p>OpenMP should already be available on most platforms that support it. TBB can be installed via e.g. <code>sudo dnf install tbb-devel</code>.</p>
@@ -183,7 +231,11 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <div class="line">make -j</div>
 <div class="line">bin/once_function_benchmark  # example benchmark</div>
 </div><!-- fragment --><h2>Windows</h2>
-<p>Not currently supported through CMake.</p>
+<p>All commands should be run from the Developer Command Prompt. </p><div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
+<div class="line">cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON</div>
+<div class="line">cmake --build . --config Release</div>
+<div class="line">bin\Release\once_function_benchmark.exe  # example benchmark</div>
+</div><!-- fragment --><p>OpenMP comes with MSVC; TBB is easiest to get from vcpkg (see the <code>vcpkg</code> preset above). <a href="https://github.com/facebookincubator/dispenso/blob/main/scripts/BENCHMARKING.md"><code>scripts/BENCHMARKING.md</code></a> covers running the full suite and recording results on each platform, Windows included.</p>
 <h1>Building the Documentation</h1>
 <p>The API documentation is generated with Doxygen (graphviz supplies the diagrams):</p>
 <div class="fragment"><div class="line">cd docs</div>
