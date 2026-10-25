@@ -26,22 +26,17 @@ class OpResult {
 
   OpResult(const OpResult<T>& oth) : ptr_(oth ? new (buf_) T(*oth.ptr_) : nullptr) {}
 
-  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {
-    oth.ptr_ = nullptr;
-  }
+  // Like std::optional, moving leaves the source engaged, holding a moved-from T that is destroyed
+  // by the source's destructor (or a later assignment/emplace) as usual.
+  OpResult(OpResult<T>&& oth) : ptr_(oth ? new (buf_) T(std::move(*oth.ptr_)) : nullptr) {}
 
   OpResult& operator=(const OpResult& oth) {
     if (&oth == this) {
       return *this;
     }
-    if (ptr_) {
-      ptr_->~T();
-    }
-
+    destroy();
     if (oth) {
       ptr_ = new (buf_) T(*oth.ptr_);
-    } else {
-      ptr_ = nullptr;
     }
     return *this;
   }
@@ -50,17 +45,10 @@ class OpResult {
     if (&oth == this) {
       return *this;
     }
-    if (ptr_) {
-      ptr_->~T();
-    }
-
+    destroy();
     if (oth) {
       ptr_ = new (buf_) T(std::move(*oth.ptr_));
-      oth.ptr_ = nullptr;
-    } else {
-      ptr_ = nullptr;
     }
-
     return *this;
   }
 
@@ -72,9 +60,7 @@ class OpResult {
 
   template <typename... Args>
   T& emplace(Args&&... args) {
-    if (ptr_) {
-      ptr_->~T();
-    }
+    destroy();
     ptr_ = new (buf_) T(std::forward<Args>(args)...);
     return *ptr_;
   }
@@ -92,6 +78,16 @@ class OpResult {
   }
 
  private:
+  // Leaves *this disengaged before any replacement value is constructed, so that if that
+  // construction throws, *this is simply empty (as with std::optional) rather than still pointing
+  // at the already-destroyed old value.
+  void destroy() {
+    if (ptr_) {
+      ptr_->~T();
+      ptr_ = nullptr;
+    }
+  }
+
   alignas(T) char buf_[sizeof(T)];
   T* ptr_;
 };

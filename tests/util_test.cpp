@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -292,7 +293,7 @@ TEST(Util, OpResult) {
   dispenso::OpResult<int> r4(std::move(r3));
   EXPECT_TRUE(r4);
   EXPECT_EQ(r4.value(), 42);
-  EXPECT_FALSE(r3); // Moved-from should be empty
+  EXPECT_TRUE(r3); // Like std::optional, moved-from stays engaged
 
   // Test copy assignment
   dispenso::OpResult<int> r5;
@@ -305,7 +306,7 @@ TEST(Util, OpResult) {
   r6 = std::move(r5);
   EXPECT_TRUE(r6);
   EXPECT_EQ(r6.value(), 42);
-  EXPECT_FALSE(r5);
+  EXPECT_TRUE(r5); // Like std::optional, moved-from stays engaged
 
   // Test emplace
   dispenso::OpResult<int> r7;
@@ -352,6 +353,201 @@ TEST(Util, OpResultWithNonTrivialType) {
   // All objects should be destroyed
   EXPECT_EQ(NonTrivialConstructCount, NonTrivialDestructCount);
 }
+
+namespace {
+// Tracks live objects so that every construction can be matched to exactly one destruction.
+int OpLifetimeLive = 0;
+struct OpLifetime {
+  int value;
+  explicit OpLifetime(int v) : value(v) {
+    ++OpLifetimeLive;
+  }
+  OpLifetime(const OpLifetime& o) : value(o.value) {
+    ++OpLifetimeLive;
+  }
+  OpLifetime(OpLifetime&& o) : value(o.value) {
+    o.value = -1;
+    ++OpLifetimeLive;
+  }
+  OpLifetime& operator=(const OpLifetime&) = delete;
+  OpLifetime& operator=(OpLifetime&&) = delete;
+  ~OpLifetime() {
+    --OpLifetimeLive;
+  }
+};
+} // namespace
+
+TEST(Util, OpResultMoveConstructLifetime) {
+  OpLifetimeLive = 0;
+  {
+    dispenso::OpResult<OpLifetime> a(OpLifetime(7));
+    EXPECT_EQ(OpLifetimeLive, 1);
+    dispenso::OpResult<OpLifetime> b(std::move(a));
+    // Like std::optional: the source stays engaged with a moved-from value.
+    EXPECT_TRUE(a);
+    EXPECT_EQ(a.value().value, -1);
+    ASSERT_TRUE(b);
+    EXPECT_EQ(b.value().value, 7);
+    EXPECT_EQ(OpLifetimeLive, 2);
+
+    dispenso::OpResult<OpLifetime> e;
+    dispenso::OpResult<OpLifetime> f(std::move(e));
+    EXPECT_FALSE(e);
+    EXPECT_FALSE(f);
+    EXPECT_EQ(OpLifetimeLive, 2);
+  }
+  EXPECT_EQ(OpLifetimeLive, 0);
+}
+
+TEST(Util, OpResultMoveAssignLifetime) {
+  OpLifetimeLive = 0;
+  {
+    // engaged <- engaged
+    dispenso::OpResult<OpLifetime> a(OpLifetime(1));
+    dispenso::OpResult<OpLifetime> b(OpLifetime(2));
+    b = std::move(a);
+    EXPECT_TRUE(a);
+    ASSERT_TRUE(b);
+    EXPECT_EQ(b.value().value, 1);
+    EXPECT_EQ(OpLifetimeLive, 2);
+
+    // disengaged <- engaged
+    dispenso::OpResult<OpLifetime> c;
+    c = std::move(b);
+    EXPECT_TRUE(b);
+    ASSERT_TRUE(c);
+    EXPECT_EQ(c.value().value, 1);
+    EXPECT_EQ(OpLifetimeLive, 3);
+
+    // engaged <- disengaged
+    dispenso::OpResult<OpLifetime> d;
+    c = std::move(d);
+    EXPECT_FALSE(c);
+    EXPECT_FALSE(d);
+    EXPECT_EQ(OpLifetimeLive, 2);
+
+    // disengaged <- disengaged
+    c = std::move(d);
+    EXPECT_FALSE(c);
+    EXPECT_EQ(OpLifetimeLive, 2);
+  }
+  EXPECT_EQ(OpLifetimeLive, 0);
+}
+
+TEST(Util, OpResultSelfMoveLifetime) {
+  OpLifetimeLive = 0;
+  {
+    dispenso::OpResult<OpLifetime> a(OpLifetime(5));
+    dispenso::OpResult<OpLifetime> e;
+    // clang-format off
+    DISPENSO_DISABLE_WARNING_PUSH
+#if defined(__clang__)
+    DISPENSO_DISABLE_WARNING(-Wself-move)
+#elif defined(__GNUC__) && __GNUC__ >= 13 // GCC added -Wself-move in 13
+    DISPENSO_DISABLE_WARNING(-Wself-move)
+#endif // disable warnings
+    // clang-format on
+    a = std::move(a);
+    e = std::move(e);
+    DISPENSO_DISABLE_WARNING_POP
+    ASSERT_TRUE(a);
+    EXPECT_EQ(a.value().value, 5);
+    EXPECT_FALSE(e);
+    EXPECT_EQ(OpLifetimeLive, 1);
+  }
+  EXPECT_EQ(OpLifetimeLive, 0);
+}
+
+TEST(Util, OpResultReturnByValueLifetime) {
+  OpLifetimeLive = 0;
+  {
+    auto make = [](bool which) {
+      dispenso::OpResult<OpLifetime> x(OpLifetime(1));
+      dispenso::OpResult<OpLifetime> y(OpLifetime(2));
+      // Two candidates defeat NRVO, so the returned object is move constructed.
+      if (which) {
+        return x;
+      }
+      return y;
+    };
+    auto r = make(true);
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r.value().value, 1);
+    EXPECT_EQ(OpLifetimeLive, 1);
+  }
+  EXPECT_EQ(OpLifetimeLive, 0);
+}
+
+#if defined(__cpp_exceptions)
+namespace {
+int OpThrowLive = 0;
+bool OpThrowArmed = false;
+struct OpThrowing {
+  int value;
+  explicit OpThrowing(int v) : value(v) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  OpThrowing(const OpThrowing& o) : value(o.value) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  OpThrowing(OpThrowing&& o) : value(o.value) {
+    maybeThrow();
+    ++OpThrowLive;
+  }
+  ~OpThrowing() {
+    --OpThrowLive;
+  }
+  static void maybeThrow() {
+    if (OpThrowArmed) {
+      throw std::runtime_error("OpThrowing");
+    }
+  }
+};
+} // namespace
+
+// If constructing the replacement value throws, the OpResult must be left disengaged, so that its
+// destructor does not destroy the old value a second time.
+TEST(Util, OpResultThrowingReplacementLeavesEmpty) {
+  OpThrowLive = 0;
+  OpThrowArmed = false;
+  {
+    dispenso::OpResult<OpThrowing> r(OpThrowing(1));
+    OpThrowArmed = true;
+    EXPECT_THROW(r.emplace(2), std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(r);
+    EXPECT_EQ(OpThrowLive, 0);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+
+  {
+    dispenso::OpResult<OpThrowing> src(OpThrowing(3));
+    dispenso::OpResult<OpThrowing> dst(OpThrowing(4));
+    OpThrowArmed = true;
+    EXPECT_THROW(dst = src, std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(dst);
+    ASSERT_TRUE(src);
+    EXPECT_EQ(src.value().value, 3);
+    EXPECT_EQ(OpThrowLive, 1);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+
+  {
+    dispenso::OpResult<OpThrowing> src(OpThrowing(5));
+    dispenso::OpResult<OpThrowing> dst(OpThrowing(6));
+    OpThrowArmed = true;
+    EXPECT_THROW(dst = std::move(src), std::runtime_error);
+    OpThrowArmed = false;
+    EXPECT_FALSE(dst);
+    EXPECT_TRUE(src);
+    EXPECT_EQ(OpThrowLive, 1);
+  }
+  EXPECT_EQ(OpThrowLive, 0);
+}
+#endif // __cpp_exceptions
 
 TEST(Util, StaticChunkSize) {
   // Test exact division
