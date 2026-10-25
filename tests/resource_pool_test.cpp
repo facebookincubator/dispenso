@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <stdexcept>
+
 #include <gtest/gtest.h>
 
 #include <dispenso/resource_pool.h>
@@ -67,3 +69,35 @@ TEST(ResourcePool, MoreBuffersThanThreadsTest) {
   constexpr int kNumThreads = 1;
   BuffersTest(kNumBuffers, kNumThreads);
 }
+
+#if defined(__cpp_exceptions)
+namespace {
+struct LiveCounted {
+  explicit LiveCounted(int& live) : live_(live) {
+    ++live_;
+  }
+  LiveCounted(const LiveCounted& other) : live_(other.live_) {
+    ++live_;
+  }
+  ~LiveCounted() {
+    --live_;
+  }
+  int& live_;
+};
+} // namespace
+
+TEST(ResourcePool, ThrowingInitDestroysConstructedResources) {
+  int live = 0;
+  int calls = 0;
+  auto init = [&live, &calls]() {
+    if (++calls == 4) {
+      throw std::runtime_error("init failed");
+    }
+    return LiveCounted(live);
+  };
+  EXPECT_THROW(dispenso::ResourcePool<LiveCounted>(8, init), std::runtime_error);
+  // The three resources constructed before the throw must have been destroyed (and the backing
+  // buffer freed, which ASAN/LSan builds check).
+  EXPECT_EQ(live, 0);
+}
+#endif // __cpp_exceptions
