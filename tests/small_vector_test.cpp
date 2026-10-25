@@ -8,6 +8,8 @@
 #include <dispenso/small_vector.h>
 
 #include <cstdint>
+#include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -639,4 +641,267 @@ TEST(SmallVector, HeapStorageHonoursOverAlignment128) {
   EXPECT_EQ(v[99].value, 7);
   v.clear();
   EXPECT_TRUE(dataIsAligned(v, 128));
+}
+
+namespace {
+// Copyable type whose move constructor is not noexcept, so growth must copy it (move_if_noexcept),
+// and whose copy constructor can be told to throw after a number of copies.
+struct ThrowingCopy {
+  static int live;
+  static int copiesBeforeThrow; // negative: never throw
+  static int moves;
+  int value;
+  explicit ThrowingCopy(int v) : value(v) {
+    ++live;
+  }
+  ThrowingCopy(const ThrowingCopy& o) : value(o.value) {
+    if (copiesBeforeThrow == 0) {
+#if defined(__cpp_exceptions)
+      throw std::runtime_error("copy");
+#else
+      std::abort(); // Only the __cpp_exceptions tests arm the throw.
+#endif // __cpp_exceptions
+    }
+    if (copiesBeforeThrow > 0) {
+      --copiesBeforeThrow;
+    }
+    ++live;
+  }
+  ThrowingCopy(ThrowingCopy&& o) : value(o.value) { // not noexcept
+    o.value = -1;
+    ++moves;
+    ++live;
+  }
+  ~ThrowingCopy() {
+    --live;
+  }
+};
+int ThrowingCopy::live = 0;
+int ThrowingCopy::copiesBeforeThrow = -1;
+int ThrowingCopy::moves = 0;
+
+template <size_t N>
+void fillThrowingCopy(SmallVector<ThrowingCopy, N>& v, int count) {
+  for (int i = 0; i < count; ++i) {
+    v.emplace_back(i);
+  }
+}
+
+template <size_t N>
+void expectThrowingCopyValues(const SmallVector<ThrowingCopy, N>& v, int count) {
+  ASSERT_EQ(v.size(), static_cast<size_t>(count));
+  for (int i = 0; i < count; ++i) {
+    EXPECT_EQ(v[static_cast<size_t>(i)].value, i);
+  }
+}
+} // namespace
+
+// Growth uses move_if_noexcept: a type whose move may throw is copied, leaving the source intact.
+TEST(SmallVector, GrowthCopiesWhenMoveMayThrow) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  ThrowingCopy::moves = 0;
+  {
+    SmallVector<ThrowingCopy, 2> v;
+    fillThrowingCopy(v, 10);
+    v.reserve(100);
+    EXPECT_EQ(ThrowingCopy::moves, 0);
+    expectThrowingCopyValues(v, 10);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+
+#if defined(__cpp_exceptions)
+// If transferring elements during growth throws, the vector is unchanged and nothing leaks.
+TEST(SmallVector, ReserveThrowLeavesVectorUnchanged) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  {
+    // Inline -> heap.
+    SmallVector<ThrowingCopy, 4> inl;
+    fillThrowingCopy(inl, 4);
+    ThrowingCopy::copiesBeforeThrow = 2;
+    EXPECT_THROW(inl.reserve(16), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(inl.capacity(), 4u);
+    expectThrowingCopyValues(inl, 4);
+    EXPECT_EQ(ThrowingCopy::live, 4);
+
+    // Heap -> bigger heap.
+    SmallVector<ThrowingCopy, 2> heap;
+    fillThrowingCopy(heap, 6);
+    const size_t cap = heap.capacity();
+    const ThrowingCopy* oldData = heap.data();
+    ThrowingCopy::copiesBeforeThrow = 3;
+    EXPECT_THROW(heap.reserve(cap * 4), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(heap.capacity(), cap);
+    EXPECT_EQ(heap.data(), oldData);
+    expectThrowingCopyValues(heap, 6);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+
+    // resize() grows through the same path.
+    ThrowingCopy::copiesBeforeThrow = 1;
+    EXPECT_THROW(heap.resize(50, ThrowingCopy(7)), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    expectThrowingCopyValues(heap, 6);
+    EXPECT_EQ(ThrowingCopy::live, 10);
+
+    // The vector is still fully usable.
+    heap.reserve(64);
+    fillThrowingCopy(heap, 1);
+    EXPECT_EQ(heap.size(), 7u);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+
+TEST(SmallVector, PushBackGrowthThrowLeavesVectorUnchanged) {
+  ThrowingCopy::live = 0;
+  ThrowingCopy::copiesBeforeThrow = -1;
+  {
+    SmallVector<ThrowingCopy, 2> v;
+    fillThrowingCopy(v, 4);
+    ASSERT_EQ(v.size(), v.capacity());
+    const ThrowingCopy* oldData = v.data();
+    // The new element is constructed from an int, then transferring the second old element throws.
+    ThrowingCopy::copiesBeforeThrow = 1;
+    EXPECT_THROW(v.emplace_back(99), std::runtime_error);
+    ThrowingCopy::copiesBeforeThrow = -1;
+    EXPECT_EQ(v.data(), oldData);
+    expectThrowingCopyValues(v, 4);
+    EXPECT_EQ(ThrowingCopy::live, 4);
+  }
+  EXPECT_EQ(ThrowingCopy::live, 0);
+}
+#endif // __cpp_exceptions
+
+#if defined(__cpp_exceptions)
+namespace {
+// Default and copy construction throw once `constructionsBeforeThrow` reaches zero (negative:
+// never). Moves never throw, so growth itself cannot fail.
+struct ThrowingConstruct {
+  static int live;
+  static int constructionsBeforeThrow;
+  int value;
+  ThrowingConstruct() : value(0) {
+    countConstruction();
+  }
+  explicit ThrowingConstruct(int v) : value(v) {
+    ++live;
+  }
+  ThrowingConstruct(const ThrowingConstruct& o) : value(o.value) {
+    countConstruction();
+  }
+  ThrowingConstruct(ThrowingConstruct&& o) noexcept : value(o.value) {
+    ++live;
+  }
+  ~ThrowingConstruct() {
+    --live;
+  }
+  void countConstruction() {
+    if (constructionsBeforeThrow == 0) {
+      throw std::runtime_error("construct");
+    }
+    if (constructionsBeforeThrow > 0) {
+      --constructionsBeforeThrow;
+    }
+    ++live;
+  }
+};
+int ThrowingConstruct::live = 0;
+int ThrowingConstruct::constructionsBeforeThrow = -1;
+
+using TCVec = SmallVector<ThrowingConstruct, 4>;
+} // namespace
+
+// A constructor that throws partway must destroy the elements it built and free its heap storage
+// (LeakSanitizer catches the latter). Covers inline and heap storage.
+TEST(SmallVector, ConstructorThrowReleasesElements) {
+  ThrowingConstruct::live = 0;
+  const ThrowingConstruct proto(5);
+  for (size_t count : {3u, 10u}) {
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(TCVec v(count), std::runtime_error);
+    EXPECT_EQ(ThrowingConstruct::live, 1);
+
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(TCVec v(count, proto), std::runtime_error);
+    EXPECT_EQ(ThrowingConstruct::live, 1);
+  }
+
+  ThrowingConstruct::constructionsBeforeThrow = 3;
+  EXPECT_THROW((TCVec{proto, proto, proto, proto, proto, proto}), std::runtime_error);
+  ThrowingConstruct::constructionsBeforeThrow = -1;
+  EXPECT_EQ(ThrowingConstruct::live, 1);
+
+  {
+    TCVec small(3, proto);
+    TCVec big(9, proto);
+    EXPECT_EQ(ThrowingConstruct::live, 13);
+    ThrowingConstruct::constructionsBeforeThrow = 1;
+    EXPECT_THROW(TCVec copy(small), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = 5;
+    EXPECT_THROW(TCVec copy(big), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = -1;
+    EXPECT_EQ(ThrowingConstruct::live, 13);
+  }
+  EXPECT_EQ(ThrowingConstruct::live, 1);
+}
+
+// resize() that throws while constructing the new elements destroys the ones it built and keeps
+// the original elements and size.
+TEST(SmallVector, ResizeThrowKeepsSize) {
+  ThrowingConstruct::live = 0;
+  {
+    TCVec v;
+    for (int i = 0; i < 3; ++i) {
+      v.emplace_back(i);
+    }
+    ThrowingConstruct::constructionsBeforeThrow = 4;
+    EXPECT_THROW(v.resize(10), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = 2;
+    EXPECT_THROW(v.resize(10, ThrowingConstruct(7)), std::runtime_error);
+    ThrowingConstruct::constructionsBeforeThrow = -1;
+    ASSERT_EQ(v.size(), 3u);
+    for (int i = 0; i < 3; ++i) {
+      EXPECT_EQ(v[static_cast<size_t>(i)].value, i);
+    }
+    EXPECT_EQ(ThrowingConstruct::live, 3);
+    v.resize(10);
+    EXPECT_EQ(ThrowingConstruct::live, 10);
+  }
+  EXPECT_EQ(ThrowingConstruct::live, 0);
+}
+#endif // __cpp_exceptions
+
+// resize(count, value) with value referring to one of the vector's own elements must work when the
+// call grows the storage (inline -> heap and heap -> heap), as it does for std::vector.
+TEST(SmallVector, ResizeFromOwnElementAcrossGrowth) {
+  const std::string a(64, 'a');
+  const std::string b(64, 'b');
+  SmallVector<std::string, 2> v;
+  v.push_back(a);
+  v.push_back(b);
+  v.resize(5, v[0]);
+  ASSERT_EQ(v.size(), 5u);
+  EXPECT_EQ(v[0], a);
+  EXPECT_EQ(v[1], b);
+  for (size_t i = 2; i < 5; ++i) {
+    EXPECT_EQ(v[i], a);
+  }
+
+  const size_t cap = v.capacity();
+  v.resize(cap * 3, v[1]);
+  ASSERT_EQ(v.size(), cap * 3);
+  EXPECT_EQ(v[0], a);
+  EXPECT_EQ(v[1], b);
+  for (size_t i = 5; i < v.size(); ++i) {
+    EXPECT_EQ(v[i], b);
+  }
+
+  // Growing within capacity reads value in place.
+  v.reserve(v.size() + 4);
+  v.resize(v.size() + 4, v.back());
+  EXPECT_EQ(v.back(), b);
 }
