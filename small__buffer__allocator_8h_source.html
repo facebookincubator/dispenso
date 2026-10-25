@@ -138,7 +138,7 @@ $(function(){initNavTree('small__buffer__allocator_8h_source.html',''); initResi
 <div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
 <div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="keyword">inline</span> std::enable_if_t&lt;(kBlockSize &lt;= kMaxSmallBufferSize), char*&gt; allocSmallOrLarge() {</div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#if defined(DISPENSO_NO_SMALL_BUFFER_ALLOCATOR)</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(alignedMalloc(kBlockSize, kBlockSize));</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(alignedMallocOrThrow(kBlockSize, kBlockSize));</div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>  <span class="keywordflow">return</span> allocSmallBufferImpl(getOrdinal(kBlockSize));</div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="preprocessor">#endif </span><span class="comment">// DISPENSO_NO_SMALL_BUFFER_ALLOCATOR</span></div>
@@ -146,7 +146,7 @@ $(function(){initNavTree('small__buffer__allocator_8h_source.html',''); initResi
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
 <div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="keyword">inline</span> std::enable_if_t&lt;(kBlockSize &gt; <a class="code hl_variable" href="small__buffer__allocator_8h.html#aa39ff033a552de8d0e275d0a9f775df1">kMaxSmallBufferSize</a>), <span class="keywordtype">char</span>*&gt; allocSmallOrLarge() {</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(alignedMalloc(kBlockSize, kBlockSize));</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keywordtype">char</span>*<span class="keyword">&gt;</span>(alignedMallocOrThrow(kBlockSize, kBlockSize));</div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>}</div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
 <div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="keyword">template</span> &lt;<span class="keywordtype">size_t</span> kBlockSize&gt;</div>
