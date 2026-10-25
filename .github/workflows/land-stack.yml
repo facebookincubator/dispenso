@@ -1,0 +1,69 @@
+name: Land stack
+
+# Lands a chain of stacked pull requests on main in one fast-forward push, one
+# commit per pull request, each with exactly the tree its CI tested. See
+# scripts/land_stack.py for the checks it makes and
+# docs/development/process/landing_stacks.md for setup.
+#
+# Pushing to main needs the lander GitHub App, which the main ruleset lets
+# bypass its pull-request rule. A dry run needs no App: it checks the chain
+# and prints the commits it would push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      top_pr:
+        description: Top pull request of the chain to land
+        required: true
+        type: number
+      dry_run:
+        description: Only check the chain and print the plan
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: land-stack
+  cancel-in-progress: false
+
+jobs:
+  land:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get the lander App's token
+        id: app
+        if: ${{ !inputs.dry_run }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.LANDER_APP_ID }}
+          private-key: ${{ secrets.LANDER_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token || github.token }}
+
+      - name: Test the landing script
+        run: python3 -m unittest discover -s scripts/tests -p 'test_land_stack.py'
+
+      - name: Land
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          TOP_PR: ${{ inputs.top_pr }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          args=(--repo "$GITHUB_REPOSITORY" --top "$TOP_PR" --run-url "$RUN_URL")
+          if [ "$DRY_RUN" = true ]; then
+            args+=(--dry-run)
+          else
+            args+=(--committer "${APP_SLUG}[bot] <noreply@github.com>")
+          fi
+          python3 scripts/land_stack.py "${args[@]}"

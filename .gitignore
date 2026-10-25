@@ -47,3 +47,4 @@ docs/doxygen/
 CMakeUserPresets.json
 # Default output of scripts/run_tuning_experiment.py.
 tuning_results*
+__pycache__/

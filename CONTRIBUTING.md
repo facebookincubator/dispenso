@@ -21,6 +21,13 @@ We actively welcome your pull requests.
 5. Utilize clang-format.
 6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
+A change too large to review in one piece can be sent as a stack: a chain of
+pull requests, each based on the branch of the one below it, with the bottom
+one based on `main`. Each is reviewed on its own and lands as its own commit.
+A committer lands the stack, or its reviewed lower part, with the Land stack
+workflow; see
+[docs/development/process/landing_stacks.md](docs/development/process/landing_stacks.md).
+
 ## Contributor License Agreement ("CLA")
 In order to accept your pull request, we need you to submit a CLA. You only need
 to do this once to work on any of Facebook's open source projects.
