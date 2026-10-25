@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <new>
+#include <type_traits>
+#include <utility>
+
 #include <dispenso/detail/math.h>
 #include <dispenso/platform.h>
 #include <dispenso/small_buffer_allocator.h>
@@ -12,23 +16,20 @@
 namespace dispenso {
 namespace detail {
 
-// Inline storage size: 64-byte OnceFunction minus 8-byte invoke pointer.
+// Inline storage size: 64-byte OnceFunction minus 8-byte operations pointer.
 // Covers most parallel_for lambdas (up to 7 pointers of captures).
 //
-// IMPORTANT: Inline-stored functors are relocated via memcpy (see OnceFunction
-// move ctor/assign). This is safe for types with position-independent value
-// representation: scalars, pointers, references, POD aggregates, and typical
-// lambdas (including captures of std::string, std::vector, std::shared_ptr,
-// and std::function — their internal storage is memcpy-safe so long as the
-// captured value within them is itself position-independent). It is NOT safe
-// for types with self-referential pointers — e.g., std::list (intrusive
-// sentinel), or any struct that holds a pointer back into itself. C++ has no
-// standard is_trivially_relocatable trait yet (P1144), so this contract is
-// implicit — callers must not store self-referential types in OnceFunction.
+// A callable is stored inline when it fits and moving it cannot throw. Moving a
+// OnceFunction byte-copies the whole object unless the callable's operations
+// provide `relocate`, which is set only for inline callables that are not
+// trivially copyable: those are move-constructed into the destination and the
+// source is destroyed. Spilled callables are reached through a pointer, so a
+// byte copy moves them.
 constexpr size_t kOnceFunctionInlineSize = 56;
 
-struct OnceCallableData {
-  void (*invoke)(void*, bool run);
+struct OnceCallableOps {
+  void (*invoke)(void* buf, bool run);
+  void (*relocate)(void* src, void* dst);
 };
 
 // Invoke for inline-stored functors: functor lives directly in the buffer.
@@ -38,6 +39,13 @@ void invokeInline(void* buf, bool run) {
   if (DISPENSO_EXPECT(run, true)) {
     (*f)();
   }
+  f->~F();
+}
+
+template <typename F>
+void relocateInline(void* src, void* dst) noexcept {
+  F* f = static_cast<F*>(src);
+  new (dst) F(std::move(*f));
   f->~F();
 }
 
@@ -54,32 +62,69 @@ void invokeSpill(void* buf, bool run) {
 }
 
 template <typename F>
-inline OnceCallableData createOnceCallableImpl(F&& f, void* inlineBuf, std::true_type /*inline*/) {
+struct InlineOnceCallableOps {
+  static constexpr OnceCallableOps kOps = {
+      &invokeInline<F>,
+      std::is_trivially_copyable<F>::value ? nullptr : &relocateInline<F>};
+};
+template <typename F>
+constexpr OnceCallableOps InlineOnceCallableOps<F>::kOps;
+
+template <size_t kBufferSize, typename F>
+struct SpillOnceCallableOps {
+  static constexpr OnceCallableOps kOps = {&invokeSpill<kBufferSize, F>, nullptr};
+};
+template <size_t kBufferSize, typename F>
+constexpr OnceCallableOps SpillOnceCallableOps<kBufferSize, F>::kOps;
+
+// A template so that the out-of-line definition C++14 needs can live in this header.
+template <typename Unused = void>
+struct EmptyOnceCallableOps {
+  static constexpr OnceCallableOps kOps = {nullptr, nullptr};
+};
+template <typename Unused>
+constexpr OnceCallableOps EmptyOnceCallableOps<Unused>::kOps;
+
+template <typename F>
+inline const OnceCallableOps*
+createOnceCallableImpl(F&& f, void* inlineBuf, std::true_type /*inline*/) {
   using FNoRef = typename std::remove_reference<F>::type;
   new (inlineBuf) FNoRef(std::forward<F>(f));
-  return {&invokeInline<FNoRef>};
+  return &InlineOnceCallableOps<FNoRef>::kOps;
 }
 
 template <typename F>
-inline OnceCallableData createOnceCallableImpl(F&& f, void* inlineBuf, std::false_type /*spill*/) {
+inline const OnceCallableOps*
+createOnceCallableImpl(F&& f, void* inlineBuf, std::false_type /*spill*/) {
   using FNoRef = typename std::remove_reference<F>::type;
   constexpr size_t kAllocSize =
       static_cast<size_t>(nextPow2(std::max(sizeof(FNoRef), alignof(FNoRef))));
   void* ptr = allocSmallBuffer<kAllocSize>();
+#if defined(__cpp_exceptions)
+  try {
+    new (ptr) FNoRef(std::forward<F>(f));
+  } catch (...) {
+    deallocSmallBuffer<kAllocSize>(ptr);
+    throw;
+  }
+#else
   new (ptr) FNoRef(std::forward<F>(f));
+#endif // __cpp_exceptions
   *static_cast<void**>(inlineBuf) = ptr;
-  return {&invokeSpill<kAllocSize, FNoRef>};
+  return &SpillOnceCallableOps<kAllocSize, FNoRef>::kOps;
 }
 
 template <typename F>
-inline OnceCallableData createOnceCallable(F&& f, void* inlineBuf) {
+inline const OnceCallableOps* createOnceCallable(F&& f, void* inlineBuf) {
   using FNoRef = typename std::remove_reference<F>::type;
   return createOnceCallableImpl(
       std::forward<F>(f),
       inlineBuf,
       std::integral_constant<
           bool,
-          (sizeof(FNoRef) <= kOnceFunctionInlineSize && alignof(FNoRef) <= 64)>{});
+          (sizeof(FNoRef) <= kOnceFunctionInlineSize && alignof(FNoRef) <= 64 &&
+           (std::is_trivially_copyable<FNoRef>::value ||
+            std::is_nothrow_move_constructible<FNoRef>::value))>{});
 }
 
 } // namespace detail
