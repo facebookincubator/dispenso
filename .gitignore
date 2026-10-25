@@ -40,3 +40,10 @@ docs/doxygen/
 # Clang #
 #########
 .cache/
+
+# Local-only files #
+####################
+# Personal CMake presets; CMakePresets.json holds the shared ones.
+CMakeUserPresets.json
+# Default output of scripts/run_tuning_experiment.py.
+tuning_results*
