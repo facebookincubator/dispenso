@@ -5,9 +5,8 @@
 
 cmake_minimum_required(VERSION 3.18)
 
-### TODO(bbudge): Set up testing with github actions
-# Ideally these tests are all run in (Release, Debug) X (N/A, TSAN, ASAN, -fno-exceptions)
-###
+# TODO: CI runs these tests in Release and Debug, and under TSAN and ASAN, but not yet with
+# -fno-exceptions.
 
 # Try system-installed GTest first, fall back to FetchContent from GitHub.
 find_package(GTest QUIET)
