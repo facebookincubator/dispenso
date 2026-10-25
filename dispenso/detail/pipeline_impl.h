@@ -26,7 +26,7 @@ namespace detail {
 class LimitGatedScheduler {
  public:
   LimitGatedScheduler(ConcurrentTaskSet& tasks, ssize_t res)
-      : impl_(new (alignedMalloc(sizeof(Impl), alignof(Impl))) Impl(tasks, res)) {}
+      : impl_(new (alignedMallocOrThrow(sizeof(Impl), alignof(Impl))) Impl(tasks, res)) {}
 
   template <typename F>
   void schedule(F&& fPipe) {

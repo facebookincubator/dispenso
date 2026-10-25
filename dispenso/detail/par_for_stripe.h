@@ -369,7 +369,7 @@ inline void initStripeState(
   const size_t off2 = roundUp(off1 + hasWorkBytes, kCacheLineSize);
   const size_t totalBytes = off2 + l3MaskBytes;
 
-  state.buffer = detail::alignedMalloc(totalBytes, kCacheLineSize);
+  state.buffer = detail::alignedMallocOrThrow(totalBytes, kCacheLineSize);
   auto* base = static_cast<char*>(state.buffer);
   state.stripes = reinterpret_cast<StripeCursor<IntegerT>*>(base + off0);
   state.hasWorkMasks = reinterpret_cast<HasWorkWord*>(base + off1);

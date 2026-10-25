@@ -113,11 +113,7 @@ struct ConcurrentObjectArena {
     // Only the first buffersPos_ slots of the pointer table hold buffers; the rest are
     // uninitialized spare capacity, filled in by allocateBuffer() as the arena grows.
     for (Index i = 0; i < buffersPos_; ++i) {
-      void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
-#if defined(__cpp_exceptions)
-      if (ptr == nullptr)
-        throw std::bad_alloc();
-#endif // __cpp_exceptions
+      void* ptr = detail::alignedMallocOrThrow(kBufferSize * sizeof(T), alignment);
       std::memcpy(ptr, otherBuffers[i], kBufferSize * sizeof(T));
       newBuffers[i] = static_cast<T*>(ptr);
     }
@@ -341,11 +337,7 @@ struct ConcurrentObjectArena {
 
  private:
   void allocateBuffer() {
-    void* ptr = detail::alignedMalloc(kBufferSize * sizeof(T), alignment);
-#if defined(__cpp_exceptions)
-    if (ptr == nullptr)
-      throw std::bad_alloc();
-#endif // __cpp_exceptions
+    void* ptr = detail::alignedMallocOrThrow(kBufferSize * sizeof(T), alignment);
 
     if (buffersPos_ < buffersSize_) {
       buffers_.load(std::memory_order_acquire)[buffersPos_++] = static_cast<T*>(ptr);

@@ -152,7 +152,7 @@ typename SubgraphT<N>::PoolPtr SubgraphT<N>::getAllocator() {
     std::lock_guard<std::mutex> lk(g_sgcacheMtx);
     if (cache.empty()) {
       void* alloc =
-          detail::alignedMalloc(sizeof(NoLockPoolAllocator), alignof(NoLockPoolAllocator));
+          detail::alignedMallocOrThrow(sizeof(NoLockPoolAllocator), alignof(NoLockPoolAllocator));
       auto* pool = new (alloc)
           NoLockPoolAllocator(sizeof(NodeType), 128 * sizeof(NodeType), ::malloc, ::free);
       ptr.reset(pool);
