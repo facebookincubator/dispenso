@@ -26,3 +26,10 @@ Current design: [concurrent_vector](../architecture/concurrent_vector.md).
 ## Backlog
 
 - Lock-free stack
+
+### Code TODOs
+
+Open `TODO` comments in the source, each named by file and function. See
+[the README](../README.md#conventions) for how these are kept in step.
+
+- **Runtime capacity for `SPSCRingBuffer`** (`dispenso/spsc_ring_buffer.h`): a `kDynamicCapacity` specialization that heap-allocates storage of a capacity chosen at run time.

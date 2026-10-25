@@ -55,3 +55,10 @@ header:
 
 - Integration examples (game engines, scientific computing)
 - Discord/Slack community channel
+
+### Code TODOs
+
+Open `TODO` comments in the source, each named by file and function. See
+[the README](../README.md#conventions) for how these are kept in step.
+
+- **CI coverage for `-fno-exceptions`** (`tests/CMakeLists.txt`). The library guards its throwing paths with `__cpp_exceptions`, but no CI job builds without exceptions.

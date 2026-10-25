@@ -40,6 +40,20 @@ Proposal: [barrier_dispatch](../proposals/barrier_dispatch.md).
 - CUDA graph mappings (TaskFlow has this; worth exploring for dispenso's Graph)
 - Speculative `Future` latency: the `future_benchmark` speculative suite runs ~1.5-3x behind `folly::Future` (while dispenso is ~2.2x faster on the kv-cache workload), so the gap is speculative-execution-specific — worth profiling folly's speculative fast path.
 
+### Code TODOs
+
+Open `TODO` comments in the source, each named by file and function. See
+[the README](../README.md#conventions) for how these are kept in step.
+
+- **Timed waits restart their timeout after a spurious wake.** `CompletionEventImpl::waitFor` (`dispenso/detail/completion_event_impl.h`, all three platform implementations) computes the relative timeout once, before its wait loop. A wake that doesn't complete the event waits the full timeout again, so `wait_for` can overrun the requested time. Decide whether to recompute the remaining time on each pass.
+- **Future-level cancellation token** (`benchmarks/future_benchmark.cpp`, the speculative `when_any` suite). With a token, `when_any` could cancel the losers: it would skip losers that haven't started on a saturated pool, and let user kernels short-circuit cooperatively. Running tasks still run to completion. The benchmark's PauseTiming/drain workaround goes away once this exists. Related: cancellation in the [coroutines proposal](../proposals/coroutines.md).
+- **Unwrapping constructor for `Future`** (`dispenso/future.h`, from the Concurrency TS: a `Future<Future<T>>` converts to `Future<T>`). `tests/future_test.cpp`'s tree-building tests would be simpler with it.
+- **Cheaper `when_all` shared state** (`dispenso/detail/future_impl2.h`, both `when_all` overloads). They allocate their shared state with `std::make_shared`; an allocation through `SmallBufferAllocator` may be faster.
+- **Graph allocator cache sizes** (`dispenso/graph.cpp`, `kMaxCache` and `kMaxChunkCapacity`). Per node type, the node-pool cache keeps up to 8 released allocators, each with capacity under 2^16 nodes. Make the limits macro-configurable for memory-constrained platforms.
+- **Lock-free queue for `TimedTaskScheduler`** (`dispenso/timed_task.h`). The queue is a `std::priority_queue` under a mutex. The comment expects little benefit, since timed tasks rarely contend heavily; measure before changing it.
+- **Taskflow partial-evaluation variant** of the scene-graph benchmark (`benchmarks/graph_scene_benchmark.cpp`), possibly with Taskflow's conditional tasks, to match dispenso's partial-evaluation case.
+- **Portability of `platform.h`.** `DISPENSO_THREAD_LOCAL` supports only GCC, Clang and MSVC, and fails to compile elsewhere. `cpuRelax()` is a no-op except on x86, 64-bit ARM, PowerPC, and 32-bit ARM under MSVC; that includes 32-bit ARM with GCC or Clang (which has `yield`) and RISC-V (which has `pause` in Zihintpause).
+
 ## Open investigations
 
 - [Decouple sleep mask from group concept](../investigations/decouple_sleep_mask_from_groups.md)

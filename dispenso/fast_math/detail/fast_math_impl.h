@@ -49,8 +49,8 @@ DISPENSO_INLINE Flt rcp_cbrt(Flt x, IntType_t<Flt> i) {
   }
 }
 
-// TODO: We likely will never need a double precision version of this function, but note that this
-// is definitely busted for double.
+// Float only: the bit manipulation below is wrong for double. frexp() reaches this only after
+// assert_float_type(), which rejects double at compile time.
 template <typename Flt>
 DISPENSO_INLINE Flt frexpImpl(IntType_t<Flt> hx, IntType_t<Flt>* eptr) {
   using IntT = IntType_t<Flt>;
