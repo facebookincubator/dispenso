@@ -11,10 +11,17 @@ Builds and runs a representative set of benchmarks across different
 tuning configurations, producing a JSON report for comparison. Run on
 each target platform (Linux, macOS, Windows) to find optimal constants.
 
+This is a tool for platform bring-up and targeted retuning, not for routine
+runs. Configurations whose knob the host platform's implementation does not
+read are skipped (they would only measure the defaults plus noise); pass
+--force to run them anyway, e.g. when bringing up a platform whose
+implementation is new or not yet characterized.
+
 Usage:
-    python3 run_tuning_experiment.py                    # all configs
+    python3 run_tuning_experiment.py                    # all applicable configs
     python3 run_tuning_experiment.py -c wake_factor     # single knob
     python3 run_tuning_experiment.py --list              # list configs
+    python3 run_tuning_experiment.py -c wake_all_threshold --force
 
 Output: JSON file with per-config benchmark results for comparison.
 """
@@ -28,6 +35,8 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
+
+from run_benchmarks import _build_windows_env_override
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_SOURCE_DIR = SCRIPT_DIR.parent
@@ -75,6 +84,37 @@ BENCHMARK_SUITE = [
     ),
     ("graph_scene_benchmark", "BM_scene_graph", "graph scene"),
 ]
+
+
+# Knobs that only some platform implementations read, keyed by category:
+# (platform.system() values that read it, explanation for everyone else).
+# Categories not listed here are read on every platform.
+PLATFORM_SPECIFIC_CATEGORIES = {
+    "wake_all_threshold": (
+        {"Darwin"},
+        "DISPENSO_TUNE_WAKE_ALL_THRESHOLD is read only by the macOS "
+        "EpochWaiter (dispenso/detail/epoch_waiter.h). Linux/FreeBSD wake "
+        "exactly K waiters in one futex call, Windows wakes all whenever more "
+        "than one thread waits, and the generic fallback ignores it",
+    ),
+}
+
+
+# Platforms with a tailored EpochWaiter backend whose tunable behaviour is
+# characterized above. Anything else (NetBSD, OpenBSD, DragonFly, ...) builds
+# the generic fallback, whose knobs may not behave like any of these.
+CHARACTERIZED_SYSTEMS = {"Linux", "Darwin", "Windows", "FreeBSD"}
+
+
+def category_applies(category, system):
+    """Return (applies, reason) for running `category` on `system`."""
+    entry = PLATFORM_SPECIFIC_CATEGORIES.get(category)
+    if entry is None:
+        return True, ""
+    systems, reason = entry
+    if system in systems:
+        return True, ""
+    return False, reason
 
 
 def define_configurations():
@@ -150,11 +190,11 @@ def define_configurations():
             }
         )
 
-    # --- Wake-all threshold (mainly relevant on macOS/Windows) ---
-    # K above which `bumpAndWakeN` switches from looping wake-one to a
-    # single wake-all. Linux's exact-K syscall makes this irrelevant
-    # there; on macOS/Windows the optimal K depends on the per-syscall
-    # cost ratio, which this sweep measures end to end.
+    # --- Wake-all threshold (macOS only) ---
+    # K at which `bumpAndWakeN` switches from looping wake-one to a single
+    # wake-all. Only the macOS EpochWaiter reads it (see
+    # PLATFORM_SPECIFIC_CATEGORIES); there the optimal K depends on the
+    # per-syscall cost ratio, which this sweep measures end to end.
     for k in [2, 3, 4, 6, 8, 12, 16]:
         configs.append(
             {
@@ -207,14 +247,36 @@ def build_config(source_dir, build_dir, config, jobs, extra_cmake_args=None):
     return True
 
 
-def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
-    """Run a single benchmark and return parsed results."""
-    # Search for the benchmark executable
-    for search in [build_dir / "bin", build_dir / "benchmarks", build_dir]:
-        exe = search / bench_name
-        if exe.exists():
-            break
-    else:
+# Medians are recorded in microseconds. Google Benchmark reports each row in
+# its own time_unit (ns, us, ms or s).
+_TO_MICROSECONDS = {"ns": 1e-3, "us": 1.0, "ms": 1e3, "s": 1e6}
+
+
+def find_benchmark_executable(build_dir, bench_name):
+    """Locate a built benchmark, or return None.
+
+    Single-config generators (Makefiles, Ninja) put it directly in bin/.
+    Multi-config generators (Visual Studio, Xcode, Ninja Multi-Config) add a
+    per-configuration subdirectory; build_config always builds Release.
+    Windows executables carry an .exe suffix.
+    """
+    names = [bench_name, bench_name + ".exe"]
+    for base in [build_dir / "bin", build_dir / "benchmarks", build_dir]:
+        for search in [base, base / "Release"]:
+            for name in names:
+                exe = search / name
+                if exe.is_file():
+                    return exe
+    return None
+
+
+def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3, env=None):
+    """Run a single benchmark and return parsed results.
+
+    env, when set, replaces the environment (see run_experiment).
+    """
+    exe = find_benchmark_executable(build_dir, bench_name)
+    if exe is None:
         return {"error": f"Benchmark {bench_name} not found"}
 
     args = [
@@ -230,6 +292,7 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
             capture_output=True,
             text=True,
             timeout=600,
+            env=env,
         )
         if result.returncode != 0:
             return {"error": result.stderr[:200]}
@@ -238,12 +301,7 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
         medians = {}
         for bm in data.get("benchmarks", []):
             if "_median" in bm["name"]:
-                t = bm["real_time"]
-                unit = bm.get("time_unit", "ns")
-                if unit == "ns":
-                    t /= 1000
-                elif unit == "ms":
-                    t *= 1000
+                t = bm["real_time"] * _TO_MICROSECONDS[bm.get("time_unit", "ns")]
                 name = bm["name"].replace("/real_time_median", "")
                 medians[name] = t
         return {"medians": medians}
@@ -255,12 +313,12 @@ def run_benchmark(build_dir, bench_name, filter_pattern, repetitions=3):
         return {"error": str(e)}
 
 
-def run_config(build_dir, repetitions=3):
+def run_config(build_dir, repetitions=3, env=None):
     """Run all benchmarks for a configuration."""
     results = {}
     for bench_name, filter_pattern, description in BENCHMARK_SUITE:
         print(f"    {description}...", end="", flush=True)
-        result = run_benchmark(build_dir, bench_name, filter_pattern, repetitions)
+        result = run_benchmark(build_dir, bench_name, filter_pattern, repetitions, env)
         if "error" in result:
             print(f" FAIL ({result['error'][:60]})")
         else:
@@ -322,6 +380,12 @@ def parse_args():
         help="Extra cmake arguments (e.g., --cmake-args='-DDISPENSO_DEPS_DIR=...')",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Also run configs whose knob this platform's implementation does "
+        "not read (for bring-up of new platforms, e.g. the BSDs)",
+    )
+    parser.add_argument(
         "--clean",
         action="store_true",
         help="Clean build directory between configs (slower but avoids stale artifacts)",
@@ -329,13 +393,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def list_configurations(configs):
+def list_configurations(configs, system):
     """Print available configurations grouped by category."""
     categories = {}
     for c in configs:
         categories.setdefault(c["category"], []).append(c)
     for cat, cfgs in sorted(categories.items()):
-        print(f"\n{cat}:")
+        applies, _ = category_applies(cat, system)
+        note = ""
+        if not applies:
+            note = f"  (not read on {system}; skipped without --force)"
+        print(f"\n{cat}:{note}")
         for c in cfgs:
             defines = " ".join(c["defines"]) if c["defines"] else "(defaults)"
             print(f"  {c['name']:30s} {defines}")
@@ -355,6 +423,14 @@ def run_experiment(args, configs):
     }
 
     base_build_dir = Path(tempfile.gettempdir()) / "dispenso-tuning"
+
+    # On Windows, DLLs from CMAKE_PREFIX_PATH (vcpkg's Google Benchmark, TBB)
+    # must be on PATH for the benchmarks to start, as in run_benchmarks.py.
+    env = None
+    env_override = _build_windows_env_override(args.cmake_args)
+    if env_override:
+        env = os.environ.copy()
+        env.update(env_override)
 
     for i, config in enumerate(configs):
         print(f"[{i + 1}/{len(configs)}] {config['name']}")
@@ -376,7 +452,7 @@ def run_experiment(args, configs):
             continue
 
         print("  Running benchmarks:")
-        results = run_config(build_dir, args.repetitions)
+        results = run_config(build_dir, args.repetitions, env)
 
         all_results["configs"].append({"config": config, "results": results})
         print()
@@ -435,19 +511,57 @@ def print_summary(all_results):
             )
 
 
+def select_applicable(configs, system, force):
+    """Drop configs whose knob `system` does not read, unless `force`."""
+    selected = []
+    skipped = {}
+    for c in configs:
+        applies, reason = category_applies(c["category"], system)
+        if applies or force:
+            selected.append(c)
+        else:
+            skipped.setdefault(c["category"], (reason, []))[1].append(c["name"])
+    for cat, (reason, names) in sorted(skipped.items()):
+        print(
+            f"Skipping {cat} ({len(names)} configs) on {system}: {reason}. "
+            "Pass --force to run it anyway."
+        )
+    if system not in CHARACTERIZED_SYSTEMS:
+        print(
+            f"Note: {system} has no tailored EpochWaiter backend; dispenso uses "
+            "the generic fallback there, so treat these results as characterizing "
+            "that fallback, not as evidence about the tuned platforms."
+        )
+    if force:
+        for cat in sorted({c["category"] for c in configs}):
+            applies, reason = category_applies(cat, system)
+            if not applies:
+                print(f"Running {cat} on {system} despite: {reason} (--force).")
+    return selected
+
+
 def main():
     args = parse_args()
     configs = define_configurations()
+    system = platform.system()
 
     if args.list:
-        list_configurations(configs)
+        list_configurations(configs, system)
         return
 
     if args.category:
-        configs = [c for c in configs if c["category"] in (args.category, "baseline")]
-        if not configs:
+        if not any(c["category"] == args.category for c in configs):
             print(f"No configs found for category '{args.category}'")
             sys.exit(1)
+        configs = [c for c in configs if c["category"] in (args.category, "baseline")]
+
+    selected = select_applicable(configs, system, args.force)
+    if len(selected) < len(configs) and all(
+        c["category"] == "baseline" for c in selected
+    ):
+        print("Nothing left to run on this platform.")
+        sys.exit(1)
+    configs = selected
 
     print(f"Platform: {platform.system()} {platform.machine()}")
     print(f"Source:   {args.source_dir}")
