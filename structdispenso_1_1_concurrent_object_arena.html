@@ -142,8 +142,10 @@ struct dispenso::ConcurrentObjectArena&lt; T, Index, alignment &gt;</div><p><cod
      ├─┤    ├──────────────────────────────┤
      │*├───&gt;│                              │
      └─┘    └──────────────────────────────┘
-*</pre> 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00057">57</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+*</pre><p>Elements are default-constructed by <a class="el" href="#abad17b8b5027d102da30fcf5195fa50f">grow_by()</a> and destroyed when the arena is destroyed or assigned over. Copying an arena requires <code>T</code> to be trivially copyable.</p>
+<p>If an element's constructor throws, <a class="el" href="#abad17b8b5027d102da30fcf5195fa50f">grow_by()</a> destroys the elements it had already built and rethrows. The slots it reserved stay inside <a class="el" href="#a362e26a8c24bca99a883f413dc75c019">size()</a> (which never decreases) as a gap that holds no objects: the caller must not access them, and the arena skips them when destroying its elements. </p>
+
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00069">69</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a27805ff768827c1aad24867c47ec7947" name="a27805ff768827c1aad24867c47ec7947"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a27805ff768827c1aad24867c47ec7947">&#9670;&#160;</a></span>ConcurrentObjectArena() <span class="overload">[1/3]</span></h2>
@@ -182,7 +184,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00066">66</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00078">78</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -212,7 +214,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </div><div class="memdoc">
 <p>Copy constructor </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00087">87</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00099">99</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -242,7 +244,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </div><div class="memdoc">
 <p>Move constructor </p>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00115">115</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00130">130</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -271,7 +273,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00127">127</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00142">142</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -302,7 +304,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </div><div class="memdoc">
 <p>The current capacity of the object arena. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>The current capacity. Note that elements can be appended concurrently </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00233">233</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00264">264</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -338,7 +340,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The pointer to the buffer. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00259">259</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00290">290</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -374,7 +376,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The pointer to the buffer. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00250">250</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00281">281</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -410,7 +412,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The used buffer size. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00268">268</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00299">299</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -439,7 +441,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </table>
 </div><div class="memdoc">
 <p>Grow a container</p>
-<p>This function is thread safe and never invalidates pointers or references to the rest of the elements. It is lock-free if new elements can be placed in current buffer. It locks if it allocates a new buffer. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>This function is thread safe and never invalidates pointers or references to the rest of the elements. It is lock-free if new elements can be placed in current buffer. It locks if it allocates a new buffer. The new elements are default-constructed. If a constructor throws, the elements already built by this call are destroyed and the exception is rethrown; the reserved slots are left as a gap (see the class documentation). </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">delta</td><td>New size of the container will be <code>delta</code> elements bigger. </td></tr>
   </table>
@@ -447,7 +449,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>index of the first element of the allocated group. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00166">166</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00186">186</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -477,7 +479,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </div><div class="memdoc">
 <p>Number of the internal buffers. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>The current number of buffers. Note that buffers can be appended concurrently </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00241">241</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00272">272</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
@@ -507,7 +509,7 @@ template&lt;class T , class Index  = size_t, size_t alignment = dispenso::kCache
 </div><div class="memdoc">
 <p>Get the size of the object arena. Concurrency safe. </p><dl class="section return"><dt>Returns</dt><dd>The number of elements in the object arena. Note that elements can be appended concurrently with this call. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00225">225</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="concurrent__object__arena_8h_source.html#l00256">256</a> of file <a class="el" href="concurrent__object__arena_8h_source.html">concurrent_object_arena.h</a>.</p>
 
 </div>
 </div>
