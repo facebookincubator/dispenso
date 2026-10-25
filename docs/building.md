@@ -63,6 +63,30 @@ cmake PATH_TO_DISPENSO_ROOT
 cmake --build . --config Release
 ```
 
+### With CMake presets
+
+With CMake 3.21 or newer, the presets in `CMakePresets.json` replace the commands
+above. Each builds into `build/<preset>` under the source tree:
+
+```bash
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+```
+
+| Preset | Configuration |
+| --- | --- |
+| `default` | The library alone at C++17 in Release, using system-installed dependencies |
+| `vcpkg` | As `default`, with dependencies from vcpkg; `VCPKG_ROOT` must be set |
+| `dev` | Tests, benchmarks and examples at C++20 in Release, with dependencies from vcpkg |
+| `asan`, `tsan` | `dev` built as RelWithDebInfo with Address (plus UndefinedBehavior) or Thread Sanitizer |
+| `win-dev` | `dev` on Windows with Ninja, built under `%TEMP%`; run from a Developer Command Prompt |
+
+Release and RelWithDebInfo both define `NDEBUG`, so asserts are off in every preset,
+the sanitizer presets included. Configure with `-DCMAKE_BUILD_TYPE=Debug` to enable them.
+
+Personal presets belong in `CMakeUserPresets.json`, which git ignores.
+
 ## Build Options Affecting Linkage
 
 Two options change what the built library is, and both matter to packagers:
@@ -102,6 +126,23 @@ The extra level in the second row is concurrentqueue's own install layout, not
 something dispenso or any packager adds. Its CMake target sets the matching
 include directory, so `find_package(Dispenso)` needs none of this; only
 hand-rolled builds do.
+
+## Other Build Options
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `DISPENSO_BUILD_TESTS` | OFF | Build the unit tests (needs GoogleTest; see Testing below) |
+| `DISPENSO_BUILD_BENCHMARKS` | OFF | Build the benchmarks (see Benchmarking below) |
+| `DISPENSO_BUILD_EXAMPLES` | OFF | Build the programs in `examples/` |
+| `DISPENSO_WERROR` | ON | Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing `-Wno-error` in `CMAKE_CXX_FLAGS` does not work, because dispenso's own flags come later. |
+| `ADDRESS_SANITIZER` | OFF | Build everything with `-fsanitize=address -fsanitize=undefined` (GCC and Clang) |
+| `THREAD_SANITIZER` | OFF | Build everything with `-fsanitize=thread` (GCC and Clang). Use Clang: GCC's ThreadSanitizer does not model `std::atomic_thread_fence` and reports false races in the lock-free queues. |
+| `DISPENSO_BUILD_FAST_MATH` | OFF | Build the experimental `fast_math` sublibrary. Its API is unstable. |
+| `DISPENSO_FAST_MATH_SIMD` | `none` | SIMD instruction set for the `fast_math` targets: `none`, `native`, `sse4.1`, `avx2`, `avx512` or `neon` |
+| `DISPENSO_FAST_MATH_HIGHWAY` | OFF | Add the [Highway](https://github.com/google/highway) backend to `fast_math`, fetching Highway if it is not installed |
+| `DISPENSO_FAST_MATH_CUDA` | OFF | Build the `fast_math` CUDA tests (needs the CUDA toolkit) |
+
+The sanitizer options are mutually exclusive. The `asan` and `tsan` presets set them for you.
 
 ## Installing
 
@@ -150,8 +191,11 @@ All commands should be run from the Developer Command Prompt.
 mkdir build && cd build
 cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_TESTS=ON
 cmake --build . --config Release
-ctest
+ctest -C Release
 ```
+
+Visual Studio generators build several configurations into one build tree, so `ctest` needs
+`-C` to say which one to test; without it, no tests are found.
 
 ## Benchmarking
 
@@ -175,7 +219,17 @@ bin/once_function_benchmark  # example benchmark
 ```
 
 ### Windows
-Not currently supported through CMake.
+All commands should be run from the Developer Command Prompt.
+```bash
+mkdir build && cd build
+cmake PATH_TO_DISPENSO_ROOT -DDISPENSO_BUILD_BENCHMARKS=ON
+cmake --build . --config Release
+bin\Release\once_function_benchmark.exe  # example benchmark
+```
+
+OpenMP comes with MSVC; TBB is easiest to get from vcpkg (see the `vcpkg` preset above).
+[`scripts/BENCHMARKING.md`](https://github.com/facebookincubator/dispenso/blob/main/scripts/BENCHMARKING.md)
+covers running the full suite and recording results on each platform, Windows included.
 
 ## Building the Documentation
 
