@@ -295,13 +295,12 @@ class SmallVector {
       if (sz < N) {
         ptr = inlineData();
       } else {
-        growToHeap(N * 2);
-        ptr = storage_.heap_.ptr;
+        return growAndEmplaceBack(N * 2, std::forward<Args>(args)...);
       }
     } else {
       size_type sz = rawSize();
       if (sz == storage_.heap_.capacity) {
-        growToHeap(storage_.heap_.capacity * 2);
+        return growAndEmplaceBack(storage_.heap_.capacity * 2, std::forward<Args>(args)...);
       }
       ptr = storage_.heap_.ptr;
     }
@@ -427,25 +426,49 @@ class SmallVector {
       ptr[i].~T();
     }
     if (!isInline()) {
-      // GCC on 32-bit ARM reports this as freeing the inline buffer. It is a
-      // false positive: the heap bit lives inside size_ and the buffer is a
-      // union member aliasing heap_.ptr, and across the inlined move paths GCC
-      // stops being able to prove the guard above excludes inline storage. The
-      // same code is clean under GCC on x86_64, x86-32, aarch64, riscv32 and
-      // riscv64, which is not what a genuine logic error would look like.
-      // Simplifying the move paths to a single size_ assignment did not change
-      // its mind either.
-      DISPENSO_DISABLE_WARNING_PUSH
-      DISPENSO_DISABLE_WARNING_FREE_NONHEAP_OBJECT
-      ::operator delete(storage_.heap_.ptr);
-      DISPENSO_DISABLE_WARNING_POP
+      deallocate(storage_.heap_.ptr);
     }
+  }
+
+  // Heap storage for over-aligned T must honour alignof(T); plain ::operator new only guarantees
+  // alignof(std::max_align_t), and the aligned overloads need C++17.
+  static constexpr bool kOverAligned = alignof(T) > alignof(std::max_align_t);
+
+  static T* allocate(size_type count) {
+    if (kOverAligned) {
+      return static_cast<T*>(detail::alignedMalloc(count * sizeof(T), alignof(T)));
+    }
+    return static_cast<T*>(::operator new(count * sizeof(T)));
+  }
+
+  static void deallocate(T* ptr) noexcept {
+    if (kOverAligned) {
+      detail::alignedFree(ptr);
+      return;
+    }
+    // GCC on 32-bit ARM reports this, called from destroyAll(), as freeing the
+    // inline buffer. It is a false positive: the heap bit lives inside size_
+    // and the buffer is a union member aliasing heap_.ptr, and across the
+    // inlined move paths GCC stops being able to prove the !isInline() guard
+    // excludes inline storage. The same code is clean under GCC on x86_64,
+    // x86-32, aarch64, riscv32 and riscv64, which is not what a genuine logic
+    // error would look like. Simplifying the move paths to a single size_
+    // assignment did not change its mind either.
+    DISPENSO_DISABLE_WARNING_PUSH
+    DISPENSO_DISABLE_WARNING_FREE_NONHEAP_OBJECT
+    ::operator delete(ptr);
+    DISPENSO_DISABLE_WARNING_POP
   }
 
   // Grow to heap storage with the specified capacity.
   // Moves existing elements, frees old heap if applicable, sets heap bit.
   void growToHeap(size_type newCap) {
-    T* newData = static_cast<T*>(::operator new(newCap * sizeof(T)));
+    adoptHeap(allocate(newCap), newCap);
+  }
+
+  // Move the existing elements into newData (capacity newCap), free the old heap storage if any,
+  // and switch to heap mode using newData.
+  void adoptHeap(T* newData, size_type newCap) {
     T* oldData = data();
     size_type sz = rawSize();
 
@@ -455,12 +478,35 @@ class SmallVector {
     }
 
     if (!isInline()) {
-      ::operator delete(storage_.heap_.ptr);
+      deallocate(storage_.heap_.ptr);
     }
 
     storage_.heap_.ptr = newData;
     storage_.heap_.capacity = newCap;
     size_ = kHeapBit | sz;
+  }
+
+  // emplace_back() when full: grow to newCap and append. The new element is constructed in the new
+  // storage before the existing elements are moved out of the old storage, because args may refer
+  // to one of those elements (e.g. v.push_back(v[0])).
+  template <typename... Args>
+  reference growAndEmplaceBack(size_type newCap, Args&&... args) {
+    T* newData = allocate(newCap);
+    size_type sz = rawSize();
+#if defined(__cpp_exceptions)
+    try {
+      new (newData + sz) T(std::forward<Args>(args)...);
+    } catch (...) {
+      deallocate(newData);
+      throw;
+    }
+#else
+    new (newData + sz) T(std::forward<Args>(args)...);
+#endif // __cpp_exceptions
+    adoptHeap(newData, newCap);
+    ++size_; // Preserves heap bit
+    assert(rawSize() > 0 && "Size overflow into heap bit");
+    return newData[sz];
   }
 
   void ensureCapacity(size_type newCap) {
