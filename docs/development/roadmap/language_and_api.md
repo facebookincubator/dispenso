@@ -21,6 +21,7 @@ The following changes require a major version bump due to API breakage:
 |---------|-------------|
 | Remove poll mode | Remove `threadLoopPoll`, the `setSignalingWake(false)` path, and the `DISPENSO_WAKEUP_ENABLE` / `DISPENSO_POLL_PERIOD_US` defines. Signaling wake (futex/WaitOnAddress/ulock) is always-on and well-tested. Poll mode is a legacy fallback that adds code complexity without benefit on any supported platform. |
 | C++17 minimum | Bump minimum standard from C++14 to C++17. Enables `std::optional` (replacing `OpResult`), `if constexpr`, structured bindings, `[[nodiscard]]`, and `std::string_view`. Simplifies template metaprogramming throughout, and retires dispenso's hand-written over-aligned allocation (see Code TODOs below). |
+| Remove `ConcurrentObjectArena` copying | Copy construction and assignment have no internal users, compile only for trivially copyable `T` (they memcpy whole buffers), and are not safe against a concurrent `grow_by()`. Moving and `swap` stay. They could be deprecated in a 1.x release first, which alters the released stable surface (72h notice, release note). If the comparison in [containers](containers.md) finds no advantage over `ConcurrentVector`, the whole arena is removed instead. |
 | C++20 consideration | Evaluate C++20 as minimum for a later 2.x release. Enables `std::atomic<T>::wait/notify` (potential EpochWaiter simplification), concepts (better error messages), coroutine integration, and `std::jthread`. |
 
 ## Backlog

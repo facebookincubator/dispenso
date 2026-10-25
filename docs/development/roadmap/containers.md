@@ -26,6 +26,13 @@ Current design: [concurrent_vector](../architecture/concurrent_vector.md).
 ## Backlog
 
 - Lock-free stack
+- **`ConcurrentObjectArena` versus `ConcurrentVector`.** `ConcurrentVector` also grows concurrently
+  without moving its elements, so it can serve as an arena. Benchmark the two on the arena's
+  workloads, concurrent `grow_by()` and indexed access; there is no arena benchmark yet. If the
+  arena has no performance advantage, deprecate it in favour of `ConcurrentVector` and remove it in
+  2.0. ThreadPool's `rings_` and `stealRings_` would then move to `ConcurrentVector` or an internal
+  type, keeping their cache-line alignment. Either way, the arena's copy operations go in 2.0 (see
+  [language_and_api](language_and_api.md)).
 
 ### Code TODOs
 
