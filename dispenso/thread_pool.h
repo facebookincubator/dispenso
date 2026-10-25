@@ -312,8 +312,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   void
   scheduleBulkEnqueue(size_t count, Generator&& gen, moodycamel::ProducerToken* token = nullptr);
 
-  // Wake enough threads to handle pending work. Uses PoolWakeState's budget-
-  // limited cascade for efficient parallel waking.
+  // Wake enough threads to handle pending work, via PoolWakeState.
   // Missed wakes are benign: the EpochWaiter's sleep timeout provides a safety
   // net, so a missed wake only delays wakeup by up to that duration.
   void conditionallyWake() {
@@ -476,7 +475,7 @@ class DISPENSO_CACHELINE_ALIGNED ThreadPool {
   alignas(kCacheLineSize) std::atomic<bool> enableEpochWaiter_{kDefaultWakeupEnable};
   std::atomic<uint32_t> sleepLengthUs_{kDefaultSleepLenUs};
 
-  // Per-thread wake infrastructure: EpochWaiters, sleep masks, budget cascade.
+  // Wake infrastructure: per-group EpochWaiters and sleep masks, cascade table.
   // Atomic pointer — schedule paths load with relaxed ordering.
   //
   // Retired PoolWakeState objects are kept alive for the lifetime of the pool
@@ -1008,10 +1007,10 @@ void ThreadPool::scheduleBulkEnqueue(
           }
         }
       } else {
-        // Large N: Pattern C cascade. Producer wakes seed g0; cascade-host
-        // threads wake their target groups in parallel as they spin up.
-        // Central-queue work is found by the standard tryFindAndExecuteWork
-        // loop on each woken thread — no per-thread ring pre-staging needed.
+        // Large N: cascadeWakeSeed bumps and wakes every affected group
+        // directly. Central-queue work is found by the standard
+        // tryFindAndExecuteWork loop on each woken thread — no per-thread ring
+        // pre-staging needed.
         ws->cascadeWakeSeed(toWake);
       }
     }

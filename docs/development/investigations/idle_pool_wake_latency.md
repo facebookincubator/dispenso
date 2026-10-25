@@ -37,8 +37,8 @@ targeted part of this; a bounded keep-alive hint (below) would help here too.
 **Possible approaches:**
 - Adaptive park delay / hysteresis: keep recently-active workers spinning longer
   before parking when the pool has seen recent bursty activity, trading a little
-  idle CPU for burst latency. Composes with the adaptive spin backoff and
-  wake-cascade tuning (see [wake_cascade.md](../architecture/wake_cascade.md)).
+  idle CPU for burst latency. Composes with the fixed spin limit and
+  wake tuning (see [wake_tuning.md](../architecture/wake_tuning.md)).
 - Locality-preserving burst placement: bias re-scheduling of a repeating burst
   back onto the cores that last ran it (warm cache), analogous to TBB's
   self-steal.
