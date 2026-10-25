@@ -480,8 +480,12 @@ class SmallVector {
     }
   }
 
-  // Heap storage for over-aligned T must honour alignof(T); plain ::operator new only guarantees
-  // alignof(std::max_align_t), and the aligned overloads need C++17.
+  // Heap storage for over-aligned T must honour alignof(T). An untyped ::operator new(size) call
+  // only guarantees the default new alignment, in every standard: C++17's over-aligned allocation
+  // applies to new-expressions, not to direct calls like these. Over-aligned T therefore goes
+  // through dispenso's aligned allocation.
+  // TODO: Once C++17 is the minimum, std::allocator<T> (which honours over-alignment since C++17)
+  // can replace both branches of allocate() and deallocate().
   static constexpr bool kOverAligned = alignof(T) > alignof(std::max_align_t);
 
   static T* allocate(size_type count) {
