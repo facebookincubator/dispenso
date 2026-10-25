@@ -318,6 +318,25 @@ Key points:
 
 ---
 
+### Visualizing a graph
+
+`graphsToDot` writes a `Graph` or `BiPropGraph` as a [Graphviz](https://graphviz.org) DOT file,
+which helps when checking a large dependency structure. Completed and incomplete nodes are coloured
+differently, so writing the file after a partial run shows what will execute next.
+
+```cpp
+#include <dispenso/utils/graph_dot.h>
+
+// Optional labels, keyed by node (or subgraph) address; unnamed nodes show their index.
+std::unordered_map<uintptr_t, std::string> names = {
+    {reinterpret_cast<uintptr_t>(&A), "A"},
+    {reinterpret_cast<uintptr_t>(&D), "D"},
+};
+dispenso::graphsToDot("graph.dot", graph, &names);
+```
+
+Render it with `dot -Tsvg graph.dot -o graph.svg`.
+
 ## Pipelines
 
 For streaming data through stages, use pipelines:

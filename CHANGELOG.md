@@ -1,3 +1,11 @@
+Unreleased
+
+### Bug fixes
+* `dispenso/utils/graph_dot.h` can now be included more than once and on its own: it gained an include guard and includes the standard headers it uses. Its undocumented helper `getName` moved from a global `namespace detail` to `dispenso::detail`, so it can no longer collide with a user's own `detail` namespace.
+
+### Documentation
+* The API reference now includes `dispenso/utils/graph_dot.h` and `graphsToDot`, listed under the Graph topic.
+
 1.6.2 (August 19, 2026)
 
 ### Bug fixes
