@@ -117,6 +117,7 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><div class="compoundTemplParams">template&lt;typename T&gt;<br />
 class dispenso::CacheAligned&lt; T &gt;</div><p>A wrapper that aligns the contained value to cache line boundaries.</p>
 <p>Useful for avoiding false sharing in concurrent data structures.</p>
+<dl class="section note"><dt>Note</dt><dd>Before C++17, std::allocator does not honour over-alignment, so elements of e.g. a <code>std::vector&lt;CacheAligned&lt;T&gt;&gt;</code> are not guaranteed to be cache-line aligned (and accessing them is undefined behaviour) unless the container uses an allocator that respects <code>alignof(CacheAligned&lt;T&gt;)</code>.</dd></dl>
 <dl class="tparams"><dt>Template Parameters</dt><dd>
   <table class="tparams">
     <tr><td class="paramname">T</td><td>The type to wrap with cache line alignment. </td></tr>
@@ -124,7 +125,7 @@ class dispenso::CacheAligned&lt; T &gt;</div><p>A wrapper that aligns the contai
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00205">205</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00211">211</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="abe86e14c071a766198c7befe596f055a" name="abe86e14c071a766198c7befe596f055a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#abe86e14c071a766198c7befe596f055a">&#9670;&#160;</a></span>CacheAligned()</h2>
@@ -157,7 +158,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00209">209</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="platform_8h_source.html#l00215">215</a> of file <a class="el" href="platform_8h_source.html">platform.h</a>.</p>
 
 </div>
 </div>
