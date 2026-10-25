@@ -408,8 +408,8 @@ function renderChart(cfg) {
 }
 
 // ─── Platform switching ────────────────────────────────────────
-// Comparison-library versions. These vary by platform -- some platforms'
-// columns were built against noticeably older TBB/Taskflow -- so a reader
+// Comparison-library versions. These vary by platform -- Buck-built columns
+// carry noticeably older TBB/Taskflow than the CMake ones -- so a reader
 // comparing dispenso against TBB across platforms needs to see them.
 const DEP_LABELS = {
   tbb: 'TBB', taskflow: 'Taskflow', folly: 'folly',

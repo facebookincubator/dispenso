@@ -334,19 +334,6 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <li>Subgraphs help organize large graphs</li>
 </ul>
 <hr  />
-<h2>Visualizing a graph</h2>
-<p><code>graphsToDot</code> writes a <code>Graph</code> or <code>BiPropGraph</code> as a <a href="https://graphviz.org">Graphviz</a> DOT file, which helps when checking a large dependency structure. Completed and incomplete nodes are coloured differently, so writing the file after a partial run shows what will execute next.</p>
-<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="graph__dot_8h.html">dispenso/utils/graph_dot.h</a>&gt;</span></div>
-<div class="line"> </div>
-<div class="line"><span class="comment">// Optional labels, keyed by node (or subgraph) address; unnamed nodes show their index.</span></div>
-<div class="line">std::unordered_map&lt;uintptr_t, std::string&gt; names = {</div>
-<div class="line">    {<span class="keyword">reinterpret_cast&lt;</span>uintptr_t<span class="keyword">&gt;</span>(&amp;A), <span class="stringliteral">&quot;A&quot;</span>},</div>
-<div class="line">    {<span class="keyword">reinterpret_cast&lt;</span>uintptr_t<span class="keyword">&gt;</span>(&amp;D), <span class="stringliteral">&quot;D&quot;</span>},</div>
-<div class="line">};</div>
-<div class="line"><a class="code hl_function" href="graph__dot_8h.html#a60262f6a0e64ff6e4ded1e7e3039de0c">dispenso::graphsToDot</a>(<span class="stringliteral">&quot;graph.dot&quot;</span>, graph, &amp;names);</div>
-<div class="ttc" id="agraph__dot_8h_html"><div class="ttname"><a href="graph__dot_8h.html">graph_dot.h</a></div></div>
-<div class="ttc" id="agraph__dot_8h_html_a60262f6a0e64ff6e4ded1e7e3039de0c"><div class="ttname"><a href="graph__dot_8h.html#a60262f6a0e64ff6e4ded1e7e3039de0c">dispenso::graphsToDot</a></div><div class="ttdeci">void graphsToDot(const char *filename, const G &amp;graph, const std::unordered_map&lt; uintptr_t, std::string &gt; *nodeNames)</div><div class="ttdef"><b>Definition</b> <a href="graph__dot_8h_source.html#l00053">graph_dot.h:53</a></div></div>
-</div><!-- fragment --><p>Render it with <code>dot -Tsvg graph.dot -o graph.svg</code>.</p>
 <h1>Pipelines</h1>
 <p>For streaming data through stages, use pipelines:</p>
 <p><b>3-stage pipeline (generator -&gt; transform -&gt; sink):</b></p>

@@ -128,7 +128,7 @@ $(function(){initNavTree('faq.html',''); initResizable(true); });
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>kAdaptive</code>   </td><td class="markdownTableBodyNone">Non-uniform work (e.g., Mandelbrot)   </td><td class="markdownTableBodyNone">Stripe-based with work stealing. Prefers same-L3 cache victims.    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone"><code>kAuto</code> (deprecated)   </td><td class="markdownTableBodyNone">—   </td><td class="markdownTableBodyNone">Alias for <code>kAdaptive</code>, kept for source compatibility. Use <code>kAdaptive</code>.   </td></tr>
+<td class="markdownTableBodyNone"><code>kAuto</code>   </td><td class="markdownTableBodyNone">General use   </td><td class="markdownTableBodyNone">Currently selects <code>kStatic</code>. May change in future versions.   </td></tr>
 </table>
 <p>Use <code>ParForOptions::minItemsPerChunk</code> to set a lower bound on chunk size, preventing over-parallelization for cheap per-element work.</p>
 <h1>How does dispenso compare to TBB performance?</h1>
