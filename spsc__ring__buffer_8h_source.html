@@ -283,116 +283,127 @@ $(function(){initNavTree('spsc__ring__buffer_8h_source.html',''); initResizable(
 <div class="line"><a id="l00453" name="l00453"></a><span class="lineno">  453</span>      <span class="keywordflow">return</span> 0;</div>
 <div class="line"><a id="l00454" name="l00454"></a><span class="lineno">  454</span>    }</div>
 <div class="line"><a id="l00455" name="l00455"></a><span class="lineno">  455</span> </div>
-<div class="line"><a id="l00456" name="l00456"></a><span class="lineno">  456</span>    <span class="comment">// Push as many items as possible</span></div>
-<div class="line"><a id="l00457" name="l00457"></a><span class="lineno">  457</span>    <span class="keywordtype">size_t</span> count = 0;</div>
-<div class="line"><a id="l00458" name="l00458"></a><span class="lineno">  458</span>    <span class="keywordtype">size_t</span> tailPos = currentTail;</div>
-<div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span>    <span class="keywordflow">for</span> (; first != last &amp;&amp; count &lt; available; ++first, ++count) {</div>
-<div class="line"><a id="l00460" name="l00460"></a><span class="lineno">  460</span>      <span class="keyword">new</span> (elementAt(tailPos)) T(std::move(*first));</div>
-<div class="line"><a id="l00461" name="l00461"></a><span class="lineno">  461</span>      tailPos = increment(tailPos);</div>
-<div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span>    }</div>
-<div class="line"><a id="l00463" name="l00463"></a><span class="lineno">  463</span> </div>
-<div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span>    <span class="keywordflow">if</span> (count &gt; 0) {</div>
-<div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span>      tail_.store(tailPos, std::memory_order_release);</div>
-<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span>    }</div>
-<div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span>    <span class="keywordflow">return</span> count;</div>
-<div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span>  }</div>
+<div class="line"><a id="l00456" name="l00456"></a><span class="lineno">  456</span>    <span class="comment">// Push as many items as possible. The new tail is published on scope exit, so if a T</span></div>
+<div class="line"><a id="l00457" name="l00457"></a><span class="lineno">  457</span>    <span class="comment">// constructor throws, the elements already constructed are still handed to the consumer</span></div>
+<div class="line"><a id="l00458" name="l00458"></a><span class="lineno">  458</span>    <span class="comment">// (and destroyed with the buffer) rather than being stranded past the tail.</span></div>
+<div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span>    <span class="keywordtype">size_t</span> count = 0;</div>
+<div class="line"><a id="l00460" name="l00460"></a><span class="lineno">  460</span>    IndexPublisher tail{tail_, currentTail};</div>
+<div class="line"><a id="l00461" name="l00461"></a><span class="lineno">  461</span>    <span class="keywordflow">for</span> (; first != last &amp;&amp; count &lt; available; ++first, ++count) {</div>
+<div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span>      <span class="keyword">new</span> (elementAt(tail.pos)) T(std::move(*first));</div>
+<div class="line"><a id="l00463" name="l00463"></a><span class="lineno">  463</span>      tail.pos = increment(tail.pos);</div>
+<div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span>    }</div>
+<div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span>    <span class="keywordflow">return</span> count;</div>
+<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span>  }</div>
 </div>
-<div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span> </div>
-<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> OutputIt&gt;</div>
-<div class="foldopen" id="foldopen00496" data-start="{" data-end="}">
-<div class="line"><a id="l00496" name="l00496"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">  496</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">try_pop_batch</a>(OutputIt dest, size_type maxCount) {</div>
-<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> currentHead = head_.load(std::memory_order_relaxed);</div>
-<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> currentTail = tail_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span> </div>
-<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>    <span class="comment">// Calculate available items</span></div>
-<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>    <span class="keywordtype">size_t</span> available;</div>
-<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>    <span class="keywordflow">if</span> (currentTail &gt;= currentHead) {</div>
-<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span>      available = currentTail - currentHead;</div>
-<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>    } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span>      available = kBufferSize - currentHead + currentTail;</div>
-<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>    }</div>
-<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span> </div>
-<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>    <span class="keywordflow">if</span> (available == 0) {</div>
-<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>      <span class="keywordflow">return</span> 0;</div>
-<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>    }</div>
-<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span> </div>
-<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span>    <span class="comment">// Pop as many items as requested and available</span></div>
-<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span>    <span class="keywordtype">size_t</span> count = std::min(available, maxCount);</div>
-<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>    <span class="keywordtype">size_t</span> headPos = currentHead;</div>
+<div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span> </div>
+<div class="line"><a id="l00493" name="l00493"></a><span class="lineno">  493</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> OutputIt&gt;</div>
+<div class="foldopen" id="foldopen00494" data-start="{" data-end="}">
+<div class="line"><a id="l00494" name="l00494"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">  494</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">try_pop_batch</a>(OutputIt dest, size_type maxCount) {</div>
+<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> currentHead = head_.load(std::memory_order_relaxed);</div>
+<div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> currentTail = tail_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span> </div>
+<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>    <span class="comment">// Calculate available items</span></div>
+<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span>    <span class="keywordtype">size_t</span> available;</div>
+<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>    <span class="keywordflow">if</span> (currentTail &gt;= currentHead) {</div>
+<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>      available = currentTail - currentHead;</div>
+<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>    } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span>      available = kBufferSize - currentHead + currentTail;</div>
+<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>    }</div>
+<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span> </div>
+<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>    <span class="keywordflow">if</span> (available == 0) {</div>
+<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span>      <span class="keywordflow">return</span> 0;</div>
+<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>    }</div>
+<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span> </div>
+<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>    <span class="comment">// Pop as many items as requested and available</span></div>
+<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>    <span class="keywordtype">size_t</span> count = std::min(available, maxCount);</div>
+<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span>    <span class="comment">// The new head is published on scope exit, so if assigning to dest throws, the elements</span></div>
+<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span>    <span class="comment">// already moved out and destroyed are released, and the remaining ones stay in the buffer.</span></div>
+<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>    IndexPublisher head{head_, currentHead};</div>
 <div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; count; ++i, ++dest) {</div>
-<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>      T* elem = elementAt(headPos);</div>
+<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>      T* elem = elementAt(head.pos);</div>
 <div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span>      *dest = std::move(*elem);</div>
 <div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>      elem-&gt;~T();</div>
-<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>      headPos = increment(headPos);</div>
+<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>      head.pos = increment(head.pos);</div>
 <div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>    }</div>
-<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span> </div>
-<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>    <span class="keywordflow">if</span> (count &gt; 0) {</div>
-<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>      head_.store(headPos, std::memory_order_release);</div>
-<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>    }</div>
-<div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>    <span class="keywordflow">return</span> count;</div>
-<div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>  }</div>
+<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>    <span class="keywordflow">return</span> count;</div>
+<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>  }</div>
 </div>
-<div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span> </div>
-<div class="foldopen" id="foldopen00539" data-start="{" data-end="}">
-<div class="line"><a id="l00539" name="l00539"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">  539</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">empty</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span>    <span class="keywordflow">return</span> head_.load(std::memory_order_acquire) == tail_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00541" name="l00541"></a><span class="lineno">  541</span>  }</div>
+<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span> </div>
+<div class="foldopen" id="foldopen00535" data-start="{" data-end="}">
+<div class="line"><a id="l00535" name="l00535"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">  535</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">empty</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span>    <span class="keywordflow">return</span> head_.load(std::memory_order_acquire) == tail_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00537" name="l00537"></a><span class="lineno">  537</span>  }</div>
 </div>
-<div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span> </div>
-<div class="foldopen" id="foldopen00554" data-start="{" data-end="}">
-<div class="line"><a id="l00554" name="l00554"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">  554</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">full</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span>    <span class="keywordflow">return</span> increment(tail_.load(std::memory_order_acquire)) ==</div>
-<div class="line"><a id="l00556" name="l00556"></a><span class="lineno">  556</span>        head_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00557" name="l00557"></a><span class="lineno">  557</span>  }</div>
+<div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span> </div>
+<div class="foldopen" id="foldopen00550" data-start="{" data-end="}">
+<div class="line"><a id="l00550" name="l00550"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">  550</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">full</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span>    <span class="keywordflow">return</span> increment(tail_.load(std::memory_order_acquire)) ==</div>
+<div class="line"><a id="l00552" name="l00552"></a><span class="lineno">  552</span>        head_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00553" name="l00553"></a><span class="lineno">  553</span>  }</div>
 </div>
-<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span> </div>
-<div class="foldopen" id="foldopen00572" data-start="{" data-end="}">
-<div class="line"><a id="l00572" name="l00572"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">  572</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">size</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> head = head_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> tail = tail_.load(std::memory_order_acquire);</div>
-<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>    <span class="comment">// Handle wrap-around: if tail &lt; head, we&#39;ve wrapped</span></div>
-<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>    <span class="keywordflow">return</span> (tail &gt;= head) ? (tail - head) : (kBufferSize - head + tail);</div>
-<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span>  }</div>
+<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span> </div>
+<div class="foldopen" id="foldopen00568" data-start="{" data-end="}">
+<div class="line"><a id="l00568" name="l00568"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">  568</a></span>  size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">size</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> head = head_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> tail = tail_.load(std::memory_order_acquire);</div>
+<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>    <span class="comment">// Handle wrap-around: if tail &lt; head, we&#39;ve wrapped</span></div>
+<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>    <span class="keywordflow">return</span> (tail &gt;= head) ? (tail - head) : (kBufferSize - head + tail);</div>
+<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>  }</div>
 </div>
-<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span> </div>
-<div class="foldopen" id="foldopen00591" data-start="{" data-end="}">
-<div class="line"><a id="l00591" name="l00591"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">  591</a></span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">capacity</a>() noexcept {</div>
-<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>    <span class="keywordflow">return</span> kBufferSize - 1;</div>
-<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>  }</div>
+<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span> </div>
+<div class="foldopen" id="foldopen00587" data-start="{" data-end="}">
+<div class="line"><a id="l00587" name="l00587"></a><span class="lineno"><a class="line" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">  587</a></span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> size_type <a class="code hl_function" href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">capacity</a>() noexcept {</div>
+<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>    <span class="keywordflow">return</span> kBufferSize - 1;</div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>  }</div>
 </div>
-<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span> </div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> computeBufferSize() noexcept {</div>
-<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>    <span class="keywordflow">return</span> RoundUpToPowerOfTwo ? <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(detail::nextPow2(Capacity + 1)) : Capacity + 1;</div>
-<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>  }</div>
-<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span> </div>
-<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kBufferSize = computeBufferSize();</div>
-<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span> </div>
-<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">bool</span> kIsPowerOfTwo = (kBufferSize &amp; (kBufferSize - 1)) == 0;</div>
-<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span> </div>
-<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMask = kBufferSize - 1;</div>
-<div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span> </div>
-<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> increment(<span class="keywordtype">size_t</span> index) <span class="keyword">noexcept</span> {</div>
-<div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span>    <span class="keywordflow">return</span> kIsPowerOfTwo ? ((index + 1) &amp; kMask) : ((index + 1) % kBufferSize);</div>
-<div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span>  }</div>
-<div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span> </div>
-<div class="line"><a id="l00645" name="l00645"></a><span class="lineno">  645</span>  T* elementAt(<span class="keywordtype">size_t</span> index) {</div>
-<div class="line"><a id="l00646" name="l00646"></a><span class="lineno">  646</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>T*<span class="keyword">&gt;</span>(&amp;storage_[index * <span class="keyword">sizeof</span>(T)]);</div>
-<div class="line"><a id="l00647" name="l00647"></a><span class="lineno">  647</span>  }</div>
-<div class="line"><a id="l00648" name="l00648"></a><span class="lineno">  648</span> </div>
-<div class="line"><a id="l00649" name="l00649"></a><span class="lineno">  649</span>  <span class="keyword">const</span> T* elementAt(<span class="keywordtype">size_t</span> index)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00650" name="l00650"></a><span class="lineno">  650</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>T*<span class="keyword">&gt;</span>(&amp;storage_[index * <span class="keyword">sizeof</span>(T)]);</div>
-<div class="line"><a id="l00651" name="l00651"></a><span class="lineno">  651</span>  }</div>
-<div class="line"><a id="l00652" name="l00652"></a><span class="lineno">  652</span> </div>
-<div class="line"><a id="l00654" name="l00654"></a><span class="lineno">  654</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;size_t&gt; head_{0};</div>
-<div class="line"><a id="l00655" name="l00655"></a><span class="lineno">  655</span> </div>
-<div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;size_t&gt; tail_{0};</div>
+<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span> </div>
+<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>  <span class="keyword">struct </span>IndexPublisher {</div>
+<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>    std::atomic&lt;size_t&gt;&amp; index;</div>
+<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>    <span class="keywordtype">size_t</span> start;</div>
+<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>    <span class="keywordtype">size_t</span> pos;</div>
+<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>    IndexPublisher(std::atomic&lt;size_t&gt;&amp; idx, <span class="keywordtype">size_t</span> current)</div>
+<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>        : index(idx), start(current), pos(current) {}</div>
+<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>    IndexPublisher(<span class="keyword">const</span> IndexPublisher&amp;) = <span class="keyword">delete</span>;</div>
+<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>    IndexPublisher&amp; operator=(<span class="keyword">const</span> IndexPublisher&amp;) = <span class="keyword">delete</span>;</div>
+<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>    ~IndexPublisher() {</div>
+<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>      <span class="keywordflow">if</span> (pos != start) {</div>
+<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>        index.store(pos, std::memory_order_release);</div>
+<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>      }</div>
+<div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span>    }</div>
+<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>  };</div>
+<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span> </div>
+<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> computeBufferSize() noexcept {</div>
+<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>    <span class="keywordflow">return</span> RoundUpToPowerOfTwo ? <span class="keyword">static_cast&lt;</span><span class="keywordtype">size_t</span><span class="keyword">&gt;</span>(detail::nextPow2(Capacity + 1)) : Capacity + 1;</div>
+<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span>  }</div>
+<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span> </div>
+<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kBufferSize = computeBufferSize();</div>
+<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span> </div>
+<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">bool</span> kIsPowerOfTwo = (kBufferSize &amp; (kBufferSize - 1)) == 0;</div>
+<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span> </div>
+<div class="line"><a id="l00644" name="l00644"></a><span class="lineno">  644</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> kMask = kBufferSize - 1;</div>
+<div class="line"><a id="l00645" name="l00645"></a><span class="lineno">  645</span> </div>
+<div class="line"><a id="l00655" name="l00655"></a><span class="lineno">  655</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">size_t</span> increment(<span class="keywordtype">size_t</span> index) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00656" name="l00656"></a><span class="lineno">  656</span>    <span class="keywordflow">return</span> kIsPowerOfTwo ? ((index + 1) &amp; kMask) : ((index + 1) % kBufferSize);</div>
+<div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>  }</div>
 <div class="line"><a id="l00658" name="l00658"></a><span class="lineno">  658</span> </div>
-<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span>  <span class="keyword">alignas</span>(T) <span class="keywordtype">char</span> storage_[<span class="keyword">sizeof</span>(T) * kBufferSize];</div>
-<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>};</div>
+<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>  T* elementAt(<span class="keywordtype">size_t</span> index) {</div>
+<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>T*<span class="keyword">&gt;</span>(&amp;storage_[index * <span class="keyword">sizeof</span>(T)]);</div>
+<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>  }</div>
+<div class="line"><a id="l00665" name="l00665"></a><span class="lineno">  665</span> </div>
+<div class="line"><a id="l00666" name="l00666"></a><span class="lineno">  666</span>  <span class="keyword">const</span> T* elementAt(<span class="keywordtype">size_t</span> index)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00667" name="l00667"></a><span class="lineno">  667</span>    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>T*<span class="keyword">&gt;</span>(&amp;storage_[index * <span class="keyword">sizeof</span>(T)]);</div>
+<div class="line"><a id="l00668" name="l00668"></a><span class="lineno">  668</span>  }</div>
+<div class="line"><a id="l00669" name="l00669"></a><span class="lineno">  669</span> </div>
+<div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;size_t&gt; head_{0};</div>
+<div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span> </div>
+<div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>  <span class="keyword">alignas</span>(<a class="code hl_variable" href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">kCacheLineSize</a>) std::atomic&lt;size_t&gt; tail_{0};</div>
+<div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span> </div>
+<div class="line"><a id="l00678" name="l00678"></a><span class="lineno">  678</span>  <span class="keyword">alignas</span>(T) <span class="keywordtype">char</span> storage_[<span class="keyword">sizeof</span>(T) * kBufferSize];</div>
+<div class="line"><a id="l00679" name="l00679"></a><span class="lineno">  679</span>};</div>
 </div>
-<div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span> </div>
-<div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00680" name="l00680"></a><span class="lineno">  680</span> </div>
+<div class="line"><a id="l00681" name="l00681"></a><span class="lineno">  681</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html">dispenso::SPSCRingBuffer</a></div><div class="ttdoc">A lock-free single-producer single-consumer ring buffer with fixed capacity.</div><div class="ttdef"><b>Definition</b> <a href="#l00111">spsc_ring_buffer.h:111</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_a07ffce7b785c06e1fd39f06d309d3822"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#a07ffce7b785c06e1fd39f06d309d3822">dispenso::SPSCRingBuffer::try_push_batch</a></div><div class="ttdeci">size_type try_push_batch(InputIt first, InputIt last)</div><div class="ttdoc">Attempts to push multiple elements into the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00438">spsc_ring_buffer.h:438</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_a268782c72bb128fa31f2fb6679343cfc"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#a268782c72bb128fa31f2fb6679343cfc">dispenso::SPSCRingBuffer::try_pop_into</a></div><div class="ttdeci">bool try_pop_into(T *storage)</div><div class="ttdoc">Attempts to pop an element into uninitialized storage.</div><div class="ttdef"><b>Definition</b> <a href="#l00398">spsc_ring_buffer.h:398</a></div></div>
@@ -402,14 +413,14 @@ $(function(){initNavTree('spsc__ring__buffer_8h_source.html',''); initResizable(
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aa295f4e39f091407c10489c8db70bc68"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aa295f4e39f091407c10489c8db70bc68">dispenso::SPSCRingBuffer::~SPSCRingBuffer</a></div><div class="ttdeci">~SPSCRingBuffer()</div><div class="ttdoc">Destroys the ring buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00178">spsc_ring_buffer.h:178</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aa352ef706502a53343d2ead3ec54183e"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aa352ef706502a53343d2ead3ec54183e">dispenso::SPSCRingBuffer::SPSCRingBuffer</a></div><div class="ttdeci">SPSCRingBuffer()=default</div><div class="ttdoc">Constructs an empty ring buffer.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aa66db857adebaa5dd9a9461e7515b3cd"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aa66db857adebaa5dd9a9461e7515b3cd">dispenso::SPSCRingBuffer::try_emplace</a></div><div class="ttdeci">bool try_emplace(Args &amp;&amp;... args)</div><div class="ttdoc">Attempts to construct an element in-place in the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00278">spsc_ring_buffer.h:278</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aac9df992b9ab891b0fe749f6042adf82"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">dispenso::SPSCRingBuffer::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the buffer can hold.</div><div class="ttdef"><b>Definition</b> <a href="#l00591">spsc_ring_buffer.h:591</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aac9df992b9ab891b0fe749f6042adf82"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aac9df992b9ab891b0fe749f6042adf82">dispenso::SPSCRingBuffer::capacity</a></div><div class="ttdeci">static constexpr size_type capacity() noexcept</div><div class="ttdoc">Returns the maximum number of elements the buffer can hold.</div><div class="ttdef"><b>Definition</b> <a href="#l00587">spsc_ring_buffer.h:587</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_abc22acfc3eeacf3f3f022ad8938ce873"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc22acfc3eeacf3f3f022ad8938ce873">dispenso::SPSCRingBuffer::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;item)</div><div class="ttdoc">Attempts to pop an element from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00317">spsc_ring_buffer.h:317</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_abc242551bce9cdafc71a90660eeaa535"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">dispenso::SPSCRingBuffer::size</a></div><div class="ttdeci">size_type size() const</div><div class="ttdoc">Returns the current number of elements in the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00572">spsc_ring_buffer.h:572</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ac01d0771145454839a4eb092e205bccd"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">dispenso::SPSCRingBuffer::try_pop_batch</a></div><div class="ttdeci">size_type try_pop_batch(OutputIt dest, size_type maxCount)</div><div class="ttdoc">Attempts to pop multiple elements from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00496">spsc_ring_buffer.h:496</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_abc242551bce9cdafc71a90660eeaa535"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc242551bce9cdafc71a90660eeaa535">dispenso::SPSCRingBuffer::size</a></div><div class="ttdeci">size_type size() const</div><div class="ttdoc">Returns the current number of elements in the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00568">spsc_ring_buffer.h:568</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ac01d0771145454839a4eb092e205bccd"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ac01d0771145454839a4eb092e205bccd">dispenso::SPSCRingBuffer::try_pop_batch</a></div><div class="ttdeci">size_type try_pop_batch(OutputIt dest, size_type maxCount)</div><div class="ttdoc">Attempts to pop multiple elements from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="#l00494">spsc_ring_buffer.h:494</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_acc8ab4079eae3023d33de71680f2e28d"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#acc8ab4079eae3023d33de71680f2e28d">dispenso::SPSCRingBuffer::try_pop</a></div><div class="ttdeci">OpResult&lt; T &gt; try_pop()</div><div class="ttdoc">Attempts to pop an element from the buffer, returning an optional.</div><div class="ttdef"><b>Definition</b> <a href="#l00358">spsc_ring_buffer.h:358</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ae4230826384c5ed66a8ee67fb7b23ed8"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae4230826384c5ed66a8ee67fb7b23ed8">dispenso::SPSCRingBuffer::SPSCRingBuffer</a></div><div class="ttdeci">SPSCRingBuffer(const SPSCRingBuffer &amp;)=delete</div><div class="ttdoc">Ring buffers are not copyable.</div></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ae5c591314ed2762f775af67c43bf63bc"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">dispenso::SPSCRingBuffer::empty</a></div><div class="ttdeci">bool empty() const</div><div class="ttdoc">Checks if the buffer is empty.</div><div class="ttdef"><b>Definition</b> <a href="#l00539">spsc_ring_buffer.h:539</a></div></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aebe4654f606ddace6b9d0a09c89ed464"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">dispenso::SPSCRingBuffer::full</a></div><div class="ttdeci">bool full() const</div><div class="ttdoc">Checks if the buffer is full.</div><div class="ttdef"><b>Definition</b> <a href="#l00554">spsc_ring_buffer.h:554</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ae5c591314ed2762f775af67c43bf63bc"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#ae5c591314ed2762f775af67c43bf63bc">dispenso::SPSCRingBuffer::empty</a></div><div class="ttdeci">bool empty() const</div><div class="ttdoc">Checks if the buffer is empty.</div><div class="ttdef"><b>Definition</b> <a href="#l00535">spsc_ring_buffer.h:535</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_aebe4654f606ddace6b9d0a09c89ed464"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#aebe4654f606ddace6b9d0a09c89ed464">dispenso::SPSCRingBuffer::full</a></div><div class="ttdeci">bool full() const</div><div class="ttdoc">Checks if the buffer is full.</div><div class="ttdef"><b>Definition</b> <a href="#l00550">spsc_ring_buffer.h:550</a></div></div>
 <div class="ttc" id="aplatform_8h_html"><div class="ttname"><a href="platform_8h.html">platform.h</a></div></div>
 <div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00126">platform.h:126</a></div></div>
 <div class="ttc" id="autil_8h_html"><div class="ttname"><a href="util_8h.html">util.h</a></div></div>

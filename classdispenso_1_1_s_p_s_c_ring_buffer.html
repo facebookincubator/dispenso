@@ -382,7 +382,7 @@ template&lt;typename T , size_t Capacity = 16, bool RoundUpToPowerOfTwo = true&g
 <dl class="section return"><dt>Returns</dt><dd>The actual maximum capacity of the buffer (kBufferSize - 1).</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>The actual storage uses <a class="el" href="#aac9df992b9ab891b0fe749f6042adf82" title="Returns the maximum number of elements the buffer can hold.">capacity()</a> + 1 slots internally to distinguish between empty and full states. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00591">591</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00587">587</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
 
 </div>
 </div>
@@ -417,7 +417,7 @@ template&lt;typename T , size_t Capacity = 16, bool RoundUpToPowerOfTwo = true&g
 <dd>
 Safe to call from any thread, but the result is only a hint. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00539">539</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00535">535</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
 
 </div>
 </div>
@@ -452,7 +452,7 @@ template&lt;typename T , size_t Capacity = 16, bool RoundUpToPowerOfTwo = true&g
 <dd>
 Safe to call from any thread, but the result is only a hint. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00554">554</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00550">550</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
 
 </div>
 </div>
@@ -489,7 +489,7 @@ Safe to call from any thread, but the result is only a hint.</dd>
 <dd>
 The implementation handles wrap-around correctly using modular arithmetic. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00572">572</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00568">568</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
 
 </div>
 </div>
@@ -701,9 +701,9 @@ Elements are moved to the output range.</dd></dl>
 <div class="line">std::vector&lt;int&gt; items(4);</div>
 <div class="line"><span class="keywordtype">size_t</span> popped = buffer.<a class="code hl_function" href="#ac01d0771145454839a4eb092e205bccd">try_pop_batch</a>(items.begin(), 4);</div>
 <div class="line"><span class="comment">// First &#39;popped&#39; elements of items contain the popped values</span></div>
-<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ac01d0771145454839a4eb092e205bccd"><div class="ttname"><a href="#ac01d0771145454839a4eb092e205bccd">dispenso::SPSCRingBuffer::try_pop_batch</a></div><div class="ttdeci">size_type try_pop_batch(OutputIt dest, size_type maxCount)</div><div class="ttdoc">Attempts to pop multiple elements from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="spsc__ring__buffer_8h_source.html#l00496">spsc_ring_buffer.h:496</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_ac01d0771145454839a4eb092e205bccd"><div class="ttname"><a href="#ac01d0771145454839a4eb092e205bccd">dispenso::SPSCRingBuffer::try_pop_batch</a></div><div class="ttdeci">size_type try_pop_batch(OutputIt dest, size_type maxCount)</div><div class="ttdoc">Attempts to pop multiple elements from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="spsc__ring__buffer_8h_source.html#l00494">spsc_ring_buffer.h:494</a></div></div>
 </div><!-- fragment --> 
-<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00496">496</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="spsc__ring__buffer_8h_source.html#l00494">494</a> of file <a class="el" href="spsc__ring__buffer_8h_source.html">spsc_ring_buffer.h</a>.</p>
 
 </div>
 </div>
