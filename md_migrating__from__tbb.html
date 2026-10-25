@@ -166,7 +166,7 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 <div class="line"> </div>
 <div class="line"><span class="comment">// Chunked form - like TBB&#39;s blocked_range</span></div>
 <div class="line">dispenso::parallel_for(</div>
-<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),</div>
+<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),</div>
 <div class="line">    [&amp;](<span class="keywordtype">size_t</span> begin, <span class="keywordtype">size_t</span> end) {</div>
 <div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = begin; i &lt; end; ++i) {</div>
 <div class="line">            process(data[i]);</div>
@@ -359,6 +359,8 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 </div><!-- fragment --><h2>Dispenso</h2>
 <p>Dispenso's <code>Graph</code> is optimized for task DAGs with potential partial re-execution:</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="graph_8h.html">dispenso/graph.h</a>&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="graph__executor_8h.html">dispenso/graph_executor.h</a>&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_graph_t.html">dispenso::Graph</a> graph;</div>
 <div class="line"> </div>
@@ -371,14 +373,22 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 <div class="line">nodeC.dependsOn(nodeA);</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Execute the graph</span></div>
-<div class="line">dispenso::execute(graph, dispenso::globalThreadPool());</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a> taskSet(dispenso::globalThreadPool());</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_concurrent_task_set_executor.html">dispenso::ConcurrentTaskSetExecutor</a> executor;</div>
+<div class="line">setAllNodesIncomplete(graph);</div>
+<div class="line">executor(taskSet, graph);</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// For repeated execution with partial updates:</span></div>
-<div class="line">nodeA.setIncomplete();  <span class="comment">// Mark as needing re-execution</span></div>
-<div class="line">dispenso::execute(graph, dispenso::globalThreadPool());  <span class="comment">// Only re-runs A and dependents</span></div>
+<div class="line">nodeA.setIncomplete();                 <span class="comment">// Mark as needing re-execution</span></div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_forward_propagator.html">dispenso::ForwardPropagator</a> propagator;</div>
+<div class="line">propagator(graph);                     <span class="comment">// Mark everything downstream of A incomplete too</span></div>
+<div class="line">executor(taskSet, graph);              <span class="comment">// Only re-runs A and its dependents</span></div>
+<div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_executor_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set_executor.html">dispenso::ConcurrentTaskSetExecutor</a></div><div class="ttdef"><b>Definition</b> <a href="graph__executor_8h_source.html#l00068">graph_executor.h:68</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_forward_propagator_html"><div class="ttname"><a href="classdispenso_1_1_forward_propagator.html">dispenso::ForwardPropagator</a></div><div class="ttdef"><b>Definition</b> <a href="graph__executor_8h_source.html#l00094">graph_executor.h:94</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_graph_t_html"><div class="ttname"><a href="classdispenso_1_1_graph_t.html">dispenso::GraphT</a></div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00594">graph.h:594</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_graph_t_html_a13d24b1056de5324500d20702661fa7e"><div class="ttname"><a href="classdispenso_1_1_graph_t.html#a13d24b1056de5324500d20702661fa7e">dispenso::GraphT::addNode</a></div><div class="ttdeci">N &amp; addNode(T &amp;&amp;f)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00622">graph.h:622</a></div></div>
 <div class="ttc" id="agraph_8h_html"><div class="ttname"><a href="graph_8h.html">graph.h</a></div></div>
+<div class="ttc" id="agraph__executor_8h_html"><div class="ttname"><a href="graph__executor_8h.html">graph_executor.h</a></div></div>
 </div><!-- fragment --><h1>Futures (Dispenso Advantage)</h1>
 <p>TBB doesn't have a futures interface. Dispenso provides one:</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="future_8h.html">dispenso/future.h</a>&gt;</span></div>
@@ -459,9 +469,9 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 </div><!-- fragment --><h2>Dispenso</h2>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="parallel__for_8h.html">dispenso/parallel_for.h</a>&gt;</span></div>
 <div class="line"> </div>
-<div class="line"><span class="comment">// Auto chunking (like auto_partitioner)</span></div>
+<div class="line"><span class="comment">// Adaptive chunking (closest to auto_partitioner)</span></div>
 <div class="line">dispenso::parallel_for(</div>
-<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAuto),</div>
+<div class="line">    dispenso::makeChunkedRange(0, N, dispenso::ParForChunking::kAdaptive),</div>
 <div class="line">    body);</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Static chunking (like static_partitioner)</span></div>
@@ -481,6 +491,7 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 </div><!-- fragment --><h2>Dispenso</h2>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="rw__lock_8h.html">dispenso/rw_lock.h</a>&gt;</span></div>
 <div class="line"><span class="preprocessor">#include &lt;mutex&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;shared_mutex&gt;</span>  <span class="comment">// std::shared_lock</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// For exclusive access, use std::mutex or dispenso::RWLock</span></div>
 <div class="line">std::mutex mutex;</div>
@@ -492,11 +503,11 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 <div class="line"><span class="comment">// For read-heavy workloads, use RWLock</span></div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_r_w_lock.html">dispenso::RWLock</a> rwLock;</div>
 <div class="line">{</div>
-<div class="line">    dispenso::RWLock::ReadGuard rlock(rwLock);</div>
+<div class="line">    std::shared_lock&lt;dispenso::RWLock&gt; rlock(rwLock);</div>
 <div class="line">    <span class="comment">// Read-only access</span></div>
 <div class="line">}</div>
 <div class="line">{</div>
-<div class="line">    dispenso::RWLock::WriteGuard wlock(rwLock);</div>
+<div class="line">    std::unique_lock&lt;dispenso::RWLock&gt; wlock(rwLock);</div>
 <div class="line">    <span class="comment">// Exclusive write access</span></div>
 <div class="line">}</div>
 <div class="ttc" id="aclassdispenso_1_1_r_w_lock_html"><div class="ttname"><a href="classdispenso_1_1_r_w_lock.html">dispenso::RWLock</a></div><div class="ttdef"><b>Definition</b> <a href="rw__lock_8h_source.html#l00033">rw_lock.h:33</a></div></div>
@@ -544,7 +555,7 @@ $(function(){initNavTree('md_migrating__from__tbb.html',''); initResizable(true)
 <li><b>Dispenso is faster for nested loops</b> - TBB's nested parallelism can have higher overhead; dispenso's work-stealing is optimized for this case</li>
 <li><b>Dispenso has lower overhead for small loops</b> - simpler scheduling means less overhead for fine-grained parallelism</li>
 <li><b>TBB may be faster for very large, uniform workloads</b> - TBB's cache-affinity partitioner can help in specific scenarios</li>
-<li><b>Use appropriate chunking</b> - <code>kStatic</code> for uniform work, <code>kAuto</code> for variable work</li>
+<li><b>Use appropriate chunking</b> - <code>kStatic</code> for uniform work, <code>kAdaptive</code> for variable work</li>
 <li><b>Reuse pools and TaskSets</b> - creation has overhead; reuse when possible</li>
 </ol>
 <h1>Further Reading</h1>
