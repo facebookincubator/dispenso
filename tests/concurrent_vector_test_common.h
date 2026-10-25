@@ -1465,3 +1465,157 @@ TYPED_TEST(ConcurrentVectorTest, OtherConstructorsTest) {
     EXPECT_EQ(cv, v++);
   }
 }
+
+// Tracks the number of live instances so tests can check that every constructed element is
+// destroyed exactly once.
+struct LifetimeCounted {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  int value;
+  LifetimeCounted() : value(0) {
+    ++live();
+  }
+  LifetimeCounted(int v) : value(v) {
+    ++live();
+  }
+  LifetimeCounted(const LifetimeCounted& other) : value(other.value) {
+    ++live();
+  }
+  LifetimeCounted(LifetimeCounted&& other) : value(other.value) {
+    ++live();
+  }
+  LifetimeCounted& operator=(const LifetimeCounted& other) = default;
+  LifetimeCounted& operator=(LifetimeCounted&& other) = default;
+  ~LifetimeCounted() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, InsertDoesNotLeak) {
+  LifetimeCounted::live() = 0;
+  {
+    dispenso::ConcurrentVector<LifetimeCounted, TypeParam> vec;
+    for (int i = 0; i < 10; ++i) {
+      vec.emplace_back(i);
+    }
+    LifetimeCounted value(100);
+    vec.insert(vec.begin(), value);
+    vec.insert(vec.begin() + 5, LifetimeCounted(101));
+    vec.insert(vec.end(), value);
+    vec.insert(vec.end(), LifetimeCounted(102));
+    vec.insert(vec.begin() + 3, 3, value);
+    std::vector<LifetimeCounted> range(4, LifetimeCounted(103));
+    vec.insert(vec.begin() + 2, range.begin(), range.end());
+    vec.insert(vec.end(), range.begin(), range.end());
+    // vec elements, plus `value`, plus `range`.
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()) + 1 + 4);
+    ASSERT_EQ(vec.size(), 25u);
+    EXPECT_EQ(vec[0].value, 100);
+    EXPECT_EQ(vec[1].value, 0);
+    EXPECT_EQ(vec.back().value, 103);
+  }
+  EXPECT_EQ(LifetimeCounted::live(), 0);
+}
+
+TYPED_TEST(ConcurrentVectorTest, EraseDestroysVacatedTail) {
+  LifetimeCounted::live() = 0;
+  {
+    dispenso::ConcurrentVector<LifetimeCounted, TypeParam> vec;
+    for (int i = 0; i < 40; ++i) {
+      vec.emplace_back(i);
+    }
+    // Single element: front, middle, last.
+    vec.erase(vec.begin());
+    vec.erase(vec.begin() + 10);
+    vec.erase(vec.end() - 1);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range shorter than the tail that follows it.
+    vec.erase(vec.begin() + 2, vec.begin() + 4);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range longer than the tail that follows it.
+    vec.erase(vec.begin() + 5, vec.end() - 3);
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+    // Range running to the end.
+    vec.erase(vec.begin() + 6, vec.end());
+    EXPECT_EQ(LifetimeCounted::live(), static_cast<int>(vec.size()));
+
+    std::vector<int> expected = {1, 2, 5, 6, 7, 36};
+    ASSERT_EQ(vec.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      EXPECT_EQ(vec[i].value, expected[i]);
+    }
+  }
+  EXPECT_EQ(LifetimeCounted::live(), 0);
+}
+
+#if defined(__cpp_exceptions)
+// Counts live instances; copy construction throws once copiesUntilThrow() reaches zero.
+struct ThrowingCopy {
+  static int& live() {
+    static int n = 0;
+    return n;
+  }
+  static int& copiesUntilThrow() {
+    static int n = -1;
+    return n;
+  }
+  ThrowingCopy() {
+    ++live();
+  }
+  ThrowingCopy(const ThrowingCopy&) {
+    if (copiesUntilThrow() >= 0 && copiesUntilThrow()-- == 0) {
+      throw std::runtime_error("copy failed");
+    }
+    ++live();
+  }
+  ThrowingCopy& operator=(const ThrowingCopy&) = default;
+  ~ThrowingCopy() {
+    --live();
+  }
+};
+
+TYPED_TEST(ConcurrentVectorTest, ThrowingElementConstructionDestroysOnlyConstructed) {
+  using Vec = dispenso::ConcurrentVector<ThrowingCopy, TypeParam>;
+  ThrowingCopy::live() = 0;
+  ThrowingCopy::copiesUntilThrow() = -1;
+  {
+    const ThrowingCopy value;
+    const std::vector<ThrowingCopy> src(100);
+    const Vec srcVec(100, value);
+    const int baseline = ThrowingCopy::live();
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec(100, value), std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec(src.begin(), src.end()), std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    ThrowingCopy::copiesUntilThrow() = 37;
+    EXPECT_THROW(Vec{srcVec}, std::runtime_error);
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+
+    // Assignment gives the basic guarantee: the vector holds the elements constructed before the
+    // throw, and they (and only they) are destroyed later.
+    {
+      Vec vec;
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec.assign(100, value), std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec.assign(src.begin(), src.end()), std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      ThrowingCopy::copiesUntilThrow() = 37;
+      EXPECT_THROW(vec = srcVec, std::runtime_error);
+      EXPECT_EQ(vec.size(), 37u);
+      EXPECT_EQ(ThrowingCopy::live(), baseline + 37);
+    }
+    EXPECT_EQ(ThrowingCopy::live(), baseline);
+    ThrowingCopy::copiesUntilThrow() = -1;
+  }
+  EXPECT_EQ(ThrowingCopy::live(), 0);
+}
+#endif // __cpp_exceptions
