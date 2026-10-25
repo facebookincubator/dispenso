@@ -215,10 +215,10 @@ $(function(){initNavTree('platform_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span> </div>
 <div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span><span class="comment">// clang-format off</span></div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span><span class="preprocessor">#if (defined(__GNUC__) || defined(__clang__))</span></div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span><span class="preprocessor">#define DO_PRAGMA(X) _Pragma(#X)</span></div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH DO_PRAGMA(GCC diagnostic push)</span></div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP DO_PRAGMA(GCC diagnostic pop)</span></div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)</span></div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span><span class="preprocessor">#define DISPENSO_DO_PRAGMA(X) _Pragma(#X)</span></div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_PUSH DISPENSO_DO_PRAGMA(GCC diagnostic push)</span></div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_POP DISPENSO_DO_PRAGMA(GCC diagnostic pop)</span></div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING(warningName) DISPENSO_DO_PRAGMA(GCC diagnostic ignored #warningName)</span></div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span><span class="preprocessor">#if !defined(__clang__)</span></div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_ZERO_VARIADIC_MACRO_ARGUMENTS</span></div>
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span><span class="preprocessor">#define DISPENSO_DISABLE_WARNING_GLOBAL_CONSTRUCTORS</span></div>
