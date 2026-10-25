@@ -434,6 +434,15 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
  private:
   using BaseType = ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, kMakeInline>;
 
+  // Threads waiting for another thread to publish a bucket spin on its pointer. Under TSAN every
+  // atomic access goes through the sanitizer's own synchronization, and enough spinning loaders
+  // can starve the publishing store indefinitely, so back off there. Elsewhere, spin.
+  DISPENSO_INLINE static void backOffUnderTsan() {
+#if DISPENSO_HAS_TSAN
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
+#endif // DISPENSO_HAS_TSAN
+  }
+
   DISPENSO_INLINE static size_t allocCheckIndex(size_t bucketCapacity) {
     return (kStrategy == ConcurrentVectorReallocStrategy::kFullBufferAhead)
         ? 0
@@ -452,6 +461,7 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
       }
     }
     while (DISPENSO_EXPECT(!this->buffers_[binfo.bucket].load(std::memory_order_acquire), 0)) {
+      backOffUnderTsan();
     }
   }
 
@@ -525,9 +535,7 @@ class ConVecBuffer : public ConVecBufferBase<T, kMinBufferSize, kMaxVectorSize, 
     }
     for (size_t bucket = binfo.bucket; bucket <= bend.bucket; ++bucket) {
       while (DISPENSO_EXPECT(!this->buffers_[bucket].load(std::memory_order_acquire), 0)) {
-#if defined(DISPENSO_HAS_TSAN)
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-#endif // DISPENSO_HAS_TSAN
+        backOffUnderTsan();
       }
     }
   }
