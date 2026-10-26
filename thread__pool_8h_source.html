@@ -158,7 +158,7 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>} <span class="comment">// namespace detail</span></div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="preprocessor">#if !defined(DISPENSO_WAKEUP_ENABLE)</span></div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="preprocessor">#if defined(_WIN32) || defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__)</span></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="preprocessor">#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)</span></div>
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="preprocessor">#define DISPENSO_WAKEUP_ENABLE 1</span></div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span><span class="preprocessor">#define DISPENSO_WAKEUP_ENABLE 0</span></div>
@@ -356,14 +356,14 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span> </div>
 <div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span> <span class="keyword">public</span>:</div>
 <div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>  <span class="comment">// If we are not yet C++17, we provide aligned new/delete to avoid false sharing.</span></div>
-<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span><span class="preprocessor">#if __cplusplus &lt; 201703L</span></div>
+<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span><span class="preprocessor">#if DISPENSO_CPLUSPLUS &lt; 201703L</span></div>
 <div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span>  <span class="keyword">static</span> <span class="keywordtype">void</span>* <span class="keyword">operator</span> <span class="keyword">new</span>(<span class="keywordtype">size_t</span> sz) {</div>
 <div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span>    <span class="keywordflow">return</span> detail::alignedMallocOrThrow(sz);</div>
 <div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>  }</div>
 <div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> <span class="keyword">operator</span> <span class="keyword">delete</span>(<span class="keywordtype">void</span>* ptr) {</div>
 <div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>    <span class="keywordflow">return</span> detail::alignedFree(ptr);</div>
 <div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>  }</div>
-<div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span><span class="preprocessor">#endif </span><span class="comment">// __cplusplus</span></div>
+<div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span><span class="preprocessor">#endif </span><span class="comment">// DISPENSO_CPLUSPLUS</span></div>
 <div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span> </div>
 <div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span> <span class="keyword">private</span>:</div>
 <div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span>  <span class="comment">// Per-thread ring buffer type for fork-join scheduling.</span></div>
@@ -1111,7 +1111,7 @@ $(function(){initNavTree('thread__pool_8h_source.html',''); initResizable(true);
 <div class="ttc" id="ampmc__ring__buffer_8h_html"><div class="ttname"><a href="mpmc__ring__buffer_8h.html">mpmc_ring_buffer.h</a></div></div>
 <div class="ttc" id="aonce__function_8h_html"><div class="ttname"><a href="once__function_8h.html">once_function.h</a></div></div>
 <div class="ttc" id="aplatform_8h_html"><div class="ttname"><a href="platform_8h.html">platform.h</a></div></div>
-<div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00127">platform.h:127</a></div></div>
+<div class="ttc" id="aplatform_8h_html_aa5eab74b2c430b4ed8c30dacf8738cef"><div class="ttname"><a href="platform_8h.html#aa5eab74b2c430b4ed8c30dacf8738cef">dispenso::kCacheLineSize</a></div><div class="ttdeci">constexpr size_t kCacheLineSize</div><div class="ttdoc">A constant that defines a safe number of bytes+alignment to avoid false sharing.</div><div class="ttdef"><b>Definition</b> <a href="platform_8h_source.html#l00141">platform.h:141</a></div></div>
 <div class="ttc" id="athread__pool_8h_html_a482a36a8ab5d9a9c8667474bf0ec92d8"><div class="ttname"><a href="thread__pool_8h.html#a482a36a8ab5d9a9c8667474bf0ec92d8">dispenso::globalThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS ThreadPool &amp; globalThreadPool()</div></div>
 <div class="ttc" id="athread__pool_8h_html_afd8ebfe35a57387b3be0648b55efcd2b"><div class="ttname"><a href="thread__pool_8h.html#afd8ebfe35a57387b3be0648b55efcd2b">dispenso::resizeGlobalThreadPool</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS void resizeGlobalThreadPool(size_t numThreads)</div></div>
 <div class="ttc" id="atsan__annotations_8h_html"><div class="ttname"><a href="tsan__annotations_8h.html">tsan_annotations.h</a></div></div>
