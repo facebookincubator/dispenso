@@ -169,8 +169,9 @@ $(function(){initNavTree('faq.html',''); initResizable(true); });
 <div class="line">  GIT_TAG        v1.6.2  # or main for latest</div>
 <div class="line">)</div>
 <div class="line">FetchContent_MakeAvailable(dispenso)</div>
-<div class="line">target_link_libraries(my_target dispenso)</div>
-</div><!-- fragment --><h1>How do I migrate from OpenMP / TBB?</h1>
+<div class="line">target_link_libraries(my_target Dispenso::dispenso)</div>
+</div><!-- fragment --><p><code>Dispenso::dispenso</code> is the same target name an installed dispenso exports through <code>find_package(Dispenso)</code>, so the consuming CMake does not change if you later switch between a vendored and an installed copy.</p>
+<h1>How do I migrate from OpenMP / TBB?</h1>
 <ul>
 <li><b><a class="el" href="md_migrating__from__tbb.html">Migrating from TBB</a></b> — API mappings, thread pool differences, common porting patterns</li>
 <li><b><a class="el" href="md_migrating__from__openmp.html">Migrating from OpenMP</a></b> — replacing <code>#pragma omp</code> with dispenso equivalents, handling reductions and nested parallelism </li>

@@ -124,7 +124,8 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 </table>
 <p>Newer standards also tend to produce marginally faster code from the same compiler, independent of the above. Dispenso's published benchmark results are built at C++20; the compiler and standard used for each platform are recorded in <code>machine_info.compiler</code> in the result JSON and shown on the benchmark dashboard.</p>
 <div class="fragment"><div class="line">cmake PATH_TO_DISPENSO_ROOT -DCMAKE_CXX_STANDARD=20</div>
-</div><!-- fragment --><h1>Building the Library</h1>
+</div><!-- fragment --><p>When dispenso is built as part of another project (<code>add_subdirectory()</code> or <code>FetchContent</code>), it does not set <code>CMAKE_CXX_STANDARD</code>; it builds with whatever standard the parent project uses. The <code>dispenso</code> target requires at least C++14 through <code>target_compile_features</code>, so a parent on an older standard is raised to C++14 for dispenso and for targets that link it.</p>
+<h1>Building the Library</h1>
 <h2>Linux and macOS</h2>
 <div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
 <div class="line">cmake PATH_TO_DISPENSO_ROOT</div>
@@ -157,7 +158,7 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <h1>Build Options Affecting Linkage</h1>
 <p>Two options change what the built library is, and both matter to packagers:</p>
 <ul>
-<li><code>DISPENSO_SHARED_LIB</code> (default <b>ON</b>) selects a shared library. Set it to <code>OFF</code> for a static build. Note the default: a packager wanting a static library has to ask for one.</li>
+<li><code>DISPENSO_SHARED_LIB</code> (default <b>ON</b>) selects a shared library. Set it to <code>OFF</code> for a static build. Note the default: a packager wanting a static library has to ask for one. A shared build also defines the preprocessor macro <code>DISPENSO_SHARED_LIB</code> for consumers of the <code>Dispenso::dispenso</code> target. On Windows it makes dispenso's headers import their symbols from the DLL; elsewhere it gives those symbols default visibility, which matters to consumers built with <code>-fvisibility=hidden</code>. Builds that do not use the CMake target must define <code>DISPENSO_SHARED_LIB</code> themselves when linking against a shared dispenso. On Windows, do not define it when linking against a static dispenso.</li>
 <li><code>DISPENSO_USE_SYSTEM_CONCURRENTQUEUE</code> (default OFF) builds against an installed <a href="https://github.com/cameron314/concurrentqueue">concurrentqueue</a> rather than the copy bundled in <code>dispenso/third-party/moodycamel</code>. The bundled copy tracks the same upstream version.</li>
 </ul>
 <p>If you build with <code>DISPENSO_USE_SYSTEM_CONCURRENTQUEUE=ON</code>, do <b>not</b> add a version argument to its <code>find_package</code>. concurrentqueue's own <code>CMakeLists.txt</code> declares <code>project(concurrentqueue VERSION 1.0.0)</code> at every release, so the config file it installs always reports <code>1.0.0</code> &ndash; a value matching no released tag. Any version constraint therefore rejects a correct installation. dispenso 1.6.1 shipped such a constraint and had to be superseded by 1.6.2 within a day.</p>
@@ -184,7 +185,7 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>DISPENSO_BUILD_EXAMPLES</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build the programs in <code>examples/</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><code>DISPENSO_WERROR</code>   </td><td class="markdownTableBodyNone">ON   </td><td class="markdownTableBodyNone">Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing <code>-Wno-error</code> in <code>CMAKE_CXX_FLAGS</code> does not work, because dispenso's own flags come later.    </td></tr>
+<td class="markdownTableBodyNone"><code>DISPENSO_WERROR</code>   </td><td class="markdownTableBodyNone">ON (OFF as a subproject)   </td><td class="markdownTableBodyNone">Make compiler warnings fatal. Warnings are reported either way; turn this off when building with a compiler dispenso is not tested against, so a new warning does not fail the build. Passing <code>-Wno-error</code> in <code>CMAKE_CXX_FLAGS</code> does not work, because dispenso's own flags come later.    </td></tr>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>ADDRESS_SANITIZER</code>   </td><td class="markdownTableBodyNone">OFF   </td><td class="markdownTableBodyNone">Build everything with <code>-fsanitize=address -fsanitize=undefined</code> (GCC and Clang)    </td></tr>
 <tr class="markdownTableRowEven">
@@ -208,6 +209,15 @@ $(function(){initNavTree('building.html',''); initResizable(true); });
 <div class="fragment"><div class="line">find_package(Dispenso REQUIRED)</div>
 <div class="line">target_link_libraries(myDispensoApp Dispenso::dispenso)</div>
 </div><!-- fragment --><p>This brings in all required include paths, library files to link, and any other properties to the <code>myDispensoApp</code> target.</p>
+<h1>Using Dispenso as a Subproject</h1>
+<p>dispenso can also be built as part of your project with <code>add_subdirectory()</code> or <code>FetchContent</code> (see the <a class="el" href="faq.html#md_faq">FAQ</a>). Link the same <code>Dispenso::dispenso</code> target as above. A few defaults differ from a standalone build:</p>
+<ul>
+<li><code>DISPENSO_WERROR</code> defaults to <b>OFF</b>, so a warning that only your (possibly newer) compiler emits does not fail your build. Set it to <code>ON</code> to opt in.</li>
+<li><code>DISPENSO_SHARED_LIB</code> is not defined, so dispenso is built as a static library, and <code>BUILD_SHARED_LIBS</code> is not consulted. Set <code>DISPENSO_SHARED_LIB</code> before adding dispenso to get a shared library. To link the static library into one of your shared libraries, enable <code>CMAKE_POSITION_INDEPENDENT_CODE</code>.</li>
+<li><code>CMAKE_CXX_STANDARD</code> is left to your project; see "C++ Standard" above.</li>
+<li>No install rules are generated.</li>
+</ul>
+<p>dispenso's options can be set from your project either as cache entries or as normal variables before adding dispenso, e.g. <code>set(DISPENSO_WERROR ON)</code>; both take effect from the first configure.</p>
 <h1>Testing</h1>
 <p>Tests are not built by default to keep dependencies minimal. Building tests requires <a href="https://github.com/google/googletest">GoogleTest</a>.</p>
 <h2>Linux and macOS</h2>
