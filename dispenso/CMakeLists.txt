@@ -16,8 +16,15 @@ endif()
 message("SOURCES:  ${SOURCES}")
 
 if(DISPENSO_SHARED_LIB)
-  add_compile_definitions(DISPENSO_SHARED_LIB DISPENSO_LIB_EXPORT)
   add_library(dispenso SHARED ${SOURCES} ${HEADERS})
+  # DISPENSO_SHARED_LIB is PUBLIC: consumers need it too, so that on Windows
+  # DISPENSO_DLL_ACCESS expands to dllimport for them (dllexport only while
+  # building dispenso itself, via the PRIVATE DISPENSO_LIB_EXPORT). It is also
+  # recorded on the exported target, so find_package(Dispenso) users get it.
+  target_compile_definitions(dispenso
+    PUBLIC DISPENSO_SHARED_LIB
+    PRIVATE DISPENSO_LIB_EXPORT
+  )
 
   target_compile_options(dispenso PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fvisibility=hidden>
@@ -25,6 +32,11 @@ if(DISPENSO_SHARED_LIB)
 else()
   add_library(dispenso STATIC ${SOURCES} ${HEADERS})
 endif()
+
+# Same name the installed package exports, so consumers that vendor dispenso via
+# add_subdirectory() or FetchContent can link Dispenso::dispenso too, and switch
+# between vendored and installed copies without touching their CMake.
+add_library(Dispenso::dispenso ALIAS dispenso)
 
 target_compile_options(dispenso PRIVATE
   # /wd4316: OnceFunction is intentionally cache-line (64B) aligned (see
@@ -85,8 +97,15 @@ else()
 endif()
 
 # Export the C++ standard requirement so downstream consumers compile with at
-# least the same standard dispenso was built with (default: C++14).
-target_compile_features(dispenso PUBLIC cxx_std_${CMAKE_CXX_STANDARD})
+# least the same standard dispenso was built with, and never below C++14, which
+# dispenso requires. As a subproject CMAKE_CXX_STANDARD is whatever the parent
+# set, possibly nothing or something older than 14.
+set(_dispenso_cxx_std 14)
+if(CMAKE_CXX_STANDARD AND NOT CMAKE_CXX_STANDARD MATCHES "^(98|11)$"
+   AND CMAKE_CXX_STANDARD GREATER 14)
+  set(_dispenso_cxx_std ${CMAKE_CXX_STANDARD})
+endif()
+target_compile_features(dispenso PUBLIC cxx_std_${_dispenso_cxx_std})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
