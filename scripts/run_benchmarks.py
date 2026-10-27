@@ -35,7 +35,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_SOURCE_DIR = SCRIPT_DIR.parent
@@ -247,15 +247,110 @@ def _build_compiler_summary(info: Dict[str, str]) -> str:
     return " ".join(parts) if parts else ""
 
 
-def get_compiler_info(build_dir: Path) -> Dict[str, str]:
-    """Detect compiler and build settings from the CMake build directory."""
-    # Locate the cmake build root (handle build_dir pointing at bin/)
-    cmake_root = None
+def _find_cmake_root(build_dir: Path) -> Optional[Path]:
+    """Locate the CMake build root (handles build_dir pointing at bin/)."""
     for candidate in [build_dir, build_dir.parent]:
         if (candidate / "CMakeCache.txt").exists():
-            cmake_root = candidate
-            break
+            return candidate
+    return None
 
+
+def _git_output(source_dir: Path, *args: str, strip: bool = True) -> Optional[str]:
+    """Run a git command in source_dir; return its stdout, or None on failure."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source_dir), *args],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() if strip else result.stdout
+
+
+def _strip_dirs(arg: str) -> str:
+    """Reduce any path in a command-line argument to its file name.
+
+    Results are published, and directories reveal user names and machine
+    layout. A value counts as a path when it is absolute or exists, so
+    benchmark filters such as BM_foo/1 are kept. "--opt=value" and
+    ";"-separated lists (CMAKE_PREFIX_PATH) are handled piecewise.
+    """
+
+    def name(value: str) -> str:
+        is_path = (
+            os.path.isabs(value)
+            or re.match(r"^[A-Za-z]:[\\/]", value) is not None
+            or value.startswith("~")
+            or (value != "" and os.path.exists(value))
+        )
+        if not is_path:
+            return value
+        return re.split(r"[\\/]", value.rstrip("\\/"))[-1] or value
+
+    prefix, sep, value = arg.partition("=")
+    if not sep:
+        return name(arg)
+    return prefix + sep + ";".join(name(part) for part in value.split(";"))
+
+
+# Cap on dirty paths listed, so a tree with many stray files cannot bloat
+# the results JSON; git_dirty still reports the full state.
+_MAX_DIRTY_PATHS = 50
+
+
+def get_provenance(
+    source_dir: Path, build_dir: Path, built_this_run: bool
+) -> Tuple[Dict[str, Any], Path]:
+    """Record what was measured and how the measurement was invoked.
+
+    The revision is read from the tree the build directory was configured
+    from (CMAKE_HOME_DIRECTORY) when that is known, else --source-dir. Unless
+    built_this_run, the binaries may predate the tree's current state. The
+    tree's location itself is not recorded, and paths in argv are reduced to
+    file names, since results are published.
+    """
+    cmake_root = _find_cmake_root(build_dir)
+    cache = (
+        _parse_cmake_cache(
+            cmake_root / "CMakeCache.txt", [("CMAKE_HOME_DIRECTORY", "home")]
+        )
+        if cmake_root
+        else {}
+    )
+    if "home" in cache:
+        tree, tree_from = Path(cache["home"]), "CMakeCache.txt"
+    else:
+        tree, tree_from = source_dir.resolve(), "--source-dir"
+
+    provenance: Dict[str, Any] = {
+        "argv": [_strip_dirs(arg) for arg in sys.argv],
+        "revision_from": tree_from,
+        "built_by_this_run": built_this_run,
+        "git_revision": _git_output(tree, "rev-parse", "HEAD"),
+        "git_describe": _git_output(tree, "describe", "--tags", "--always", "--dirty"),
+    }
+    # Not stripped: porcelain lines start with a status column that may be a
+    # space, and the path begins at a fixed offset.
+    status = _git_output(
+        tree, "status", "--porcelain", "--untracked-files=no", strip=False
+    )
+    if status is None:
+        provenance["git_dirty"] = None
+    else:
+        dirty = [line[3:] for line in status.splitlines() if line]
+        provenance["git_dirty"] = bool(dirty)
+        if dirty:
+            provenance["git_dirty_paths"] = dirty[:_MAX_DIRTY_PATHS]
+    return provenance, tree
+
+
+def get_compiler_info(build_dir: Path) -> Dict[str, str]:
+    """Detect compiler and build settings from the CMake build directory."""
+    cmake_root = _find_cmake_root(build_dir)
     if cmake_root is None:
         return {}
 
@@ -734,12 +829,6 @@ def main():
         help="Minimum time per benchmark in seconds (passed to --benchmark_min_time)",
     )
     parser.add_argument(
-        "--tcmalloc",
-        type=str,
-        default=None,
-        help="Path to libtcmalloc.so for LD_PRELOAD tests (e.g., /usr/lib64/libtcmalloc.so.4)",
-    )
-    parser.add_argument(
         "--jobs",
         "-j",
         type=int,
@@ -832,6 +921,12 @@ def main():
     if deps:
         machine_info["dependencies"] = deps
         print(f"  Deps: {format_dependency_versions(deps)}")
+
+    provenance, tree = get_provenance(args.source_dir, args.build_dir, args.build)
+    revision = provenance.get("git_describe") or provenance.get("git_revision")
+    print(f"  Source: {tree} @ {revision or 'unknown revision'}")
+    if provenance.get("git_dirty"):
+        print("  WARNING: source tree has uncommitted changes (recorded in output)")
     print()
 
     # Find benchmarks
@@ -870,8 +965,11 @@ def main():
     # Save results
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
+    # "provenance" is a new top-level key; readers that only look at
+    # machine_info and results are unaffected.
     output_data = {
         "machine_info": machine_info,
+        "provenance": provenance,
         "results": results,
     }
 
