@@ -122,19 +122,28 @@ Files</h2></td></tr>
 <p>Locks, latches, and other synchronization primitives for coordinating between threads.</p>
 <h3>Example: Latch for Thread Coordination</h3>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="latch_8h.html">dispenso/latch.h</a>&gt;</span></div>
-<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="parallel__for_8h.html">dispenso/parallel_for.h</a>&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;<a class="code" href="task__set_8h.html">dispenso/task_set.h</a>&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_latch.html">dispenso::Latch</a> latch(4);  <span class="comment">// Wait for 4 threads</span></div>
 <div class="line"> </div>
-<div class="line">dispenso::parallel_for(0, 4, [&amp;](<span class="keywordtype">size_t</span>) {</div>
+<div class="line"><span class="comment">// Every participant must be running at once, so give each its own thread.</span></div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a> pool(4);</div>
+<div class="line"><a class="code hl_class" href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a> tasks(pool);</div>
+<div class="line"><span class="keywordflow">for</span> (<span class="keywordtype">int</span> i = 0; i &lt; 4; ++i) {</div>
+<div class="line">  tasks.schedule([&amp;]() {</div>
 <div class="line">    <span class="comment">// Do initialization work...</span></div>
 <div class="line">    latch.arrive_and_wait();  <span class="comment">// Synchronize before continuing</span></div>
 <div class="line">    <span class="comment">// All threads proceed together from here</span></div>
-<div class="line">});</div>
+<div class="line">  });</div>
+<div class="line">}</div>
+<div class="line">tasks.wait();</div>
 <div class="ttc" id="aclassdispenso_1_1_latch_html"><div class="ttname"><a href="classdispenso_1_1_latch.html">dispenso::Latch</a></div><div class="ttdef"><b>Definition</b> <a href="latch_8h_source.html#l00027">latch.h:27</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_task_set_html"><div class="ttname"><a href="classdispenso_1_1_task_set.html">dispenso::TaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00066">task_set.h:66</a></div></div>
+<div class="ttc" id="aclassdispenso_1_1_thread_pool_html"><div class="ttname"><a href="classdispenso_1_1_thread_pool.html">dispenso::ThreadPool</a></div><div class="ttdef"><b>Definition</b> <a href="thread__pool_8h_source.html#l00108">thread_pool.h:108</a></div></div>
 <div class="ttc" id="alatch_8h_html"><div class="ttname"><a href="latch_8h.html">latch.h</a></div></div>
-<div class="ttc" id="aparallel__for_8h_html"><div class="ttname"><a href="parallel__for_8h.html">parallel_for.h</a></div></div>
-</div><!-- fragment --><h3>Example: RWLock for Reader/Writer Access</h3>
+<div class="ttc" id="atask__set_8h_html"><div class="ttname"><a href="task__set_8h.html">task_set.h</a></div></div>
+</div><!-- fragment --><p>Tasks that block on a Latch occupy their thread while they wait. Run them on a pool with a thread for each, not on the global pool or inside <code>parallel_for</code>, which may have fewer threads than participants or run several on one thread.</p>
+<h3>Example: RWLock for Reader/Writer Access</h3>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="rw__lock_8h.html">dispenso/rw_lock.h</a>&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_r_w_lock.html">dispenso::RWLock</a> lock;</div>
