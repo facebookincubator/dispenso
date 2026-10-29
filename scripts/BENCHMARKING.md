@@ -194,6 +194,11 @@ but not as a matter of course. Every case costs benchmarking time on every
 platform and adds clutter to the charts, so a variant that does not teach a
 reader something should not be registered at all, rather than run and hidden.
 
+A benchmark worth keeping for development but not for publication -- a
+deliberately weaker configuration kept to show what the recommended one gains,
+or an alternative under evaluation -- ends its function name in `_reference`
+(`BM_dispenso_static_reference`). The dashboard generator never charts these.
+
 ## Notes
 
 - Build directories should be in `/tmp` (or equivalent) to avoid polluting

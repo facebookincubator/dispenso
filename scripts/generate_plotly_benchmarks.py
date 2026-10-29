@@ -1887,6 +1887,19 @@ switchPlatform(0);
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 
+# A benchmark whose function name ends in _reference is kept for development
+# comparisons -- a deliberately weaker choice, say, run to show what the
+# recommended one gains -- and is never published. The suffix ends the
+# function name, before any template or argument part: BM_x_reference,
+# BM_x_reference<...>, BM_x_reference/8.
+_REFERENCE_RE = re.compile(r"^BM_\w*_reference(?=$|[</])")
+
+
+def is_unpublished(benchmark):
+    """True for a result row of a development-only (_reference) benchmark."""
+    return bool(_REFERENCE_RE.match(benchmark.get("run_name") or benchmark["name"]))
+
+
 def load_platform(json_path):
     """Load a JSON file and build chart configs."""
     with open(json_path) as f:
@@ -1913,7 +1926,10 @@ def load_platform(json_path):
         if not result.get("success") or "data" not in result:
             continue
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
-        benchmarks = select_representative_rows(result["data"].get("benchmarks", []))
+        rows = result["data"].get("benchmarks", [])
+        benchmarks = select_representative_rows(
+            [bm for bm in rows if not is_unpublished(bm)]
+        )
         charts.extend(build_charts_for_suite(benchmarks, suite))
 
     return {
