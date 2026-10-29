@@ -299,7 +299,7 @@ function renderGroupedBarV(cfg) {
 
     return {
       type: 'bar', name: g.name,
-      x: cfg.categories, y: g.values.map(v => v / u.scale),
+      x: cfg.categories, y: g.values.map(v => v == null ? null : v / u.scale),
       marker: { color: colors, opacity: 0.85, ...(patterns ? { pattern: patterns } : {}) },
       customdata, hovertemplate,
       // Text label inside error bars

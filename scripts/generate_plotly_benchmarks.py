@@ -484,23 +484,31 @@ def build_future_charts(benchmarks, suite):
 
     Speculative search (BM_speculative_<impl><K>): time to the first of K
     candidates, grouped by K, with the single-candidate serial run repeated
-    in each group as the reference.  KV-cache memoization (BM_kv_<impl>):
-    one bar per implementation.
+    in each group as the reference.  A case with no result is left as a gap
+    (null), and a case that failed is drawn as a "cannot complete" bar, so
+    neither reads as a zero time.  KV-cache memoization (BM_kv_<impl>): one
+    bar per implementation.
     """
     spec = {}
+    spec_failed = set()
     kv = {}
     for bm in benchmarks:
-        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+        if bm.get("run_type") != "iteration":
             continue
         clean = bm["name"].replace("BM_", "").replace("/real_time", "")
         m = re.match(r"speculative_([a-z]+)(?:<(\d+)>)?$", clean)
         if m:
-            spec[(m.group(1), m.group(2))] = bm["real_time"]
-        elif clean.startswith("kv_"):
+            if bm.get("error_occurred"):
+                spec_failed.add((m.group(1), m.group(2)))
+            else:
+                spec[(m.group(1), m.group(2))] = bm["real_time"]
+        elif clean.startswith("kv_") and not bm.get("error_occurred"):
             kv[clean] = bm["real_time"]
 
     charts = []
-    ks = sorted({k for _, k in spec if k is not None}, key=int)
+    ks = sorted(
+        {k for _, k in list(spec) + list(spec_failed) if k is not None}, key=int
+    )
     if ks:
         groups = []
         serial = spec.get(("serial", None))
@@ -512,15 +520,30 @@ def build_future_charts(benchmarks, suite):
                     "color": get_color("serial"),
                 }
             )
+        # A failed case needs a visible bar to carry its marker: the tallest
+        # measured bar in its category (the renderer leaves it out of zoom).
+        tallest = {
+            k: max((t for (_, kk), t in spec.items() if kk == k), default=None)
+            for k in ks
+        }
+        overall = max(spec.values(), default=1)
         for key, display in _FUTURE_SPEC_IMPLS:
-            if any((key, k) in spec for k in ks):
-                groups.append(
-                    {
-                        "name": display,
-                        "values": [spec.get((key, k), 0) for k in ks],
-                        "color": get_color(key),
-                    }
-                )
+            if not any((key, k) in spec or (key, k) in spec_failed for k in ks):
+                continue
+            values = []
+            failed = []
+            for i, k in enumerate(ks):
+                if (key, k) in spec:
+                    values.append(spec[(key, k)])
+                elif (key, k) in spec_failed:
+                    values.append(tallest[k] or overall)
+                    failed.append(i)
+                else:
+                    values.append(None)
+            group = {"name": display, "values": values, "color": get_color(key)}
+            if failed:
+                group["error_indices"] = failed
+            groups.append(group)
         charts.append(
             {
                 "id": "future_speculative",
@@ -1616,7 +1639,7 @@ function renderGroupedBarV(cfg) {{
 
     return {{
       type: 'bar', name: g.name,
-      x: cfg.categories, y: g.values.map(v => v / u.scale),
+      x: cfg.categories, y: g.values.map(v => v == null ? null : v / u.scale),
       marker: {{ color: colors, opacity: 0.85, ...(patterns ? {{ pattern: patterns }} : {{}}) }},
       customdata, hovertemplate,
       // Text label inside error bars

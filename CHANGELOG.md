@@ -42,6 +42,7 @@ Unreleased
 * The benchmark dashboard's simple_for and nested_for charts now include dispenso. The chart generator hid every benchmark named with "auto" or "static", and since those suites' only dispenso cases are `BM_dispenso_static_chunk` and `BM_dispenso_auto`, the published charts compared OpenMP, TBB and TaskFlow without a dispenso line on any platform.
 * The benchmark dashboard no longer shows a meaningless serial-only "Cascading Parallel For" chart that plotted element counts as thread counts; the serial time now appears as the dashed reference line in the 100K and 10M cascading charts.
 * The benchmark dashboard's future section was an empty chart because it still looked for tree-build benchmarks that moved to tree_benchmark. It now charts the benchmark's actual workloads: speculative search with when_any, and KV-cache memoization with shared futures.
+* The benchmark dashboard's speculative-search chart no longer draws a failed or missing case as a zero-time bar: a missing case is left blank, and a failed one is marked "cannot complete".
 * Thread-scaling charts on the benchmark dashboard (nested_for, for_each, locality, for_latency) now show the serial reference line; previously it was missing because of a size-mapping bug or because those suites' serial cases were ignored.
 * The benchmark dashboard's pool allocator charts now show the malloc/free baseline; since the baselines were renamed with a _baseline suffix, every malloc/free bar had been published as 0.
 
