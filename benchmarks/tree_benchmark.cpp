@@ -32,6 +32,16 @@ constexpr size_t kLargeSize = 19;
 
 // Note that there are many optimizations that could be made for these tree build routines.  The
 // goal was to make these as apples-to-apples as possible.
+//
+// dispenso is measured with the same programming models on every tree workload, so the published
+// results compare models rather than per-workload tricks:
+//   - parallel_invoke, which is built for fork-join tree recursion;
+//   - TaskSet::schedule of one child plus inline recursion into the other, the more flexible
+//     model that also suits graphs and irregular recursion;
+//   - parallel_for over a serially built frontier (plain and work trees only), restructuring the
+//     algorithm rather than expressing the recursion.
+// Other dispenso variants end in _reference: kept for development comparisons, never published,
+// and skipped by scripts/run_benchmarks.py unless asked for.
 
 uint32_t busyWork(uint32_t seed, size_t iterations) {
   uint32_t h = seed;
@@ -181,7 +191,7 @@ Node* dispensoTree(Allocator& allocator, uint32_t depth, uint32_t bitset, uint32
 // not a representative dispenso fork-join result. See the taskset/parallel_invoke
 // variants for the real idioms.
 template <size_t depth>
-void BM_dispenso_tree_naive(benchmark::State& state) {
+void BM_dispenso_tree_naive_reference(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
@@ -300,6 +310,60 @@ void BM_dispenso_taskset_tree_inline(benchmark::State& state) {
     alloc.reset(depth);
     modulo = getModulos()[m];
     dispensoTaskSetTreeInline(tasks, &root, alloc, depth, 1, modulo);
+    tasks.wait();
+    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+  }
+
+  checkTree(&root, depth, modulo);
+}
+
+// dispenso::parallel_invoke (binary): one child is scheduled and the other runs inline on the
+// calling thread. Completion is joined by tasks.wait() at the top.
+void dispensoTaskSetTreeParInvoke(
+    dispenso::ConcurrentTaskSet& tasks,
+    Node* node,
+    Allocator& allocator,
+    uint32_t depth,
+    uint32_t bitset,
+    uint32_t modulo) {
+  node->setValue(bitset, modulo);
+  --depth;
+  if (!depth) {
+    node->left = nullptr;
+    node->right = nullptr;
+    return;
+  }
+  dispenso::parallel_invoke(
+      tasks,
+      [&tasks, &allocator, node, depth, bitset, modulo]() {
+        node->left = allocator.alloc();
+        dispensoTaskSetTreeParInvoke(tasks, node->left, allocator, depth, (bitset << 1), modulo);
+      },
+      [&tasks, &allocator, node, depth, bitset, modulo]() {
+        node->right = allocator.alloc();
+        dispensoTaskSetTreeParInvoke(
+            tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo);
+      });
+}
+
+template <size_t depth>
+void BM_dispenso_taskset_tree_parallel_invoke(benchmark::State& state) {
+  Allocator alloc;
+  alloc.reset(depth);
+  getModulos();
+
+  uint32_t modulo = 0;
+  Node root;
+
+  dispenso::ConcurrentTaskSet tasks(
+      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2);
+
+  size_t m = 0;
+
+  for (auto UNUSED_VAR : state) {
+    alloc.reset(depth);
+    modulo = getModulos()[m];
+    dispensoTaskSetTreeParInvoke(tasks, &root, alloc, depth, 1, modulo);
     tasks.wait();
     m = (m + 1 == getModulos().size()) ? 0 : m + 1;
   }
@@ -485,6 +549,56 @@ void BM_dispenso_taskset_tree_parallel_invoke_work(benchmark::State& state) {
   checkTree(&root, depth, modulo);
 }
 
+// TaskSet::schedule of the left child plus inline recursion into the right, as in
+// dispensoTaskSetTreeInline, with per-node work.
+void dispensoTaskSetTreeInlineWork(
+    dispenso::ConcurrentTaskSet& tasks,
+    Node* node,
+    Allocator& allocator,
+    uint32_t depth,
+    uint32_t bitset,
+    uint32_t modulo,
+    size_t workIters) {
+  node->setValueWithWork(bitset, modulo, workIters);
+  --depth;
+  if (!depth) {
+    node->left = nullptr;
+    node->right = nullptr;
+    return;
+  }
+  tasks.schedule(
+      [&tasks, &allocator, node, depth, bitset, modulo, workIters]() {
+        node->left = allocator.alloc();
+        dispensoTaskSetTreeInlineWork(
+            tasks, node->left, allocator, depth, (bitset << 1), modulo, workIters);
+      },
+      true);
+  node->right = allocator.alloc();
+  dispensoTaskSetTreeInlineWork(
+      tasks, node->right, allocator, depth, (bitset << 1) | 1, modulo, workIters);
+}
+
+template <size_t depth, size_t workIters>
+void BM_dispenso_taskset_tree_inline_work(benchmark::State& state) {
+  Allocator alloc;
+  alloc.reset(depth);
+  getModulos();
+  uint32_t modulo = 0;
+  Node root;
+  dispenso::ConcurrentTaskSet tasks(
+      dispenso::globalThreadPool(), dispenso::ParentCascadeCancel::kOff, 2, taskCostFor(workIters));
+  size_t m = 0;
+  for (auto UNUSED_VAR : state) {
+    alloc.reset(depth);
+    modulo = getModulos()[m];
+    dispensoTaskSetTreeInlineWork(tasks, &root, alloc, depth, 1, modulo, workIters);
+    tasks.wait();
+    benchmark::DoNotOptimize(root.workResult);
+    m = (m + 1 == getModulos().size()) ? 0 : m + 1;
+  }
+  checkTree(&root, depth, modulo);
+}
+
 void dispensoTaskSetTreeHybridWork(
     dispenso::ConcurrentTaskSet& tasks,
     Node* node,
@@ -522,7 +636,7 @@ void dispensoTaskSetTreeHybridWork(
 }
 
 template <size_t depth, size_t workIters>
-void BM_dispenso_taskset_tree_hybrid_work(benchmark::State& state) {
+void BM_dispenso_taskset_tree_hybrid_work_reference(benchmark::State& state) {
   Allocator alloc;
   alloc.reset(depth);
   getModulos();
@@ -704,7 +818,9 @@ BENCHMARK_TEMPLATE(BM_tbb_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tbb_tree, kLargeSize)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
-// Canonical fork-join idiom for the pure-build tree.
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke, kLargeSize)->UseRealTime();
+
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline, kLargeSize)->UseRealTime();
 
@@ -714,8 +830,8 @@ BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kSmallSize)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree, kLargeSize)->UseRealTime();
 
 // Cautionary reference: naive async + blocking .get() at every level.
-BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kSmallSize)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_tree_naive, kLargeSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive_reference, kSmallSize)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_tree_naive_reference, kLargeSize)->UseRealTime();
 
 // Graduated-work benchmarks at kMediumSize (depth 16, ~65K nodes). Light and
 // heavy work bracket the range where dynamic balancing starts to matter;
@@ -728,15 +844,19 @@ BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kLightWork)->UseRealTime();
 BENCHMARK_TEMPLATE(BM_tbb_tree_work, kMediumSize, kHeavyWork)->UseRealTime();
 #endif // !BENCHMARK_WITHOUT_TBB
 
-// Canonical fork-join idiom (parallel_invoke) — the ergonomic, performant way.
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke_work, kMediumSize, kLightWork)
     ->UseRealTime();
 BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_parallel_invoke_work, kMediumSize, kHeavyWork)
     ->UseRealTime();
 
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline_work, kMediumSize, kLightWork)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_inline_work, kMediumSize, kHeavyWork)->UseRealTime();
+
 // Granularity control: serial cutoff near the leaves.
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work, kMediumSize, kLightWork)->UseRealTime();
-BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work, kMediumSize, kHeavyWork)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work_reference, kMediumSize, kLightWork)
+    ->UseRealTime();
+BENCHMARK_TEMPLATE(BM_dispenso_taskset_tree_hybrid_work_reference, kMediumSize, kHeavyWork)
+    ->UseRealTime();
 
 // Restructured frontier variant (ceiling; note it degrades under heavy work).
 BENCHMARK_TEMPLATE(BM_dispenso_parfor_tree_work, kMediumSize, kLightWork)->UseRealTime();
@@ -856,6 +976,31 @@ void BM_kdtree_dispenso_taskset_inline(benchmark::State& state) {
   }
 }
 
+void kdParallelInvoke(dispenso::ConcurrentTaskSet& ts, KdPoint* begin, KdPoint* end, int depth) {
+  size_t n = static_cast<size_t>(end - begin);
+  if (n <= kKdMinChunk) {
+    return;
+  }
+  KdPoint* mid = begin + n / 2;
+  kdNodePartition(begin, mid, end, depth % 3);
+  dispenso::parallel_invoke(
+      ts,
+      [&ts, begin, mid, depth] { kdParallelInvoke(ts, begin, mid, depth + 1); },
+      [&ts, mid, end, depth] { kdParallelInvoke(ts, mid + 1, end, depth + 1); });
+}
+
+void BM_kdtree_dispenso_parallel_invoke(benchmark::State& state) {
+  const auto& master = kdMaster();
+  std::vector<KdPoint> work(master.size());
+  dispenso::ConcurrentTaskSet ts(dispenso::globalThreadPool());
+  for (auto UNUSED_VAR : state) {
+    std::copy(master.begin(), master.end(), work.begin());
+    kdParallelInvoke(ts, work.data(), work.data() + work.size(), 0);
+    ts.wait();
+    benchmark::DoNotOptimize(work.data());
+  }
+}
+
 void kdTaskSetBulk(dispenso::ConcurrentTaskSet& ts, KdPoint* begin, KdPoint* end, int depth) {
   size_t n = static_cast<size_t>(end - begin);
   if (n <= kKdMinChunk) {
@@ -872,7 +1017,7 @@ void kdTaskSetBulk(dispenso::ConcurrentTaskSet& ts, KdPoint* begin, KdPoint* end
   });
 }
 
-void BM_kdtree_dispenso_taskset_bulk(benchmark::State& state) {
+void BM_kdtree_dispenso_taskset_bulk_reference(benchmark::State& state) {
   const auto& master = kdMaster();
   std::vector<KdPoint> work(master.size());
   dispenso::ConcurrentTaskSet ts(dispenso::globalThreadPool());
@@ -888,8 +1033,9 @@ BENCHMARK(BM_kdtree_serial)->UseRealTime();
 #if !defined(BENCHMARK_WITHOUT_TBB)
 BENCHMARK(BM_kdtree_tbb)->UseRealTime();
 #endif
+BENCHMARK(BM_kdtree_dispenso_parallel_invoke)->UseRealTime();
 BENCHMARK(BM_kdtree_dispenso_taskset_inline)->UseRealTime();
-BENCHMARK(BM_kdtree_dispenso_taskset_bulk)->UseRealTime();
+BENCHMARK(BM_kdtree_dispenso_taskset_bulk_reference)->UseRealTime();
 
 // ============================================================================
 // 4-ary tree benchmark (heavy work).
@@ -1061,7 +1207,7 @@ void dispensoFourAryBulk(
   });
 }
 
-void BM_4ary_dispenso_bulk(benchmark::State& state) {
+void BM_4ary_dispenso_bulk_reference(benchmark::State& state) {
   dispenso::ConcurrentTaskSet tasks(
       dispenso::globalThreadPool(),
       dispenso::ParentCascadeCancel::kOff,
@@ -1079,6 +1225,6 @@ BENCHMARK(BM_4ary_tbb)->UseRealTime();
 #endif
 BENCHMARK(BM_4ary_dispenso_parallel_invoke)->UseRealTime();
 BENCHMARK(BM_4ary_dispenso_manual_inline)->UseRealTime();
-BENCHMARK(BM_4ary_dispenso_bulk)->UseRealTime();
+BENCHMARK(BM_4ary_dispenso_bulk_reference)->UseRealTime();
 
 BENCHMARK_MAIN();
