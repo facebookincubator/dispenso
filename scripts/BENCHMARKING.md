@@ -139,6 +139,8 @@ before publishing measurements so the revision identifies what was measured.
   (e.g. `-B "pipeline|simple_pool"`)
 - `-f <pattern>` — filter individual test cases within benchmarks
   (passed to `--benchmark_filter`)
+- `--include-reference` — also run `_reference` benchmarks, which are skipped
+  by default (see "Which dispenso benchmarks to publish" below)
 - `--min-time <seconds>` — minimum time per benchmark
 - `-p <name>` — override auto-detected platform identifier
 
