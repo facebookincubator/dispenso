@@ -176,6 +176,24 @@ windows_x64, macos_arm64, android_arm64 -- not `docs/benchmark_results/*.json`,
 whose alphabetical order differs. Regenerating with an unchanged generator and
 unchanged results should leave `git diff docs/benchmarks/index.html` empty.
 
+## Which dispenso benchmarks to publish
+
+The published dashboard is read by people deciding whether to use dispenso,
+so each comparison with other libraries uses the dispenso method we recommend
+for that workload, chosen by measurement. The competitive thread-scaling
+suites (simple_for, summing_for, nested_for) publish exactly one dispenso
+line: the benchmark named for the suite in `_OFFICIAL_DISPENSO` in
+`generate_plotly_benchmarks.py`, whose source comment says why its method is
+the recommended one. If that benchmark changes, update the map; the generator
+fails rather than publish a chart without dispenso.
+
+Showing more than one dispenso method is worthwhile where it illustrates a
+real choice for users -- kStatic vs kAdaptive chunking in locality, plain vs
+bulk scheduling in the pool benchmarks, blocking vs cascaded parallel_for --
+but not as a matter of course. Every case costs benchmarking time on every
+platform and adds clutter to the charts, so a variant that does not teach a
+reader something should not be registered at all, rather than run and hidden.
+
 ## Notes
 
 - Build directories should be in `/tmp` (or equivalent) to avoid polluting

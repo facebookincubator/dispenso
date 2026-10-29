@@ -277,33 +277,40 @@ def _serial_baseline_trace(serial_points, ws, thread_set):
     }
 
 
-def _parse_line_benchmarks(benchmarks):
+# The benchmark each competitive thread-scaling suite publishes as its
+# "dispenso" line: the dispenso method we recommend for that workload, chosen
+# by measurement (the benchmark says why). Any other dispenso benchmark in
+# these suites exists to compare dispenso methods during development and is
+# not charted. Suites not listed here chart every dispenso benchmark under its
+# own name, so their variants should be ones worth showing users (static vs
+# adaptive chunking, bulk scheduling); see "Which dispenso benchmarks to
+# publish" in scripts/BENCHMARKING.md.
+_OFFICIAL_DISPENSO = {
+    "simple_for": "dispenso_static_chunk",
+    "summing_for": "dispenso",
+    "nested_for": "dispenso_auto",
+}
+
+
+def _parse_line_benchmarks(benchmarks, suite):
     """Parse benchmarks into grouped thread-scaling data and serial baselines."""
     grouped = defaultdict(dict)
     serial_points = {}
+    official = _OFFICIAL_DISPENSO.get(suite)
+    found_official = False
 
-    rows = [bm for bm in benchmarks if bm.get("run_type") == "iteration"]
-    libs = {
-        parse_benchmark_name(bm["name"].replace("BM_", ""))["library"].lower()
-        for bm in rows
-    }
-
-    def _is_hidden_variant(lib_lower):
-        # Hide chunking variants (e.g. dispenso_static_chunk, dispenso_auto)
-        # only when the suite also has the plain library line, so the chart
-        # shows one line per library.  Suites whose only dispenso benchmark
-        # is a variant (simple_for, nested_for) keep it under its own name.
-        if "auto" not in lib_lower and "static" not in lib_lower:
-            return False
-        return lib_lower.split("_", 1)[0] in libs
-
-    for bm in rows:
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration":
+            continue
         name = bm["name"].replace("BM_", "")
         parsed = parse_benchmark_name(name)
         lib = parsed["library"]
 
-        if _is_hidden_variant(lib.lower()):
-            continue
+        if official is not None and lib.lower().startswith("dispenso"):
+            if lib.lower() != official:
+                continue
+            lib = "dispenso"
+            found_official = True
 
         serial_key = _serial_baseline_key(bm["name"])
         if serial_key is not None:
@@ -314,12 +321,19 @@ def _parse_line_benchmarks(benchmarks):
             if threads is not None:
                 grouped[parsed["worksize"]][(lib, threads)] = bm["real_time"]
 
+    if official is not None and grouped and not found_official:
+        # Fail rather than publish a chart without dispenso: the benchmark
+        # was renamed or removed, and _OFFICIAL_DISPENSO needs updating.
+        raise SystemExit(
+            f"{suite}: no {official} results to chart as dispenso; "
+            "update _OFFICIAL_DISPENSO in generate_plotly_benchmarks.py"
+        )
     return grouped, _resolve_serial_sizes(serial_points, grouped)
 
 
 def build_line_charts(benchmarks, suite):
     """Thread-scaling line charts for simple_for, summing_for, nested_for."""
-    grouped, serial_points = _parse_line_benchmarks(benchmarks)
+    grouped, serial_points = _parse_line_benchmarks(benchmarks, suite)
 
     charts = []
     for ws in sorted(grouped.keys(), key=lambda x: int(x) if x.isdigit() else 0):
