@@ -21,6 +21,10 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="custom.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">
+  DoxygenAwesomeDarkModeToggle.init()
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -102,7 +106,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
   <div class="headertitle"><div class="title">Getting Started</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="md_getting__started"></a> This guide walks through the core features of dispenso with working examples. Each section includes a complete, compilable example that you can build and run.</p>
+<div class="textblock"><p><a class="anchor" id="md_getting__started"></a> This guide walks through the core features of dispenso. The code in each section is a short fragment showing the relevant calls; surrounding declarations (input arrays, helper types, <code>main()</code>) are left out. Most sections end with a link to a complete program in <a href="https://github.com/facebookincubator/dispenso/tree/main/examples"><code>examples/</code></a>, which CI compiles and which you can build and run yourself (see below).</p>
 <blockquote class="doxtable">
 <p>&zwj;<b>Coming from another library?</b> Jump directly to the migration guide: <a class="el" href="md_migrating__from__tbb.html">Migrating from TBB</a> | <a class="el" href="md_migrating__from__openmp.html">Migrating from OpenMP</a> </p>
 </blockquote>
@@ -173,7 +177,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">dispenso::parallel_for(0, kArraySize, [&amp;](<span class="keywordtype">size_t</span> i) { expensiveVariableWork(i); }, options);</div>
 <div class="ttc" id="astructdispenso_1_1_par_for_options_html"><div class="ttname"><a href="structdispenso_1_1_par_for_options.html">dispenso::ParForOptions</a></div><div class="ttdef"><b>Definition</b> <a href="parallel__for_8h_source.html#l00093">parallel_for.h:93</a></div></div>
 <div class="ttc" id="astructdispenso_1_1_par_for_options_html_a2cfd7b948697c97874c727940529d1d8"><div class="ttname"><a href="structdispenso_1_1_par_for_options.html#a2cfd7b948697c97874c727940529d1d8">dispenso::ParForOptions::defaultChunking</a></div><div class="ttdeci">ParForChunking defaultChunking</div><div class="ttdef"><b>Definition</b> <a href="parallel__for_8h_source.html#l00114">parallel_for.h:114</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/parallel_for_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/parallel_for_example.cpp">examples/parallel_for_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Use the simple form for independent per-element work</li>
 <li>Use chunked ranges when you want to control work distribution</li>
@@ -196,7 +200,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"> </div>
 <div class="line"><span class="comment">// Only process first 5 elements</span></div>
 <div class="line">dispenso::for_each_n(partial.begin(), 5, [](<span class="keywordtype">int</span>&amp; n) { n += 100; });</div>
-</div><!-- fragment --><p>See <a href="../examples/for_each_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/for_each_example.cpp">examples/for_each_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Works with any iterator type (including non-random-access iterators)</li>
 <li><code>for_each_n</code> takes an explicit count</li>
@@ -232,7 +236,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"> </div>
 <div class="line">taskSet.wait();</div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_task_set_html"><div class="ttname"><a href="classdispenso_1_1_concurrent_task_set.html">dispenso::ConcurrentTaskSet</a></div><div class="ttdef"><b>Definition</b> <a href="task__set_8h_source.html#l00241">task_set.h:241</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/task_set_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/task_set_example.cpp">examples/task_set_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li><code>TaskSet</code> is for single-threaded scheduling</li>
 <li><code>ConcurrentTaskSet</code> allows scheduling from multiple threads</li>
@@ -285,7 +289,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"><a class="code hl_class" href="classdispenso_1_1_future.html">dispenso::Future&lt;size_t&gt;</a> which = <a class="code hl_function" href="future_8h.html#a02290b8e80de65d09c2e4e306a43bfb9">dispenso::when_any</a>(std::move(f1), std::move(f2));</div>
 <div class="line"><span class="keywordtype">size_t</span> firstReady = which.get();</div>
 <div class="ttc" id="afuture_8h_html_a02290b8e80de65d09c2e4e306a43bfb9"><div class="ttname"><a href="future_8h.html#a02290b8e80de65d09c2e4e306a43bfb9">dispenso::when_any</a></div><div class="ttdeci">Future&lt; size_t &gt; when_any(InputIt first, InputIt last)</div></div>
-</div><!-- fragment --><p>See <a href="../examples/future_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/future_example.cpp">examples/future_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li><code>async()</code> launches work and returns a <code>Future</code></li>
 <li><code>then()</code> chains dependent computations</li>
@@ -326,7 +330,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_node_html_abfb52f4bd018eee8791499a9bd160c8a"><div class="ttname"><a href="classdispenso_1_1_node.html#abfb52f4bd018eee8791499a9bd160c8a">dispenso::Node::dependsOn</a></div><div class="ttdeci">void dependsOn(Ns &amp;... nodes)</div><div class="ttdef"><b>Definition</b> <a href="graph_8h_source.html#l00273">graph.h:273</a></div></div>
 <div class="ttc" id="agraph_8h_html"><div class="ttname"><a href="graph_8h.html">graph.h</a></div></div>
 <div class="ttc" id="agraph__executor_8h_html"><div class="ttname"><a href="graph__executor_8h.html">graph_executor.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/graph_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/graph_example.cpp">examples/graph_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Use <code>dependsOn()</code> to specify prerequisites</li>
 <li>Multiple executors available: single-thread, parallel_for, ConcurrentTaskSet</li>
@@ -368,7 +372,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">    <span class="comment">// Stage 3: Sink - collects results</span></div>
 <div class="line">    [&amp;results](<span class="keywordtype">int</span> value) { results.push_back(value); });</div>
 <div class="ttc" id="apipeline_8h_html"><div class="ttname"><a href="pipeline_8h.html">pipeline.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/pipeline_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/pipeline_example.cpp">examples/pipeline_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Generator stage produces values (returns <code>OpResult&lt;T&gt;</code> or <code>std::optional&lt;T&gt;</code>)</li>
 <li>Transform stages process values (can filter by returning empty result)</li>
@@ -393,7 +397,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line"> </div>
 <div class="line">tasks.wait();</div>
 <div class="line"><span class="keywordtype">double</span> result = a + b + c;</div>
-</div><!-- fragment --><p>See <a href="../examples/parallel_invoke_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/parallel_invoke_example.cpp">examples/parallel_invoke_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>The last functor runs inline on the calling thread</li>
 <li>Does <em>not</em> call <code>wait()</code> — the caller drives synchronization</li>
@@ -426,7 +430,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a67bc7ccfb41f52b96d827c2011b875f3"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a67bc7ccfb41f52b96d827c2011b875f3">dispenso::CpuSet::availableCount</a></div><div class="ttdeci">static DISPENSO_DLL_ACCESS int32_t availableCount()</div><div class="ttdoc">Returns the number of hardware threads available to this process.</div></div>
 <div class="ttc" id="aclassdispenso_1_1_cpu_set_html_a8e2ee94c76fe9d30dc399bcfe2e2680f"><div class="ttname"><a href="classdispenso_1_1_cpu_set.html#a8e2ee94c76fe9d30dc399bcfe2e2680f">dispenso::CpuSet::bindCurrentThread</a></div><div class="ttdeci">DISPENSO_DLL_ACCESS bool bindCurrentThread() const</div><div class="ttdoc">Binds the calling thread to the CPUs in this set.</div></div>
 <div class="ttc" id="acpu__set_8h_html"><div class="ttname"><a href="cpu__set_8h.html">cpu_set.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/cpu_set_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/cpu_set_example.cpp">examples/cpu_set_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Works on Linux (full support), Windows (full support), FreeBSD (full support), macOS (topology only)</li>
 <li><code>CpuSet::l2CacheGroups()</code> / <code>l3CacheGroups()</code> return CPU groups that share cache levels</li>
@@ -462,7 +466,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">assert(*it == 1);</div>
 <div class="line">assert(firstElement == 1);</div>
 <div class="ttc" id="aclassdispenso_1_1_concurrent_vector_html_a1d298932d92fbd994cc032b314f089cd"><div class="ttname"><a href="classdispenso_1_1_concurrent_vector.html#a1d298932d92fbd994cc032b314f089cd">dispenso::ConcurrentVector::begin</a></div><div class="ttdeci">iterator begin()</div><div class="ttdef"><b>Definition</b> <a href="concurrent__vector_8h_source.html#l00854">concurrent_vector.h:854</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/concurrent_vector_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/concurrent_vector_example.cpp">examples/concurrent_vector_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Iterators and references remain stable during growth</li>
 <li>Use <code>grow_by()</code> for efficient batch insertion</li>
@@ -486,7 +490,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_small_vector_html"><div class="ttname"><a href="classdispenso_1_1_small_vector.html">dispenso::SmallVector</a></div><div class="ttdef"><b>Definition</b> <a href="small__vector_8h_source.html#l00051">small_vector.h:51</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_small_vector_html_a1cb140530fc0fce66ffa49d866d096a3"><div class="ttname"><a href="classdispenso_1_1_small_vector.html#a1cb140530fc0fce66ffa49d866d096a3">dispenso::SmallVector::push_back</a></div><div class="ttdeci">void push_back(const T &amp;value)</div><div class="ttdef"><b>Definition</b> <a href="small__vector_8h_source.html#l00281">small_vector.h:281</a></div></div>
 <div class="ttc" id="asmall__vector_8h_html"><div class="ttname"><a href="small__vector_8h.html">small_vector.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/small_vector_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/small_vector_example.cpp">examples/small_vector_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Template parameter <code>N</code> controls inline capacity (default 4)</li>
 <li>Transparent fallback to heap when size exceeds <code>N</code></li>
@@ -516,7 +520,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_a2ebb70133b094958e023bf879fce0b1d"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#a2ebb70133b094958e023bf879fce0b1d">dispenso::ChaseLevDeque::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;out)</div><div class="ttdoc">Pops the most recently pushed element (LIFO, owner-only).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00176">chase_lev_deque.h:176</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_ac29c2767e8c6917826d7b8c3171ceeab"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#ac29c2767e8c6917826d7b8c3171ceeab">dispenso::ChaseLevDeque::try_steal</a></div><div class="ttdeci">bool try_steal(T &amp;out)</div><div class="ttdoc">Steals the oldest element from the top of the deque (FIFO).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00247">chase_lev_deque.h:247</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_chase_lev_deque_html_afa74f001484803bfde8561d8cf3a6fc5"><div class="ttname"><a href="classdispenso_1_1_chase_lev_deque.html#afa74f001484803bfde8561d8cf3a6fc5">dispenso::ChaseLevDeque::try_push</a></div><div class="ttdeci">bool try_push(const T &amp;item)</div><div class="ttdoc">Pushes an element onto the bottom of the deque (owner-only).</div><div class="ttdef"><b>Definition</b> <a href="chase__lev__deque_8h_source.html#l00147">chase_lev_deque.h:147</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/chase_lev_deque_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/chase_lev_deque_example.cpp">examples/chase_lev_deque_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Lock-free and wait-free for the owner (push/pop)</li>
 <li><code>steal()</code> is lock-free for thieves</li>
@@ -548,7 +552,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_mpmc_ring_buffer_html_a3ee37a7056160bdaccc69aeba95eb03c"><div class="ttname"><a href="classdispenso_1_1_mpmc_ring_buffer.html#a3ee37a7056160bdaccc69aeba95eb03c">dispenso::MpmcRingBuffer::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;item)</div><div class="ttdoc">Attempts to pop an element from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="mpmc__ring__buffer_8h_source.html#l00359">mpmc_ring_buffer.h:359</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_mpmc_ring_buffer_html_afe719af080f7a965d4a0ac8c4d5bac29"><div class="ttname"><a href="classdispenso_1_1_mpmc_ring_buffer.html#afe719af080f7a965d4a0ac8c4d5bac29">dispenso::MpmcRingBuffer::try_push</a></div><div class="ttdeci">bool try_push(T &amp;&amp;item)</div><div class="ttdoc">Attempts to push an element into the buffer by moving.</div><div class="ttdef"><b>Definition</b> <a href="mpmc__ring__buffer_8h_source.html#l00272">mpmc_ring_buffer.h:272</a></div></div>
 <div class="ttc" id="ampmc__ring__buffer_8h_html"><div class="ttname"><a href="mpmc__ring__buffer_8h.html">mpmc_ring_buffer.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/mpmc_ring_buffer_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/mpmc_ring_buffer_example.cpp">examples/mpmc_ring_buffer_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Capacity is fixed at compile time (rounded up to a power of two by default)</li>
 <li>Fail-fast: no blocking and no retry loops inside the buffer</li>
@@ -574,7 +578,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_a8ccae05411a187a9c40efef9b0cbd565"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#a8ccae05411a187a9c40efef9b0cbd565">dispenso::SPSCRingBuffer::try_push</a></div><div class="ttdeci">bool try_push(T &amp;&amp;item)</div><div class="ttdoc">Attempts to push an element into the buffer by moving.</div><div class="ttdef"><b>Definition</b> <a href="spsc__ring__buffer_8h_source.html#l00212">spsc_ring_buffer.h:212</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_s_p_s_c_ring_buffer_html_abc22acfc3eeacf3f3f022ad8938ce873"><div class="ttname"><a href="classdispenso_1_1_s_p_s_c_ring_buffer.html#abc22acfc3eeacf3f3f022ad8938ce873">dispenso::SPSCRingBuffer::try_pop</a></div><div class="ttdeci">bool try_pop(T &amp;item)</div><div class="ttdoc">Attempts to pop an element from the buffer.</div><div class="ttdef"><b>Definition</b> <a href="spsc__ring__buffer_8h_source.html#l00317">spsc_ring_buffer.h:317</a></div></div>
 <div class="ttc" id="aspsc__ring__buffer_8h_html"><div class="ttname"><a href="spsc__ring__buffer_8h.html">spsc_ring_buffer.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/spsc_ring_buffer_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/spsc_ring_buffer_example.cpp">examples/spsc_ring_buffer_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Designed for exactly one producer and one consumer thread</li>
 <li>Lower overhead than <code>MpmcRingBuffer</code> (no CAS on the hot path)</li>
@@ -602,7 +606,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">workComplete.wait();  <span class="comment">// Main thread waits for all workers</span></div>
 <div class="ttc" id="aclassdispenso_1_1_latch_html"><div class="ttname"><a href="classdispenso_1_1_latch.html">dispenso::Latch</a></div><div class="ttdef"><b>Definition</b> <a href="latch_8h_source.html#l00027">latch.h:27</a></div></div>
 <div class="ttc" id="alatch_8h_html"><div class="ttname"><a href="latch_8h.html">latch.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/latch_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/latch_example.cpp">examples/latch_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li><code>arrive_and_wait()</code> decrements and blocks</li>
 <li><code>count_down()</code> decrements without blocking</li>
@@ -629,7 +633,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <div class="line">});</div>
 <div class="ttc" id="aclassdispenso_1_1_resource_pool_html"><div class="ttname"><a href="classdispenso_1_1_resource_pool.html">dispenso::ResourcePool</a></div><div class="ttdef"><b>Definition</b> <a href="resource__pool_8h_source.html#l00077">resource_pool.h:77</a></div></div>
 <div class="ttc" id="aresource__pool_8h_html"><div class="ttname"><a href="resource__pool_8h.html">resource_pool.h</a></div></div>
-</div><!-- fragment --><p>See <a href="../examples/resource_pool_example.cpp">full example</a>.</p>
+</div><!-- fragment --><p>Complete program: <a href="https://github.com/facebookincubator/dispenso/blob/main/examples/resource_pool_example.cpp">examples/resource_pool_example.cpp</a>.</p>
 <p>Key points:</p><ul>
 <li>Resources automatically return to pool when RAII wrapper destructs</li>
 <li><code>acquire()</code> blocks if no resources available</li>
@@ -639,7 +643,7 @@ $(function(){initNavTree('getting_started.html',''); initResizable(true); });
 <hr  />
 <h1>Next Steps</h1>
 <ul>
-<li>Browse the <a href="modules.html">API Reference</a> for complete documentation</li>
+<li>Browse the <a href="https://facebookincubator.github.io/dispenso/topics.html">API Reference</a> for complete documentation</li>
 <li>Check out the <a href="https://github.com/facebookincubator/dispenso/tree/main/tests">tests</a> for more usage examples</li>
 <li>See the <a href="https://github.com/facebookincubator/dispenso/tree/main/benchmarks">benchmarks</a> for performance testing patterns </li>
 </ul>
