@@ -117,13 +117,24 @@ def get_color(name):
 # ─── Benchmark name parsing ────────────────────────────────────────────────
 
 
-def parse_benchmark_name(name):
+def parse_benchmark_name(name, templated_threads=False):
+    """Split a benchmark name into library, thread count and worksize.
+
+    lib/threads/worksize and lib/threads are thread sweeps; lib<worksize> is
+    not. With templated_threads, lib<worksize>/threads is read as a thread
+    sweep too -- only for suites known to use that shape (spmm), since the
+    number after a template argument means something else elsewhere (an
+    element count in small_buffer, threads plus a grain size in mandelbrot).
+    """
     result = {"library": name, "threads": None, "worksize": None, "raw": name}
     if "<" in name and ">" in name:
         m = re.match(r"([^<]+)<([^>]+)>", name)
         if m:
             result["library"] = m.group(1)
             result["worksize"] = m.group(2)
+            t = re.match(r"/(\d+)(?:/real_time)?$", name[m.end() :])
+            if templated_threads and t:
+                result["threads"] = int(t.group(1))
         return result
     parts = name.split("/")
     if parts and parts[-1] == "real_time":
@@ -146,6 +157,10 @@ def parse_benchmark_name(name):
 
 
 # ─── Shared helpers ────────────────────────────────────────────────────────
+
+
+# Display labels for worksizes given as template arguments.
+_SYMBOLIC_WORKSIZE_LABELS = {"kMedRows": "64K Rows", "kLargeRows": "1M Rows"}
 
 
 def _format_worksize(ws):
@@ -1210,7 +1225,11 @@ def build_pipeline_charts(benchmarks, suite):
     ]
 
 
-def _parse_generic_line_benchmarks(benchmarks):
+# Suites named lib<worksize>/threads; see parse_benchmark_name.
+_TEMPLATED_THREAD_SUITES = {"spmm"}
+
+
+def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
     """Parse benchmarks into thread-scaling data and error tracking.
 
     Returns (grouped, errored, grouped_cpu, serial_points) where:
@@ -1232,7 +1251,7 @@ def _parse_generic_line_benchmarks(benchmarks):
             if not bm.get("error_occurred"):
                 serial_points[serial_key] = bm["real_time"]
             continue
-        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
+        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""), templated_threads)
         lib = parsed["library"]
         threads = parsed.get("threads")
         ws = parsed.get("worksize")
@@ -1258,7 +1277,7 @@ def _skipped_libs_list(errored_libs, valid_libs):
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
     grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
-        benchmarks
+        benchmarks, suite in _TEMPLATED_THREAD_SUITES
     )
 
     charts = []
@@ -1303,15 +1322,18 @@ def build_generic_line_charts(benchmarks, suite):
                     }
                 )
 
-        label = _format_worksize(ws)
-        suite_display = suite.replace("_", " ").title()
+        suite_display = "SpMM" if suite == "spmm" else suite.replace("_", " ").title()
+        if ws == "default":
+            title = suite_display
+        elif ws in _SYMBOLIC_WORKSIZE_LABELS:
+            title = f"{suite_display} - {_SYMBOLIC_WORKSIZE_LABELS[ws]}"
+        else:
+            title = f"{suite_display} - {_format_worksize(ws)} Elements"
         chart_cfg = {
             "id": f"{suite}_{ws}",
             "suite": suite,
             "type": "line",
-            "title": suite_display
-            if ws == "default"
-            else f"{suite_display} - {label} Elements",
+            "title": title,
             "traces": traces,
             "xaxis": "Threads",
             "yaxis_unit": "ns",
@@ -1422,6 +1444,8 @@ def build_charts_for_suite(benchmarks, suite):
         return build_graph_charts(benchmarks, suite)
     if suite == "tree":
         return build_tree_charts(benchmarks, suite)
+    if suite in _TEMPLATED_THREAD_SUITES:
+        return build_generic_line_charts(benchmarks, suite)
     if suite == "rw_lock":
         return build_rw_lock_charts(benchmarks, suite)
     if suite == "once_function":
