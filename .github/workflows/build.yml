@@ -265,6 +265,46 @@ jobs:
       - name: Test
         working-directory: ./build
         run: ctest -LE flaky
+      # The installed DispensoConfig.cmake must find concurrentqueue itself
+      # (find_dependency) in this configuration, which only a real consumer of
+      # the installed package exercises.
+      - name: Consume the installed CMake package
+        run: |
+          cmake --install build --prefix "$RUNNER_TEMP/prefix"
+          cmake -S tests/install_consumer -B "$RUNNER_TEMP/consumer" \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/prefix" \
+            -DCMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror"
+          cmake --build "$RUNNER_TEMP/consumer"
+          "$RUNNER_TEMP/consumer/install_consumer"
+
+  build-install-consumer:
+    name: Linux installed CMake package
+    runs-on: ubuntu-latest
+    # docs/building.md tells users to consume an installed dispenso through
+    # find_package(Dispenso) and Dispenso::dispenso. The external-consumer
+    # steps in the GCC 16 and Clang 22 jobs deliberately use bare -I/-L, the
+    # documented non-CMake path, so they never load the exported targets. This
+    # installs a shared and a static build and builds tests/install_consumer
+    # against each, which checks the exported include directories, link
+    # dependencies (Threads matters for the static library) and version file.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install and consume (shared and static)
+        run: |
+          for shared in ON OFF; do
+            echo "::group::DISPENSO_SHARED_LIB=$shared"
+            prefix="$RUNNER_TEMP/prefix-$shared"
+            cmake -S . -B "build-$shared" -DCMAKE_BUILD_TYPE=Release \
+              -DDISPENSO_SHARED_LIB=$shared
+            cmake --build "build-$shared" --parallel 4
+            cmake --install "build-$shared" --prefix "$prefix"
+            cmake -S tests/install_consumer -B "consumer-$shared" \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$prefix" \
+              -DCMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror"
+            cmake --build "consumer-$shared"
+            "./consumer-$shared/install_consumer"
+            echo "::endgroup::"
+          done
 
   #############################################################################
   # Bleeding-edge toolchains - advisory, never blocking
@@ -399,6 +439,44 @@ jobs:
             examples/chunking_comparison_example.cpp \
             -L/tmp/prefix/lib -ldispenso -o /tmp/consumer
           LD_LIBRARY_PATH=/tmp/prefix/lib /tmp/consumer
+
+  #############################################################################
+  # Benchmarks - built, never timed
+  #############################################################################
+  build-benchmarks:
+    name: Linux benchmarks (build only)
+    runs-on: ubuntu-latest
+    # Nothing else enables DISPENSO_BUILD_BENCHMARKS, so benchmark sources and
+    # benchmarks/CMakeLists.txt's dependency discovery (Google Benchmark and
+    # Taskflow via FetchContent, TBB, OpenMP) could break unnoticed. This builds
+    # them with TBB installed so its variants compile too, then lists each
+    # binary's benchmarks as a link/startup check. Shared runners cannot give
+    # meaningful timings, so nothing is measured.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install TBB
+        run: sudo apt-get update && sudo apt-get install -y libtbb-dev
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: List benchmarks
+        working-directory: ./build
+        run: |
+          set -o pipefail
+          count=0
+          for b in bin/*_benchmark; do
+            n=$("$b" --benchmark_list_tests | wc -l)
+            echo "$b: $n benchmarks"
+            count=$((count + 1))
+          done
+          if [ "$count" -eq 0 ]; then
+            echo "No benchmark binaries were built."
+            exit 1
+          fi
 
   #############################################################################
   # Sanitizer builds - critical for concurrency library
