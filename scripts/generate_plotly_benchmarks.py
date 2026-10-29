@@ -431,7 +431,7 @@ def _build_cv_group_chart(data, suite, group_name, ops_list, suffix, title_suffi
 
     group_data = []
     for lib in libs:
-        values = [data.get((op, lib), 0) for op in ops]
+        values = [data.get((op, lib)) for op in ops]
         group_data.append({"name": lib, "values": values, "color": get_color(lib)})
 
     label = "Serial/Access" if group_name == "serial" else "Parallel"
@@ -690,8 +690,8 @@ def _build_grouped_bar_chart(chart_id, suite, title, categories, mutexes, data, 
     """Build a grouped horizontal bar chart config for a set of mutexes."""
     groups = []
     for mutex in mutexes:
-        values = [data.get(key_fn(mutex, cat), 0) for cat in categories]
-        if any(v > 0 for v in values):
+        values = [data.get(key_fn(mutex, cat)) for cat in categories]
+        if any(v is not None and v > 0 for v in values):
             groups.append({"name": mutex, "values": values, "color": get_color(mutex)})
     if not groups:
         return None
@@ -808,7 +808,7 @@ def build_once_function_charts(benchmarks, suite):
             continue
         groups = []
         for ft in func_types:
-            values = [data.get((op, ft, s), 0) for s in sizes]
+            values = [data.get((op, ft, s)) for s in sizes]
             groups.append(
                 {
                     "name": ft,
@@ -895,7 +895,7 @@ def _build_pool_allocator_chart(data, suite, tc):
     groups = []
     for at in alloc_types:
         values = [
-            data.get((at, size, tc, it), 0)
+            data.get((at, size, tc, it))
             for size in _PA_SIZE_ORDER
             for it in iters_list
         ]
@@ -1049,8 +1049,8 @@ def build_timed_task_charts(benchmarks, suite):
                 values.append(match[0]["mean_us"])
                 errors.append(match[0]["stddev_us"])
             else:
-                values.append(0)
-                errors.append(0)
+                values.append(None)
+                errors.append(None)
         groups.append(
             {
                 "name": lib,
@@ -1592,7 +1592,7 @@ function renderGroupedBarH(cfg) {{
   const cats = [...cfg.categories].reverse();
   const traces = cfg.groups.map(g => ({{
     type: 'bar', orientation: 'h', name: g.name,
-    y: cats, x: [...g.values].reverse().map(v => useLog ? v : v / u.scale),
+    y: cats, x: [...g.values].reverse().map(v => v == null || useLog ? v : v / u.scale),
     marker: {{ color: g.color, opacity: 0.85 }},
     hovertemplate: useLog
       ? '%{{y}}: %{{x:.4g}} ns<extra>%{{fullData.name}}</extra>'
@@ -1730,7 +1730,7 @@ function renderGroupedBarHError(cfg) {{
     const vals = [...g.values].reverse();
     const errs = [...g.errors].reverse();
     // Clamp lower error bars so they don't go below zero (scheduling error can't be negative)
-    const errMinus = vals.map((v, i) => Math.min(errs[i], v));
+    const errMinus = vals.map((v, i) => v == null ? null : Math.min(errs[i], v));
     return {{
       type: 'bar', orientation: 'h', name: g.name,
       y: cats, x: vals,
