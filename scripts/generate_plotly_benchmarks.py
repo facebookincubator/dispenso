@@ -227,6 +227,12 @@ def select_representative_rows(benchmarks):
             iterations.sort(key=lambda e: e.get("real_time", 0))
             chosen = iterations[len(iterations) // 2]
         row = dict(chosen)
+        # An aggregate row's `iterations` is its repetition count. Keep the
+        # per-repetition iteration count instead, which is what totals such as
+        # the rusage counters (one total per repetition) are divided by.
+        per_rep = [e for e in entries if e.get("run_type") == "iteration"]
+        if row.get("run_type") == "aggregate" and per_rep:
+            row["iterations"] = per_rep[0].get("iterations")
         # Aggregate rows suffix `name` with e.g. "_median"; builders parse that
         # field, so restore the plain case name.
         row["name"] = case
@@ -1220,6 +1226,102 @@ def build_pipeline_charts(benchmarks, suite):
     ]
 
 
+# idle_pool's scenarios, in chart order: (benchmark suffix, chart title for a
+# worksize, whether wall time means anything). very_idle's wall time is its
+# fixed 100 ms sleep, so only its CPU is charted.
+_IDLE_SCENARIOS = [
+    ("mostly_idle", "Chain of {} Tasks, One Runnable at a Time", True),
+    ("periodic_burst", "Burst After 5 ms Idle (1M-Element Dot Product)", True),
+    ("very_idle", "CPU Used Across a 100 ms Idle Period", False),
+]
+# Counters the benchmark records with getrusage(RUSAGE_SELF): the whole
+# process's user and system CPU seconds over a repetition. POSIX only.
+_RUSAGE_COUNTERS = ("\t0 User", "\t1 System")
+
+
+def _process_cpu_ns(bm):
+    """Process CPU per iteration in ns from the rusage counters, or None.
+
+    google-benchmark's own cpu_time covers only the thread running the
+    benchmark loop, so it misses everything the pool's workers do -- which is
+    what idle_pool measures.
+    """
+    if not all(k in bm for k in _RUSAGE_COUNTERS) or not bm.get("iterations"):
+        return None
+    return sum(bm[k] for k in _RUSAGE_COUNTERS) * 1e9 / bm["iterations"]
+
+
+def build_idle_pool_charts(benchmarks, suite):
+    """One chart per idle_pool scenario and worksize: wall time and process CPU.
+
+    Benchmarks are named BM_<lib>_<scenario>/<threads>[/<worksize>]. The pool
+    is meant to be both responsive and cheap while idle, so each library gets
+    a solid wall-time line and a dotted line for the CPU the whole process
+    used per iteration. Platforms without the rusage counters get no CPU line.
+    """
+    wall = defaultdict(lambda: defaultdict(list))  # (scenario, ws) -> lib -> points
+    cpu = defaultdict(lambda: defaultdict(list))
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
+        threads = parsed.get("threads")
+        for scenario, _, _ in _IDLE_SCENARIOS:
+            if parsed["library"].endswith("_" + scenario):
+                lib = parsed["library"][: -len(scenario) - 1]
+                break
+        else:
+            raise SystemExit(f"idle_pool: unknown scenario in {bm['name']}")
+        if threads is None:
+            continue
+        key = (scenario, parsed["worksize"])
+        wall[key][lib].append((threads, bm["real_time"]))
+        process_cpu = _process_cpu_ns(bm)
+        if process_cpu is not None:
+            cpu[key][lib].append((threads, process_cpu))
+
+    charts = []
+    for scenario, title_fmt, show_wall in _IDLE_SCENARIOS:
+        sizes = sorted(
+            {ws for (sc, ws) in wall if sc == scenario},
+            key=lambda ws: int(ws) if ws.isdigit() else 0,
+        )
+        for ws in sizes:
+            key = (scenario, ws)
+            traces = []
+            for lib in sorted(wall[key], key=_lib_sort_key):
+                series = [(lib, wall[key][lib], "solid")] if show_wall else []
+                if cpu[key].get(lib):
+                    name = f"{lib} (process CPU)" if show_wall else lib
+                    series.append((name, cpu[key][lib], "dot" if show_wall else "solid"))
+                for name, points, dash in series:
+                    points = sorted(points)
+                    traces.append(
+                        {
+                            "name": name,
+                            "x": [p[0] for p in points],
+                            "y": [p[1] for p in points],
+                            "color": get_color(lib),
+                            "dash": dash,
+                        }
+                    )
+            if not traces:
+                continue
+            label = _format_worksize(ws) if ws != "default" else ""
+            charts.append(
+                {
+                    "id": f"{suite}_{scenario}_{ws}",
+                    "suite": suite,
+                    "type": "line",
+                    "title": f"Idle Pool - {title_fmt.format(label)}",
+                    "traces": traces,
+                    "xaxis": "Threads",
+                    "yaxis_unit": "ns",
+                }
+            )
+    return charts
+
+
 # Suites named lib<worksize>/threads; see parse_benchmark_name.
 _TEMPLATED_THREAD_SUITES = {"spmm"}
 
@@ -1227,14 +1329,12 @@ _TEMPLATED_THREAD_SUITES = {"spmm"}
 def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
     """Parse benchmarks into thread-scaling data and error tracking.
 
-    Returns (grouped, errored, grouped_cpu, serial_points) where:
+    Returns (grouped, errored, serial_points) where:
     - grouped: {worksize: {(lib, threads): real_time}}
     - errored: {worksize: set of libs with error_occurred}
-    - grouped_cpu: {worksize: {(lib, threads): cpu_time}}
     - serial_points: {worksize: real_time} serial baselines
     """
     grouped = defaultdict(dict)
-    grouped_cpu = defaultdict(dict)
     errored = defaultdict(set)
     serial_points = {}
 
@@ -1255,10 +1355,9 @@ def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
                 errored[ws].add(lib)
                 continue
             grouped[ws][(lib, threads)] = bm["real_time"]
-            grouped_cpu[ws][(lib, threads)] = bm.get("cpu_time", bm["real_time"])
 
     serial_points = _resolve_serial_sizes(serial_points, grouped)
-    return grouped, errored, grouped_cpu, serial_points
+    return grouped, errored, serial_points
 
 
 def _skipped_libs_list(errored_libs, valid_libs):
@@ -1271,7 +1370,7 @@ def _skipped_libs_list(errored_libs, valid_libs):
 
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
-    grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
+    grouped, errored, serial_points = _parse_generic_line_benchmarks(
         benchmarks, suite in _TEMPLATED_THREAD_SUITES
     )
 
@@ -1280,9 +1379,6 @@ def build_generic_line_charts(benchmarks, suite):
         by_lib = defaultdict(list)
         for (lib, threads), t in grouped[ws].items():
             by_lib[lib].append((threads, t))
-        by_lib_cpu = defaultdict(list)
-        for (lib, threads), t in grouped_cpu.get(ws, {}).items():
-            by_lib_cpu[lib].append((threads, t))
 
         traces = []
         thread_set = {threads for (_, threads) in grouped[ws]}
@@ -1300,22 +1396,6 @@ def build_generic_line_charts(benchmarks, suite):
             if "bulk" in lib.lower():
                 trace["dash"] = "dash"
             traces.append(trace)
-
-            # idle_pool is dual-objective: low burst latency (real_time) AND low
-            # CPU spent staying responsive. Show cpu_time as a dotted companion so
-            # the latency-vs-CPU tradeoff (e.g. a runtime that wins wall time by
-            # spinning/burning cores) is visible rather than hidden.
-            if suite == "idle_pool" and lib in by_lib_cpu:
-                cpu_points = sorted(by_lib_cpu[lib])
-                traces.append(
-                    {
-                        "name": f"{lib} (CPU)",
-                        "x": [p[0] for p in cpu_points],
-                        "y": [p[1] for p in cpu_points],
-                        "color": get_color(lib),
-                        "dash": "dot",
-                    }
-                )
 
         suite_display = "SpMM" if suite == "spmm" else suite.replace("_", " ").title()
         if ws == "default":
@@ -1441,6 +1521,8 @@ def build_charts_for_suite(benchmarks, suite):
         return build_tree_charts(benchmarks, suite)
     if suite in _TEMPLATED_THREAD_SUITES:
         return build_generic_line_charts(benchmarks, suite)
+    if suite == "idle_pool":
+        return build_idle_pool_charts(benchmarks, suite)
     if suite == "rw_lock":
         return build_rw_lock_charts(benchmarks, suite)
     if suite == "once_function":
