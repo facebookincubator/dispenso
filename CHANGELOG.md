@@ -71,6 +71,7 @@ Unreleased
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
 * tree_benchmark measures dispenso with the same programming models on every tree workload -- `parallel_invoke`, `TaskSet` scheduling with inline recursion, and (for the binary trees) `parallel_for` over a frontier -- adding the variants that were missing. Its other dispenso variants (naive async, hybrid cutoff, `scheduleBulk`) are now `_reference` benchmarks, and the dashboard charts each tree workload separately.
 * The benchmark dashboard charts spmm as thread-scaling lines for each matrix size, instead of one bar per library, size and thread count.
+* for_each_benchmark's serial baseline now runs the same per-element function as `for_each_n`, through `std::for_each`. It was an indexed loop that ran ~2.6x faster than that function does serially, so `for_each_n` looked slow next to it even on one thread.
 
 1.6.2 (August 19, 2026)
 
