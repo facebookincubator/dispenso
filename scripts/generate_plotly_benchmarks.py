@@ -2049,6 +2049,27 @@ def is_unpublished(benchmark):
     return bool(_REFERENCE_RE.match(name)) or function in _UNPUBLISHED_BEFORE_RENAME
 
 
+_NS_PER_UNIT = {"ns": 1, "us": 1e3, "ms": 1e6, "s": 1e9}
+
+
+def in_nanoseconds(benchmark):
+    """Return the row with real_time and cpu_time converted to ns.
+
+    google-benchmark reports times in each benchmark's own Unit() (idle_pool,
+    nested_pool and simple_pool use microseconds); every chart builder and
+    the page's renderers assume ns.
+    """
+    unit = benchmark.get("time_unit", "ns")
+    if unit == "ns":
+        return benchmark
+    scale = _NS_PER_UNIT[unit]
+    row = dict(benchmark, time_unit="ns")
+    for key in ("real_time", "cpu_time"):
+        if row.get(key) is not None:  # errored rows may carry null times
+            row[key] *= scale
+    return row
+
+
 def load_platform(json_path):
     """Load a JSON file and build chart configs."""
     with open(json_path) as f:
@@ -2077,7 +2098,7 @@ def load_platform(json_path):
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
         rows = result["data"].get("benchmarks", [])
         benchmarks = select_representative_rows(
-            [bm for bm in rows if not is_unpublished(bm)]
+            [in_nanoseconds(bm) for bm in rows if not is_unpublished(bm)]
         )
         charts.extend(build_charts_for_suite(benchmarks, suite))
 
