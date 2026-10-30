@@ -101,6 +101,10 @@ void BM_taskflow(benchmark::State& state) {
   checkResults(input, output);
 }
 
+// The benchmark dashboard publishes this as dispenso's line (_OFFICIAL_DISPENSO in
+// scripts/generate_plotly_benchmarks.py), so it should use the method we recommend for this
+// workload. The loop is a uniform elementwise map, which is what kStatic is for: kAdaptive has
+// nothing to rebalance, and in the 1.6 results it measured within noise of kStatic.
 void BM_dispenso_static_chunk(benchmark::State& state) {
   const int num_threads = state.range(0) - 1;
   const int num_elements = state.range(1);

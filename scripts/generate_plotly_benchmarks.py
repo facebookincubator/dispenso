@@ -13,7 +13,12 @@ sidebar navigation, platform switching, and suite-specific visualizations.
 Usage:
     python generate_plotly_benchmarks.py docs/benchmark_results/macos.json
     python generate_plotly_benchmarks.py docs/benchmark_results/macos.json docs/benchmark_results/linux.json
-    python generate_plotly_benchmarks.py docs/benchmark_results/*.json -o docs/benchmarks/index.html
+
+Published dashboard (input order sets platform order; keep it to reproduce
+docs/benchmarks/index.html byte-for-byte, see scripts/BENCHMARKING.md):
+    python generate_plotly_benchmarks.py docs/benchmark_results/linux_x64.json \
+        docs/benchmark_results/windows_x64.json docs/benchmark_results/macos_arm64.json \
+        docs/benchmark_results/android_arm64.json -o docs/benchmarks/index.html
 """
 
 import argparse
@@ -216,16 +221,83 @@ def select_representative_rows(benchmarks):
     return rows
 
 
-def _parse_line_benchmarks(benchmarks):
-    """Parse benchmarks into grouped thread-scaling data and serial baselines."""
-    size_map = {
-        "kSmallSize": "1000",
-        "kMediumSize": "1000000",
-        "kLargeSize": "100000000",
-        "100": "100",
+_SYMBOLIC_SIZES = ["kSmallSize", "kMediumSize", "kLargeSize"]
+
+
+def _serial_baseline_key(name):
+    """Return the worksize key of a serial baseline row, or None.
+
+    Serial baselines take no thread count and come in three shapes:
+    BM_serial<kSmallSize> (template), BM_serial/100000 (one argument, the
+    worksize) and plain BM_serial (single-worksize suites, key "default").
+    """
+    m = re.match(r"BM_serial<([^>]+)>", name)
+    if m:
+        return m.group(1)
+    parts = name.replace("BM_", "", 1).split("/")
+    if parts and parts[-1] == "real_time":
+        parts = parts[:-1]
+    if parts[0] != "serial":
+        return None
+    if len(parts) == 1:
+        return "default"
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[1]
+    return None
+
+
+def _resolve_serial_sizes(serial_points, worksizes):
+    """Map symbolic serial<kXxxSize> keys onto the suite's numeric worksizes.
+
+    Each benchmark defines its own kSmallSize/kMediumSize/kLargeSize (e.g.
+    1000/1M/100M in simple_for, 10/500/2500 in nested_for), so match them by
+    rank against the numeric worksizes the parallel cases ran with.
+    """
+    symbolic = [k for k in _SYMBOLIC_SIZES if k in serial_points]
+    numeric = sorted((ws for ws in worksizes if ws.isdigit()), key=int)
+    resolved = {k: v for k, v in serial_points.items() if k not in symbolic}
+    if symbolic and len(symbolic) == len(numeric):
+        for key, ws in zip(symbolic, numeric):
+            resolved[ws] = serial_points[key]
+    return resolved
+
+
+def _serial_baseline_trace(serial_points, ws, thread_set):
+    """Dashed horizontal serial reference line for worksize `ws`, or None."""
+    if ws not in serial_points:
+        return None
+    max_t = max(thread_set) if thread_set else 1
+    return {
+        "name": "serial",
+        "x": [1, max_t],
+        "y": [serial_points[ws], serial_points[ws]],
+        "color": get_color("serial"),
+        "dash": "dash",
+        "baseline": True,
     }
+
+
+# The benchmark each competitive thread-scaling suite publishes as its
+# "dispenso" line: the dispenso method we recommend for that workload, chosen
+# by measurement (the benchmark says why). Any other dispenso benchmark in
+# these suites exists to compare dispenso methods during development and is
+# not charted. Suites not listed here chart every dispenso benchmark under its
+# own name, so their variants should be ones worth showing users (static vs
+# adaptive chunking, bulk scheduling); see "Which dispenso benchmarks to
+# publish" in scripts/BENCHMARKING.md.
+_OFFICIAL_DISPENSO = {
+    "simple_for": "dispenso_static_chunk",
+    "summing_for": "dispenso",
+    "nested_for": "dispenso_auto",
+}
+
+
+def _parse_line_benchmarks(benchmarks, suite):
+    """Parse benchmarks into grouped thread-scaling data and serial baselines."""
     grouped = defaultdict(dict)
     serial_points = {}
+    official = _OFFICIAL_DISPENSO.get(suite)
+    found_official = False
 
     for bm in benchmarks:
         if bm.get("run_type") != "iteration":
@@ -234,30 +306,34 @@ def _parse_line_benchmarks(benchmarks):
         parsed = parse_benchmark_name(name)
         lib = parsed["library"]
 
-        # Filter out auto_chunk, static_chunk, and other variants (auto, static)
-        # to keep charts clean
-        lib_lower = lib.lower()
-        if "auto" in lib_lower or "static" in lib_lower:
-            continue
+        if official is not None and lib.lower().startswith("dispenso"):
+            if lib.lower() != official:
+                continue
+            lib = "dispenso"
+            found_official = True
 
-        if parsed.get("worksize") and "<" not in bm["name"]:
+        serial_key = _serial_baseline_key(bm["name"])
+        if serial_key is not None:
+            serial_points[serial_key] = bm["real_time"]
+        elif parsed.get("worksize") and "<" not in bm["name"]:
             # Slash-delimited: lib/threads/worksize
             threads = parsed["threads"]
             if threads is not None:
                 grouped[parsed["worksize"]][(lib, threads)] = bm["real_time"]
-        elif "<" in bm["name"]:
-            # Template: serial<kSmallSize>
-            m = re.match(r"BM_([^<]+)<([^>]+)>", bm["name"])
-            if m:
-                ws_key = m.group(2)
-                serial_points[size_map.get(ws_key, ws_key)] = bm["real_time"]
 
-    return grouped, serial_points
+    if official is not None and grouped and not found_official:
+        # Fail rather than publish a chart without dispenso: the benchmark
+        # was renamed or removed, and _OFFICIAL_DISPENSO needs updating.
+        raise SystemExit(
+            f"{suite}: no {official} results to chart as dispenso; "
+            "update _OFFICIAL_DISPENSO in generate_plotly_benchmarks.py"
+        )
+    return grouped, _resolve_serial_sizes(serial_points, grouped)
 
 
 def build_line_charts(benchmarks, suite):
     """Thread-scaling line charts for simple_for, summing_for, nested_for."""
-    grouped, serial_points = _parse_line_benchmarks(benchmarks)
+    grouped, serial_points = _parse_line_benchmarks(benchmarks, suite)
 
     charts = []
     for ws in sorted(grouped.keys(), key=lambda x: int(x) if x.isdigit() else 0):
@@ -269,18 +345,9 @@ def build_line_charts(benchmarks, suite):
 
         traces = []
         # Add serial baseline first (acts as reference point)
-        if ws in serial_points:
-            max_t = max(thread_set) if thread_set else 1
-            traces.append(
-                {
-                    "name": "serial",
-                    "x": [1, max_t],
-                    "y": [serial_points[ws], serial_points[ws]],
-                    "color": get_color("serial"),
-                    "dash": "dash",
-                    "baseline": True,
-                }
-            )
+        baseline = _serial_baseline_trace(serial_points, ws, thread_set)
+        if baseline:
+            traces.append(baseline)
 
         for lib in sorted(by_lib.keys(), key=_lib_sort_key):
             points = sorted(by_lib[lib])
@@ -364,7 +431,7 @@ def _build_cv_group_chart(data, suite, group_name, ops_list, suffix, title_suffi
 
     group_data = []
     for lib in libs:
-        values = [data.get((op, lib), 0) for op in ops]
+        values = [data.get((op, lib)) for op in ops]
         group_data.append({"name": lib, "values": values, "color": get_color(lib)})
 
     label = "Serial/Access" if group_name == "serial" else "Parallel"
@@ -414,101 +481,113 @@ def build_concurrent_vector_charts(benchmarks, suite):
     return charts
 
 
-def _parse_future_benchmarks(benchmarks, impl_map, sizes):
-    """Parse future benchmarks into data dict and error set."""
-    data = {}
-    error_set = set()
-    for bm in benchmarks:
-        clean = bm["name"].replace("BM_", "").replace("/real_time", "")
-        size = None
-        for sz in ["kSmallSize", "kMediumSize", "kLargeSize"]:
-            if sz in clean:
-                size = sz.replace("k", "").replace("Size", "")
-                clean = clean.replace(f"<{sz}>", "")
-                break
-        impl = impl_map.get(clean, clean.replace("_", " "))
-        if bm.get("error_occurred"):
-            if size:
-                error_set.add((impl, size))
-            continue
-        if bm.get("run_type") != "iteration":
-            continue
-        if size:
-            data[(impl, size)] = bm["real_time"]
-    return data, error_set
-
-
-def _build_error_aware_groups(impls, available_sizes, data, error_set):
-    """Build grouped bar data with error placeholders at max category height."""
-    cat_maxes = {}
-    for s in available_sizes:
-        vals = [data.get((i, s), 0) for i in impls]
-        cat_maxes[s] = max(vals) if vals else 0
-
-    groups = []
-    for impl in impls:
-        values = []
-        error_indices = []
-        for idx, s in enumerate(available_sizes):
-            if (impl, s) in error_set:
-                values.append(cat_maxes[s])
-                error_indices.append(idx)
-            else:
-                values.append(data.get((impl, s), 0))
-        group = {"name": impl, "values": values, "color": get_color(impl)}
-        if error_indices:
-            group["error_indices"] = error_indices
-        groups.append(group)
-    return groups
+_FUTURE_SPEC_IMPLS = [
+    ("dispenso", "dispenso::when_any"),
+    ("folly", "folly::collectAny"),
+]
+_FUTURE_KV_IMPLS = [
+    ("kv_no_cache", "no cache (recompute)"),
+    ("kv_std_shared_future", "std::shared_future"),
+    ("kv_folly", "folly::SharedPromise"),
+    ("kv_dispenso", "dispenso::Future"),
+]
 
 
 def build_future_charts(benchmarks, suite):
-    """Grouped bar chart by tree size for future benchmark."""
-    impl_map = {
-        "serial_tree": "serial",
-        "std_tree": "std::async",
-        "folly_tree": "folly::Future",
-        "dispenso_tree": "dispenso::Future",
-        "dispenso_tree_when_all": "dispenso::when_all",
-        "dispenso_taskset_tree": "dispenso::TaskSet",
-        "dispenso_taskset_tree_bulk": "dispenso::TaskSet (bulk)",
-    }
-    impl_order = [
-        "serial",
-        "std::async",
-        "folly::Future",
-        "dispenso::Future",
-        "dispenso::TaskSet",
-        "dispenso::TaskSet (bulk)",
-        "dispenso::when_all",
-    ]
-    sizes = ["Small", "Medium", "Large"]
+    """Charts for future_benchmark's two workloads.
 
-    data, error_set = _parse_future_benchmarks(benchmarks, impl_map, sizes)
+    Speculative search (BM_speculative_<impl><K>): time to the first of K
+    candidates, grouped by K, with the single-candidate serial run repeated
+    in each group as the reference.  A case with no result is left as a gap
+    (null), and a case that failed is drawn as a "cannot complete" bar, so
+    neither reads as a zero time.  KV-cache memoization (BM_kv_<impl>): one
+    bar per implementation.
+    """
+    spec = {}
+    spec_failed = set()
+    kv = {}
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration":
+            continue
+        clean = bm["name"].replace("BM_", "").replace("/real_time", "")
+        m = re.match(r"speculative_([a-z]+)(?:<(\d+)>)?$", clean)
+        if m:
+            if bm.get("error_occurred"):
+                spec_failed.add((m.group(1), m.group(2)))
+            else:
+                spec[(m.group(1), m.group(2))] = bm["real_time"]
+        elif clean.startswith("kv_") and not bm.get("error_occurred"):
+            kv[clean] = bm["real_time"]
 
-    impls = [
-        i
-        for i in impl_order
-        if any((i, s) in data or (i, s) in error_set for s in sizes)
-    ]
-    available_sizes = [
-        s for s in sizes if any((i, s) in data or (i, s) in error_set for i in impls)
-    ]
-
-    groups = _build_error_aware_groups(impls, available_sizes, data, error_set)
-
-    return [
-        {
-            "id": "future",
-            "suite": suite,
-            "type": "grouped_bar_v",
-            "title": "Future/Async Tree Build Benchmark",
-            "categories": available_sizes,
-            "groups": groups,
-            "yaxis_unit": "ns",
-            "xaxis": "Tree Size",
+    charts = []
+    ks = sorted(
+        {k for _, k in list(spec) + list(spec_failed) if k is not None}, key=int
+    )
+    if ks:
+        groups = []
+        serial = spec.get(("serial", None))
+        if serial is not None:
+            groups.append(
+                {
+                    "name": "serial (1 candidate)",
+                    "values": [serial] * len(ks),
+                    "color": get_color("serial"),
+                }
+            )
+        # A failed case needs a visible bar to carry its marker: the tallest
+        # measured bar in its category (the renderer leaves it out of zoom).
+        tallest = {
+            k: max((t for (_, kk), t in spec.items() if kk == k), default=None)
+            for k in ks
         }
+        overall = max(spec.values(), default=1)
+        for key, display in _FUTURE_SPEC_IMPLS:
+            if not any((key, k) in spec or (key, k) in spec_failed for k in ks):
+                continue
+            values = []
+            failed = []
+            for i, k in enumerate(ks):
+                if (key, k) in spec:
+                    values.append(spec[(key, k)])
+                elif (key, k) in spec_failed:
+                    values.append(tallest[k] or overall)
+                    failed.append(i)
+                else:
+                    values.append(None)
+            group = {"name": display, "values": values, "color": get_color(key)}
+            if failed:
+                group["error_indices"] = failed
+            groups.append(group)
+        charts.append(
+            {
+                "id": "future_speculative",
+                "suite": suite,
+                "type": "grouped_bar_v",
+                "title": "Speculative Search: Time to First Result",
+                "categories": [f"{k} candidates" for k in ks],
+                "groups": groups,
+                "yaxis_unit": "ns",
+                "xaxis": "Candidates launched",
+            }
+        )
+
+    items = [
+        {"name": display, "time_ns": kv[key], "color": get_color(key[3:])}
+        for key, display in _FUTURE_KV_IMPLS
+        if key in kv
     ]
+    if items:
+        charts.append(
+            {
+                "id": "future_kv",
+                "suite": suite,
+                "type": "bar_h_colored",
+                "title": "KV Cache Memoization (shared futures)",
+                "items": items,
+                "xaxis_unit": "ns",
+            }
+        )
+    return charts
 
 
 def build_graph_charts(benchmarks, suite):
@@ -611,8 +690,8 @@ def _build_grouped_bar_chart(chart_id, suite, title, categories, mutexes, data, 
     """Build a grouped horizontal bar chart config for a set of mutexes."""
     groups = []
     for mutex in mutexes:
-        values = [data.get(key_fn(mutex, cat), 0) for cat in categories]
-        if any(v > 0 for v in values):
+        values = [data.get(key_fn(mutex, cat)) for cat in categories]
+        if any(v is not None and v > 0 for v in values):
             groups.append({"name": mutex, "values": values, "color": get_color(mutex)})
     if not groups:
         return None
@@ -729,7 +808,7 @@ def build_once_function_charts(benchmarks, suite):
             continue
         groups = []
         for ft in func_types:
-            values = [data.get((op, ft, s), 0) for s in sizes]
+            values = [data.get((op, ft, s)) for s in sizes]
             groups.append(
                 {
                     "name": ft,
@@ -751,15 +830,20 @@ def build_once_function_charts(benchmarks, suite):
     return charts
 
 
-_ALLOC_PREFIXES = [
-    ("mallocfree_threaded", "malloc/free", 19),
-    ("mallocfree", "malloc/free", 10),
-    ("nl_pool_allocator_arena", "NoLock Arena", 23),
-    ("nl_pool_allocator", "NoLock", 17),
-    ("pool_allocator_arena", "Arena", 20),
-    ("pool_allocator_threaded", "PoolAllocator", 23),
-    ("pool_allocator", "PoolAllocator", 14),
-]
+# Benchmark family (name before the template arguments) -> allocator label.
+# The malloc/free families now carry a _baseline suffix; the bare names
+# are kept so older result files still parse.
+_ALLOC_FAMILIES = {
+    "mallocfree_baseline": "malloc/free",
+    "mallocfree_threaded_baseline": "malloc/free",
+    "mallocfree": "malloc/free",
+    "mallocfree_threaded": "malloc/free",
+    "nl_pool_allocator_arena": "NoLock Arena",
+    "nl_pool_allocator": "NoLock",
+    "pool_allocator_arena": "Arena",
+    "pool_allocator_threaded": "PoolAllocator",
+    "pool_allocator": "PoolAllocator",
+}
 
 
 def _parse_pool_allocator_benchmarks(benchmarks):
@@ -769,31 +853,15 @@ def _parse_pool_allocator_benchmarks(benchmarks):
         if bm.get("run_type") != "iteration":
             continue
         clean = bm["name"].replace("BM_", "").replace("/real_time", "")
-        at = None
-        rest = ""
-        for prefix, alloc_type, prefix_len in _ALLOC_PREFIXES:
-            if clean.startswith(prefix):
-                at = alloc_type
-                rest = clean[prefix_len:]
-                break
-        if at is None:
+        # family<size[,threads]>[/iters]
+        m = re.match(r"([a-z_]+)<([^>]*)>(?:/(\d+))?$", clean)
+        if not m or m.group(1) not in _ALLOC_FAMILIES:
             continue
-
-        size = "unknown"
-        threads = 1
-        iters = 0
-        if "<" in rest:
-            params, iters_str = rest.split(">")
-            params = params.lstrip("<")
-            if "," in params:
-                size, threads = params.split(",")
-                threads = int(threads)
-            else:
-                size = params
-            if "/" in iters_str:
-                iters = int(iters_str.lstrip("/"))
-        elif "/" in rest:
-            iters = int(rest.lstrip("/"))
+        at = _ALLOC_FAMILIES[m.group(1)]
+        params = [p.strip() for p in m.group(2).split(",")]
+        size = params[0]
+        threads = int(params[1]) if len(params) > 1 else 1
+        iters = int(m.group(3)) if m.group(3) else 0
         data[(at, size, threads, iters)] = bm["real_time"]
     return data
 
@@ -827,7 +895,7 @@ def _build_pool_allocator_chart(data, suite, tc):
     groups = []
     for at in alloc_types:
         values = [
-            data.get((at, size, tc, it), 0)
+            data.get((at, size, tc, it))
             for size in _PA_SIZE_ORDER
             for it in iters_list
         ]
@@ -981,8 +1049,8 @@ def build_timed_task_charts(benchmarks, suite):
                 values.append(match[0]["mean_us"])
                 errors.append(match[0]["stddev_us"])
             else:
-                values.append(0)
-                errors.append(0)
+                values.append(None)
+                errors.append(None)
         groups.append(
             {
                 "name": lib,
@@ -1051,17 +1119,24 @@ def build_pipeline_charts(benchmarks, suite):
 def _parse_generic_line_benchmarks(benchmarks):
     """Parse benchmarks into thread-scaling data and error tracking.
 
-    Returns (grouped, errored, grouped_cpu) where:
+    Returns (grouped, errored, grouped_cpu, serial_points) where:
     - grouped: {worksize: {(lib, threads): real_time}}
     - errored: {worksize: set of libs with error_occurred}
     - grouped_cpu: {worksize: {(lib, threads): cpu_time}}
+    - serial_points: {worksize: real_time} serial baselines
     """
     grouped = defaultdict(dict)
     grouped_cpu = defaultdict(dict)
     errored = defaultdict(set)
+    serial_points = {}
 
     for bm in benchmarks:
         if bm.get("run_type") != "iteration":
+            continue
+        serial_key = _serial_baseline_key(bm["name"])
+        if serial_key is not None:
+            if not bm.get("error_occurred"):
+                serial_points[serial_key] = bm["real_time"]
             continue
         parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
         lib = parsed["library"]
@@ -1074,7 +1149,8 @@ def _parse_generic_line_benchmarks(benchmarks):
             grouped[ws][(lib, threads)] = bm["real_time"]
             grouped_cpu[ws][(lib, threads)] = bm.get("cpu_time", bm["real_time"])
 
-    return grouped, errored, grouped_cpu
+    serial_points = _resolve_serial_sizes(serial_points, grouped)
+    return grouped, errored, grouped_cpu, serial_points
 
 
 def _skipped_libs_list(errored_libs, valid_libs):
@@ -1087,7 +1163,9 @@ def _skipped_libs_list(errored_libs, valid_libs):
 
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
-    grouped, errored, grouped_cpu = _parse_generic_line_benchmarks(benchmarks)
+    grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
+        benchmarks
+    )
 
     charts = []
     for ws in sorted(grouped.keys(), key=lambda x: int(x) if x.isdigit() else 0):
@@ -1099,6 +1177,10 @@ def build_generic_line_charts(benchmarks, suite):
             by_lib_cpu[lib].append((threads, t))
 
         traces = []
+        thread_set = {threads for (_, threads) in grouped[ws]}
+        baseline = _serial_baseline_trace(serial_points, ws, thread_set)
+        if baseline:
+            traces.append(baseline)
         for lib in sorted(by_lib.keys(), key=_lib_sort_key):
             points = sorted(by_lib[lib])
             trace = {
@@ -1510,7 +1592,7 @@ function renderGroupedBarH(cfg) {{
   const cats = [...cfg.categories].reverse();
   const traces = cfg.groups.map(g => ({{
     type: 'bar', orientation: 'h', name: g.name,
-    y: cats, x: [...g.values].reverse().map(v => useLog ? v : v / u.scale),
+    y: cats, x: [...g.values].reverse().map(v => v == null || useLog ? v : v / u.scale),
     marker: {{ color: g.color, opacity: 0.85 }},
     hovertemplate: useLog
       ? '%{{y}}: %{{x:.4g}} ns<extra>%{{fullData.name}}</extra>'
@@ -1571,7 +1653,7 @@ function renderGroupedBarV(cfg) {{
 
     return {{
       type: 'bar', name: g.name,
-      x: cfg.categories, y: g.values.map(v => v / u.scale),
+      x: cfg.categories, y: g.values.map(v => v == null ? null : v / u.scale),
       marker: {{ color: colors, opacity: 0.85, ...(patterns ? {{ pattern: patterns }} : {{}}) }},
       customdata, hovertemplate,
       // Text label inside error bars
@@ -1648,7 +1730,7 @@ function renderGroupedBarHError(cfg) {{
     const vals = [...g.values].reverse();
     const errs = [...g.errors].reverse();
     // Clamp lower error bars so they don't go below zero (scheduling error can't be negative)
-    const errMinus = vals.map((v, i) => Math.min(errs[i], v));
+    const errMinus = vals.map((v, i) => v == null ? null : Math.min(errs[i], v));
     return {{
       type: 'bar', orientation: 'h', name: g.name,
       y: cats, x: vals,
