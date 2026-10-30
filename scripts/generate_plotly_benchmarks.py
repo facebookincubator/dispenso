@@ -1618,8 +1618,9 @@ function themeLayout() {{
 
 const plotlyConfig = {{ responsive: true, scrollZoom: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'], displaylogo: false }};
 
-// Pin the time axis lower bound to zero on any zoom/pan.
-// Preserves the zoom span so repeated zoom in/out doesn't drift.
+// Keep the time axis from going below zero on a zoom or pan. Only a range
+// that starts below zero is moved, keeping its span so scrolling and panning
+// past zero don't drift; a range the user selected above zero is left as is.
 function pinZeroAxis(chartId, axis) {{
   const el = document.getElementById('chart-' + chartId);
   if (!el) return;
@@ -1628,8 +1629,7 @@ function pinZeroAxis(chartId, axis) {{
     if (pinning) return;
     const key0 = axis + '.range[0]';
     const key1 = axis + '.range[1]';
-    // Check if the lower bound moved away from zero
-    if (key0 in ed && ed[key0] !== 0) {{
+    if (key0 in ed && ed[key0] < 0) {{
       const lo = ed[key0];
       const hi = key1 in ed ? ed[key1] : el.layout[axis].range[1];
       const span = hi - lo;  // preserve intended zoom level
