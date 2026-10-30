@@ -124,7 +124,7 @@ def parse_benchmark_name(name, templated_threads=False):
     not. With templated_threads, lib<worksize>/threads is read as a thread
     sweep too -- only for suites known to use that shape (spmm), since the
     number after a template argument means something else elsewhere (an
-    element count in small_buffer, threads plus a grain size in mandelbrot).
+    element count in small_buffer, threads plus an image size in mandelbrot).
     """
     result = {"library": name, "threads": None, "worksize": None, "raw": name}
     if "<" in name and ">" in name:
@@ -1322,6 +1322,77 @@ def build_idle_pool_charts(benchmarks, suite):
     return charts
 
 
+_MANDELBROT_REGIONS = {"Region::kFullSet": "Full Set", "Region::kBoundary": "Seahorse Valley"}
+# Displayed library names. dispenso's only case uses kAdaptive chunking, the
+# method for this deliberately uneven workload.
+_MANDELBROT_LIBS = {"dispenso_auto": "dispenso", "omp_guided": "omp", "tbb": "tbb"}
+
+
+def build_mandelbrot_charts(benchmarks, suite):
+    """One thread-scaling chart per viewport and image size.
+
+    Parallel cases are named BM_<lib><Region::kX>/<threads>/<dim> and serial
+    ones BM_serial<Region::kX, kMediumDim>, which is drawn as the baseline on
+    that size's chart.
+    """
+    points = defaultdict(lambda: defaultdict(list))  # (region, dim) -> lib -> points
+    serial = {}
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        name = bm["name"].replace("/real_time", "")
+        m = re.match(r"BM_serial<(Region::\w+), (\w+)>$", name)
+        if m:
+            serial[(m.group(1), m.group(2))] = bm["real_time"]
+            continue
+        m = re.match(r"BM_(\w+)<(Region::\w+)>/(\d+)/(\d+)$", name)
+        if not m or m.group(1) not in _MANDELBROT_LIBS:
+            raise SystemExit(f"mandelbrot: cannot chart {bm['name']}")
+        lib = _MANDELBROT_LIBS[m.group(1)]
+        points[(m.group(2), m.group(4))][lib].append((int(m.group(3)), bm["real_time"]))
+
+    # The serial cases name their size symbolically; match by rank, as
+    # _resolve_serial_sizes does for the other suites.
+    dims = sorted({dim for (_, dim) in points}, key=int)
+    symbolic = {"kMediumDim": dims[0] if dims else None}
+    if len(dims) > 1:
+        symbolic["kLargeDim"] = dims[1]
+
+    charts = []
+    for region, region_label in _MANDELBROT_REGIONS.items():
+        for dim in dims:
+            by_lib = points.get((region, dim))
+            if not by_lib:
+                continue
+            threads = {t for pts in by_lib.values() for t, _ in pts}
+            traces = []
+            for sym, value in serial.items():
+                if sym[0] == region and symbolic.get(sym[1]) == dim:
+                    traces.append(_serial_baseline_trace({dim: value}, dim, threads))
+            for lib in sorted(by_lib, key=_lib_sort_key):
+                pts = sorted(by_lib[lib])
+                traces.append(
+                    {
+                        "name": lib,
+                        "x": [p[0] for p in pts],
+                        "y": [p[1] for p in pts],
+                        "color": get_color(lib),
+                    }
+                )
+            charts.append(
+                {
+                    "id": f"{suite}_{region.split('::k')[1].lower()}_{dim}",
+                    "suite": suite,
+                    "type": "line",
+                    "title": f"Mandelbrot - {region_label}, {dim}x{dim} Pixels",
+                    "traces": traces,
+                    "xaxis": "Threads",
+                    "yaxis_unit": "ns",
+                }
+            )
+    return charts
+
+
 # Suites named lib<worksize>/threads; see parse_benchmark_name.
 _TEMPLATED_THREAD_SUITES = {"spmm"}
 
@@ -1523,6 +1594,8 @@ def build_charts_for_suite(benchmarks, suite):
         return build_generic_line_charts(benchmarks, suite)
     if suite == "idle_pool":
         return build_idle_pool_charts(benchmarks, suite)
+    if suite == "mandelbrot":
+        return build_mandelbrot_charts(benchmarks, suite)
     if suite == "rw_lock":
         return build_rw_lock_charts(benchmarks, suite)
     if suite == "once_function":
