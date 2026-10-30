@@ -166,6 +166,17 @@ function pinZeroAxis(chartId, axis) {
 }
 
 // ─── Renderers ─────────────────────────────────────────────────
+// A horizontal legend at the bottom of the figure, under the axis title. Above
+// the plot, a legend that wraps to a second row grows up into the chart title
+// and covers it. Positioned against the whole figure ('container') rather than
+// the plot area, so its distance from the axis title doesn't vary with chart
+// height; LEGEND_BELOW_MARGIN leaves room for two rows of entries.
+const LEGEND_BELOW_MARGIN = 110;
+function legendBelow(tl) {
+  return { ...tl.legend, orientation: 'h', xanchor: 'center', x: 0.5,
+            yref: 'container', yanchor: 'bottom', y: 0.01 };
+}
+
 function renderLine(cfg) {
   const allY = cfg.traces.flatMap(t => t.baseline ? [] : t.y);  // exclude serial baseline
   const maxY = allY.length > 0 ? Math.max(...allY) : 1;
@@ -205,25 +216,20 @@ function renderLine(cfg) {
   }
 
   const tl = themeLayout();
-  // Add text annotation when libraries are skipped
-  const annotations = [];
+  // Name libraries that could not complete in a line under the title.
+  let title = cfg.title + (autoZoom ? ' (auto-zoomed, double-click to reset)' : '');
   if (skipped.length > 0) {
     const names = skipped.map(s => s.name).join(', ');
-    annotations.push({
-      text: names + ': cannot complete (out of memory)',
-      xref: 'paper', yref: 'paper', x: 0.5, y: -0.12,
-      showarrow: false,
-      font: { size: 11, color: skipped.length === 1 ? skipped[0].color : '#e74c3c' },
-    });
+    const color = skipped.length === 1 ? skipped[0].color : '#e74c3c';
+    title += `<br><span style="font-size:11px;color:${color}">${names}: cannot complete (out of memory)</span>`;
   }
   const layout = {
-    ...tl, title: { text: cfg.title + (autoZoom ? ' (auto-zoomed, double-click to reset)' : ''), font: { size: 14 } },
+    ...tl, title: { text: title, font: { size: 14 } },
     xaxis: { ...tl.xaxis, title: cfg.xaxis || 'Threads', fixedrange: true },
     yaxis: { ...tl.yaxis, title: 'Time (' + u.label + ')', rangemode: 'tozero',
               ...(autoZoom ? { range: [0, zoomMax] } : {}) },
-    legend: { ...tl.legend, orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 },
-    margin: { l: 60, r: 20, t: 50, b: skipped.length > 0 ? 70 : 50 }, hovermode: 'x unified',
-    ...(annotations.length > 0 ? { annotations } : {}),
+    legend: legendBelow(tl),
+    margin: { l: 60, r: 20, t: skipped.length > 0 ? 70 : 50, b: LEGEND_BELOW_MARGIN }, hovermode: 'x unified',
   };
   Plotly.newPlot('chart-' + cfg.id, traces, layout, plotlyConfig);
   pinZeroAxis(cfg.id, 'yaxis');
@@ -253,8 +259,8 @@ function renderGroupedBarH(cfg) {
     xaxis: { ...tl.xaxis, title: useLog ? 'Time (ns) - log scale' : 'Time (' + u.label + ')',
               type: useLog ? 'log' : 'linear' },
     yaxis: { ...tl.yaxis, automargin: true, fixedrange: true },
-    legend: { ...tl.legend, orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 },
-    margin: { l: 180, r: 20, t: 60, b: 50 },
+    legend: legendBelow(tl),
+    margin: { l: 180, r: 20, t: 60, b: LEGEND_BELOW_MARGIN },
   }, plotlyConfig);
   if (!useLog) pinZeroAxis(cfg.id, 'xaxis');
 }

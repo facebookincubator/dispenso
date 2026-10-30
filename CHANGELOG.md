@@ -49,6 +49,7 @@ Unreleased
 * Thread-scaling charts on the benchmark dashboard (nested_for, for_each, locality, for_latency) now show the serial reference line; previously it was missing because of a size-mapping bug or because those suites' serial cases were ignored.
 * The benchmark dashboard's pool allocator charts now show the malloc/free baseline; since the baselines were renamed with a _baseline suffix, every malloc/free bar had been published as 0.
 * Zooming into a time range on the benchmark dashboard's charts now shows that range. Any range was shifted to start at zero, so selecting, say, 20-25 ms showed 0-5 ms instead.
+* The benchmark dashboard's line charts and horizontal bar charts now put the legend under the chart. Above it, a legend that wrapped to a second row covered the chart title, which made the idle_pool charts unreadable.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so consumers compile dispenso's headers as intended: with `__declspec(dllimport)` on Windows, and with default visibility for dispenso's symbols elsewhere. Without it, consumers built with `-fvisibility=hidden` (and every Windows consumer) kept private copies of the static state inside dispenso's inline functions instead of sharing the library's. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
