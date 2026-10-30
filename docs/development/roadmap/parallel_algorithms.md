@@ -18,6 +18,7 @@ Design: [parallel_algorithms](../proposals/parallel_algorithms.md).
 ## Backlog
 
 - SIMD-optimized algorithms
+- **`for_each_n` on small inputs.** At 1K elements (`for_each_benchmark`, Linux EPYC), `for_each_n` takes 0.8 us on one thread and gets slower as threads are added: 6 us at 16 threads, 62 us at 32, 230 us at 166. Unlike `parallel_for`, it has no minimum number of items per chunk, so a small input is always split across every thread. Consider the same option, or a default threshold.
 - Range-based API wrappers (explicit opt-in)
 
 ### Code TODOs

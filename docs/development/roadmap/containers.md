@@ -22,6 +22,15 @@ Current design: [concurrent_vector](../architecture/concurrent_vector.md).
 - **Scalable allocator** (see [allocators](allocators.md)): concurrent growth
   benchmarks show 3-5x improvement with tcmalloc/jemalloc vs glibc malloc,
   suggesting a thread-caching allocator would benefit all trait combinations.
+- **Serial `push_back`.** Without `reserve`, appending 1M elements one at a
+  time takes 8.4 ms on Linux (EPYC) against 6.8 ms for
+  `tbb::concurrent_vector`, 2.4 ms for `std::vector` and 0.9 ms for
+  `std::deque`; on Windows and macOS dispenso and TBB are level, and on Android
+  dispenso is faster. With `reserve` dispenso drops to 3.0 ms on Linux. Linking
+  tcmalloc speeds `ConcurrentVector` up but slows other allocations inside
+  dispenso, so the fix is a custom allocator for its buffers rather than
+  recommending a system allocator; see the scalable allocator in
+  [allocators](allocators.md).
 
 ## Backlog
 

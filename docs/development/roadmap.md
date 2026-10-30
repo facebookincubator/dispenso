@@ -15,6 +15,27 @@ the index plus the cross-cutting state.
 | [Release, packaging, outreach](roadmap/packaging_and_outreach.md) | vcpkg, Conan, Godbolt, listings, benchmark publishing |
 | [fast_math](roadmap/fast_math.md) | SIMD transcendental functions |
 
+## Focus queue
+
+What to work on next, in order. Everything else in the area roadmaps is
+backlog: worth doing, not yet scheduled. Each row names an item and links to
+the area that holds its details, so the details live in one place; this table
+holds only the order. Take work from the top, move an item to In Progress when
+it starts, and reorder as priorities change. Keep the queue short enough to
+mean something; a long one is a backlog again.
+
+| # | Item | Area | Why now |
+|---|------|------|---------|
+| 1 | Task chains on a mostly idle pool | [Core scheduling](roadmap/core_scheduling.md) | dispenso's weakest published comparison: behind TBB on every platform from 4-8 threads up, by 40-280x at high thread counts |
+| 2 | Responsiveness versus idle CPU as a pool setting | [Core scheduling](roadmap/core_scheduling.md) | On Linux dispenso idles 25-67x cheaper than TBB; let users with battery or thermal limits keep that, and others trade some of it for latency |
+| 3 | Scheduling many tiny tasks from one thread | [Core scheduling](roadmap/core_scheduling.md) | simple_pool: `scheduleBulk` slows by over 100x from 32 threads up |
+| 4 | Graph execution for compositing-style graphs | [Core scheduling](roadmap/core_scheduling.md) | Never optimized for; 2.5x behind Taskflow on Windows |
+| 5 | Speculative `Future` latency | [Core scheduling](roadmap/core_scheduling.md) | `when_any` trails folly on time to first result everywhere |
+| 6 | `ConcurrentVector` serial `push_back` | [Containers](roadmap/containers.md) | Several times slower than `std::vector` and `std::deque`, and 1.2x behind TBB on Linux |
+| 7 | Fork-join with heavy per-task work, and `parallel_invoke` parity | [Core scheduling](roadmap/core_scheduling.md) | `parallel_invoke` should be the fastest way to build a tree |
+| 8 | `for_each_n` on small inputs | [Parallel algorithms](roadmap/parallel_algorithms.md) | Gets slower as threads are added at 1K elements |
+| 9 | `parallel_for` locality on small inputs | [Core scheduling](roadmap/core_scheduling.md) | locality 100K: slower from 4 threads up while OpenMP keeps scaling |
+
 ## In Progress
 
 | Feature | Area | Notes |
