@@ -396,11 +396,6 @@ def build_line_charts(benchmarks, suite):
             "xaxis": "Threads",
             "yaxis_unit": "ns",
         }
-        # simple_for has extreme outliers (taskflow ~7000x slower) where
-        # auto-zoom hides the comparison entirely.  Show full range so the
-        # user can see where taskflow sits, then zoom in interactively.
-        if suite == "simple_for":
-            chart_cfg["no_auto_zoom"] = True
         charts.append(chart_cfg)
     return charts
 
@@ -1602,6 +1597,21 @@ function autoUnit(maxNs) {{
   return {{ scale: 1, label: 'ns' }};
 }}
 
+// A time in ns as text in its own unit, e.g. 1500000 -> "1.5 ms".
+function timeLabel(ns) {{
+  const u = autoUnit(ns);
+  return +(ns / u.scale).toPrecision(3) + ' ' + u.label;
+}}
+
+// Log time axis in ns with a labelled tick at each power of ten.
+function logTimeAxis(values) {{
+  const lo = Math.floor(Math.log10(Math.min(...values)));
+  const hi = Math.ceil(Math.log10(Math.max(...values)));
+  const tickvals = [];
+  for (let e = lo; e <= hi; e++) tickvals.push(Math.pow(10, e));
+  return {{ type: 'log', tickvals, ticktext: tickvals.map(timeLabel) }};
+}}
+
 // ─── Theme ─────────────────────────────────────────────────────
 function themeLayout() {{
   const dark = currentTheme === 'dark';
@@ -1646,6 +1656,8 @@ function pinZeroAxis(chartId, axis) {{
 // the plot area, so its distance from the axis title doesn't vary with chart
 // height; LEGEND_BELOW_MARGIN leaves room for two rows of entries.
 const LEGEND_BELOW_MARGIN = 110;
+// Max/min time ratio above which a line chart uses a log time axis.
+const LOG_SPREAD = 30;
 function legendBelow(tl) {{
   return {{ ...tl.legend, orientation: 'h', xanchor: 'center', x: 0.5,
             yref: 'container', yanchor: 'bottom', y: 0.01 }};
@@ -1655,26 +1667,23 @@ function renderLine(cfg) {{
   const allY = cfg.traces.flatMap(t => t.baseline ? [] : t.y);  // exclude serial baseline
   const maxY = allY.length > 0 ? Math.max(...allY) : 1;
   const u = autoUnit(maxY);
-  const scaledAll = allY.map(v => v / u.scale);
 
-  // Auto-zoom: compare per-trace medians to detect when one trace dominates
-  const traceMedians = cfg.traces.filter(t => !t.baseline).map(t => {{
-    const sv = [...t.y].filter(v => v > 0).sort((a,b) => a - b);
-    return sv.length > 0 ? sv[Math.floor(sv.length / 2)] / u.scale : 0;
-  }}).filter(v => v > 0).sort((a,b) => a - b);
-  const maxTraceMedian = traceMedians.length > 0 ? traceMedians[traceMedians.length - 1] : 1;
-  const minTraceMedian = traceMedians.length > 0 ? traceMedians[0] : 1;
-  const autoZoom = !cfg.no_auto_zoom && traceMedians.length >= 2 && maxTraceMedian / minTraceMedian > 5;
-  // Zoom to show the competitive traces: 3x the second-highest trace median
-  const secondMax = traceMedians.length >= 2 ? traceMedians[traceMedians.length - 2] : maxTraceMedian;
-  const zoomMax = secondMax * 3;
+  // When the times on a chart span more than LOG_SPREAD, a linear axis either
+  // squashes the fast lines against zero or has to clip the slow ones off the
+  // top (as an earlier auto-zoom did, hiding TBB entirely in summing_for 1K).
+  // Use a log axis instead, which keeps every line visible and readable.
+  const positive = cfg.traces.flatMap(t => t.y).filter(v => v > 0);
+  const useLog = positive.length > 0 && Math.max(...positive) / Math.min(...positive) > LOG_SPREAD;
 
+  // A log axis is in ns with its own tick labels; hover text names each point's unit.
   const traces = cfg.traces.map(t => ({{
-    x: t.x, y: t.y.map(v => v / u.scale), name: t.name,
+    x: t.x, y: useLog ? t.y : t.y.map(v => v / u.scale), name: t.name,
     type: 'scatter', mode: t.baseline ? 'lines' : 'lines+markers',
     line: {{ color: t.color, width: t.baseline ? 1.5 : 2.5, dash: t.dash || 'solid' }},
     marker: {{ size: t.baseline ? 0 : 5 }},
-    hovertemplate: '%{{x}} threads: %{{y:.4g}} ' + u.label + '<extra>%{{fullData.name}}</extra>',
+    ...(useLog
+      ? {{ text: t.y.map(timeLabel), hovertemplate: '%{{x}} threads: %{{text}}<extra>%{{fullData.name}}</extra>' }}
+      : {{ hovertemplate: '%{{x}} threads: %{{y:.4g}} ' + u.label + '<extra>%{{fullData.name}}</extra>' }}),
   }}));
 
   // Add invisible legend entries for skipped (cannot-complete) libraries
@@ -1691,7 +1700,7 @@ function renderLine(cfg) {{
 
   const tl = themeLayout();
   // Name libraries that could not complete in a line under the title.
-  let title = cfg.title + (autoZoom ? ' (auto-zoomed, double-click to reset)' : '');
+  let title = cfg.title;
   if (skipped.length > 0) {{
     const names = skipped.map(s => s.name).join(', ');
     const color = skipped.length === 1 ? skipped[0].color : '#e74c3c';
@@ -1700,13 +1709,14 @@ function renderLine(cfg) {{
   const layout = {{
     ...tl, title: {{ text: title, font: {{ size: 14 }} }},
     xaxis: {{ ...tl.xaxis, title: cfg.xaxis || 'Threads', fixedrange: true }},
-    yaxis: {{ ...tl.yaxis, title: 'Time (' + u.label + ')', rangemode: 'tozero',
-              ...(autoZoom ? {{ range: [0, zoomMax] }} : {{}}) }},
+    yaxis: {{ ...tl.yaxis, ...(useLog
+      ? {{ title: 'Time - log scale', ...logTimeAxis(positive) }}
+      : {{ title: 'Time (' + u.label + ')', rangemode: 'tozero' }}) }},
     legend: legendBelow(tl),
     margin: {{ l: 60, r: 20, t: skipped.length > 0 ? 70 : 50, b: LEGEND_BELOW_MARGIN }}, hovermode: 'x unified',
   }};
   Plotly.newPlot('chart-' + cfg.id, traces, layout, plotlyConfig);
-  pinZeroAxis(cfg.id, 'yaxis');
+  if (!useLog) pinZeroAxis(cfg.id, 'yaxis');
 }}
 
 function renderGroupedBarH(cfg) {{

@@ -50,6 +50,7 @@ Unreleased
 * The benchmark dashboard's pool allocator charts now show the malloc/free baseline; since the baselines were renamed with a _baseline suffix, every malloc/free bar had been published as 0.
 * Zooming into a time range on the benchmark dashboard's charts now shows that range. Any range was shifted to start at zero, so selecting, say, 20-25 ms showed 0-5 ms instead.
 * The benchmark dashboard's line charts and horizontal bar charts now put the legend under the chart. Above it, a legend that wrapped to a second row covered the chart title, which made the idle_pool charts unreadable.
+* Line charts on the benchmark dashboard whose times span more than 30x now use a log time axis instead of zooming in on the faster lines. The zoom clipped slower libraries off the chart entirely, such as TBB in summing_for at 1K elements, and simple_for's charts squashed every library but Taskflow against zero.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so consumers compile dispenso's headers as intended: with `__declspec(dllimport)` on Windows, and with default visibility for dispenso's symbols elsewhere. Without it, consumers built with `-fvisibility=hidden` (and every Windows consumer) kept private copies of the static state inside dispenso's inline functions instead of sharing the library's. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
