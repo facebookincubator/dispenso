@@ -79,7 +79,7 @@ std::unique_ptr<uint8_t[]> tonemap(Work work) {
   auto out = std::make_unique<uint8_t[]>(kWidth * kHeight);
   for (size_t i = 0; i < kWidth * kHeight; ++i) {
     double adjLum = work.inputImage[i] / work.geometricMean;
-    out[i] = 255 * adjLum / (1.0 + adjLum);
+    out[i] = static_cast<uint8_t>(255 * adjLum / (1.0 + adjLum));
   }
   return out;
 }
@@ -292,11 +292,11 @@ void runTaskflow(std::vector<std::unique_ptr<uint8_t[]>>& results, tf::Executor&
           }},
       tf::Pipe{
           tf::PipeType::SERIAL,
-          [&counter2, &work](auto& pf) mutable {
+          [&counter2, &work](auto&) mutable {
             Work& w = *work[counter2++];
             w = computeGeometricMean(std::move(w));
           }},
-      tf::Pipe{tf::PipeType::SERIAL, [&counter3, &work, &results](auto& pf) mutable {
+      tf::Pipe{tf::PipeType::SERIAL, [&counter3, &work, &results](auto&) mutable {
                  Work& w = *work[counter3];
                  results[counter3++] = tonemap(std::move(w));
                }});

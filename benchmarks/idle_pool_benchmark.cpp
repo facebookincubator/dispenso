@@ -63,8 +63,8 @@ inline Work& work() {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb_mostly_idle(benchmark::State& state) {
-  const int num_threads = state.range(0);
-  const int num_elements = state.range(1);
+  const int num_threads = static_cast<int>(state.range(0));
+  const int num_elements = static_cast<int>(state.range(1));
 
   struct Recurse {
     void operator()() const {
@@ -97,7 +97,7 @@ void BM_tbb_mostly_idle(benchmark::State& state) {
 }
 
 void BM_tbb_very_idle(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
 
   tbb_compat::task_scheduler_init initsched(num_threads);
 
@@ -115,8 +115,8 @@ void BM_tbb_very_idle(benchmark::State& state) {
 #endif // !BENCHMARK_WITHOUT_TBB
 
 void BM_dispenso_mostly_idle(benchmark::State& state) {
-  const int num_threads = std::max<int>(1, state.range(0) - 1);
-  const int num_elements = state.range(1);
+  const int num_threads = std::max<int>(1, static_cast<int>(state.range(0) - 1));
+  const int num_elements = static_cast<int>(state.range(1));
 
   struct Recurse {
     void operator()() {
@@ -150,7 +150,7 @@ void BM_dispenso_mostly_idle(benchmark::State& state) {
 }
 
 void BM_dispenso_very_idle(benchmark::State& state) {
-  const int num_threads = state.range(0) - 1;
+  const int num_threads = static_cast<int>(state.range(0) - 1);
   dispenso::ThreadPool pool(num_threads);
   startRusage();
 
@@ -189,7 +189,7 @@ struct DotProductData {
 
 #if !defined(BENCHMARK_WITHOUT_TBB)
 void BM_tbb_periodic_burst(benchmark::State& state) {
-  const int num_threads = state.range(0);
+  const int num_threads = static_cast<int>(state.range(0));
   DotProductData data(kBurstVecSize);
   tbb_compat::task_scheduler_init initsched(num_threads);
 
@@ -213,7 +213,7 @@ void BM_tbb_periodic_burst(benchmark::State& state) {
 #endif // !BENCHMARK_WITHOUT_TBB
 
 void BM_dispenso_periodic_burst(benchmark::State& state) {
-  const int num_threads = std::max<int>(1, state.range(0) - 1);
+  const int num_threads = std::max<int>(1, static_cast<int>(state.range(0) - 1));
   DotProductData data(kBurstVecSize);
   dispenso::ThreadPool pool(num_threads);
 
