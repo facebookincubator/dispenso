@@ -46,10 +46,10 @@ const std::vector<float>& erfScalarInputs() {
   return inputs;
 }
 
-const std::vector<__m128>& erfSseInputs() {
-  static std::vector<__m128> inputs = []() {
+const std::vector<dispenso::fast_math::SseRawFloat>& erfSseInputs() {
+  static std::vector<dispenso::fast_math::SseRawFloat> inputs = []() {
     float delta = 8.0f / kNumInputs;
-    std::vector<__m128> inp;
+    std::vector<dispenso::fast_math::SseRawFloat> inp;
     float f = -4.0f;
     for (size_t i = 0; i < kNumInputs; ++i) {
       inp.emplace_back(_mm_set_ps(f + 3 * delta, f + 2 * delta, f + delta, f));
@@ -61,10 +61,10 @@ const std::vector<__m128>& erfSseInputs() {
 }
 
 #if DISPENSO_FAST_MATH_HAS_AVX2
-const std::vector<__m256>& erfAvxInputs() {
-  static std::vector<__m256> inputs = []() {
+const std::vector<dispenso::fast_math::AvxRawFloat>& erfAvxInputs() {
+  static std::vector<dispenso::fast_math::AvxRawFloat> inputs = []() {
     float delta = 8.0f / kNumInputs;
-    std::vector<__m256> inp;
+    std::vector<dispenso::fast_math::AvxRawFloat> inp;
     float f = -4.0f;
     for (size_t i = 0; i < kNumInputs; ++i) {
       inp.emplace_back(_mm256_set_ps(

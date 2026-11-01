@@ -11,7 +11,8 @@
 
 namespace dfm = dispenso::fast_math;
 namespace bench = dispenso::fast_math::bench;
-using Flt = __m256;
+// __m256 as a template argument; see SseRawFloat in float_traits_x86.h.
+using Flt = dfm::AvxRawFloat;
 
 struct BoundsTraits {
   static constexpr bool kMaxAccuracy = false;

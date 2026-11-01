@@ -75,6 +75,14 @@ struct Avx512Mask {
   inline operator Avx512Int32() const;
 };
 
+// __m512 spelled so it can be a template argument without GCC's
+// -Wignored-attributes; see SseRawFloat in float_traits_x86.h.
+#if defined(__GNUC__)
+typedef float Avx512RawFloat __attribute__((__vector_size__(64)));
+#else
+using Avx512RawFloat = __m512;
+#endif
+
 // 16-wide float SIMD wrapper around __m512.
 struct Avx512Float {
   __m512 v;
@@ -375,9 +383,9 @@ inline Avx512Float::Avx512Float(Avx512Int32 i) : v(_mm512_cvtepi32_ps(i.v)) {}
 // Avx512Int32 ↔ Avx512Uint32 reinterpret (no-op on __m512i).
 inline Avx512Int32::Avx512Int32(Avx512Uint32 u) : v(u.v) {}
 
-// Map raw __m512 to Avx512Float for SimdTypeFor.
+// Map raw __m512 (Avx512RawFloat) to Avx512Float for SimdTypeFor.
 template <>
-struct SimdTypeFor<__m512> {
+struct SimdTypeFor<Avx512RawFloat> {
   using type = Avx512Float;
 };
 
