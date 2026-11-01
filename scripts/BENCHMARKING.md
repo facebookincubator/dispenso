@@ -154,11 +154,12 @@ python3 scripts/generate_plotly_benchmarks.py \
   docs/benchmark_results/<platform-name>.json \
   -o docs/benchmarks/index.html
 
-# Multiple platforms in one dashboard (switch between them in the UI)
+# Multiple platforms in one dashboard (switch between them in the UI).
+# This is the command that produces the published dashboard:
 python3 scripts/generate_plotly_benchmarks.py \
   docs/benchmark_results/linux_x64.json \
-  docs/benchmark_results/macos_arm64.json \
   docs/benchmark_results/windows_x64.json \
+  docs/benchmark_results/macos_arm64.json \
   docs/benchmark_results/android_arm64.json \
   -o docs/benchmarks/index.html
 ```
@@ -166,6 +167,32 @@ python3 scripts/generate_plotly_benchmarks.py \
 The generator reads the embedded machine info to label each platform, so no
 separate compose or landing-page step is needed. `-o` defaults to
 `/tmp/dispenso-benchmarks.html` if omitted.
+
+Input order matters: platforms appear in the dashboard in the order given, and
+the output is byte-identical only for the same inputs in the same order. To
+regenerate the published `docs/benchmarks/index.html` (for example after
+changing the generator), pass the files in the order above -- linux_x64,
+windows_x64, macos_arm64, android_arm64 -- not `docs/benchmark_results/*.json`,
+whose alphabetical order differs. Regenerating with an unchanged generator and
+unchanged results should leave `git diff docs/benchmarks/index.html` empty.
+
+## Which dispenso benchmarks to publish
+
+The published dashboard is read by people deciding whether to use dispenso,
+so each comparison with other libraries uses the dispenso method we recommend
+for that workload, chosen by measurement. The competitive thread-scaling
+suites (simple_for, summing_for, nested_for) publish exactly one dispenso
+line: the benchmark named for the suite in `_OFFICIAL_DISPENSO` in
+`generate_plotly_benchmarks.py`, whose source comment says why its method is
+the recommended one. If that benchmark changes, update the map; the generator
+fails rather than publish a chart without dispenso.
+
+Showing more than one dispenso method is worthwhile where it illustrates a
+real choice for users -- kStatic vs kAdaptive chunking in locality, plain vs
+bulk scheduling in the pool benchmarks, blocking vs cascaded parallel_for --
+but not as a matter of course. Every case costs benchmarking time on every
+platform and adds clutter to the charts, so a variant that does not teach a
+reader something should not be registered at all, rather than run and hidden.
 
 ## Notes
 

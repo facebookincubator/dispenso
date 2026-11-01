@@ -109,6 +109,12 @@ uint64_t calculateInnerDispensoAuto(uint64_t input, size_t foo, int numElements)
   return sum;
 }
 
+// The benchmark dashboard publishes this as dispenso's line (_OFFICIAL_DISPENSO in
+// scripts/generate_plotly_benchmarks.py), so it should use the method we recommend for this
+// workload: kAdaptive on both levels. Measured against the default kStatic on a 112-thread,
+// two-socket Xeon, kAdaptive was as fast or faster at 500 and 2500 elements, increasingly so with
+// thread count (2500 elements at 112 threads: 52 ms vs 85 ms), and much less variable. kStatic
+// was ahead only at 10 elements on 4-8 threads, by about 3 us.
 void BM_dispenso_auto(benchmark::State& state) {
   g_numThreads = state.range(0) - 1;
   const int numElements = state.range(1);
