@@ -2188,7 +2188,7 @@ _REFERENCE_RE = re.compile(r"^BM_\w*_reference(?=$|[</])")
 
 # tree_benchmark variants that were renamed with the _reference suffix after
 # the committed results were recorded. Remove these when the results are next
-# refreshed.
+# refreshed; main() stops generation once tree results no longer contain them.
 _UNPUBLISHED_BEFORE_RENAME = {
     "BM_dispenso_tree_naive",
     "BM_dispenso_taskset_tree_hybrid_work",
@@ -2196,12 +2196,23 @@ _UNPUBLISHED_BEFORE_RENAME = {
     "BM_4ary_dispenso_bulk",
 }
 
+# Benchmark functions seen in tree results, across all inputs.
+_tree_functions_seen = set()
+
+
+def benchmark_function(benchmark):
+    """The benchmark's function name, without template or argument parts."""
+    name = benchmark.get("run_name") or benchmark["name"]
+    return re.split(r"[</]", name, maxsplit=1)[0]
+
 
 def is_unpublished(benchmark):
     """True for a result row of a development-only (_reference) benchmark."""
     name = benchmark.get("run_name") or benchmark["name"]
-    function = re.split(r"[</]", name, maxsplit=1)[0]
-    return bool(_REFERENCE_RE.match(name)) or function in _UNPUBLISHED_BEFORE_RENAME
+    return (
+        bool(_REFERENCE_RE.match(name))
+        or benchmark_function(benchmark) in _UNPUBLISHED_BEFORE_RENAME
+    )
 
 
 _NS_PER_UNIT = {"ns": 1, "us": 1e3, "ms": 1e6, "s": 1e9}
@@ -2252,6 +2263,8 @@ def load_platform(json_path):
             continue
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
         rows = result["data"].get("benchmarks", [])
+        if suite == "tree":
+            _tree_functions_seen.update(benchmark_function(bm) for bm in rows)
         benchmarks = select_representative_rows(
             [in_nanoseconds(bm) for bm in rows if not is_unpublished(bm)]
         )
@@ -2285,6 +2298,12 @@ def main():
         platforms.append(load_platform(path))
         print(
             f"  Platform: {platforms[-1]['label']}, Charts: {len(platforms[-1]['charts'])}"
+        )
+
+    if _tree_functions_seen and not _tree_functions_seen & _UNPUBLISHED_BEFORE_RENAME:
+        raise SystemExit(
+            "tree results no longer contain the pre-rename benchmarks; delete "
+            "_UNPUBLISHED_BEFORE_RENAME, _tree_functions_seen and this check"
         )
 
     generate_html(platforms, args.output)
