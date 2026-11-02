@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -234,9 +237,6 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 
   std::vector<int64_t> outputs(kItemsPerRound, 0);
 
-  std::mutex mtx;
-  std::set<std::thread::id> tidSet;
-
   dispenso::ThreadPool pool(1);
 
   pool.resize(8);
@@ -247,11 +247,9 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
 
     int64_t i = 0;
     for (int64_t& o : outputs) {
-      pool.schedule([i, &o, &completed, &mtx, &tidSet]() {
+      pool.schedule([i, &o, &completed]() {
         o = i * i;
         completed.fetch_add(1, std::memory_order_release);
-        std::lock_guard<std::mutex> lk(mtx);
-        tidSet.insert(std::this_thread::get_id());
       });
       ++i;
     }
@@ -276,15 +274,39 @@ TEST(ThreadPool, ResizeCheckApproxActualRunningThreads) {
     }
   }
 
-  // We choose > 2 because there is 1 original thread, and one schedule thread (main thread). In
-  // order to not have an occasional flake, we choose much lower than 8, though this test is
-  // fundamentally flawed in that it cannot guarantee flake-free behavior.  Thus we turn this
-  // particular check off when running in TSAN.
-#if !DISPENSO_HAS_TSAN
-  EXPECT_GT(tidSet.size(), 2);
-#endif //! DISPENSO_HAS_TSAN
+  EXPECT_EQ(pool.numThreads(), 8);
 
-  EXPECT_THAT(static_cast<int>(pool.numThreads()), AnyOf(Eq(4), Eq(8)));
+  // Every thread that resize() added must run work. Counting the threads that ran the rounds above
+  // can't show that: on a machine with few cores, a couple of threads can drain every round.
+  // Instead, queue one probe per pool thread. Each probe arrives, then blocks until all the probes
+  // have arrived, so no thread can run two and all arrive only if every pool thread runs one.
+  // ForceQueuingTag keeps them off this thread. Idle threads find queued work on their wake
+  // backstop even if a wake is lost, so only a thread that never runs work can miss the deadline.
+  struct Barrier {
+    std::mutex mtx;
+    std::condition_variable cv;
+    size_t arrived = 0;
+  };
+  // Shared, because on failure the probes still queued run during the pool's destruction.
+  auto barrier = std::make_shared<Barrier>();
+  const size_t numThreads = static_cast<size_t>(pool.numThreads());
+  const auto deadline = std::chrono::steady_clock::now() + kRoundTimeout;
+  auto allArrived = [&barrier, numThreads]() { return barrier->arrived == numThreads; };
+  for (size_t p = 0; p < numThreads; ++p) {
+    pool.schedule(
+        [barrier, numThreads, deadline]() {
+          std::unique_lock<std::mutex> lk(barrier->mtx);
+          ++barrier->arrived;
+          barrier->cv.notify_all();
+          barrier->cv.wait_until(
+              lk, deadline, [&barrier, numThreads]() { return barrier->arrived == numThreads; });
+        },
+        dispenso::ForceQueuingTag());
+  }
+  std::unique_lock<std::mutex> lk(barrier->mtx);
+  EXPECT_TRUE(barrier->cv.wait_until(lk, deadline, allArrived))
+      << "only " << barrier->arrived << " of " << numThreads
+      << " pool threads ran a probe task after resize";
 }
 
 TEST_P(ThreadPoolTest, CrossPoolTest) {
