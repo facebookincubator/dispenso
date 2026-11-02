@@ -18,11 +18,11 @@ how decisions are actually made, not an aspirational process.
 - **Active** means a seat-holder who has not resigned, gone emeritus, or been
   removed. **Maintainer involvement** means a maintainer as author or approver.
 
-| Name | Role | Affiliation |
-|---|---|---|
-| Brian Budge | Maintainer | Independent |
-| Pierre Moulon | Maintainer | Meta |
-| Michael Ranieri | Committer | Meta |
+| Name | GitHub | Role | Affiliation |
+|---|---|---|---|
+| Brian Budge | @graphicsMan | Maintainer | Independent |
+| Pierre Moulon | @SeaOtocinclus | Maintainer | Meta |
+| Michael Ranieri | @EscapeZero | Committer | Meta |
 
 The roster records decisions made under this document rather than forming part
 of it, so updating it is not an amendment. Affiliations are self-reported.
