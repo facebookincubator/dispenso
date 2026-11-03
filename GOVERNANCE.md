@@ -47,6 +47,10 @@ objected, and the wait below has elapsed.
 | Alters the stable surface of the latest tagged release | Yes | 72h | Yes |
 | Undisclosed security fix | Yes | none | With the release |
 
+A stack of pull requests, each based on the branch of the one below, may be
+landed together by the Land stack workflow. It holds each pull request to these
+rules and lands each as its own commit, with exactly the tree its checks ran on.
+
 The **stable surface** is public API and ABI, default behaviour, and documented
 concurrency guarantees — ordering, forward progress, cancellation, lifetime and
 safety. Undocumented scheduling choices and internal threading implementation
