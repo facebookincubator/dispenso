@@ -56,7 +56,7 @@ class OnceFunction {
   /**
    * Construct a <code>OnceFunction</code> with invalid state.
    **/
-  OnceFunction() : ops_(&detail::EmptyOnceCallableOps<>::kOps) {}
+  OnceFunction() : ops_(detail::emptyOps()) {}
 
   /**
    * Construct a <code>OnceFunction</code> with a valid functor.
@@ -126,18 +126,15 @@ class OnceFunction {
     } else {
       ops_ = other.ops_;
       ops_->relocate(other.buf_, buf_);
-      other.ops_ = &detail::EmptyOnceCallableOps<>::kOps;
     }
-#if defined DISPENSO_DEBUG
-    other.ops_ = &detail::EmptyOnceCallableOps<>::kOps;
-#endif // DISPENSO_DEBUG
+    other.ops_ = detail::emptyOps();
   }
 
   // Marks this object consumed before the call, because the invoked functor may free the memory
   // holding this OnceFunction.  Leaves no stale relocate entry for a later move to act on.
   const detail::OnceCallableOps* consumeOps() const {
     const detail::OnceCallableOps* ops = ops_;
-    ops_ = &detail::EmptyOnceCallableOps<>::kOps;
+    ops_ = detail::emptyOps();
     return ops;
   }
 

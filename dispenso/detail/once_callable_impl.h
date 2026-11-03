@@ -63,36 +63,34 @@ void invokeSpill(void* buf, bool run) {
   deallocSmallBuffer<kBufferSize>(ptr);
 }
 
+// One operations table per callable type. Function-local statics in inline functions are shared
+// across translation units, and constexpr makes them constant-initialized, with no guard.
 template <typename F>
-struct InlineOnceCallableOps {
+inline const OnceCallableOps* inlineOps() {
   static constexpr OnceCallableOps kOps = {
-      &invokeInline<F>,
-      std::is_trivially_copyable<F>::value ? nullptr : &relocateInline<F>};
-};
-template <typename F>
-constexpr OnceCallableOps InlineOnceCallableOps<F>::kOps;
+      &invokeInline<F>, std::is_trivially_copyable<F>::value ? nullptr : &relocateInline<F>};
+  return &kOps;
+}
 
 template <size_t kBufferSize, typename F>
-struct SpillOnceCallableOps {
+inline const OnceCallableOps* spillOps() {
   static constexpr OnceCallableOps kOps = {&invokeSpill<kBufferSize, F>, nullptr};
-};
-template <size_t kBufferSize, typename F>
-constexpr OnceCallableOps SpillOnceCallableOps<kBufferSize, F>::kOps;
+  return &kOps;
+}
 
-// A template so that the out-of-line definition C++14 needs can live in this header.
-template <typename Unused = void>
-struct EmptyOnceCallableOps {
+// The operations of an empty or consumed OnceFunction. Never invoked; relocate is null, so moving
+// one is a plain byte copy.
+inline const OnceCallableOps* emptyOps() {
   static constexpr OnceCallableOps kOps = {nullptr, nullptr};
-};
-template <typename Unused>
-constexpr OnceCallableOps EmptyOnceCallableOps<Unused>::kOps;
+  return &kOps;
+}
 
 template <typename F>
 inline const OnceCallableOps*
 createOnceCallableImpl(F&& f, void* inlineBuf, std::true_type /*inline*/) {
   using FNoRef = typename std::remove_reference<F>::type;
   new (inlineBuf) FNoRef(std::forward<F>(f));
-  return &InlineOnceCallableOps<FNoRef>::kOps;
+  return inlineOps<FNoRef>();
 }
 
 template <typename F>
@@ -113,7 +111,7 @@ createOnceCallableImpl(F&& f, void* inlineBuf, std::false_type /*spill*/) {
   new (ptr) FNoRef(std::forward<F>(f));
 #endif // __cpp_exceptions
   *static_cast<void**>(inlineBuf) = ptr;
-  return &SpillOnceCallableOps<kAllocSize, FNoRef>::kOps;
+  return spillOps<kAllocSize, FNoRef>();
 }
 
 template <typename F>
