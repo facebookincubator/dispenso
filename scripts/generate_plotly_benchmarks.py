@@ -117,13 +117,24 @@ def get_color(name):
 # ─── Benchmark name parsing ────────────────────────────────────────────────
 
 
-def parse_benchmark_name(name):
+def parse_benchmark_name(name, templated_threads=False):
+    """Split a benchmark name into library, thread count and worksize.
+
+    lib/threads/worksize and lib/threads are thread sweeps; lib<worksize> is
+    not. With templated_threads, lib<worksize>/threads is read as a thread
+    sweep too -- only for suites known to use that shape (spmm), since the
+    number after a template argument means something else elsewhere (an
+    element count in small_buffer, threads plus a grain size in mandelbrot).
+    """
     result = {"library": name, "threads": None, "worksize": None, "raw": name}
     if "<" in name and ">" in name:
         m = re.match(r"([^<]+)<([^>]+)>", name)
         if m:
             result["library"] = m.group(1)
             result["worksize"] = m.group(2)
+            t = re.match(r"/(\d+)(?:/real_time)?$", name[m.end() :])
+            if templated_threads and t:
+                result["threads"] = int(t.group(1))
         return result
     parts = name.split("/")
     if parts and parts[-1] == "real_time":
@@ -146,6 +157,10 @@ def parse_benchmark_name(name):
 
 
 # ─── Shared helpers ────────────────────────────────────────────────────────
+
+
+# Display labels for worksizes given as template arguments.
+_SYMBOLIC_WORKSIZE_LABELS = {"kMedRows": "64K Rows", "kLargeRows": "1M Rows"}
 
 
 def _format_worksize(ws):
@@ -587,6 +602,100 @@ def build_future_charts(benchmarks, suite):
                 "xaxis_unit": "ns",
             }
         )
+    return charts
+
+
+# tree_benchmark measures each tree workload with the same dispenso
+# programming models (see the comment at the top of tree_benchmark.cpp). Each
+# published benchmark maps to (chart, implementation); a tree benchmark not
+# listed here stops generation, so a new one is classified deliberately.
+_TREE_PI = "dispenso::parallel_invoke"
+_TREE_TS = "dispenso::TaskSet (inline)"
+_TREE_PF = "dispenso::parallel_for (frontier)"
+_TREE_SERIES = {
+    "BM_serial_tree": ("build", "serial"),
+    "BM_tbb_tree": ("build", "TBB"),
+    "BM_folly_tree": ("build", "folly"),
+    "BM_dispenso_taskset_tree_parallel_invoke": ("build", _TREE_PI),
+    "BM_dispenso_taskset_tree_inline": ("build", _TREE_TS),
+    "BM_dispenso_parfor_tree": ("build", _TREE_PF),
+    "BM_serial_tree_work": ("work", "serial"),
+    "BM_tbb_tree_work": ("work", "TBB"),
+    "BM_dispenso_taskset_tree_parallel_invoke_work": ("work", _TREE_PI),
+    "BM_dispenso_taskset_tree_inline_work": ("work", _TREE_TS),
+    "BM_dispenso_parfor_tree_work": ("work", _TREE_PF),
+    "BM_kdtree_serial": ("kdtree", "serial"),
+    "BM_kdtree_tbb": ("kdtree", "TBB"),
+    "BM_kdtree_dispenso_parallel_invoke": ("kdtree", _TREE_PI),
+    "BM_kdtree_dispenso_taskset_inline": ("kdtree", _TREE_TS),
+    "BM_4ary_serial": ("4ary", "serial"),
+    "BM_4ary_tbb": ("4ary", "TBB"),
+    "BM_4ary_dispenso_parallel_invoke": ("4ary", _TREE_PI),
+    "BM_4ary_dispenso_manual_inline": ("4ary", _TREE_TS),
+}
+_TREE_CHARTS = [
+    # (chart, title, {template arguments: category})
+    (
+        "build",
+        "Binary Tree Build",
+        {"kSmallSize": "8K nodes", "kLargeSize": "512K nodes"},
+    ),
+    (
+        "work",
+        "Binary Tree Build with Per-Node Work (64K nodes)",
+        {"kMediumSize, kLightWork": "light work", "kMediumSize, kHeavyWork": "heavy work"},
+    ),
+    ("kdtree", "KD-Tree Partition (1M points)", {None: "1M points"}),
+    ("4ary", "4-ary Tree with Heavy Work (64K leaves)", {None: "64K leaves"}),
+]
+_TREE_IMPL_ORDER = ["serial", "TBB", "folly", _TREE_PI, _TREE_TS, _TREE_PF]
+_TREE_COLORS = {
+    "serial": get_color("serial"),
+    "TBB": get_color("tbb"),
+    "folly": get_color("folly"),
+    _TREE_PI: "#2ecc71",  # green, as dispenso elsewhere
+    _TREE_TS: "#1e8449",  # dark green
+    _TREE_PF: "#00bcd4",  # cyan
+}
+
+
+def build_tree_charts(benchmarks, suite):
+    """One grouped bar chart per tree workload, implementations as groups."""
+    data = {}
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        name = bm["name"].replace("/real_time", "")
+        m = re.match(r"([^<]+)(?:<(.+)>)?$", name)
+        function, args = m.group(1), m.group(2)
+        if function not in _TREE_SERIES:
+            raise SystemExit(
+                f"tree: {function} is not in _TREE_SERIES; publish it there or "
+                "name it with the _reference suffix"
+            )
+        chart, impl = _TREE_SERIES[function]
+        data[(chart, args, impl)] = bm["real_time"]
+
+    charts = []
+    for chart, title, categories in _TREE_CHARTS:
+        groups = []
+        for impl in _TREE_IMPL_ORDER:
+            values = [data.get((chart, args, impl)) for args in categories]
+            if any(v is not None for v in values):
+                groups.append({"name": impl, "values": values, "color": _TREE_COLORS[impl]})
+        if groups:
+            charts.append(
+                {
+                    "id": f"tree_{chart}",
+                    "suite": suite,
+                    "type": "grouped_bar_h",
+                    "title": title,
+                    "categories": list(categories.values()),
+                    "groups": groups,
+                    "xaxis_unit": "ns",
+                    "log_scale": True,
+                }
+            )
     return charts
 
 
@@ -1116,7 +1225,11 @@ def build_pipeline_charts(benchmarks, suite):
     ]
 
 
-def _parse_generic_line_benchmarks(benchmarks):
+# Suites named lib<worksize>/threads; see parse_benchmark_name.
+_TEMPLATED_THREAD_SUITES = {"spmm"}
+
+
+def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
     """Parse benchmarks into thread-scaling data and error tracking.
 
     Returns (grouped, errored, grouped_cpu, serial_points) where:
@@ -1138,7 +1251,7 @@ def _parse_generic_line_benchmarks(benchmarks):
             if not bm.get("error_occurred"):
                 serial_points[serial_key] = bm["real_time"]
             continue
-        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
+        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""), templated_threads)
         lib = parsed["library"]
         threads = parsed.get("threads")
         ws = parsed.get("worksize")
@@ -1164,7 +1277,7 @@ def _skipped_libs_list(errored_libs, valid_libs):
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
     grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
-        benchmarks
+        benchmarks, suite in _TEMPLATED_THREAD_SUITES
     )
 
     charts = []
@@ -1209,15 +1322,18 @@ def build_generic_line_charts(benchmarks, suite):
                     }
                 )
 
-        label = _format_worksize(ws)
-        suite_display = suite.replace("_", " ").title()
+        suite_display = "SpMM" if suite == "spmm" else suite.replace("_", " ").title()
+        if ws == "default":
+            title = suite_display
+        elif ws in _SYMBOLIC_WORKSIZE_LABELS:
+            title = f"{suite_display} - {_SYMBOLIC_WORKSIZE_LABELS[ws]}"
+        else:
+            title = f"{suite_display} - {_format_worksize(ws)} Elements"
         chart_cfg = {
             "id": f"{suite}_{ws}",
             "suite": suite,
             "type": "line",
-            "title": suite_display
-            if ws == "default"
-            else f"{suite_display} - {label} Elements",
+            "title": title,
             "traces": traces,
             "xaxis": "Threads",
             "yaxis_unit": "ns",
@@ -1326,6 +1442,10 @@ def build_charts_for_suite(benchmarks, suite):
         return build_future_charts(benchmarks, suite)
     if suite in ("graph", "graph_scene"):
         return build_graph_charts(benchmarks, suite)
+    if suite == "tree":
+        return build_tree_charts(benchmarks, suite)
+    if suite in _TEMPLATED_THREAD_SUITES:
+        return build_generic_line_charts(benchmarks, suite)
     if suite == "rw_lock":
         return build_rw_lock_charts(benchmarks, suite)
     if suite == "once_function":
@@ -1887,6 +2007,32 @@ switchPlatform(0);
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 
+# A benchmark whose function name ends in _reference is kept for development
+# comparisons -- a deliberately weaker choice, say, run to show what the
+# recommended one gains -- and is never published. The suffix ends the
+# function name, before any template or argument part: BM_x_reference,
+# BM_x_reference<...>, BM_x_reference/8.
+_REFERENCE_RE = re.compile(r"^BM_\w*_reference(?=$|[</])")
+
+
+# tree_benchmark variants that were renamed with the _reference suffix after
+# the committed results were recorded. Remove these when the results are next
+# refreshed.
+_UNPUBLISHED_BEFORE_RENAME = {
+    "BM_dispenso_tree_naive",
+    "BM_dispenso_taskset_tree_hybrid_work",
+    "BM_kdtree_dispenso_taskset_bulk",
+    "BM_4ary_dispenso_bulk",
+}
+
+
+def is_unpublished(benchmark):
+    """True for a result row of a development-only (_reference) benchmark."""
+    name = benchmark.get("run_name") or benchmark["name"]
+    function = re.split(r"[</]", name, maxsplit=1)[0]
+    return bool(_REFERENCE_RE.match(name)) or function in _UNPUBLISHED_BEFORE_RENAME
+
+
 def load_platform(json_path):
     """Load a JSON file and build chart configs."""
     with open(json_path) as f:
@@ -1913,7 +2059,10 @@ def load_platform(json_path):
         if not result.get("success") or "data" not in result:
             continue
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
-        benchmarks = select_representative_rows(result["data"].get("benchmarks", []))
+        rows = result["data"].get("benchmarks", [])
+        benchmarks = select_representative_rows(
+            [bm for bm in rows if not is_unpublished(bm)]
+        )
         charts.extend(build_charts_for_suite(benchmarks, suite))
 
     return {

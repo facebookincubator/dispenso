@@ -55,6 +55,10 @@ header:
 
 - Integration examples (game engines, scientific computing)
 - Discord/Slack community channel
+- Benchmark dashboard follow-ups:
+  - mandelbrot is drawn as one bar per library, region, thread count and grain size, like spmm was. Its names are `<region>/threads/grain`, so it needs thread-scaling charts that keep the grain sizes apart, not just the spmm parsing.
+  - In every rw_lock chart, on all four platforms, each lock is missing results at some thread counts, and `std::shared_mutex` and `dispenso::RWLock` are missing different ones. Find out why the benchmark's thread sweeps differ.
+  - On macOS (M4 Pro) the plain binary tree builds fastest serially, about 2.4x ahead of every parallel version, TBB included. The tree sizes may be too small for that machine to be a useful comparison.
 
 ### Code TODOs
 

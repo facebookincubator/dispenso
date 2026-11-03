@@ -634,6 +634,7 @@ def run_benchmark(
     filter_pattern: Optional[str] = None,
     env_override: Optional[Dict[str, str]] = None,
     timeout_seconds: Optional[int] = None,
+    include_reference: bool = False,
 ) -> Dict[str, Any]:
     """Run a single benchmark and return results."""
     if timeout_seconds is None:
@@ -642,15 +643,19 @@ def run_benchmark(
     if extra_args:
         args.extend(extra_args)
 
-    # Apply filter if provided
+    # google-benchmark takes a single --benchmark_filter, so at most one of
+    # these applies.
     if filter_pattern:
         args.append(f"--benchmark_filter={filter_pattern}")
-
-    # Special handling for nested_for_benchmark - exclude slow async cases
-    if benchmark_path.stem == "nested_for_benchmark" and not filter_pattern:
+    elif benchmark_path.stem == "nested_for_benchmark":
         # Exclude async benchmarks (extremely slow, not competitive)
         # Only include serial, omp, tbb, and dispenso tests
         args.append("--benchmark_filter=BM_(serial|omp|tbb|dispenso)")
+    elif not include_reference:
+        # _reference benchmarks are kept for development comparisons and never
+        # published (scripts/BENCHMARKING.md), so a results run skips them. A
+        # leading '-' negates the filter (google-benchmark 1.6.0 and later).
+        args.append("--benchmark_filter=-_reference([</]|$)")
 
     # Set up environment
     env = None
@@ -829,6 +834,12 @@ def main():
         help="Filter pattern passed to --benchmark_filter for individual tests",
     )
     parser.add_argument(
+        "--include-reference",
+        action="store_true",
+        help="Also run _reference benchmarks (development comparisons, never "
+        "published), which are skipped by default unless --filter selects them",
+    )
+    parser.add_argument(
         "--min-time",
         type=float,
         default=None,
@@ -959,6 +970,7 @@ def main():
             args.filter,
             env_override=env_override,
             timeout_seconds=args.timeout_seconds,
+            include_reference=args.include_reference,
         )
         results.append(result)
         if result["success"]:

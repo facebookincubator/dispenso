@@ -139,6 +139,8 @@ before publishing measurements so the revision identifies what was measured.
   (e.g. `-B "pipeline|simple_pool"`)
 - `-f <pattern>` — filter individual test cases within benchmarks
   (passed to `--benchmark_filter`)
+- `--include-reference` — also run `_reference` benchmarks, which are skipped
+  by default (see "Which dispenso benchmarks to publish" below)
 - `--min-time <seconds>` — minimum time per benchmark
 - `-p <name>` — override auto-detected platform identifier
 
@@ -193,6 +195,11 @@ bulk scheduling in the pool benchmarks, blocking vs cascaded parallel_for --
 but not as a matter of course. Every case costs benchmarking time on every
 platform and adds clutter to the charts, so a variant that does not teach a
 reader something should not be registered at all, rather than run and hidden.
+
+A benchmark worth keeping for development but not for publication -- a
+deliberately weaker configuration kept to show what the recommended one gains,
+or an alternative under evaluation -- ends its function name in `_reference`
+(`BM_dispenso_static_reference`). The dashboard generator never charts these.
 
 ## Notes
 
