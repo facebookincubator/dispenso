@@ -39,6 +39,13 @@ Ask what tense it is written in.
 
 - Each item belongs to exactly one place. If status appears in two tables, they
   will drift.
+- Every `TODO` comment in the source has an entry in its roadmap area, named by
+  file and function rather than line: under Code TODOs, or for fast_math in the
+  Post-V1 Infrastructure table. The comment explains the problem where it
+  lives; the roadmap entry is how it gets found and prioritised. Add the entry
+  with a new `TODO`, and remove both when the item is done or dropped. Vendored
+  third-party code (`dispenso/third-party/`, `cmake/modules/FindTBB.cmake`) is
+  exempt.
 - Comments and docs describe the current state and its motivation, not the
   change that produced it — that belongs in the commit message.
 - [`../../CHANGELOG.md`](../../CHANGELOG.md) is the record of shipped work. The

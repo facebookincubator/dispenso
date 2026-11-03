@@ -146,6 +146,8 @@ df64 pairs for actual doubles.
 | Binary float constant representations | Medium | Replace decimal float literals with C99 hex float constants (e.g. `0x1.921fb6p+1f`) where appropriate. Hex floats are exact, avoid questions about truncation from excess decimal digits, and match the format used by Sollya/MPFR output. |
 | Doxygen documentation for public API | Medium | Add doxygen comments to all public functions documenting precision, domain, AccuracyTraits behavior, and SIMD compatibility. Note which functions ignore AccuracyTraits. |
 | `DefaultSimdFloat` usage examples | Medium | Show how to write portable SIMD code using the type alias. |
+| Check MSVC code generation for `atan`'s reciprocal flip | Low | Code TODO in `atan` (`dispenso/fast_math/fast_math.h`): some compilers, MSVC among them, may not optimise the `x > 1` flip as well. Check the scalar case too. |
+| NEON `clamp_no_nan` | Low | Code TODO in `clamp_no_nan` (`dispenso/fast_math/util.h`): scalar NEON builds take the generic path. The TODO points at `vrndmq_f32`, which is a rounding (floor) instruction; the clamp itself would need `vminq_f32` and `vmaxq_f32` (or a scalar equivalent) with matching NaN handling. |
 | Power accounting hooks | Low | Original design goal — compile-time zero-overhead instrumentation for power profiling. Deferred. |
 
 ---
