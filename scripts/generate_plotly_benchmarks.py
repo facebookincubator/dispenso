@@ -124,7 +124,7 @@ def parse_benchmark_name(name, templated_threads=False):
     not. With templated_threads, lib<worksize>/threads is read as a thread
     sweep too -- only for suites known to use that shape (spmm), since the
     number after a template argument means something else elsewhere (an
-    element count in small_buffer, threads plus a grain size in mandelbrot).
+    element count in small_buffer, threads plus an image size in mandelbrot).
     """
     result = {"library": name, "threads": None, "worksize": None, "raw": name}
     if "<" in name and ">" in name:
@@ -227,6 +227,12 @@ def select_representative_rows(benchmarks):
             iterations.sort(key=lambda e: e.get("real_time", 0))
             chosen = iterations[len(iterations) // 2]
         row = dict(chosen)
+        # An aggregate row's `iterations` is its repetition count. Keep the
+        # per-repetition iteration count instead, which is what totals such as
+        # the rusage counters (one total per repetition) are divided by.
+        per_rep = [e for e in entries if e.get("run_type") == "iteration"]
+        if row.get("run_type") == "aggregate" and per_rep:
+            row["iterations"] = per_rep[0].get("iterations")
         # Aggregate rows suffix `name` with e.g. "_median"; builders parse that
         # field, so restore the plain case name.
         row["name"] = case
@@ -396,11 +402,6 @@ def build_line_charts(benchmarks, suite):
             "xaxis": "Threads",
             "yaxis_unit": "ns",
         }
-        # simple_for has extreme outliers (taskflow ~7000x slower) where
-        # auto-zoom hides the comparison entirely.  Show full range so the
-        # user can see where taskflow sits, then zoom in interactively.
-        if suite == "simple_for":
-            chart_cfg["no_auto_zoom"] = True
         charts.append(chart_cfg)
     return charts
 
@@ -1225,6 +1226,173 @@ def build_pipeline_charts(benchmarks, suite):
     ]
 
 
+# idle_pool's scenarios, in chart order: (benchmark suffix, chart title for a
+# worksize, whether wall time means anything). very_idle's wall time is its
+# fixed 100 ms sleep, so only its CPU is charted.
+_IDLE_SCENARIOS = [
+    ("mostly_idle", "Chain of {} Tasks, One Runnable at a Time", True),
+    ("periodic_burst", "Burst After 5 ms Idle (1M-Element Dot Product)", True),
+    ("very_idle", "CPU Used Across a 100 ms Idle Period", False),
+]
+# Counters the benchmark records with getrusage(RUSAGE_SELF): the whole
+# process's user and system CPU seconds over a repetition. POSIX only.
+_RUSAGE_COUNTERS = ("\t0 User", "\t1 System")
+
+
+def _process_cpu_ns(bm):
+    """Process CPU per iteration in ns from the rusage counters, or None.
+
+    google-benchmark's own cpu_time covers only the thread running the
+    benchmark loop, so it misses everything the pool's workers do -- which is
+    what idle_pool measures.
+    """
+    if not all(k in bm for k in _RUSAGE_COUNTERS) or not bm.get("iterations"):
+        return None
+    return sum(bm[k] for k in _RUSAGE_COUNTERS) * 1e9 / bm["iterations"]
+
+
+def build_idle_pool_charts(benchmarks, suite):
+    """One chart per idle_pool scenario and worksize: wall time and process CPU.
+
+    Benchmarks are named BM_<lib>_<scenario>/<threads>[/<worksize>]. The pool
+    is meant to be both responsive and cheap while idle, so each library gets
+    a solid wall-time line and a dotted line for the CPU the whole process
+    used per iteration. Platforms without the rusage counters get no CPU line.
+    """
+    wall = defaultdict(lambda: defaultdict(list))  # (scenario, ws) -> lib -> points
+    cpu = defaultdict(lambda: defaultdict(list))
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        parsed = parse_benchmark_name(bm["name"].replace("BM_", ""))
+        threads = parsed.get("threads")
+        for scenario, _, _ in _IDLE_SCENARIOS:
+            if parsed["library"].endswith("_" + scenario):
+                lib = parsed["library"][: -len(scenario) - 1]
+                break
+        else:
+            raise SystemExit(f"idle_pool: unknown scenario in {bm['name']}")
+        if threads is None:
+            continue
+        key = (scenario, parsed["worksize"])
+        wall[key][lib].append((threads, bm["real_time"]))
+        process_cpu = _process_cpu_ns(bm)
+        if process_cpu is not None:
+            cpu[key][lib].append((threads, process_cpu))
+
+    charts = []
+    for scenario, title_fmt, show_wall in _IDLE_SCENARIOS:
+        sizes = sorted(
+            {ws for (sc, ws) in wall if sc == scenario},
+            key=lambda ws: int(ws) if ws.isdigit() else 0,
+        )
+        for ws in sizes:
+            key = (scenario, ws)
+            traces = []
+            for lib in sorted(wall[key], key=_lib_sort_key):
+                series = [(lib, wall[key][lib], "solid")] if show_wall else []
+                if cpu[key].get(lib):
+                    name = f"{lib} (process CPU)" if show_wall else lib
+                    series.append((name, cpu[key][lib], "dot" if show_wall else "solid"))
+                for name, points, dash in series:
+                    points = sorted(points)
+                    traces.append(
+                        {
+                            "name": name,
+                            "x": [p[0] for p in points],
+                            "y": [p[1] for p in points],
+                            "color": get_color(lib),
+                            "dash": dash,
+                        }
+                    )
+            if not traces:
+                continue
+            label = _format_worksize(ws) if ws != "default" else ""
+            charts.append(
+                {
+                    "id": f"{suite}_{scenario}_{ws}",
+                    "suite": suite,
+                    "type": "line",
+                    "title": f"Idle Pool - {title_fmt.format(label)}",
+                    "traces": traces,
+                    "xaxis": "Threads",
+                    "yaxis_unit": "ns",
+                }
+            )
+    return charts
+
+
+_MANDELBROT_REGIONS = {"Region::kFullSet": "Full Set", "Region::kBoundary": "Seahorse Valley"}
+# Displayed library names. dispenso's only case uses kAdaptive chunking, the
+# method for this deliberately uneven workload.
+_MANDELBROT_LIBS = {"dispenso_auto": "dispenso", "omp_guided": "omp", "tbb": "tbb"}
+
+
+def build_mandelbrot_charts(benchmarks, suite):
+    """One thread-scaling chart per viewport and image size.
+
+    Parallel cases are named BM_<lib><Region::kX>/<threads>/<dim> and serial
+    ones BM_serial<Region::kX, kMediumDim>, which is drawn as the baseline on
+    that size's chart.
+    """
+    points = defaultdict(lambda: defaultdict(list))  # (region, dim) -> lib -> points
+    serial = {}
+    for bm in benchmarks:
+        if bm.get("run_type") != "iteration" or bm.get("error_occurred"):
+            continue
+        name = bm["name"].replace("/real_time", "")
+        m = re.match(r"BM_serial<(Region::\w+), (\w+)>$", name)
+        if m:
+            serial[(m.group(1), m.group(2))] = bm["real_time"]
+            continue
+        m = re.match(r"BM_(\w+)<(Region::\w+)>/(\d+)/(\d+)$", name)
+        if not m or m.group(1) not in _MANDELBROT_LIBS:
+            raise SystemExit(f"mandelbrot: cannot chart {bm['name']}")
+        lib = _MANDELBROT_LIBS[m.group(1)]
+        points[(m.group(2), m.group(4))][lib].append((int(m.group(3)), bm["real_time"]))
+
+    # The serial cases name their size symbolically; match by rank, as
+    # _resolve_serial_sizes does for the other suites.
+    dims = sorted({dim for (_, dim) in points}, key=int)
+    symbolic = {"kMediumDim": dims[0] if dims else None}
+    if len(dims) > 1:
+        symbolic["kLargeDim"] = dims[1]
+
+    charts = []
+    for region, region_label in _MANDELBROT_REGIONS.items():
+        for dim in dims:
+            by_lib = points.get((region, dim))
+            if not by_lib:
+                continue
+            threads = {t for pts in by_lib.values() for t, _ in pts}
+            traces = []
+            for sym, value in serial.items():
+                if sym[0] == region and symbolic.get(sym[1]) == dim:
+                    traces.append(_serial_baseline_trace({dim: value}, dim, threads))
+            for lib in sorted(by_lib, key=_lib_sort_key):
+                pts = sorted(by_lib[lib])
+                traces.append(
+                    {
+                        "name": lib,
+                        "x": [p[0] for p in pts],
+                        "y": [p[1] for p in pts],
+                        "color": get_color(lib),
+                    }
+                )
+            charts.append(
+                {
+                    "id": f"{suite}_{region.split('::k')[1].lower()}_{dim}",
+                    "suite": suite,
+                    "type": "line",
+                    "title": f"Mandelbrot - {region_label}, {dim}x{dim} Pixels",
+                    "traces": traces,
+                    "xaxis": "Threads",
+                    "yaxis_unit": "ns",
+                }
+            )
+    return charts
+
+
 # Suites named lib<worksize>/threads; see parse_benchmark_name.
 _TEMPLATED_THREAD_SUITES = {"spmm"}
 
@@ -1232,14 +1400,12 @@ _TEMPLATED_THREAD_SUITES = {"spmm"}
 def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
     """Parse benchmarks into thread-scaling data and error tracking.
 
-    Returns (grouped, errored, grouped_cpu, serial_points) where:
+    Returns (grouped, errored, serial_points) where:
     - grouped: {worksize: {(lib, threads): real_time}}
     - errored: {worksize: set of libs with error_occurred}
-    - grouped_cpu: {worksize: {(lib, threads): cpu_time}}
     - serial_points: {worksize: real_time} serial baselines
     """
     grouped = defaultdict(dict)
-    grouped_cpu = defaultdict(dict)
     errored = defaultdict(set)
     serial_points = {}
 
@@ -1260,10 +1426,9 @@ def _parse_generic_line_benchmarks(benchmarks, templated_threads=False):
                 errored[ws].add(lib)
                 continue
             grouped[ws][(lib, threads)] = bm["real_time"]
-            grouped_cpu[ws][(lib, threads)] = bm.get("cpu_time", bm["real_time"])
 
     serial_points = _resolve_serial_sizes(serial_points, grouped)
-    return grouped, errored, grouped_cpu, serial_points
+    return grouped, errored, serial_points
 
 
 def _skipped_libs_list(errored_libs, valid_libs):
@@ -1276,7 +1441,7 @@ def _skipped_libs_list(errored_libs, valid_libs):
 
 def build_generic_line_charts(benchmarks, suite):
     """Generic line charts for suites with thread/worksize structure."""
-    grouped, errored, grouped_cpu, serial_points = _parse_generic_line_benchmarks(
+    grouped, errored, serial_points = _parse_generic_line_benchmarks(
         benchmarks, suite in _TEMPLATED_THREAD_SUITES
     )
 
@@ -1285,9 +1450,6 @@ def build_generic_line_charts(benchmarks, suite):
         by_lib = defaultdict(list)
         for (lib, threads), t in grouped[ws].items():
             by_lib[lib].append((threads, t))
-        by_lib_cpu = defaultdict(list)
-        for (lib, threads), t in grouped_cpu.get(ws, {}).items():
-            by_lib_cpu[lib].append((threads, t))
 
         traces = []
         thread_set = {threads for (_, threads) in grouped[ws]}
@@ -1305,22 +1467,6 @@ def build_generic_line_charts(benchmarks, suite):
             if "bulk" in lib.lower():
                 trace["dash"] = "dash"
             traces.append(trace)
-
-            # idle_pool is dual-objective: low burst latency (real_time) AND low
-            # CPU spent staying responsive. Show cpu_time as a dotted companion so
-            # the latency-vs-CPU tradeoff (e.g. a runtime that wins wall time by
-            # spinning/burning cores) is visible rather than hidden.
-            if suite == "idle_pool" and lib in by_lib_cpu:
-                cpu_points = sorted(by_lib_cpu[lib])
-                traces.append(
-                    {
-                        "name": f"{lib} (CPU)",
-                        "x": [p[0] for p in cpu_points],
-                        "y": [p[1] for p in cpu_points],
-                        "color": get_color(lib),
-                        "dash": "dot",
-                    }
-                )
 
         suite_display = "SpMM" if suite == "spmm" else suite.replace("_", " ").title()
         if ws == "default":
@@ -1446,6 +1592,10 @@ def build_charts_for_suite(benchmarks, suite):
         return build_tree_charts(benchmarks, suite)
     if suite in _TEMPLATED_THREAD_SUITES:
         return build_generic_line_charts(benchmarks, suite)
+    if suite == "idle_pool":
+        return build_idle_pool_charts(benchmarks, suite)
+    if suite == "mandelbrot":
+        return build_mandelbrot_charts(benchmarks, suite)
     if suite == "rw_lock":
         return build_rw_lock_charts(benchmarks, suite)
     if suite == "once_function":
@@ -1602,6 +1752,21 @@ function autoUnit(maxNs) {{
   return {{ scale: 1, label: 'ns' }};
 }}
 
+// A time in ns as text in its own unit, e.g. 1500000 -> "1.5 ms".
+function timeLabel(ns) {{
+  const u = autoUnit(ns);
+  return +(ns / u.scale).toPrecision(3) + ' ' + u.label;
+}}
+
+// Log time axis in ns with a labelled tick at each power of ten.
+function logTimeAxis(values) {{
+  const lo = Math.floor(Math.log10(Math.min(...values)));
+  const hi = Math.ceil(Math.log10(Math.max(...values)));
+  const tickvals = [];
+  for (let e = lo; e <= hi; e++) tickvals.push(Math.pow(10, e));
+  return {{ type: 'log', tickvals, ticktext: tickvals.map(timeLabel) }};
+}}
+
 // ─── Theme ─────────────────────────────────────────────────────
 function themeLayout() {{
   const dark = currentTheme === 'dark';
@@ -1618,8 +1783,9 @@ function themeLayout() {{
 
 const plotlyConfig = {{ responsive: true, scrollZoom: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'], displaylogo: false }};
 
-// Pin the time axis lower bound to zero on any zoom/pan.
-// Preserves the zoom span so repeated zoom in/out doesn't drift.
+// Keep the time axis from going below zero on a zoom or pan. Only a range
+// that starts below zero is moved, keeping its span so scrolling and panning
+// past zero don't drift; a range the user selected above zero is left as is.
 function pinZeroAxis(chartId, axis) {{
   const el = document.getElementById('chart-' + chartId);
   if (!el) return;
@@ -1628,8 +1794,7 @@ function pinZeroAxis(chartId, axis) {{
     if (pinning) return;
     const key0 = axis + '.range[0]';
     const key1 = axis + '.range[1]';
-    // Check if the lower bound moved away from zero
-    if (key0 in ed && ed[key0] !== 0) {{
+    if (key0 in ed && ed[key0] < 0) {{
       const lo = ed[key0];
       const hi = key1 in ed ? ed[key1] : el.layout[axis].range[1];
       const span = hi - lo;  // preserve intended zoom level
@@ -1640,30 +1805,40 @@ function pinZeroAxis(chartId, axis) {{
 }}
 
 // ─── Renderers ─────────────────────────────────────────────────
+// A horizontal legend at the bottom of the figure, under the axis title. Above
+// the plot, a legend that wraps to a second row grows up into the chart title
+// and covers it. Positioned against the whole figure ('container') rather than
+// the plot area, so its distance from the axis title doesn't vary with chart
+// height; LEGEND_BELOW_MARGIN leaves room for two rows of entries.
+const LEGEND_BELOW_MARGIN = 110;
+// Max/min time ratio above which a line chart uses a log time axis.
+const LOG_SPREAD = 30;
+function legendBelow(tl) {{
+  return {{ ...tl.legend, orientation: 'h', xanchor: 'center', x: 0.5,
+            yref: 'container', yanchor: 'bottom', y: 0.01 }};
+}}
+
 function renderLine(cfg) {{
   const allY = cfg.traces.flatMap(t => t.baseline ? [] : t.y);  // exclude serial baseline
   const maxY = allY.length > 0 ? Math.max(...allY) : 1;
   const u = autoUnit(maxY);
-  const scaledAll = allY.map(v => v / u.scale);
 
-  // Auto-zoom: compare per-trace medians to detect when one trace dominates
-  const traceMedians = cfg.traces.filter(t => !t.baseline).map(t => {{
-    const sv = [...t.y].filter(v => v > 0).sort((a,b) => a - b);
-    return sv.length > 0 ? sv[Math.floor(sv.length / 2)] / u.scale : 0;
-  }}).filter(v => v > 0).sort((a,b) => a - b);
-  const maxTraceMedian = traceMedians.length > 0 ? traceMedians[traceMedians.length - 1] : 1;
-  const minTraceMedian = traceMedians.length > 0 ? traceMedians[0] : 1;
-  const autoZoom = !cfg.no_auto_zoom && traceMedians.length >= 2 && maxTraceMedian / minTraceMedian > 5;
-  // Zoom to show the competitive traces: 3x the second-highest trace median
-  const secondMax = traceMedians.length >= 2 ? traceMedians[traceMedians.length - 2] : maxTraceMedian;
-  const zoomMax = secondMax * 3;
+  // When the times on a chart span more than LOG_SPREAD, a linear axis either
+  // squashes the fast lines against zero or has to clip the slow ones off the
+  // top (as an earlier auto-zoom did, hiding TBB entirely in summing_for 1K).
+  // Use a log axis instead, which keeps every line visible and readable.
+  const positive = cfg.traces.flatMap(t => t.y).filter(v => v > 0);
+  const useLog = positive.length > 0 && Math.max(...positive) / Math.min(...positive) > LOG_SPREAD;
 
+  // A log axis is in ns with its own tick labels; hover text names each point's unit.
   const traces = cfg.traces.map(t => ({{
-    x: t.x, y: t.y.map(v => v / u.scale), name: t.name,
+    x: t.x, y: useLog ? t.y : t.y.map(v => v / u.scale), name: t.name,
     type: 'scatter', mode: t.baseline ? 'lines' : 'lines+markers',
     line: {{ color: t.color, width: t.baseline ? 1.5 : 2.5, dash: t.dash || 'solid' }},
     marker: {{ size: t.baseline ? 0 : 5 }},
-    hovertemplate: '%{{x}} threads: %{{y:.4g}} ' + u.label + '<extra>%{{fullData.name}}</extra>',
+    ...(useLog
+      ? {{ text: t.y.map(timeLabel), hovertemplate: '%{{x}} threads: %{{text}}<extra>%{{fullData.name}}</extra>' }}
+      : {{ hovertemplate: '%{{x}} threads: %{{y:.4g}} ' + u.label + '<extra>%{{fullData.name}}</extra>' }}),
   }}));
 
   // Add invisible legend entries for skipped (cannot-complete) libraries
@@ -1679,28 +1854,24 @@ function renderLine(cfg) {{
   }}
 
   const tl = themeLayout();
-  // Add text annotation when libraries are skipped
-  const annotations = [];
+  // Name libraries that could not complete in a line under the title.
+  let title = cfg.title;
   if (skipped.length > 0) {{
     const names = skipped.map(s => s.name).join(', ');
-    annotations.push({{
-      text: names + ': cannot complete (out of memory)',
-      xref: 'paper', yref: 'paper', x: 0.5, y: -0.12,
-      showarrow: false,
-      font: {{ size: 11, color: skipped.length === 1 ? skipped[0].color : '#e74c3c' }},
-    }});
+    const color = skipped.length === 1 ? skipped[0].color : '#e74c3c';
+    title += `<br><span style="font-size:11px;color:${{color}}">${{names}}: cannot complete (out of memory)</span>`;
   }}
   const layout = {{
-    ...tl, title: {{ text: cfg.title + (autoZoom ? ' (auto-zoomed, double-click to reset)' : ''), font: {{ size: 14 }} }},
+    ...tl, title: {{ text: title, font: {{ size: 14 }} }},
     xaxis: {{ ...tl.xaxis, title: cfg.xaxis || 'Threads', fixedrange: true }},
-    yaxis: {{ ...tl.yaxis, title: 'Time (' + u.label + ')', rangemode: 'tozero',
-              ...(autoZoom ? {{ range: [0, zoomMax] }} : {{}}) }},
-    legend: {{ ...tl.legend, orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 }},
-    margin: {{ l: 60, r: 20, t: 50, b: skipped.length > 0 ? 70 : 50 }}, hovermode: 'x unified',
-    ...(annotations.length > 0 ? {{ annotations }} : {{}}),
+    yaxis: {{ ...tl.yaxis, ...(useLog
+      ? {{ title: 'Time - log scale', ...logTimeAxis(positive) }}
+      : {{ title: 'Time (' + u.label + ')', rangemode: 'tozero' }}) }},
+    legend: legendBelow(tl),
+    margin: {{ l: 60, r: 20, t: skipped.length > 0 ? 70 : 50, b: LEGEND_BELOW_MARGIN }}, hovermode: 'x unified',
   }};
   Plotly.newPlot('chart-' + cfg.id, traces, layout, plotlyConfig);
-  pinZeroAxis(cfg.id, 'yaxis');
+  if (!useLog) pinZeroAxis(cfg.id, 'yaxis');
 }}
 
 function renderGroupedBarH(cfg) {{
@@ -1727,8 +1898,8 @@ function renderGroupedBarH(cfg) {{
     xaxis: {{ ...tl.xaxis, title: useLog ? 'Time (ns) - log scale' : 'Time (' + u.label + ')',
               type: useLog ? 'log' : 'linear' }},
     yaxis: {{ ...tl.yaxis, automargin: true, fixedrange: true }},
-    legend: {{ ...tl.legend, orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1 }},
-    margin: {{ l: 180, r: 20, t: 60, b: 50 }},
+    legend: legendBelow(tl),
+    margin: {{ l: 180, r: 20, t: 60, b: LEGEND_BELOW_MARGIN }},
   }}, plotlyConfig);
   if (!useLog) pinZeroAxis(cfg.id, 'xaxis');
 }}
@@ -2017,7 +2188,7 @@ _REFERENCE_RE = re.compile(r"^BM_\w*_reference(?=$|[</])")
 
 # tree_benchmark variants that were renamed with the _reference suffix after
 # the committed results were recorded. Remove these when the results are next
-# refreshed.
+# refreshed; main() stops generation once tree results no longer contain them.
 _UNPUBLISHED_BEFORE_RENAME = {
     "BM_dispenso_tree_naive",
     "BM_dispenso_taskset_tree_hybrid_work",
@@ -2025,12 +2196,44 @@ _UNPUBLISHED_BEFORE_RENAME = {
     "BM_4ary_dispenso_bulk",
 }
 
+# Benchmark functions seen in tree results, across all inputs.
+_tree_functions_seen = set()
+
+
+def benchmark_function(benchmark):
+    """The benchmark's function name, without template or argument parts."""
+    name = benchmark.get("run_name") or benchmark["name"]
+    return re.split(r"[</]", name, maxsplit=1)[0]
+
 
 def is_unpublished(benchmark):
     """True for a result row of a development-only (_reference) benchmark."""
     name = benchmark.get("run_name") or benchmark["name"]
-    function = re.split(r"[</]", name, maxsplit=1)[0]
-    return bool(_REFERENCE_RE.match(name)) or function in _UNPUBLISHED_BEFORE_RENAME
+    return (
+        bool(_REFERENCE_RE.match(name))
+        or benchmark_function(benchmark) in _UNPUBLISHED_BEFORE_RENAME
+    )
+
+
+_NS_PER_UNIT = {"ns": 1, "us": 1e3, "ms": 1e6, "s": 1e9}
+
+
+def in_nanoseconds(benchmark):
+    """Return the row with real_time and cpu_time converted to ns.
+
+    google-benchmark reports times in each benchmark's own Unit() (idle_pool,
+    nested_pool and simple_pool use microseconds); every chart builder and
+    the page's renderers assume ns.
+    """
+    unit = benchmark.get("time_unit", "ns")
+    if unit == "ns":
+        return benchmark
+    scale = _NS_PER_UNIT[unit]
+    row = dict(benchmark, time_unit="ns")
+    for key in ("real_time", "cpu_time"):
+        if row.get(key) is not None:  # errored rows may carry null times
+            row[key] *= scale
+    return row
 
 
 def load_platform(json_path):
@@ -2060,8 +2263,10 @@ def load_platform(json_path):
             continue
         suite = result["name"].replace(".exe", "").replace("_benchmark", "")
         rows = result["data"].get("benchmarks", [])
+        if suite == "tree":
+            _tree_functions_seen.update(benchmark_function(bm) for bm in rows)
         benchmarks = select_representative_rows(
-            [bm for bm in rows if not is_unpublished(bm)]
+            [in_nanoseconds(bm) for bm in rows if not is_unpublished(bm)]
         )
         charts.extend(build_charts_for_suite(benchmarks, suite))
 
@@ -2093,6 +2298,12 @@ def main():
         platforms.append(load_platform(path))
         print(
             f"  Platform: {platforms[-1]['label']}, Charts: {len(platforms[-1]['charts'])}"
+        )
+
+    if _tree_functions_seen and not _tree_functions_seen & _UNPUBLISHED_BEFORE_RENAME:
+        raise SystemExit(
+            "tree results no longer contain the pre-rename benchmarks; delete "
+            "_UNPUBLISHED_BEFORE_RENAME, _tree_functions_seen and this check"
         )
 
     generate_html(platforms, args.output)

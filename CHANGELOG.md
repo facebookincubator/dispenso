@@ -48,6 +48,12 @@ Unreleased
 * The benchmark dashboard no longer charts `_reference` benchmarks, which exist to compare dispenso configurations during development. locality's charts had shown `dispenso_auto_reference` next to TBB and OpenMP, and spmm's its `static_reference` cases.
 * Thread-scaling charts on the benchmark dashboard (nested_for, for_each, locality, for_latency) now show the serial reference line; previously it was missing because of a size-mapping bug or because those suites' serial cases were ignored.
 * The benchmark dashboard's pool allocator charts now show the malloc/free baseline; since the baselines were renamed with a _baseline suffix, every malloc/free bar had been published as 0.
+* Zooming into a time range on the benchmark dashboard's charts now shows that range. Any range was shifted to start at zero, so selecting, say, 20-25 ms showed 0-5 ms instead.
+* The benchmark dashboard's line charts and horizontal bar charts now put the legend under the chart. Above it, a legend that wrapped to a second row covered the chart title, which made the idle_pool charts unreadable.
+* Line charts on the benchmark dashboard whose times span more than 30x now use a log time axis instead of zooming in on the faster lines. The zoom clipped slower libraries off the chart entirely, such as TBB in summing_for at 1K elements, and simple_for's charts squashed every library but Taskflow against zero.
+* The benchmark dashboard's idle_pool, nested_pool and simple_pool charts showed every time 1000x too small on all four platforms. These benchmarks report microseconds, and the chart generator read every result as nanoseconds. The comparisons between libraries were unaffected.
+* The benchmark dashboard's idle_pool charts now show each scenario on its own chart, a chain of tasks, a burst after an idle period, and an idle period, comparing dispenso and TBB. Their CPU line is the whole process's CPU per iteration (Linux and macOS). Previously it was the benchmark thread's own CPU time, which leaves out the pool's workers; that hid, for example, that on Linux TBB used 25-65x more CPU than dispenso across a 100 ms idle period at 2 to 166 threads.
+* The benchmark dashboard's mandelbrot section is now four thread-scaling charts, one per viewport and image size, with dispenso, TBB and OpenMP lines and the serial reference. It was a single bar chart with one bar per library, viewport, thread count and image size.
 
 ### Build system
 * Shared builds now export the `DISPENSO_SHARED_LIB` compile definition on `Dispenso::dispenso`, so consumers compile dispenso's headers as intended: with `__declspec(dllimport)` on Windows, and with default visibility for dispenso's symbols elsewhere. Without it, consumers built with `-fvisibility=hidden` (and every Windows consumer) kept private copies of the static state inside dispenso's inline functions instead of sharing the library's. Builds that do not use the CMake target should define `DISPENSO_SHARED_LIB` when linking against a shared dispenso.
@@ -65,6 +71,7 @@ Unreleased
 * The serial baselines in simple_for, for_each and for_latency benchmarks no longer get optimised away under Clang (they reported ~0 ns on macOS and Android); summing_for and mandelbrot serial loops are hardened the same way.
 * tree_benchmark measures dispenso with the same programming models on every tree workload -- `parallel_invoke`, `TaskSet` scheduling with inline recursion, and (for the binary trees) `parallel_for` over a frontier -- adding the variants that were missing. Its other dispenso variants (naive async, hybrid cutoff, `scheduleBulk`) are now `_reference` benchmarks, and the dashboard charts each tree workload separately.
 * The benchmark dashboard charts spmm as thread-scaling lines for each matrix size, instead of one bar per library, size and thread count.
+* for_each_benchmark's serial baseline now runs the same per-element function as `for_each_n`, through `std::for_each`. It was an indexed loop that ran ~2.6x faster than that function does serially, so `for_each_n` looked slow next to it even on one thread.
 
 1.6.2 (August 19, 2026)
 

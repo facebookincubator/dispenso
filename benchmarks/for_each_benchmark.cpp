@@ -12,6 +12,7 @@
 
 #include <dispenso/for_each.h>
 
+#include <algorithm>
 #include <unordered_map>
 
 #include "thread_benchmark_common.h"
@@ -48,15 +49,26 @@ void checkResults(const std::vector<int>& input, const std::vector<int>& output)
   }
 }
 
+// The per-element function both benchmarks run. for_each_n hands the function
+// an element rather than an index, so the index is recovered from its address.
+inline auto mapElement(const std::vector<int>& input, std::vector<int>& output) {
+  return [&output, &input](const int& val) {
+    size_t idx = static_cast<size_t>(&val - input.data());
+    output[idx] = val * val - 3 * val;
+  };
+}
+
+// The serial baseline is std::for_each with the same function, so the two
+// differ only in scheduling. A plain indexed loop is not a fair baseline: it ran
+// ~2.6x faster than this function does serially (GCC 14, x86-64), most likely
+// because the compiler vectorizes it, which made for_each_n look slow.
 template <int num_elements>
 void BM_serial(benchmark::State& state) {
   std::vector<int> output(num_elements, 0);
   auto& input = getInputs(num_elements);
 
   for (auto UNUSED_VAR : state) {
-    for (size_t i = 0; i < num_elements; ++i) {
-      output[i] = input[i] * input[i] - 3 * input[i];
-    }
+    std::for_each(input.begin(), input.end(), mapElement(input, output));
     // output is never read, so without this the compiler may drop the stores and with them the
     // work being timed (clang did, timing this at ~0 ns).
     benchmark::DoNotOptimize(output.data());
@@ -75,10 +87,7 @@ void BM_for_each_n(benchmark::State& state) {
   for (auto UNUSED_VAR : state) {
     dispenso::TaskSet tasks(pool);
     dispenso::for_each_n(
-        tasks, input.begin(), static_cast<size_t>(num_elements), [&output, &input](const int& val) {
-          size_t idx = static_cast<size_t>(&val - input.data());
-          output[idx] = val * val - 3 * val;
-        });
+        tasks, input.begin(), static_cast<size_t>(num_elements), mapElement(input, output));
   }
   checkResults(input, output);
 }

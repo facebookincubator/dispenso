@@ -48,5 +48,7 @@ Ask what tense it is written in.
   exempt.
 - Comments and docs describe the current state and its motivation, not the
   change that produced it — that belongs in the commit message.
+- [`roadmap.md`](roadmap.md)'s Focus queue orders what to work on next. It
+  names items and links to their area; the details stay in the area.
 - [`../../CHANGELOG.md`](../../CHANGELOG.md) is the record of shipped work. The
   roadmap's Completed table exists only so items carried there do not dangle.
