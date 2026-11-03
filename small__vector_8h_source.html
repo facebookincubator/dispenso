@@ -537,158 +537,162 @@ $(function(){initNavTree('small__vector_8h_source.html',''); initResizable(true)
 <div class="line"><a id="l00480" name="l00480"></a><span class="lineno">  480</span>    }</div>
 <div class="line"><a id="l00481" name="l00481"></a><span class="lineno">  481</span>  }</div>
 <div class="line"><a id="l00482" name="l00482"></a><span class="lineno">  482</span> </div>
-<div class="line"><a id="l00483" name="l00483"></a><span class="lineno">  483</span>  <span class="comment">// Heap storage for over-aligned T must honour alignof(T); plain ::operator new only guarantees</span></div>
-<div class="line"><a id="l00484" name="l00484"></a><span class="lineno">  484</span>  <span class="comment">// alignof(std::max_align_t), and the aligned overloads need C++17.</span></div>
-<div class="line"><a id="l00485" name="l00485"></a><span class="lineno">  485</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">bool</span> kOverAligned = <span class="keyword">alignof</span>(T) &gt; <span class="keyword">alignof</span>(std::max_align_t);</div>
-<div class="line"><a id="l00486" name="l00486"></a><span class="lineno">  486</span> </div>
-<div class="line"><a id="l00487" name="l00487"></a><span class="lineno">  487</span>  <span class="keyword">static</span> T* allocate(size_type count) {</div>
-<div class="line"><a id="l00488" name="l00488"></a><span class="lineno">  488</span>    <span class="keywordflow">if</span> (kOverAligned) {</div>
-<div class="line"><a id="l00489" name="l00489"></a><span class="lineno">  489</span>      <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(detail::alignedMallocOrThrow(count * <span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T)));</div>
-<div class="line"><a id="l00490" name="l00490"></a><span class="lineno">  490</span>    }</div>
-<div class="line"><a id="l00491" name="l00491"></a><span class="lineno">  491</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(::operator <span class="keyword">new</span>(count * <span class="keyword">sizeof</span>(T)));</div>
-<div class="line"><a id="l00492" name="l00492"></a><span class="lineno">  492</span>  }</div>
-<div class="line"><a id="l00493" name="l00493"></a><span class="lineno">  493</span> </div>
-<div class="line"><a id="l00494" name="l00494"></a><span class="lineno">  494</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> deallocate(T* ptr) <span class="keyword">noexcept</span> {</div>
-<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>    <span class="keywordflow">if</span> (kOverAligned) {</div>
-<div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>      detail::alignedFree(ptr);</div>
-<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>    }</div>
-<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span>    <span class="comment">// GCC on 32-bit ARM reports this, called from destroyAll(), as freeing the</span></div>
-<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>    <span class="comment">// inline buffer. It is a false positive: the heap bit lives inside size_</span></div>
-<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>    <span class="comment">// and the buffer is a union member aliasing heap_.ptr, and across the</span></div>
-<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>    <span class="comment">// inlined move paths GCC stops being able to prove the !isInline() guard</span></div>
-<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span>    <span class="comment">// excludes inline storage. The same code is clean under GCC on x86_64,</span></div>
-<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>    <span class="comment">// x86-32, aarch64, riscv32 and riscv64, which is not what a genuine logic</span></div>
-<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span>    <span class="comment">// error would look like. Simplifying the move paths to a single size_</span></div>
-<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>    <span class="comment">// assignment did not change its mind either.</span></div>
-<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span>    DISPENSO_DISABLE_WARNING_PUSH</div>
-<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>    DISPENSO_DISABLE_WARNING_FREE_NONHEAP_OBJECT</div>
-<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>    ::operator <span class="keyword">delete</span>(ptr);</div>
-<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>    DISPENSO_DISABLE_WARNING_POP</div>
-<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>  }</div>
-<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span> </div>
-<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span>  <span class="comment">// Grow to heap storage with the specified capacity.</span></div>
-<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>  <span class="comment">// Moves existing elements, frees old heap if applicable, sets heap bit. If transferring an</span></div>
-<div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>  <span class="comment">// element throws, the new storage is freed and the vector is left as it was.</span></div>
-<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>  <span class="keywordtype">void</span> growToHeap(size_type newCap) {</div>
-<div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span>    T* newData = allocate(newCap);</div>
-<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
-<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>    <span class="keywordflow">try</span> {</div>
-<div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>      transferTo(newData);</div>
-<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>    } <span class="keywordflow">catch</span> (...) {</div>
-<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>      deallocate(newData);</div>
-<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>      <span class="keywordflow">throw</span>;</div>
-<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>    }</div>
-<div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>    transferTo(newData);</div>
-<div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
-<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span>    adoptHeap(newData, newCap);</div>
-<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  }</div>
-<div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span> </div>
-<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span>  <span class="comment">// Construct the existing elements in newData, moving them when T&#39;s move constructor cannot throw</span></div>
-<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span>  <span class="comment">// and copying them otherwise (std::move_if_noexcept, as std::vector does). If a construction</span></div>
-<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span>  <span class="comment">// throws, the elements constructed in newData so far are destroyed and the exception propagates</span></div>
-<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span>  <span class="comment">// with the existing elements intact (unless T is move-only with a throwing move constructor, in</span></div>
-<div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span>  <span class="comment">// which case some of them may have been moved from). newData is left for the caller to free.</span></div>
-<div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span>  <span class="keywordtype">void</span> transferTo(T* newData) {</div>
-<div class="line"><a id="l00537" name="l00537"></a><span class="lineno">  537</span>    T* oldData = <a class="code hl_function" href="classdispenso_1_1_small_vector.html#a028f15c04e10c4d4098214be80d2fb4e">data</a>();</div>
-<div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span>    size_type sz = rawSize();</div>
-<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>    size_type i = 0;</div>
-<div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
-<div class="line"><a id="l00541" name="l00541"></a><span class="lineno">  541</span>    <span class="keywordflow">try</span> {</div>
-<div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
-<div class="line"><a id="l00543" name="l00543"></a><span class="lineno">  543</span>      <span class="keywordflow">for</span> (; i &lt; sz; ++i) {</div>
-<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>        <span class="keyword">new</span> (newData + i) T(std::move_if_noexcept(oldData[i]));</div>
-<div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span>      }</div>
-<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
-<div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span>    } <span class="keywordflow">catch</span> (...) {</div>
-<div class="line"><a id="l00548" name="l00548"></a><span class="lineno">  548</span>      <span class="keywordflow">for</span> (size_type j = 0; j &lt; i; ++j) {</div>
-<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>        newData[j].~T();</div>
-<div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span>      }</div>
-<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span>      <span class="keywordflow">throw</span>;</div>
-<div class="line"><a id="l00552" name="l00552"></a><span class="lineno">  552</span>    }</div>
-<div class="line"><a id="l00553" name="l00553"></a><span class="lineno">  553</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
-<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span>  }</div>
-<div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span> </div>
-<div class="line"><a id="l00556" name="l00556"></a><span class="lineno">  556</span>  <span class="comment">// Commit after a successful transferTo(newData): destroy the old elements, free the old heap</span></div>
-<div class="line"><a id="l00557" name="l00557"></a><span class="lineno">  557</span>  <span class="comment">// storage if any, and switch to heap mode using newData (capacity newCap).</span></div>
-<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span>  <span class="keywordtype">void</span> adoptHeap(T* newData, size_type newCap) <span class="keyword">noexcept</span> {</div>
-<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>    T* oldData = <a class="code hl_function" href="classdispenso_1_1_small_vector.html#a028f15c04e10c4d4098214be80d2fb4e">data</a>();</div>
-<div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span>    size_type sz = rawSize();</div>
-<div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span> </div>
-<div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span>    <span class="keywordflow">for</span> (size_type i = 0; i &lt; sz; ++i) {</div>
-<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span>      oldData[i].~T();</div>
-<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span>    }</div>
+<div class="line"><a id="l00483" name="l00483"></a><span class="lineno">  483</span>  <span class="comment">// Heap storage for over-aligned T must honour alignof(T). An untyped ::operator new(size) call</span></div>
+<div class="line"><a id="l00484" name="l00484"></a><span class="lineno">  484</span>  <span class="comment">// only guarantees the default new alignment, in every standard: C++17&#39;s over-aligned allocation</span></div>
+<div class="line"><a id="l00485" name="l00485"></a><span class="lineno">  485</span>  <span class="comment">// applies to new-expressions, not to direct calls like these. Over-aligned T therefore goes</span></div>
+<div class="line"><a id="l00486" name="l00486"></a><span class="lineno">  486</span>  <span class="comment">// through dispenso&#39;s aligned allocation.</span></div>
+<div class="line"><a id="l00487" name="l00487"></a><span class="lineno">  487</span>  <span class="comment">// TODO: Once C++17 is the minimum, std::allocator&lt;T&gt; (which honours over-alignment since C++17)</span></div>
+<div class="line"><a id="l00488" name="l00488"></a><span class="lineno">  488</span>  <span class="comment">// can replace both branches of allocate() and deallocate().</span></div>
+<div class="line"><a id="l00489" name="l00489"></a><span class="lineno">  489</span>  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keywordtype">bool</span> kOverAligned = <span class="keyword">alignof</span>(T) &gt; <span class="keyword">alignof</span>(std::max_align_t);</div>
+<div class="line"><a id="l00490" name="l00490"></a><span class="lineno">  490</span> </div>
+<div class="line"><a id="l00491" name="l00491"></a><span class="lineno">  491</span>  <span class="keyword">static</span> T* allocate(size_type count) {</div>
+<div class="line"><a id="l00492" name="l00492"></a><span class="lineno">  492</span>    <span class="keywordflow">if</span> (kOverAligned) {</div>
+<div class="line"><a id="l00493" name="l00493"></a><span class="lineno">  493</span>      <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(detail::alignedMallocOrThrow(count * <span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T)));</div>
+<div class="line"><a id="l00494" name="l00494"></a><span class="lineno">  494</span>    }</div>
+<div class="line"><a id="l00495" name="l00495"></a><span class="lineno">  495</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(::operator <span class="keyword">new</span>(count * <span class="keyword">sizeof</span>(T)));</div>
+<div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>  }</div>
+<div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span> </div>
+<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span>  <span class="keyword">static</span> <span class="keywordtype">void</span> deallocate(T* ptr) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span>    <span class="keywordflow">if</span> (kOverAligned) {</div>
+<div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span>      detail::alignedFree(ptr);</div>
+<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>    }</div>
+<div class="line"><a id="l00503" name="l00503"></a><span class="lineno">  503</span>    <span class="comment">// GCC on 32-bit ARM reports this, called from destroyAll(), as freeing the</span></div>
+<div class="line"><a id="l00504" name="l00504"></a><span class="lineno">  504</span>    <span class="comment">// inline buffer. It is a false positive: the heap bit lives inside size_</span></div>
+<div class="line"><a id="l00505" name="l00505"></a><span class="lineno">  505</span>    <span class="comment">// and the buffer is a union member aliasing heap_.ptr, and across the</span></div>
+<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>    <span class="comment">// inlined move paths GCC stops being able to prove the !isInline() guard</span></div>
+<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span>    <span class="comment">// excludes inline storage. The same code is clean under GCC on x86_64,</span></div>
+<div class="line"><a id="l00508" name="l00508"></a><span class="lineno">  508</span>    <span class="comment">// x86-32, aarch64, riscv32 and riscv64, which is not what a genuine logic</span></div>
+<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>    <span class="comment">// error would look like. Simplifying the move paths to a single size_</span></div>
+<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>    <span class="comment">// assignment did not change its mind either.</span></div>
+<div class="line"><a id="l00511" name="l00511"></a><span class="lineno">  511</span>    DISPENSO_DISABLE_WARNING_PUSH</div>
+<div class="line"><a id="l00512" name="l00512"></a><span class="lineno">  512</span>    DISPENSO_DISABLE_WARNING_FREE_NONHEAP_OBJECT</div>
+<div class="line"><a id="l00513" name="l00513"></a><span class="lineno">  513</span>    ::operator <span class="keyword">delete</span>(ptr);</div>
+<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>    DISPENSO_DISABLE_WARNING_POP</div>
+<div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>  }</div>
+<div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span> </div>
+<div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span>  <span class="comment">// Grow to heap storage with the specified capacity.</span></div>
+<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>  <span class="comment">// Moves existing elements, frees old heap if applicable, sets heap bit. If transferring an</span></div>
+<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  <span class="comment">// element throws, the new storage is freed and the vector is left as it was.</span></div>
+<div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  <span class="keywordtype">void</span> growToHeap(size_type newCap) {</div>
+<div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>    T* newData = allocate(newCap);</div>
+<div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>    <span class="keywordflow">try</span> {</div>
+<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>      transferTo(newData);</div>
+<div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>    } <span class="keywordflow">catch</span> (...) {</div>
+<div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>      deallocate(newData);</div>
+<div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span>      <span class="keywordflow">throw</span>;</div>
+<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span>    }</div>
+<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span>    transferTo(newData);</div>
+<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
+<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span>    adoptHeap(newData, newCap);</div>
+<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span>  }</div>
+<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span> </div>
+<div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span>  <span class="comment">// Construct the existing elements in newData, moving them when T&#39;s move constructor cannot throw</span></div>
+<div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span>  <span class="comment">// and copying them otherwise (std::move_if_noexcept, as std::vector does). If a construction</span></div>
+<div class="line"><a id="l00537" name="l00537"></a><span class="lineno">  537</span>  <span class="comment">// throws, the elements constructed in newData so far are destroyed and the exception propagates</span></div>
+<div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span>  <span class="comment">// with the existing elements intact (unless T is move-only with a throwing move constructor, in</span></div>
+<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="comment">// which case some of them may have been moved from). newData is left for the caller to free.</span></div>
+<div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span>  <span class="keywordtype">void</span> transferTo(T* newData) {</div>
+<div class="line"><a id="l00541" name="l00541"></a><span class="lineno">  541</span>    T* oldData = <a class="code hl_function" href="classdispenso_1_1_small_vector.html#a028f15c04e10c4d4098214be80d2fb4e">data</a>();</div>
+<div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span>    size_type sz = rawSize();</div>
+<div class="line"><a id="l00543" name="l00543"></a><span class="lineno">  543</span>    size_type i = 0;</div>
+<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span>    <span class="keywordflow">try</span> {</div>
+<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
+<div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span>      <span class="keywordflow">for</span> (; i &lt; sz; ++i) {</div>
+<div class="line"><a id="l00548" name="l00548"></a><span class="lineno">  548</span>        <span class="keyword">new</span> (newData + i) T(std::move_if_noexcept(oldData[i]));</div>
+<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>      }</div>
+<div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span>    } <span class="keywordflow">catch</span> (...) {</div>
+<div class="line"><a id="l00552" name="l00552"></a><span class="lineno">  552</span>      <span class="keywordflow">for</span> (size_type j = 0; j &lt; i; ++j) {</div>
+<div class="line"><a id="l00553" name="l00553"></a><span class="lineno">  553</span>        newData[j].~T();</div>
+<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span>      }</div>
+<div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span>      <span class="keywordflow">throw</span>;</div>
+<div class="line"><a id="l00556" name="l00556"></a><span class="lineno">  556</span>    }</div>
+<div class="line"><a id="l00557" name="l00557"></a><span class="lineno">  557</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
+<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span>  }</div>
+<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span> </div>
+<div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span>  <span class="comment">// Commit after a successful transferTo(newData): destroy the old elements, free the old heap</span></div>
+<div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span>  <span class="comment">// storage if any, and switch to heap mode using newData (capacity newCap).</span></div>
+<div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span>  <span class="keywordtype">void</span> adoptHeap(T* newData, size_type newCap) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span>    T* oldData = <a class="code hl_function" href="classdispenso_1_1_small_vector.html#a028f15c04e10c4d4098214be80d2fb4e">data</a>();</div>
+<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span>    size_type sz = rawSize();</div>
 <div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span> </div>
-<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>    <span class="keywordflow">if</span> (!isInline()) {</div>
-<div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>      deallocate(storage_.heap_.ptr);</div>
+<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>    <span class="keywordflow">for</span> (size_type i = 0; i &lt; sz; ++i) {</div>
+<div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>      oldData[i].~T();</div>
 <div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>    }</div>
 <div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span> </div>
-<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>    storage_.heap_.ptr = newData;</div>
-<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>    storage_.heap_.capacity = newCap;</div>
-<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>    size_ = kHeapBit | sz;</div>
-<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>  }</div>
-<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span> </div>
-<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>  <span class="comment">// emplace_back() when full: grow to newCap and append. The new element is constructed in the new</span></div>
-<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>  <span class="comment">// storage before the existing elements are moved out of the old storage, because args may refer</span></div>
-<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span>  <span class="comment">// to one of those elements (e.g. v.push_back(v[0])). If anything throws, the new storage is freed</span></div>
-<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span>  <span class="comment">// and the vector is left as it was.</span></div>
-<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span>... Args&gt;</div>
-<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>  reference growAndEmplaceBack(size_type newCap, Args&amp;&amp;... args) {</div>
-<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>    T* newData = allocate(newCap);</div>
-<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>    size_type sz = rawSize();</div>
-<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
-<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>    <span class="keywordflow">try</span> {</div>
-<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>      <span class="keyword">new</span> (newData + sz) T(std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span>    } <span class="keywordflow">catch</span> (...) {</div>
-<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>      deallocate(newData);</div>
-<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>      <span class="keywordflow">throw</span>;</div>
-<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>    }</div>
-<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>    <span class="keywordflow">try</span> {</div>
-<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>      transferTo(newData);</div>
-<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>    } <span class="keywordflow">catch</span> (...) {</div>
-<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>      newData[sz].~T();</div>
-<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>      deallocate(newData);</div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>      <span class="keywordflow">throw</span>;</div>
-<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>    }</div>
-<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>    <span class="keyword">new</span> (newData + sz) T(std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>    transferTo(newData);</div>
-<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
-<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>    adoptHeap(newData, newCap);</div>
-<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>    ++size_; <span class="comment">// Preserves heap bit</span></div>
-<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>    assert(rawSize() &gt; 0 &amp;&amp; <span class="stringliteral">&quot;Size overflow into heap bit&quot;</span>);</div>
-<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>    <span class="keywordflow">return</span> newData[sz];</div>
-<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>  }</div>
-<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span> </div>
-<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>  <span class="keywordtype">void</span> ensureCapacity(size_type newCap) {</div>
-<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>    <span class="keywordflow">if</span> (newCap &lt;= N &amp;&amp; isInline()) {</div>
-<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>      <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span>    }</div>
-<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>    <span class="keywordflow">if</span> (isInline()) {</div>
-<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span>      growToHeap(newCap);</div>
-<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>    } <span class="keywordflow">else</span> <span class="keywordflow">if</span> (newCap &gt; storage_.heap_.capacity) {</div>
-<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>      growToHeap(newCap);</div>
-<div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>    }</div>
-<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>  }</div>
-<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span> </div>
-<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span>  size_type size_;</div>
-<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span> </div>
-<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>  <span class="keyword">struct </span>HeapStorage {</div>
-<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span>    T* ptr;</div>
-<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span>    size_type capacity;</div>
-<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span>  };</div>
-<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span> </div>
-<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>  <span class="keyword">union </span>Storage {</div>
-<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>    <span class="keyword">alignas</span>(T) <span class="keywordtype">unsigned</span> <span class="keywordtype">char</span> inline_[<span class="keyword">sizeof</span>(T) * N];</div>
-<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span>    HeapStorage heap_;</div>
-<div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span>    Storage() noexcept {}</div>
-<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span>    ~Storage() {}</div>
-<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span>  } storage_;</div>
-<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span>};</div>
+<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>    <span class="keywordflow">if</span> (!isInline()) {</div>
+<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>      deallocate(storage_.heap_.ptr);</div>
+<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>    }</div>
+<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span> </div>
+<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>    storage_.heap_.ptr = newData;</div>
+<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>    storage_.heap_.capacity = newCap;</div>
+<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>    size_ = kHeapBit | sz;</div>
+<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span>  }</div>
+<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span> </div>
+<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>  <span class="comment">// emplace_back() when full: grow to newCap and append. The new element is constructed in the new</span></div>
+<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>  <span class="comment">// storage before the existing elements are moved out of the old storage, because args may refer</span></div>
+<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>  <span class="comment">// to one of those elements (e.g. v.push_back(v[0])). If anything throws, the new storage is freed</span></div>
+<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>  <span class="comment">// and the vector is left as it was.</span></div>
+<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span>... Args&gt;</div>
+<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>  reference growAndEmplaceBack(size_type newCap, Args&amp;&amp;... args) {</div>
+<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>    T* newData = allocate(newCap);</div>
+<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span>    size_type sz = rawSize();</div>
+<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span><span class="preprocessor">#if defined(__cpp_exceptions)</span></div>
+<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>    <span class="keywordflow">try</span> {</div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>      <span class="keyword">new</span> (newData + sz) T(std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>    } <span class="keywordflow">catch</span> (...) {</div>
+<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>      deallocate(newData);</div>
+<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>      <span class="keywordflow">throw</span>;</div>
+<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>    }</div>
+<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>    <span class="keywordflow">try</span> {</div>
+<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>      transferTo(newData);</div>
+<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>    } <span class="keywordflow">catch</span> (...) {</div>
+<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>      newData[sz].~T();</div>
+<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>      deallocate(newData);</div>
+<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>      <span class="keywordflow">throw</span>;</div>
+<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>    }</div>
+<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>    <span class="keyword">new</span> (newData + sz) T(std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>    transferTo(newData);</div>
+<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span><span class="preprocessor">#endif </span><span class="comment">// __cpp_exceptions</span></div>
+<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>    adoptHeap(newData, newCap);</div>
+<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>    ++size_; <span class="comment">// Preserves heap bit</span></div>
+<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>    assert(rawSize() &gt; 0 &amp;&amp; <span class="stringliteral">&quot;Size overflow into heap bit&quot;</span>);</div>
+<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>    <span class="keywordflow">return</span> newData[sz];</div>
+<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>  }</div>
+<div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span> </div>
+<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>  <span class="keywordtype">void</span> ensureCapacity(size_type newCap) {</div>
+<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span>    <span class="keywordflow">if</span> (newCap &lt;= N &amp;&amp; isInline()) {</div>
+<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>      <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>    }</div>
+<div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>    <span class="keywordflow">if</span> (isInline()) {</div>
+<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>      growToHeap(newCap);</div>
+<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span>    } <span class="keywordflow">else</span> <span class="keywordflow">if</span> (newCap &gt; storage_.heap_.capacity) {</div>
+<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span>      growToHeap(newCap);</div>
+<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>    }</div>
+<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>  }</div>
+<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span> </div>
+<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span>  size_type size_;</div>
+<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span> </div>
+<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span>  <span class="keyword">struct </span>HeapStorage {</div>
+<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>    T* ptr;</div>
+<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>    size_type capacity;</div>
+<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span>  };</div>
+<div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span> </div>
+<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span>  <span class="keyword">union </span>Storage {</div>
+<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span>    <span class="keyword">alignas</span>(T) <span class="keywordtype">unsigned</span> <span class="keywordtype">char</span> inline_[<span class="keyword">sizeof</span>(T) * N];</div>
+<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span>    HeapStorage heap_;</div>
+<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span>    Storage() noexcept {}</div>
+<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>    ~Storage() {}</div>
+<div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span>  } storage_;</div>
+<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>};</div>
 </div>
-<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span> </div>
-<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>} <span class="comment">// namespace dispenso</span></div>
+<div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span> </div>
+<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>} <span class="comment">// namespace dispenso</span></div>
 <div class="ttc" id="aclassdispenso_1_1_small_vector_html"><div class="ttname"><a href="classdispenso_1_1_small_vector.html">dispenso::SmallVector</a></div><div class="ttdef"><b>Definition</b> <a href="#l00051">small_vector.h:51</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_small_vector_html_a028f15c04e10c4d4098214be80d2fb4e"><div class="ttname"><a href="classdispenso_1_1_small_vector.html#a028f15c04e10c4d4098214be80d2fb4e">dispenso::SmallVector::data</a></div><div class="ttdeci">pointer data() noexcept</div><div class="ttdef"><b>Definition</b> <a href="#l00206">small_vector.h:206</a></div></div>
 <div class="ttc" id="aclassdispenso_1_1_small_vector_html_a084feb6c20c51b90ca78a9db6fd183fa"><div class="ttname"><a href="classdispenso_1_1_small_vector.html#a084feb6c20c51b90ca78a9db6fd183fa">dispenso::SmallVector::reserve</a></div><div class="ttdeci">void reserve(size_type newCap)</div><div class="ttdef"><b>Definition</b> <a href="#l00265">small_vector.h:265</a></div></div>
