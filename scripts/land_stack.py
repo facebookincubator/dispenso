@@ -136,13 +136,35 @@ class GitHub:
         return self._pages(f"pulls/{number}/reviews")
 
     def force_pushes(self, number):
-        """(time, sha) of each force push, oldest first."""
-        events = self._pages(f"issues/{number}/timeline")
-        return [
-            (_parse_time(e["created_at"]), e["commit_id"])
-            for e in events
-            if e.get("event") == "head_ref_force_pushed" and e.get("commit_id")
-        ]
+        """(time, sha before, sha after) of each force push, oldest first.
+
+        GraphQL, because the REST timeline does not say which commit a force push replaced.
+        """
+        owner, name = self.repo.split("/")
+        query = (
+            "query($owner: String!, $name: String!, $number: Int!, $cursor: String) {"
+            " repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
+            " timelineItems(itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT], first: 100, after: $cursor) {"
+            " pageInfo { hasNextPage endCursor }"
+            " nodes { ... on HeadRefForcePushedEvent { createdAt beforeCommit { oid } afterCommit { oid } } } } } } }"
+        )
+        pushes, cursor = [], None
+        while True:
+            cmd = ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"owner={owner}", "-F", f"name={name}",
+                   "-F", f"number={number}"]
+            if cursor:
+                cmd += ["-F", f"cursor={cursor}"]
+            out = subprocess.run(cmd, capture_output=True, text=True)
+            if out.returncode != 0:
+                raise LandError(f"gh api graphql (force pushes of #{number}) failed: {out.stderr.strip()}")
+            items = json.loads(out.stdout)["data"]["repository"]["pullRequest"]["timelineItems"]
+            for e in items["nodes"]:
+                if e.get("afterCommit"):
+                    before = (e.get("beforeCommit") or {}).get("oid")
+                    pushes.append((_parse_time(e["createdAt"]), before, e["afterCommit"]["oid"]))
+            if not items["pageInfo"]["hasNextPage"]:
+                return pushes
+            cursor = items["pageInfo"]["endCursor"]
 
     def tree(self, sha):
         return self._api(f"commits/{sha}")["commit"]["tree"]["sha"]
@@ -218,16 +240,25 @@ def notice_clock(gh, pr, head_tree):
 
     A force push that keeps the tree (a rebase onto a landed parent) is not a
     material change, so the clock runs from the earliest push in the latest run
-    of pushes that all carry this tree.
+    of pushes that all carry this tree. When every force push kept it, the tree
+    predates them all: the clock then runs from the replaced commit's push.
     """
     sha = pr["head"]["sha"]
     pushes = gh.force_pushes(pr["number"])
     start = None
-    for time, pushed in reversed(pushes):
+    for time, before, pushed in reversed(pushes):
         if gh.tree(pushed) != head_tree:
             break
         start = time
-    if start is None or not any(pushed == sha for _, pushed in pushes):
+    else:
+        # The first force push replaced a plain push. If that commit carried the same tree,
+        # its CI start dates the push conservatively (CI starts no earlier than the push).
+        before = pushes[0][1] if pushes else None
+        if before and gh.tree(before) == head_tree:
+            older = gh.check_start(before)
+            if older and older < start:
+                start = older
+    if start is None or not any(pushed == sha for _, _, pushed in pushes):
         # The head arrived by a plain push, which the timeline does not date. CI starts on
         # push, so its earliest start is no earlier than the push: a conservative stand-in.
         ci = gh.check_start(sha)

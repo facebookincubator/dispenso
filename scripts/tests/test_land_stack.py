@@ -328,10 +328,26 @@ class LandStackTest(unittest.TestCase):
         rebased = r.commit(r.main, {"a.txt": "a\n"}, "Add a, rebased")
         self.gh.add(1, "s/1", "main", rebased, created=NOW - datetime.timedelta(days=3))
         self.gh.check_starts[rebased] = NOW - datetime.timedelta(hours=1)
-        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=30), a), (NOW - datetime.timedelta(hours=1), rebased)]
+        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=30), None, a), (NOW - datetime.timedelta(hours=1), a, rebased)]
         self.land(1, dry_run=True)
         changed = r.commit(r.main, {"a.txt": "other\n"}, "Add a, differently")
-        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=30), changed), (NOW - datetime.timedelta(hours=1), rebased)]
+        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=30), None, changed), (NOW - datetime.timedelta(hours=1), changed, rebased)]
+        with self.assertRaisesRegex(land_stack.LandError, "#1 cannot land"):
+            self.land(1, dry_run=True)
+
+    def test_tree_identical_force_push_keeps_the_original_plain_push_clock(self):
+        r = self.r
+        a = r.commit(r.main, {"a.txt": "a\n"}, "Add a")
+        rebased = r.commit(r.main, {"a.txt": "a\n"}, "Add a, rebased")
+        self.gh.add(1, "s/1", "main", rebased, created=NOW - datetime.timedelta(days=3))
+        self.gh.check_starts[a] = NOW - datetime.timedelta(hours=30)
+        self.gh.check_starts[rebased] = NOW - datetime.timedelta(hours=1)
+        # The only force push replaced a plain push of the same tree.
+        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=1), a, rebased)]
+        self.land(1, dry_run=True)
+        changed = r.commit(r.main, {"a.txt": "other\n"}, "Add a, differently")
+        self.gh.check_starts[changed] = NOW - datetime.timedelta(hours=30)
+        self.gh.pushes[1] = [(NOW - datetime.timedelta(hours=1), changed, rebased)]
         with self.assertRaisesRegex(land_stack.LandError, "#1 cannot land"):
             self.land(1, dry_run=True)
 
