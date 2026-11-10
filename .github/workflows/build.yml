@@ -137,6 +137,34 @@ jobs:
         working-directory: ./build
         run: ctest --timeout 300 --parallel 4 -LE flaky
 
+  # musl libc (Alpine). Everything else on Linux here is glibc: musl differs in
+  # TLS and dlopen() behaviour, thread stack sizes and sched_* support. Runs in
+  # an Alpine chroot on the Ubuntu runner (setup-alpine), since JavaScript
+  # actions such as checkout cannot run inside an Alpine container.
+  build-linux-musl:
+    name: Linux musl (Alpine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Alpine
+        uses: jirutka/setup-alpine@v1
+        with:
+          packages: build-base cmake git linux-headers
+      - name: Configure
+        shell: alpine.sh {0}
+        run: |
+          mkdir build && cd build
+          cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        shell: alpine.sh {0}
+        working-directory: ./build
+        run: cmake --build . --parallel 4
+      - name: Test
+        shell: alpine.sh {0}
+        working-directory: ./build
+        run: ctest --timeout 300 --parallel 4 -LE flaky
+
   build-macos-gcc:
     name: macOS GCC C++14 (ARM64)
     runs-on: macos-latest
@@ -178,6 +206,33 @@ jobs:
       - name: Test
         working-directory: ./build
         run: ctest --timeout 300 --parallel 4 -LE flaky --build-config Release
+
+  #############################################################################
+  # FreeBSD, in a VM (GitHub has no FreeBSD runners)
+  #############################################################################
+  # CpuSet's FreeBSD paths (kern.sched.topology_spec cache groups, vm.ndomains
+  # NUMA domains, sched_getcpu) are compiled and run nowhere else. Uses the
+  # base system's clang. git, not the googletest package: the package (1.16)
+  # needs C++17, so the tests fetch the pinned googletest, as elsewhere.
+  build-freebsd:
+    name: FreeBSD 15 Clang
+    runs-on: ubuntu-latest
+    # VM boot and package install add several minutes to the build.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and test in a FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          # The newest 15.x release.
+          release: "15"
+          copyback: false
+          prepare: pkg install -y cmake git
+          run: |
+            mkdir build && cd build
+            cmake .. -DDISPENSO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+            cmake --build . --parallel 4
+            ctest --timeout 300 --parallel 4 -LE flaky
 
   #############################################################################
   # Cross-compiled architectures, executed under QEMU
