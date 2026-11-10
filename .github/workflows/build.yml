@@ -314,6 +314,68 @@ jobs:
         run: ctest --timeout 300 --parallel 4 -LE flaky
 
   #############################################################################
+  # Android (NDK preinstalled on the Ubuntu runners)
+  #############################################################################
+  # API 24 predates native ELF TLS on Android (the NDK then emulates
+  # thread-locals); API 29 has it. Build-only: warnings are errors here, as in
+  # every standalone build.
+  build-android:
+    name: Android ${{ matrix.abi }} API ${{ matrix.api }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+        api: [24, 29]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDISPENSO_BUILD_TESTS=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=${{ matrix.abi }} -DANDROID_PLATFORM=android-${{ matrix.api }}
+      - name: Build
+        run: cmake --build build --parallel 4
+
+  # A subset of the tests on an x86_64 emulator (hardware-accelerated through
+  # KVM): CPU and cache queries, the small-buffer allocator, the pool, task
+  # sets, parallel_for and futures. Linked statically, so each test is a single
+  # file to push; the build jobs above cover the shared library.
+  test-android:
+    name: Android x86_64 API 29 (emulator, test subset)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_TESTS: >-
+        cpu_set_test small_buffer_allocator_test once_function_test thread_pool_test
+        task_set_test chunked_for_test future_test
+    steps:
+      - uses: actions/checkout@v5
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDISPENSO_BUILD_TESTS=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=x86_64 -DANDROID_PLATFORM=android-29 -DDISPENSO_SHARED_LIB=OFF
+      - name: Build
+        run: cmake --build build --parallel 4 --target $ANDROID_TESTS
+      - name: Run tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          # Each line of the script runs in its own shell, so the loop is one line.
+          script: sh -c 'set -e; for t in $ANDROID_TESTS; do adb push build/bin/$t /data/local/tmp/ > /dev/null; adb shell /data/local/tmp/$t --gtest_brief=1; done'
+
+  #############################################################################
   # Packaging configurations - what the package managers actually ship
   #############################################################################
   build-system-concurrentqueue:
