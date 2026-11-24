@@ -20,7 +20,7 @@ static float gt_sinpi(float x) {
   // Exact range reduction in double: much more precise than sin(pi * x).
   double j = std::round(2.0 * xd);
   double r = xd - j * 0.5;
-  double t = r * M_PI;
+  double t = r * kPiDouble;
   int qi = static_cast<int>(j) & 3;
   double sv = std::sin(t);
   double cv = std::cos(t);
@@ -49,7 +49,7 @@ static float gt_cospi(float x) {
   double xd = static_cast<double>(x);
   double j = std::round(2.0 * xd);
   double r = xd - j * 0.5;
-  double t = r * M_PI;
+  double t = r * kPiDouble;
   int qi = (static_cast<int>(j) + 1) & 3;
   double sv = std::sin(t);
   double cv = std::cos(t);
