@@ -19,7 +19,7 @@ auto cos_accurate = dispenso::fast_math::cos<float, dispenso::fast_math::MaxAccu
 // MacOS seems to have a slightly busted cos and cosf, but cosl seems to agree with other platforms.
 #if defined(__APPLE__)
 float gt_cos(float x) {
-  return ::cosl(x);
+  return static_cast<float>(::cosl(x));
 }
 #else
 auto gt_cos = ::cosf;

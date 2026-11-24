@@ -150,10 +150,10 @@ TEST(NeonFloat, Comparisons) {
   NeonFloat b = make4(4.0f, 3.0f, 3.0f, 1.0f);
 
   NeonFloat lt = a < b;
-  EXPECT_NE(lane(NeonInt32(bit_cast<NeonInt32>(lt)), 0), 0); // 1 < 4
-  EXPECT_NE(lane(NeonInt32(bit_cast<NeonInt32>(lt)), 1), 0); // 2 < 3
-  EXPECT_EQ(lane(NeonInt32(bit_cast<NeonInt32>(lt)), 2), 0); // 3 == 3
-  EXPECT_EQ(lane(NeonInt32(bit_cast<NeonInt32>(lt)), 3), 0); // 4 > 1
+  EXPECT_NE(lane(NeonInt32(dfm::bit_cast<NeonInt32>(lt)), 0), 0); // 1 < 4
+  EXPECT_NE(lane(NeonInt32(dfm::bit_cast<NeonInt32>(lt)), 1), 0); // 2 < 3
+  EXPECT_EQ(lane(NeonInt32(dfm::bit_cast<NeonInt32>(lt)), 2), 0); // 3 == 3
+  EXPECT_EQ(lane(NeonInt32(dfm::bit_cast<NeonInt32>(lt)), 3), 0); // 4 > 1
 }
 
 TEST(NeonInt32, Comparisons) {
