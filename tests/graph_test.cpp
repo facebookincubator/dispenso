@@ -99,7 +99,22 @@ struct ConcurrentTaskSetMode {
   static constexpr EvalMode mode = EvalMode::concurrentTaskSet;
 };
 
-class TwoSubgraphs : public testing::TestWithParam<EvalMode> {
+// gtest allocates fixtures with plain new, which before C++17 ignores over-alignment, and these
+// fixtures hold task sets, which are cache-line aligned: allocate them aligned (as ThreadPool does
+// for itself).
+template <typename T>
+struct AlignedNew {
+#if DISPENSO_CPLUSPLUS < 201703L
+  static void* operator new(size_t sz) {
+    return dispenso::detail::alignedMallocOrThrow(sz, alignof(T));
+  }
+  static void operator delete(void* ptr) {
+    dispenso::detail::alignedFree(ptr);
+  }
+#endif // DISPENSO_CPLUSPLUS
+};
+
+class TwoSubgraphs : public testing::TestWithParam<EvalMode>, public AlignedNew<TwoSubgraphs> {
  protected:
   void SetUp() override {
     //
@@ -273,7 +288,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(EvalMode::singleThread, EvalMode::parallelFor, EvalMode::concurrentTaskSet),
     modeName<TwoSubgraphs>);
 
-class BiPropGraphTest : public testing::TestWithParam<EvalMode> {
+class BiPropGraphTest : public testing::TestWithParam<EvalMode>,
+                        public AlignedNew<BiPropGraphTest> {
  protected:
   void SetUp() override {
     //                                     ┌─────────────────┐
@@ -393,7 +409,7 @@ INSTANTIATE_TEST_SUITE_P(
     modeName<BiPropGraphTest>);
 
 template <class T>
-class BigTree : public testing::Test {
+class BigTree : public testing::Test, public AlignedNew<BigTree<T>> {
  protected:
   static size_t sizeOfLevel(size_t level) {
     return size_t(1) << (numBits_ - shiftStep_ * level);
