@@ -18,7 +18,7 @@ auto sin_accurate = dispenso::fast_math::sin<float, dispenso::fast_math::MaxAccu
 // MacOS seems to have a slightly busted sin and sinf, but sinl seems to agree with other platforms.
 #if defined(__APPLE__)
 float gt_sin(float x) {
-  return ::sinl(x);
+  return static_cast<float>(::sinl(x));
 }
 #else
 auto gt_sin = ::sinf;

@@ -459,7 +459,7 @@ static float cpuSinpi(float x) {
   double xd = static_cast<double>(x);
   double j = std::round(2.0 * xd);
   double r = xd - j * 0.5;
-  double t = r * M_PI;
+  double t = r * dispenso::fast_math::kPiDouble;
   int qi = static_cast<int>(j) & 3;
   double sv = std::sin(t);
   double cv = std::cos(t);
@@ -495,7 +495,7 @@ static float cpuPow(float base, float exp) {
 // precision ground truth, GPU fast_math meets the same budgets as CPU.
 // ---------------------------------------------------------------------------
 
-static constexpr float kPi = static_cast<float>(M_PI);
+static constexpr float kPi = dispenso::fast_math::kPi;
 
 // ---- Exponential / logarithm ----
 

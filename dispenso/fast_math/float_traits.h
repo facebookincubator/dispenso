@@ -42,12 +42,20 @@ constexpr uint32_t buildBitmask() {
 }
 } // namespace detail
 
-// Float-precision math constants, avoiding repeated static_cast<float>(M_PI) etc.
-constexpr float kPi = static_cast<float>(M_PI);
-constexpr float kPi_2 = static_cast<float>(M_PI_2);
-constexpr float kPi_4 = static_cast<float>(M_PI_4);
-constexpr float kLn2 = static_cast<float>(M_LN2);
-constexpr float k1_Ln2 = static_cast<float>(1.0 / M_LN2);
+// Math constants. M_PI and friends are POSIX, not standard C++, and MSVC's <cmath> defines them
+// only under _USE_MATH_DEFINES, so dispenso spells them out. The float values are the doubles
+// rounded to nearest, as static_cast<float>(M_PI) etc. gave.
+constexpr double kPiDouble = 3.14159265358979323846;
+constexpr double kPi_2Double = 1.57079632679489661923;
+constexpr double kPi_4Double = 0.785398163397448309616;
+constexpr double kLn2Double = 0.693147180559945309417;
+constexpr double k1_Ln2Double = 1.44269504088896340736;
+
+constexpr float kPi = static_cast<float>(kPiDouble);
+constexpr float kPi_2 = static_cast<float>(kPi_2Double);
+constexpr float kPi_4 = static_cast<float>(kPi_4Double);
+constexpr float kLn2 = static_cast<float>(kLn2Double);
+constexpr float k1_Ln2 = static_cast<float>(k1_Ln2Double);
 
 template <typename T>
 struct FloatTraits {};

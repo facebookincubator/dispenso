@@ -10,10 +10,10 @@
 
 #include <dispenso/fast_math/util.h>
 
-// Float-precision math constants to avoid double-to-float conversion warnings.
-constexpr float kPi = static_cast<float>(M_PI);
-constexpr float kPi_2 = static_cast<float>(M_PI_2);
-constexpr float kPi_4 = static_cast<float>(M_PI_4);
+using dispenso::fast_math::kPi;
+using dispenso::fast_math::kPi_2;
+using dispenso::fast_math::kPi_4;
+using dispenso::fast_math::kPiDouble;
 
 // Reduce accuracy coverage for sanitizer and debug builds, which are much slower.
 // Clang uses __has_feature, GCC uses __SANITIZE_ADDRESS__/__SANITIZE_THREAD__.

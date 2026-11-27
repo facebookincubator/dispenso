@@ -257,7 +257,7 @@ inline std::vector<Flt> makeInputs(float lo, float hi) {
 
 template <typename Flt>
 inline const std::vector<Flt>& sinInputs() {
-  static auto v = makeInputs<Flt>(static_cast<float>(-M_PI / 2.0), static_cast<float>(M_PI / 2.0));
+  static auto v = makeInputs<Flt>(-dispenso::fast_math::kPi_2, dispenso::fast_math::kPi_2);
   return v;
 }
 

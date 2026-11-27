@@ -52,9 +52,9 @@ const std::vector<float>& cbrtInputs() {
 
 const std::vector<float>& sinInputs() {
   static std::vector<float> inputs = []() {
-    float delta = static_cast<float>(M_PI / kNumInputs);
+    float delta = static_cast<float>(dispenso::fast_math::kPiDouble / kNumInputs);
     std::vector<float> inp;
-    for (float f = static_cast<float>(-M_PI / 2.0); f <= M_PI / 2.0; f += delta) {
+    for (float f = -dispenso::fast_math::kPi_2; f <= dispenso::fast_math::kPi_2Double; f += delta) {
       inp.push_back(f);
     }
     while (inp.size() < kNumInputs) {
