@@ -143,7 +143,10 @@ jobs:
   # actions such as checkout cannot run inside an Alpine container.
   build-linux-musl:
     name: Linux musl (Alpine)
-    runs-on: ubuntu-latest
+    # setup-alpine runs its script with sudo -E, which the sudo-rs of Ubuntu 26.04 (ubuntu-latest)
+    # ignores, losing the action's inputs (jirutka/setup-alpine#39). Back to ubuntu-latest once
+    # that is fixed.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -253,7 +256,7 @@ jobs:
             processor: arm
             triple: arm-linux-gnueabihf
             sysroot: /usr/arm-linux-gnueabihf
-            qemu: qemu-arm-static
+            qemu: qemu-arm
           # RISC-V has never been tested at all. Building and running is the
           # bar here; performance is not measurable under emulation.
           - name: Linux riscv64 (QEMU)
@@ -261,7 +264,7 @@ jobs:
             processor: riscv64
             triple: riscv64-linux-gnu
             sysroot: /usr/riscv64-linux-gnu
-            qemu: qemu-riscv64-static
+            qemu: qemu-riscv64
           # Ubuntu packages no rv32 Linux toolchain, so this one comes from
           # Bootlin. The checksum is what pins it: the URL fixes only which
           # path is fetched, so without verifying the bytes a re-rolled
@@ -274,13 +277,14 @@ jobs:
             toolchain_sha256: d42680e926542595c4c87629d33f5f90aac1e9a964c8955089e0514caa01b78f
             toolchain_dir: riscv32-ilp32d--glibc--stable-2025.08-1
             sysroot: /opt/cross/riscv32-ilp32d--glibc--stable-2025.08-1/riscv32-buildroot-linux-gnu/sysroot
-            qemu: qemu-riscv32-static
+            qemu: qemu-riscv32
     steps:
       - uses: actions/checkout@v5
       - name: Install cross toolchain and QEMU
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static ${{ matrix.packages }}
+          # Ubuntu 26.04 dropped qemu-user-static; qemu-user's emulators are static now.
+          sudo apt-get install -y qemu-user ${{ matrix.packages }}
           if [ -n "${{ matrix.toolchain_url }}" ]; then
             curl -fsSL "${{ matrix.toolchain_url }}" -o /tmp/toolchain.tar.xz
             echo "${{ matrix.toolchain_sha256 }}  /tmp/toolchain.tar.xz" \
@@ -714,7 +718,7 @@ jobs:
         run: ctest --timeout 300 -L flaky -R "^TimedTaskTest\." --repeat until-pass:5
       - name: Generate coverage report
         run: |
-          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,gcov,negative
+          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,inconsistent,gcov,negative
           lcov --remove coverage.info '/usr/*' '*/build/_deps/*' '*/tests/*' '*/third-party/*' '*/benchmarks/*' '*/examples/*' '*/bits/*' '*/ext/*' --output-file coverage.info --ignore-errors unused
           lcov --list coverage.info
       - name: Upload to Codecov
